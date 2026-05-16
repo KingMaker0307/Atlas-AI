@@ -1,0 +1,236 @@
+import type { Exercise } from "@/types/domain";
+
+export const exercises: Exercise[] = [
+  {
+    id: "barbell-back-squat",
+    name: "Barbell Back Squat",
+    category: "compound",
+    muscles: ["quads", "glutes", "hamstrings", "core"],
+    equipment: ["barbell"],
+    difficulty: "intermediate",
+    setup: [
+      "Set the bar just below shoulder height and brace before unracking.",
+      "Place feet roughly shoulder-width with toes slightly turned out.",
+      "Pull the bar into your upper back and create full-body tension.",
+    ],
+    instructions: [
+      "Brace, descend under control, then drive through midfoot to stand.",
+      "Keep knees tracking over toes and maintain a proud chest.",
+    ],
+    execution: [
+      "Unlock hips and knees together.",
+      "Reach depth while keeping your brace.",
+      "Drive the floor away and finish tall without overextending.",
+    ],
+    breathing: "Big inhale and brace before each rep, exhale after passing the hardest point.",
+    tempo: "3 seconds down, controlled pause, powerful ascent.",
+    commonMistakes: [
+      "Losing brace at the bottom",
+      "Letting knees cave inward",
+      "Shifting onto toes",
+    ],
+    safetyTips: [
+      "Use safeties set just below bottom position.",
+      "Stop the set when depth or bracing changes.",
+    ],
+    progressionTips: [
+      "Add 2.5-5 lb when all target reps land with 1 RIR or better.",
+      "Deload 8-12% after two stalled squat sessions.",
+    ],
+  },
+  {
+    id: "bench-press",
+    name: "Bench Press",
+    category: "compound",
+    muscles: ["chest", "triceps", "shoulders"],
+    equipment: ["barbell"],
+    difficulty: "intermediate",
+    setup: [
+      "Plant feet, set shoulder blades down and back, and keep eyes under the bar.",
+      "Grip slightly wider than shoulder-width with stacked wrists.",
+    ],
+    instructions: [
+      "Lower the bar to lower chest with control.",
+      "Press up and slightly back while keeping shoulders pinned.",
+    ],
+    execution: [
+      "Unrack with locked shoulders.",
+      "Touch consistently without bouncing.",
+      "Finish each rep with elbows extended and upper back tight.",
+    ],
+    breathing: "Brace before the descent, hold through the press, reset at the top.",
+    tempo: "2-3 seconds down, soft touch, crisp press.",
+    commonMistakes: ["Flaring elbows early", "Bouncing off the chest", "Losing leg drive"],
+    safetyTips: ["Use a spotter or safeties for hard sets.", "Avoid max attempts when alone."],
+    progressionTips: [
+      "Add 2.5 lb when top-set reps exceed the target range.",
+      "Use a back-off set if bar speed slows sharply.",
+    ],
+  },
+  {
+    id: "deadlift",
+    name: "Conventional Deadlift",
+    category: "compound",
+    muscles: ["back", "glutes", "hamstrings", "core"],
+    equipment: ["barbell"],
+    difficulty: "advanced",
+    setup: [
+      "Stand with midfoot under the bar.",
+      "Hinge to grip, pull slack out, and wedge hips into position.",
+    ],
+    instructions: [
+      "Push the floor away while keeping the bar close.",
+      "Lock out with glutes, not with a backward lean.",
+    ],
+    execution: [
+      "Create lat tension before the pull.",
+      "Keep the bar path vertical.",
+      "Lower with control by hinging first.",
+    ],
+    breathing: "Inhale and brace before each rep, reset on the floor.",
+    tempo: "Controlled setup, strong pull, deliberate eccentric.",
+    commonMistakes: ["Jerking the bar", "Hips shooting up", "Hyperextending at lockout"],
+    safetyTips: ["Stop when back position changes.", "Keep volume conservative near failure."],
+    progressionTips: [
+      "Progress slowly because systemic fatigue is high.",
+      "Reduce volume if recovery score is below 60.",
+    ],
+  },
+  {
+    id: "pull-up",
+    name: "Pull-Up",
+    category: "compound",
+    muscles: ["back", "biceps", "core"],
+    equipment: ["bodyweight"],
+    difficulty: "intermediate",
+    setup: [
+      "Use a shoulder-width overhand grip.",
+      "Start from a dead hang with ribs stacked over hips.",
+    ],
+    instructions: [
+      "Pull elbows toward ribs and clear the bar with your chin.",
+      "Lower under control until arms are extended.",
+    ],
+    execution: [
+      "Depress shoulders before bending elbows.",
+      "Keep legs quiet.",
+      "Control the bottom instead of dropping.",
+    ],
+    breathing: "Exhale as you pull, inhale on the descent.",
+    tempo: "1 second up, 2-3 seconds down.",
+    commonMistakes: ["Kipping unintentionally", "Short range of motion", "Shrugging at the top"],
+    safetyTips: ["Use assistance before form breaks.", "Avoid painful shoulder ranges."],
+    progressionTips: [
+      "Add reps until sets reach 10, then add small external load.",
+      "Use eccentrics if full reps stall.",
+    ],
+  },
+  {
+    id: "romanian-deadlift",
+    name: "Romanian Deadlift",
+    category: "compound",
+    muscles: ["hamstrings", "glutes", "back"],
+    equipment: ["barbell", "dumbbell"],
+    difficulty: "intermediate",
+    setup: [
+      "Stand tall with weight held close to thighs.",
+      "Soften knees and brace ribs down.",
+    ],
+    instructions: [
+      "Hinge hips back until hamstrings are loaded.",
+      "Return by driving hips forward while keeping lats engaged.",
+    ],
+    execution: [
+      "Keep shins nearly vertical.",
+      "Pause when the stretch peaks.",
+      "Avoid turning the rep into a squat.",
+    ],
+    breathing: "Brace before lowering, exhale after passing midrange.",
+    tempo: "3 seconds down, 1 second stretch, 1-2 seconds up.",
+    commonMistakes: ["Rounding low back", "Going too low", "Letting weight drift away"],
+    safetyTips: ["Use straps if grip limits the target muscle.", "Reduce range when hamstrings pull pelvis under."],
+    progressionTips: ["Add load after all reps keep a stable hinge.", "Use tempo before adding weight."],
+  },
+  {
+    id: "overhead-press",
+    name: "Standing Overhead Press",
+    category: "compound",
+    muscles: ["shoulders", "triceps", "core"],
+    equipment: ["barbell", "dumbbell"],
+    difficulty: "intermediate",
+    setup: [
+      "Grip just outside shoulders with forearms vertical.",
+      "Squeeze glutes and brace ribs down.",
+    ],
+    instructions: [
+      "Press overhead while moving your head slightly back, then through.",
+      "Lock out with biceps near ears.",
+    ],
+    execution: [
+      "Start from upper chest.",
+      "Keep wrists stacked.",
+      "Do not turn the press into a push press unless planned.",
+    ],
+    breathing: "Brace before each rep, exhale near lockout.",
+    tempo: "Controlled down, firm press up.",
+    commonMistakes: ["Overarching", "Pressing around the face", "Losing glute tension"],
+    safetyTips: ["Use conservative jumps.", "Avoid painful shoulder impingement positions."],
+    progressionTips: ["Use micro-loading when possible.", "Add volume before load when progress slows."],
+  },
+  {
+    id: "dumbbell-row",
+    name: "One-Arm Dumbbell Row",
+    category: "compound",
+    muscles: ["back", "biceps"],
+    equipment: ["dumbbell"],
+    difficulty: "beginner",
+    setup: [
+      "Support one hand and knee on a bench or staggered stance.",
+      "Let the working shoulder reach without losing spine position.",
+    ],
+    instructions: [
+      "Row elbow toward hip.",
+      "Lower until lats stretch while staying controlled.",
+    ],
+    execution: [
+      "Keep torso quiet.",
+      "Pause briefly near the ribs.",
+      "Avoid twisting to chase range.",
+    ],
+    breathing: "Exhale on the row, inhale as you lower.",
+    tempo: "1-2 seconds up, 2 seconds down.",
+    commonMistakes: ["Shrugging", "Rotating torso", "Using too much momentum"],
+    safetyTips: ["Keep neck neutral.", "Use straps if grip steals focus."],
+    progressionTips: ["Progress reps first, then load.", "Add a pause when weight jumps are large."],
+  },
+  {
+    id: "plank",
+    name: "Plank",
+    category: "mobility",
+    muscles: ["core", "glutes", "shoulders"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner",
+    setup: [
+      "Place elbows below shoulders.",
+      "Set ribs down and squeeze glutes.",
+    ],
+    instructions: [
+      "Hold a straight line from shoulders to heels.",
+      "Breathe calmly without losing brace.",
+    ],
+    execution: [
+      "Push elbows gently into the floor.",
+      "Keep pelvis neutral.",
+      "End the set before hips sag.",
+    ],
+    breathing: "Short nasal breaths while keeping abdominal pressure.",
+    tempo: "Isometric hold.",
+    commonMistakes: ["Sagging hips", "Holding breath", "Neck craning"],
+    safetyTips: ["Stop if low back takes over.", "Elevate elbows to regress."],
+    progressionTips: ["Add 5-10 seconds per week.", "Progress to long-lever planks before adding load."],
+  },
+];
+
+export function getExerciseById(id: string): Exercise | undefined {
+  return exercises.find((exercise) => exercise.id === id);
+}
