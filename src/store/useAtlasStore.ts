@@ -557,9 +557,8 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
         const plan = parseAiWorkoutPlan(responseContent);
         if (plan) {
           const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
-          plan.routines.forEach(routine => { // Iterate through routines
-            routine.exercises.forEach(e => existingExercises.set(e.id, e)); // Add exercises from each routine
-          });
+          // Correctly populate existingExercises with full Exercise objects from plan.exercises
+          plan.exercises.forEach(e => existingExercises.set(e.id, e));
           set({ workoutPlans: [plan], exercises: Array.from(existingExercises.values()), activeTab: "dashboard" });
         }
       }
