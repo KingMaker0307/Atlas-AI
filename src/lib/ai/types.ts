@@ -9,6 +9,11 @@ export interface CoachChatRequest {
   onToken?: (token: string) => void;
 }
 
+export interface CoachChatResponse {
+  content: string;
+  tokenCount?: number; // Added tokenCount
+}
+
 export interface ModelInfo {
   id: string;
   label?: string;
@@ -16,7 +21,7 @@ export interface ModelInfo {
 
 export interface AiProviderAdapter {
   type: AiProviderSettings["type"];
-  chat(request: CoachChatRequest): Promise<string>;
+  chat(request: CoachChatRequest): Promise<CoachChatResponse>; // Updated return type
   listModels(settings: AiProviderSettings, apiKey: string): Promise<ModelInfo[]>;
   validate(settings: AiProviderSettings, apiKey: string): Promise<boolean>;
 }

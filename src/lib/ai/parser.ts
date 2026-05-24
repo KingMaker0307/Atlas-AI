@@ -1,7 +1,6 @@
-import type { Exercise, Routine } from "@/types/domain";
+import type { Exercise, WorkoutPlan } from "@/types/domain";
 
-interface AiWorkoutPlan {
-  routines: Routine[];
+interface AiWorkoutPlan extends WorkoutPlan {
   exercises: Exercise[];
 }
 
@@ -34,7 +33,8 @@ function isAiWorkoutPlan(data: any): data is AiWorkoutPlan {
   return (
     data &&
     typeof data === "object" &&
-    Array.isArray(data.routines) &&
-    Array.isArray(data.exercises)
+    typeof data.id === "string" &&
+    typeof data.name === "string" &&
+    Array.isArray(data.routines)
   );
 }

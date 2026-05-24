@@ -203,7 +203,7 @@ export interface ProgressionRecommendation {
 export interface AtlasSnapshot {
   profile: UserProfile | null;
   workouts: Workout[];
-  activeWorkout?: Workout | null;
+  activeWorkout: Workout | null;
   recoveryLogs: RecoveryLog[];
   bodyMetrics: BodyMetric[];
   aiMessages: AiMessage[];
@@ -216,4 +216,6 @@ export interface AtlasSnapshot {
   hasOnboarded: boolean;
   restTimerEndsAt?: string;
   updatedAt: string;
+  apiCallCount: number; // Added to AtlasSnapshot
+  tokenCount: number; // Added to AtlasSnapshot
 }

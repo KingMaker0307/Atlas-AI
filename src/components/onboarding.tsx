@@ -11,7 +11,7 @@ import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { HeightUnit, WeightUnit, BodyType, AiProviderSettings, Physique } from "@/types/domain";
 
-const providerTypes: AiProviderSettings["type"][] = [
+const providerTypes = [
   "openai",
   "anthropic",
   "gemini",
@@ -21,7 +21,7 @@ const providerTypes: AiProviderSettings["type"][] = [
   "ollama",
   "lmstudio",
   "custom",
-];
+] as const;
 
 const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -176,7 +176,7 @@ export function Onboarding() {
             
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <Label>Days/Week</Label>
+                <Label>Days Per Week</Label>
                 <Input type="number" {...register("daysPerWeek")} />
                 {errors.daysPerWeek && <p className="mt-1 text-xs text-rose-300">{errors.daysPerWeek.message}</p>}
               </div>

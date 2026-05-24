@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^3.9.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "idb": "^8.0.3",
@@ -20,9 +20,10 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.76.0",
+    "react-markdown": "^9.0.3",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3",
+    "zod": "^3.23.8",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ import {
   AiProviderError,
   type AiProviderAdapter,
   type CoachChatRequest,
+  type CoachChatResponse, // Import CoachChatResponse
   type ModelInfo,
   toProviderMessages,
 } from "@/lib/ai/types";
@@ -24,7 +25,7 @@ async function parseError(response: Response): Promise<never> {
 
 export const anthropicAdapter: AiProviderAdapter = {
   type: "anthropic",
-  async chat({ provider, apiKey, messages, systemContext, signal }: CoachChatRequest) {
+  async chat({ provider, apiKey, messages, systemContext, signal }: CoachChatRequest): Promise<CoachChatResponse> {
     const response = await fetch(`${baseUrl(provider)}/messages`, {
       method: "POST",
       headers: {
@@ -51,9 +52,16 @@ export const anthropicAdapter: AiProviderAdapter = {
     if (!response.ok) await parseError(response);
     const body = (await response.json()) as {
       content?: Array<{ type: string; text?: string }>;
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+      };
     };
 
-    return body.content?.map((part) => part.text ?? "").join("") ?? "";
+    const content = body.content?.map((part) => part.text ?? "").join("") ?? "";
+    const tokenCount = (body.usage?.input_tokens ?? 0) + (body.usage?.output_tokens ?? 0);
+
+    return { content, tokenCount };
   },
   async listModels(settings: AiProviderSettings, apiKey: string): Promise<ModelInfo[]> {
     const response = await fetch(`${baseUrl(settings)}/models`, {

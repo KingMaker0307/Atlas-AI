@@ -2,6 +2,7 @@ import {
   AiProviderError,
   type AiProviderAdapter,
   type CoachChatRequest,
+  type CoachChatResponse,
   type ModelInfo,
   toProviderMessages,
 } from "@/lib/ai/types";
@@ -27,7 +28,7 @@ async function parseError(response: Response): Promise<never> {
 
 export const geminiAdapter: AiProviderAdapter = {
   type: "gemini",
-  async chat({ provider, apiKey, messages, systemContext, signal }: CoachChatRequest) {
+  async chat({ provider, apiKey, messages, systemContext, signal }: CoachChatRequest): Promise<CoachChatResponse> {
     const response = await fetch(
       `${baseUrl(provider)}/models/${provider.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
@@ -54,9 +55,18 @@ export const geminiAdapter: AiProviderAdapter = {
     if (!response.ok) await parseError(response);
     const body = (await response.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        totalTokenCount?: number;
+      };
     };
 
-    return body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+    const content = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+    const tokenCount = body.usageMetadata?.totalTokenCount ??
+                       ((body.usageMetadata?.promptTokenCount ?? 0) + (body.usageMetadata?.candidatesTokenCount ?? 0));
+
+    return { content, tokenCount };
   },
   async listModels(settings: AiProviderSettings, apiKey: string): Promise<ModelInfo[]> {
     const response = await fetch(`${baseUrl(settings)}/models?key=${encodeURIComponent(apiKey)}`);
