@@ -2,6 +2,7 @@ import {
   AiProviderError,
   type AiProviderAdapter,
   type CoachChatRequest,
+  type CoachChatResponse, // Import CoachChatResponse
   type ModelInfo,
   toProviderMessages,
 } from "@/lib/ai/types";
@@ -17,7 +18,7 @@ async function parseError(response: Response): Promise<never> {
 
 export const ollamaAdapter: AiProviderAdapter = {
   type: "ollama",
-  async chat({ provider, messages, systemContext, signal }: CoachChatRequest) {
+  async chat({ provider, messages, systemContext, signal }: CoachChatRequest): Promise<CoachChatResponse> {
     const response = await fetch(`${baseUrl(provider)}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -40,8 +41,16 @@ export const ollamaAdapter: AiProviderAdapter = {
     });
 
     if (!response.ok) await parseError(response);
-    const body = (await response.json()) as { message?: { content?: string } };
-    return body.message?.content ?? "";
+    const body = (await response.json()) as {
+      message?: { content?: string };
+      prompt_eval_count?: number;
+      eval_count?: number;
+    };
+
+    const content = body.message?.content ?? "";
+    const tokenCount = (body.prompt_eval_count ?? 0) + (body.eval_count ?? 0); // Ollama reports prompt_eval_count and eval_count
+
+    return { content, tokenCount };
   },
   async listModels(settings: AiProviderSettings): Promise<ModelInfo[]> {
     const response = await fetch(`${baseUrl(settings)}/api/tags`);
