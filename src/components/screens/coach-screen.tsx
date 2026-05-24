@@ -14,12 +14,19 @@ export function CoachScreen() {
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const apiCallCount = useAtlasStore((state) => state.apiCallCount);
+  const tokenCount = useAtlasStore((state) => state.tokenCount);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+
+  // Define a placeholder quota limit for API calls
+  const apiQuotaLimit = 20; // Based on your previous error message for gemini-2.5-flash
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [aiMessages]);
+
+  const apiCallPercentage = (apiCallCount / apiQuotaLimit) * 100;
 
   return (
     <motion.div
@@ -133,6 +140,15 @@ export function CoachScreen() {
               <Send size={18} />
             </Button>
           </form>
+        </div>
+      </Card>
+
+      {/* AI Usage Meter */}
+      <Card className="p-4 mt-4">
+        <h2 className="text-lg font-semibold text-white">AI Usage</h2>
+        <div className="mt-2 text-sm text-zinc-400">
+          <p>API Calls: {apiCallCount} / {apiQuotaLimit} ({apiCallPercentage.toFixed(2)}%)</p>
+          <p>Tokens Used: {tokenCount}</p>
         </div>
       </Card>
     </motion.div>

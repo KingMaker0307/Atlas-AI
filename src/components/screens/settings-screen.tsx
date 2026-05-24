@@ -15,6 +15,8 @@ import {
   Upload,
   Pencil,
   Cloud,
+  Server,
+  Info,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -24,6 +26,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { AiProviderSettings, HeightUnit, ThemeMode, WeightUnit, UserProfile, Physique } from "@/types/domain";
+import { getProviderAdapter } from "@/providers";
 
 const providerTypes: AiProviderSettings["type"][] = [
   "openai",
@@ -38,6 +41,32 @@ const providerTypes: AiProviderSettings["type"][] = [
 ];
 
 const physiqueOptions: Physique[] = ["lean", "athletic", "bulky", "shredded", "toned"];
+
+const providerHints: Record<string, string> = {
+  label: "A nickname for this provider, like 'OpenAI (GPT-4)'.",
+  type: "The type of AI provider you are using.",
+  baseUrl: "The web address of the AI provider's service. Only editable for custom providers.",
+  model: "The specific AI model to use from the selected provider.",
+  apiKey: "Your API key for the selected provider.",
+  temperature: "Controls the creativity of the AI's responses. Higher is more creative.",
+  context: "The 'memory' of the AI, in words or 'tokens'.",
+  streaming: "Determines if the AI's response appears all at once or word-by-word.",
+  active: "Sets this provider as the default for all AI-powered features.",
+  save: "Save the current provider settings.",
+  test: "Test the connection to the provider with the current settings.",
+};
+
+const defaultBaseUrls: Record<AiProviderSettings["type"], string> = {
+  openai: "https://api.openai.com/v1",
+  anthropic: "https://api.anthropic.com/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta",
+  grok: "https://api.x.ai/v1",
+  deepseek: "https://api.deepseek.com/v1",
+  openrouter: "https://openrouter.ai/api/v1",
+  ollama: "http://localhost:11434",
+  lmstudio: "http://localhost:1234/v1",
+  custom: "",
+};
 
 export function SettingsScreen() {
   const profile = useAtlasStore((state) => state.profile);
@@ -59,6 +88,9 @@ export function SettingsScreen() {
   const updateProfile = useAtlasStore((state) => state.updateProfile);
 
   const [draftProfile, setDraftProfile] = useState<Partial<UserProfile>>({});
+  const [models, setModels] = useState<string[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -80,11 +112,43 @@ export function SettingsScreen() {
 
   useEffect(() => {
     if (selectedProvider) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft({ ...selectedProvider });
-      setApiKey("");
+      setApiKey(""); // Clear API key when switching providers
     }
   }, [selectedProvider]);
+
+  useEffect(() => {
+    if (draft && draft.type !== 'custom' && !draft.baseUrl) {
+      setDraft(d => ({ ...d!, baseUrl: defaultBaseUrls[d!.type] }));
+    }
+  }, [draft?.type, draft?.baseUrl]);
+
+  useEffect(() => {
+    async function fetchModels() {
+      if (!draft) return;
+
+      if (!apiKey && draft.type !== 'ollama') { // Ollama doesn't always require an API key
+        setModelsError("Enter API key to load models");
+        setModels([]);
+        return;
+      }
+
+      setModelsLoading(true);
+      setModelsError(null);
+      try {
+        const adapter = getProviderAdapter(draft.type);
+        const modelList = await adapter.listModels(draft, apiKey);
+        setModels(modelList.map(m => m.id));
+      } catch (error: any) {
+        console.error("Failed to fetch models:", error);
+        setModelsError(error.message || "Failed to load models");
+        setModels([]);
+      } finally {
+        setModelsLoading(false);
+      }
+    }
+    void fetchModels();
+  }, [draft, apiKey]);
 
   async function handleExport() {
     if (!exportPassphrase) return;
@@ -250,10 +314,10 @@ export function SettingsScreen() {
         {draft ? (
           <div className="mt-3 space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Label">
+              <Field label="Label" hint={providerHints.label}>
                 <Input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
               </Field>
-              <Field label="Type">
+              <Field label="Type" hint={providerHints.type}>
                 <Select
                   value={draft.type}
                   onChange={(event) =>
@@ -268,18 +332,34 @@ export function SettingsScreen() {
                 </Select>
               </Field>
             </div>
-            <Field label="Base URL">
-              <Input
-                value={draft.baseUrl ?? ""}
-                onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
-                placeholder="https://api.openai.com/v1"
-              />
+            <Field label="Base URL" hint={providerHints.baseUrl}>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={draft.baseUrl ?? ""}
+                  onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
+                  placeholder="e.g. https://api.openai.com/v1"
+                  readOnly={draft.type !== 'custom'}
+                />
+              </div>
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Model">
-                <Input value={draft.model} onChange={(event) => setDraft({ ...draft, model: event.target.value })} />
+              <Field label="Model" hint={providerHints.model}>
+                <Select
+                  value={draft.model}
+                  onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+                  disabled={modelsLoading || !!modelsError || models.length === 0}
+                >
+                  {modelsLoading && <option>Loading models...</option>}
+                  {modelsError && <option>{modelsError}</option>}
+                  {!modelsLoading && !modelsError && models.length === 0 && <option>No models found</option>}
+                  {models.length > 0 && models.map((model) => (
+                      <option value={model} key={model}>
+                        {model}
+                      </option>
+                    ))}
+                </Select>
               </Field>
-              <Field label="API key">
+              <Field label="API key" hint={providerHints.apiKey}>
                 <Input
                   type="password"
                   value={apiKey}
@@ -289,7 +369,7 @@ export function SettingsScreen() {
               </Field>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Temperature">
+              <Field label="Temperature" hint={providerHints.temperature}>
                 <Input
                   type="number"
                   min={0}
@@ -299,7 +379,7 @@ export function SettingsScreen() {
                   onChange={(event) => setDraft({ ...draft, temperature: Number(event.target.value) })}
                 />
               </Field>
-              <Field label="Context">
+              <Field label="Context" hint={providerHints.context}>
                 <Input
                   type="number"
                   min={1024}
@@ -314,6 +394,7 @@ export function SettingsScreen() {
                 variant={draft.streaming ? "primary" : "secondary"}
                 icon={<PlugZap size={16} />}
                 onClick={() => setDraft({ ...draft, streaming: !draft.streaming })}
+                title={providerHints.streaming}
               >
                 Streaming
               </Button>
@@ -321,12 +402,18 @@ export function SettingsScreen() {
                 variant={activeProviderId === draft.id ? "primary" : "secondary"}
                 icon={<CheckCircle2 size={16} />}
                 onClick={() => void setActiveProvider(draft.id)}
+                 title={providerHints.active}
               >
                 Active
               </Button>
               <Button
                 icon={<Save size={16} />}
-                onClick={() => void saveProvider(draft, apiKey || undefined)}
+                onClick={() => {
+                  if (draft) {
+                    void saveProvider(draft, apiKey);
+                  }
+                }}
+                title={providerHints.save}
               >
                 Save
               </Button>
@@ -334,9 +421,12 @@ export function SettingsScreen() {
                 icon={<LinkIcon size={16} />}
                 disabled={providerBusy}
                 onClick={async () => {
-                  await saveProvider(draft, apiKey || undefined);
-                  await testProvider(draft.id);
+                  if (draft) {
+                    await saveProvider(draft, apiKey); // Save provider settings (with API key)
+                    await testProvider(draft.id); // Test with current API key
+                  }
                 }}
+                title={providerHints.test}
               >
                 Test
               </Button>
@@ -454,10 +544,17 @@ export function SettingsScreen() {
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <div>
-      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Label>{label}</Label>
+        {hint && (
+          <span title={hint}>
+            <Info size={14} className="text-zinc-500" />
+          </span>
+        )}
+      </div>
       {children}
     </div>
   );

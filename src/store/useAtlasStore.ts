@@ -72,6 +72,8 @@ interface AtlasState {
   hasOnboarded: boolean;
   coachBusy: boolean;
   providerBusy: boolean;
+  apiCallCount: number; // New state for API call count
+  tokenCount: number; // New state for token count
   startupChoice: StartupChoice;
   setStartupChoice: (choice: StartupChoice) => void;
   setActiveTab: (tab: AtlasTab) => void;
@@ -133,6 +135,8 @@ function freshSnapshot(): StoredSnapshot {
     activeSubScreen: null,
     editingWorkoutPlanId: null,
     editingRoutineId: null,
+    apiCallCount: 0, // Initialize API call count
+    tokenCount: 0, // Initialize token count
   };
 }
 
@@ -148,6 +152,11 @@ function isValidSnapshot(data: any): data is StoredSnapshot {
 }
 
 function snapshotFromState(state: AtlasState): StoredSnapshot {
+  const providersWithoutApiKey = state.aiProviders.map(p => {
+    const { apiKey, ...rest } = p;
+    return rest;
+  });
+
   return {
     profile: state.profile,
     workouts: state.workouts,
@@ -155,7 +164,7 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     recoveryLogs: state.recoveryLogs,
     bodyMetrics: state.bodyMetrics,
     aiMessages: state.aiMessages,
-    aiProviders: state.aiProviders,
+    aiProviders: providersWithoutApiKey, // Use providers without API key
     activeProviderId: state.activeProviderId,
     workoutPlans: state.workoutPlans,
     exercises: state.exercises,
@@ -169,6 +178,8 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     activeSubScreen: state.activeSubScreen,
     editingWorkoutPlanId: state.editingWorkoutPlanId,
     editingRoutineId: state.editingRoutineId,
+    apiCallCount: state.apiCallCount, // Include in snapshot
+    tokenCount: state.tokenCount, // Include in snapshot
   };
 }
 
@@ -223,6 +234,8 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   editingRoutineId: null,
   coachBusy: false,
   providerBusy: false,
+  apiCallCount: 0, // Initialize in store
+  tokenCount: 0, // Initialize in store
   getExerciseById: (id: string) => {
     return get().exercises.find((exercise) => exercise.id === id);
   },
@@ -299,7 +312,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       const newProvider: AiProviderSettings = {
         ...tempProvider,
         model,
-        apiKey: await encryptString(apiKey),
+        apiKey: await encryptString(apiKey), // Store encrypted API key in memory
       };
       set({ aiProviders: [newProvider], activeProviderId: providerId });
     }
@@ -426,8 +439,15 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     await persistState(get());
   },
   saveProvider: async (provider, apiKeyPlain) => {
-    const encrypted = apiKeyPlain ? await encryptString(apiKeyPlain) : provider.apiKey;
-    const nextProvider = { ...provider, apiKey: encrypted };
+    let finalApiKey = provider.apiKey; // Start with existing encrypted key
+    if (apiKeyPlain !== undefined) { // If apiKeyPlain was explicitly passed (even if empty string)
+      if (apiKeyPlain === "") { // If it's an empty string, clear the key
+        finalApiKey = undefined;
+      } else { // Otherwise, encrypt the new key
+        finalApiKey = await encryptString(apiKeyPlain);
+      }
+    }
+    const nextProvider = { ...provider, apiKey: finalApiKey };
     const providers = get().aiProviders.some((item) => item.id === provider.id)
       ? get().aiProviders.map((item) => (item.id === provider.id ? nextProvider : item))
       : [...get().aiProviders, nextProvider];
@@ -452,6 +472,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     if (!provider) return;
     set({ providerBusy: true });
     try {
+      if (!provider.apiKey) throw new Error("API key is missing.");
       const apiKey = await decryptString(provider.apiKey);
       const adapter = getProviderAdapter(provider.type);
       await adapter.validate(provider, apiKey);
@@ -502,13 +523,14 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     set({
       aiMessages: [...get().aiMessages, userMessage, assistantMessage],
       coachBusy: true,
+      apiCallCount: get().apiCallCount + 1, // Increment API call count
     });
     const context = buildCoachContext(get());
     const activeProvider = get().aiProviders.find((provider) => provider.id === get().activeProviderId);
     try {
       if (!activeProvider) throw new Error("No active AI provider found.");
+      if (!activeProvider.apiKey) throw new Error("API key is missing or invalid.");
       const apiKey = await decryptString(activeProvider.apiKey);
-      if (!apiKey) throw new Error("API key is missing or invalid.");
       const adapter = getProviderAdapter(activeProvider.type);
       const response = await adapter.chat({
         provider: activeProvider,
@@ -520,12 +542,15 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       set({
         aiMessages: get().aiMessages.map((m) => (m.id === assistantId ? finalMessage : m)),
         coachBusy: false,
+        // TODO: Update tokenCount if response provides token usage
       });
       if (options?.isRoutineGeneration) {
         const plan = parseAiWorkoutPlan(response);
         if (plan) {
           const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
-          plan.exercises.forEach(e => existingExercises.set(e.id, e));
+          plan.routines.forEach(routine => { // Iterate through routines
+            routine.exercises.forEach(e => existingExercises.set(e.id, e)); // Add exercises from each routine
+          });
           set({ workoutPlans: [plan], exercises: Array.from(existingExercises.values()), activeTab: "dashboard" });
         }
       }
