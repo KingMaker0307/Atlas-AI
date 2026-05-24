@@ -11,7 +11,7 @@ import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { HeightUnit, WeightUnit, BodyType, AiProviderSettings, Physique } from "@/types/domain";
 
-const providerTypes: AiProviderSettings["type"][] = [
+const providerTypes = [
   "openai",
   "anthropic",
   "gemini",
@@ -21,7 +21,7 @@ const providerTypes: AiProviderSettings["type"][] = [
   "ollama",
   "lmstudio",
   "custom",
-];
+] as const;
 
 const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required"),
