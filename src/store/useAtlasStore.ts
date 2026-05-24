@@ -33,6 +33,7 @@ import type {
   WorkoutSet,
   WorkoutPlan,
 } from "@/types/domain";
+import { CoachChatResponse } from "@/lib/ai/types";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "backup" | null;
@@ -532,20 +533,20 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       if (!activeProvider.apiKey) throw new Error("API key is missing or invalid.");
       const apiKey = await decryptString(activeProvider.apiKey);
       const adapter = getProviderAdapter(activeProvider.type);
-      const response = await adapter.chat({
+      const { content: responseContent, tokenCount: responseTokenCount } = await adapter.chat({
         provider: activeProvider,
         apiKey,
         messages: get().aiMessages.filter((m) => m.id !== assistantId),
         systemContext: context,
       });
-      const finalMessage = { ...assistantMessage, content: response };
+      const finalMessage = { ...assistantMessage, content: responseContent };
       set({
         aiMessages: get().aiMessages.map((m) => (m.id === assistantId ? finalMessage : m)),
         coachBusy: false,
-        // TODO: Update tokenCount if response provides token usage
+        tokenCount: get().tokenCount + (responseTokenCount ?? 0), // Accumulate token count
       });
       if (options?.isRoutineGeneration) {
-        const plan = parseAiWorkoutPlan(response);
+        const plan = parseAiWorkoutPlan(responseContent);
         if (plan) {
           const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
           plan.routines.forEach(routine => { // Iterate through routines
