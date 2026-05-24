@@ -18,26 +18,26 @@ async function parseError(response: Response): Promise<never> {
 
 export const ollamaAdapter: AiProviderAdapter = {
   type: "ollama",
-  async chat({ provider, messages, systemContext, signal }: CoachChatRequest): Promise<CoachChatResponse> {
-    const response = await fetch(`${baseUrl(provider)}/api/chat`, {
+  async chat(request: CoachChatRequest): Promise<CoachChatResponse> {
+    const response = await fetch(`${baseUrl(request.provider)}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: provider.model,
+        model: request.provider.model,
         stream: false,
         options: {
-          temperature: provider.temperature,
-          num_ctx: provider.contextLength,
+          temperature: request.provider.temperature,
+          num_ctx: request.provider.contextLength,
         },
         messages: [
           {
             role: "system",
-            content: `You are Atlas AI Coach. Use this local user context:\n${systemContext}`,
+            content: `You are Atlas AI Coach. Use this local user context:\n${request.systemContext}`,
           },
-          ...toProviderMessages(messages).filter((message) => message.role !== "system"),
+          ...toProviderMessages(request.messages).filter((message) => message.role !== "system"),
         ],
       }),
-      signal,
+      signal: request.signal,
     });
 
     if (!response.ok) await parseError(response);
