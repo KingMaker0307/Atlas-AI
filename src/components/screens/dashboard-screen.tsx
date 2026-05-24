@@ -256,7 +256,7 @@ export function DashboardScreen() {
           </Button>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <MetricCard label="Age" value={profile?.age ?? "N/A"} detail="years" />
+          <MetricCard label="Age" value={`${profile?.age ?? "N/A"}`} detail="years" />
           <MetricCard label="Weight" value={`${profile?.weight ?? "N/A"} ${profile?.weightUnit}`} />
           <MetricCard label="Height" value={`${profile?.height ?? "N/A"} ${profile?.heightUnit}`} />
           <MetricCard label="Target" value={profile?.targetPhysique ?? "N/A"} />
