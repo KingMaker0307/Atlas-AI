@@ -35,7 +35,6 @@ function isAiWorkoutPlan(data: any): data is AiWorkoutPlan {
     typeof data === "object" &&
     typeof data.id === "string" &&
     typeof data.name === "string" &&
-    Array.isArray(data.routines) &&
-    Array.isArray(data.exercises)
+    Array.isArray(data.routines)
   );
 }

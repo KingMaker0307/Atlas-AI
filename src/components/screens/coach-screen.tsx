@@ -1,142 +1,140 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, Send, SlidersHorizontal, Sparkles } from "lucide-react";
-import { FormEvent, useRef, useState } from "react";
+import { Bot, Send, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/input";
-import { useAtlasStore } from "@/store/useAtlasStore";
 import { parseAiWorkoutPlan } from "@/lib/ai/parser";
-
-const quickPrompts = [
-  "Adjust today for fatigue",
-  "What should I progress next?",
-  "Give me a recovery plan",
-  "Nutrition target for training day",
-];
+import { useAtlasStore } from "@/store/useAtlasStore";
 
 export function CoachScreen() {
   const aiMessages = useAtlasStore((state) => state.aiMessages);
-  const providers = useAtlasStore((state) => state.aiProviders);
-  const activeProviderId = useAtlasStore((state) => state.activeProviderId);
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
-  const setActiveTab = useAtlasStore((state) => state.setActiveTab);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
-  const [message, setMessage] = useState("");
-  const formRef = useRef<HTMLFormElement>(null);
-  const activeProvider = providers.find((provider) => provider.id === activeProviderId);
+  const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const [draft, setDraft] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
 
-  async function submit(event?: FormEvent) {
-    event?.preventDefault();
-    const trimmed = message.trim();
-    if (!trimmed || coachBusy) return;
-    setMessage("");
-    await sendCoachMessage(trimmed);
-  }
-
-  const isWorkoutPlan = (content: string) => {
-    return parseAiWorkoutPlan(content) !== null;
-  };
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiMessages]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="flex min-h-[calc(100dvh-8rem)] flex-col gap-4 pb-28"
+      className="flex h-[calc(100dvh-12rem)] flex-col"
     >
-      <section className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-zinc-400">Context-aware coaching</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-normal text-white">AI Coach</h1>
-        </div>
-        <Button
-          size="icon"
-          variant="secondary"
-          onClick={() => setActiveTab("settings")}
-          aria-label="AI settings"
-        >
-          <SlidersHorizontal size={19} />
-        </Button>
+      <section className="mb-4 shrink-0">
+        <p className="text-sm text-zinc-400">Intelligent guidance</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-normal text-white">Coach</h1>
       </section>
 
-      <Card className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-300 text-zinc-950">
-            <Bot size={20} />
-          </div>
-          <div>
-            <p className="font-semibold text-white">{activeProvider?.label ?? "Local mock coach"}</p>
-            <p className="text-sm text-zinc-500">
-              {activeProvider ? `${activeProvider.model} · keys encrypted locally` : "No provider required"}
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {quickPrompts.map((prompt) => (
-            <button
-              className="min-w-fit rounded-full border border-white/10 bg-white/[0.055] px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/10"
-              key={prompt}
-              onClick={() => {
-                setMessage(prompt);
-                requestAnimationFrame(() => formRef.current?.requestSubmit());
-              }}
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-      </Card>
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-4">
+            {aiMessages.filter((m) => m.role !== "system").map((message) => {
+              const isWorkoutPlan = parseAiWorkoutPlan(message.content) !== null;
 
-      <div className="flex-1 space-y-3">
-        {aiMessages.map((item) => (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={item.role === "user" ? "ml-auto max-w-[88%]" : "mr-auto max-w-[92%]"}
-            key={item.id}
+              return (
+                <div
+                  className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}
+                  key={message.id}
+                >
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+                      message.role === "user" ? "bg-white/10" : "bg-emerald-300 text-zinc-950"
+                    }`}
+                  >
+                    {message.role === "user" ? <User size={16} /> : <Bot size={16} />}
+                  </div>
+                  <Surface
+                    className={`max-w-[85%] p-3 text-sm ${
+                      message.role === "user"
+                        ? "rounded-tr-sm bg-white/10"
+                        : "rounded-tl-sm border-emerald-300/20 bg-emerald-300/5"
+                    }`}
+                  >
+                    {isWorkoutPlan ? (
+                      <div className="space-y-3">
+                        <p className="font-medium text-emerald-200">
+                          I've generated a new workout plan for you.
+                        </p>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setActiveTab("dashboard")}
+                        >
+                          View on Dashboard
+                        </Button>
+                      </div>
+                    ) : (
+                      <ReactMarkdown
+                        className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-300 prose-pre:bg-black/50 max-w-none"
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
+                  </Surface>
+                </div>
+              );
+            })}
+            {coachBusy ? (
+              <div className="flex gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-300 text-zinc-950">
+                  <Bot size={16} />
+                </div>
+                <Surface className="rounded-tl-sm border-emerald-300/20 bg-emerald-300/5 p-3">
+                  <div className="flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50" />
+                    <span
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
+                      style={{ animationDelay: "150ms" }}
+                    />
+                    <span
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
+                      style={{ animationDelay: "300ms" }}
+                    />
+                  </div>
+                </Surface>
+              </div>
+            ) : null}
+            <div ref={endRef} />
+          </div>
+        </div>
+        <div className="shrink-0 border-t border-white/10 p-3">
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!draft.trim() || coachBusy) return;
+              void sendCoachMessage(draft);
+              setDraft("");
+            }}
           >
-            <div
-              className={
-                item.role === "user"
-                  ? "rounded-2xl rounded-br-md bg-emerald-300 px-4 py-3 text-sm leading-6 text-zinc-950"
-                  : "rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.065] px-4 py-3 text-sm leading-6 text-zinc-200"
-              }
-            >
-              {item.role === "assistant" && isWorkoutPlan(item.content) ? (
-                "Workout plan generated! You can view it on your dashboard."
-              ) : item.content || (
-                <span className="inline-flex items-center gap-2 text-zinc-500">
-                  <Sparkles size={14} /> Thinking
-                </span>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <form ref={formRef} className="sticky bottom-24 z-20" onSubmit={submit}>
-        <Surface className="p-2">
-          <div className="flex items-end gap-2">
-            <Textarea
-              className="max-h-32 min-h-12 flex-1 border-transparent bg-transparent py-3"
-              placeholder="Ask about training, recovery, progression, nutrition..."
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  void submit();
-                }
-              }}
+            <input
+              className="flex-1 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-emerald-300/50 focus:outline-none focus:ring-1 focus:ring-emerald-300/50"
+              placeholder="Ask about your routine, fatigue, or nutrition..."
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              disabled={coachBusy}
             />
-            <Button size="icon" variant="primary" type="submit" disabled={coachBusy || !message.trim()}>
+            <Button
+              className="shrink-0"
+              size="icon"
+              variant={draft.trim() ? "primary" : "secondary"}
+              disabled={!draft.trim() || coachBusy}
+              type="submit"
+            >
               <Send size={18} />
             </Button>
-          </div>
-        </Surface>
-      </form>
+          </form>
+        </div>
+      </Card>
     </motion.div>
   );
 }

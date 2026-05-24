@@ -172,6 +172,9 @@ export function DashboardScreen() {
   const bodySeries = getBodyweightSeries(bodyMetrics);
   const volumeSeries = getVolumeSeries(workouts);
   const recentPrs = getRecentPrs(workouts);
+  
+  const lastMessage = aiMessages.at(-1);
+  const isLastMessageError = lastMessage?.content.includes("**Error:**");
 
   const handleGeneratePlan = async ({ targetDate, additionalDetails }: { targetDate: string; additionalDetails: string }) => {
     setShowAiCard(false);
@@ -218,7 +221,12 @@ export function DashboardScreen() {
         }
       ]
     }`;
-    await sendCoachMessage(prompt, true);
+    
+    const displayedContent = additionalDetails 
+      ? `Generate a new workout plan for me with the following additional details: ${additionalDetails}`
+      : `Generate a new workout plan for me based on my profile.`;
+      
+    await sendCoachMessage(prompt, { isRoutineGeneration: true, displayedContent });
   };
 
   const isWorkoutPlan = (content: string) => {
@@ -462,15 +470,17 @@ export function DashboardScreen() {
         </div>
       </Card>
 
-      <Card className="p-4 bg-emerald-900/20 border-emerald-300/20">
+      <Card className={`p-4 ${isLastMessageError ? 'bg-red-900/20 border-red-300/20' : 'bg-emerald-900/20 border-emerald-300/20'}`}>
         <div className="flex items-start gap-4">
-          <Bot className="text-emerald-300" size={24} />
+          <Bot className={isLastMessageError ? 'text-red-300' : 'text-emerald-300'} size={24} />
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white">Coach's Note</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">
-              {aiMessages.at(-1) && isWorkoutPlan(aiMessages.at(-1)!.content)
+            <h2 className="text-lg font-semibold text-white">
+              {isLastMessageError ? "Coach Connection Error" : "Coach's Note"}
+            </h2>
+            <p className={`mt-2 text-sm leading-6 ${isLastMessageError ? 'text-red-300' : 'text-zinc-300'}`}>
+              {lastMessage && isWorkoutPlan(lastMessage.content)
                 ? "I've generated a new workout plan for you. Check it out on your dashboard."
-                : aiMessages.at(-1)?.content}
+                : lastMessage?.content}
             </p>
             <Button
               className="mt-4"

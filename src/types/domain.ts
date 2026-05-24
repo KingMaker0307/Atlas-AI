@@ -203,7 +203,7 @@ export interface ProgressionRecommendation {
 export interface AtlasSnapshot {
   profile: UserProfile | null;
   workouts: Workout[];
-  activeWorkout?: Workout | null;
+  activeWorkout: Workout | null;
   recoveryLogs: RecoveryLog[];
   bodyMetrics: BodyMetric[];
   aiMessages: AiMessage[];
