@@ -6,7 +6,7 @@ export const sampleRoutines: Routine[] = [
     name: "Upper Strength",
     focus: "Heavy presses, pulling strength, and controlled accessory volume.",
     estimatedMinutes: 58,
-    days: ["Mon", "Thu"],
+    day: "Monday",
     exercises: [
       {
         exerciseId: "bench-press",
@@ -39,7 +39,7 @@ export const sampleRoutines: Routine[] = [
     name: "Lower Powerbuild",
     focus: "Squat priority with posterior-chain support and core work.",
     estimatedMinutes: 64,
-    days: ["Tue", "Fri"],
+    day: "Tuesday",
     exercises: [
       {
         exerciseId: "barbell-back-squat",
@@ -72,7 +72,7 @@ export const sampleRoutines: Routine[] = [
     name: "Full Body Base",
     focus: "Efficient full-body training for three-day consistency.",
     estimatedMinutes: 46,
-    days: ["Mon", "Wed", "Sat"],
+    day: "Wednesday",
     exercises: [
       {
         exerciseId: "barbell-back-squat",
