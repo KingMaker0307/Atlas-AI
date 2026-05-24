@@ -44,6 +44,11 @@ interface OnboardingData extends UserProfile {
   customGoal?: string;
 }
 
+interface SendCoachMessageOptions {
+  isRoutineGeneration?: boolean;
+  displayedContent?: string;
+}
+
 interface AtlasState {
   hydrated: boolean;
   activeTab: AtlasTab;
@@ -94,7 +99,7 @@ interface AtlasState {
   saveProvider: (provider: AiProviderSettings, apiKeyPlain?: string) => Promise<void>;
   setActiveProvider: (providerId: string) => Promise<void>;
   testProvider: (providerId: string) => Promise<void>;
-  sendCoachMessage: (content: string, isRoutineGeneration?: boolean) => Promise<void>;
+  sendCoachMessage: (content: string, options?: SendCoachMessageOptions) => Promise<void>;
   exportEncryptedProfile: (passphrase: string) => Promise<string>;
   importEncryptedProfile: (fileText: string, passphrase: string) => Promise<void>;
   resetLocalData: () => Promise<void>;
@@ -480,11 +485,11 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     }
     await persistState(get());
   },
-  sendCoachMessage: async (content, isRoutineGeneration = false) => {
+  sendCoachMessage: async (content, options) => {
     const userMessage: AiMessage = {
       id: createId("user"),
       role: "user",
-      content,
+      content: options?.displayedContent ?? content,
       createdAt: new Date().toISOString(),
     };
     const assistantId = createId("assistant");
@@ -516,7 +521,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
         aiMessages: get().aiMessages.map((m) => (m.id === assistantId ? finalMessage : m)),
         coachBusy: false,
       });
-      if (isRoutineGeneration) {
+      if (options?.isRoutineGeneration) {
         const plan = parseAiWorkoutPlan(response);
         if (plan) {
           const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
