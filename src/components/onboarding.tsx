@@ -176,7 +176,7 @@ export function Onboarding() {
             
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <Label>Days/Week</Label>
+                <Label>Days Per Week</Label>
                 <Input type="number" {...register("daysPerWeek")} />
                 {errors.daysPerWeek && <p className="mt-1 text-xs text-rose-300">{errors.daysPerWeek.message}</p>}
               </div>
