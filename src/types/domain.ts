@@ -1,5 +1,6 @@
 export type ThemeMode = "dark" | "light" | "system";
-export type UnitSystem = "metric" | "imperial";
+export type WeightUnit = "lbs" | "kg";
+export type HeightUnit = "in" | "cm";
 export type TrainingStyle =
   | "strength"
   | "hypertrophy"
@@ -31,6 +32,9 @@ export type Equipment =
   | "cardio"
   | "other";
 
+export type BodyType = "ectomorph" | "mesomorph" | "endomorph";
+export type EquipmentPreference = "full gym" | "home gym" | "bodyweight";
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -38,8 +42,17 @@ export interface UserProfile {
   experience: "beginner" | "intermediate" | "advanced";
   trainingStyle: TrainingStyle;
   daysPerWeek: number;
-  units: UnitSystem;
+  weightUnit: WeightUnit;
+  heightUnit: HeightUnit;
   createdAt: string;
+  age?: number;
+  height?: number;
+  weight?: number;
+  targetPhysique?: string;
+  dietaryPreferences?: string;
+  bodyType?: BodyType;
+  equipment?: EquipmentPreference;
+  customGoal?: string;
 }
 
 export interface Exercise {
@@ -189,7 +202,8 @@ export interface AtlasSnapshot {
   activeProviderId?: string;
   routines: Routine[];
   theme: ThemeMode;
-  units: UnitSystem;
+  weightUnit: WeightUnit;
+  heightUnit: HeightUnit;
   hasOnboarded: boolean;
   restTimerEndsAt?: string;
   updatedAt: string;

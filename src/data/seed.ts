@@ -17,6 +17,11 @@ export const defaultProfile: UserProfile = {
   daysPerWeek: 4,
   units: "imperial",
   createdAt: new Date().toISOString(),
+  age: 30,
+  height: 70,
+  weight: 180,
+  targetPhysique: "lean and athletic",
+  dietaryPreferences: "high protein, moderate carb",
 };
 
 export const defaultProviders: AiProviderSettings[] = [

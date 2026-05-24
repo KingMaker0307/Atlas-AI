@@ -118,7 +118,7 @@ export function createOpenAiCompatibleAdapter(
       });
       if (!response.ok) await parseOpenAiError(response);
       const body = (await response.json()) as { data?: Array<{ id: string }> };
-      return (body.data ?? []).map((model) => ({ id: model.id }));
+      return (body.data ?? []).map((model) => ({ id: model.id, supportsGenerateContent: true }));
     },
     async validate(settings: AiProviderSettings, apiKey: string): Promise<boolean> {
       const models = await this.listModels(settings, apiKey);
@@ -127,4 +127,4 @@ export function createOpenAiCompatibleAdapter(
   };
 }
 
-export const openAiAdapter = createOpenAiCompatibleAdapter("openai", "https://api.openai.com/v1");
+export const openaiAdapter = createOpenAiCompatibleAdapter("openai", "https://api.openai.com/v1");

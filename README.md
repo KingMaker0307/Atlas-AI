@@ -1,79 +1,37 @@
 # Atlas AI Coach
 
-Atlas AI Coach is a production-oriented, mobile-first PWA for local-first workout tracking and AI fitness coaching. It runs without a backend, stores user data on the device, and lets users connect their own AI providers or use the built-in mock coach offline.
+This is a production-oriented, local-first PWA fitness tracker built with Next.js, React, and TypeScript.
 
-## Architecture overview
+## Tech Stack & Architecture
 
-- **Next.js 16 + React 19 + TypeScript** with static export support for Vercel, GitHub Pages, or any static host.
-- **Local-first storage** uses IndexedDB for profile, workouts, recovery, body metrics, AI memory, routines, and provider settings.
-- **Encrypted secrets** use Web Crypto AES-GCM. API keys are encrypted before local persistence; encrypted JSON exports are passphrase protected.
-- **AI provider layer** exposes one interface for OpenAI, Claude, Gemini, Grok, DeepSeek, OpenRouter, Ollama, LM Studio, and custom OpenAI-compatible endpoints.
-- **Progression engine** computes recovery score, weekly volume, estimated 1RM, PRs, stalls, deload suggestions, and overload recommendations.
-- **PWA shell** includes manifest, install prompt, service worker caching, safe-area support, bottom navigation, and offline state.
+- **Framework**: Next.js 16 (App Router)
+- **UI**: React 19, Tailwind CSS
+- **State Management**: Zustand (with optimistic updates)
+- **Storage**: IndexedDB (local-first)
+- **Security**: Web Crypto AES-GCM for encrypted keys
 
-## Folder structure
+## Features
 
-```text
-src/
-  app/                     Next app entry, metadata, global CSS
-  components/              PWA shell, UI primitives, screens, onboarding
-  data/                    Exercise database, routines, seed data
-  lib/
-    ai/                    Shared provider interfaces
-    coach/                 Coach context and offline mock responses
-    progression/           Rule-based coaching engine
-    security/              Local encryption and encrypted export
-    storage/               IndexedDB and localStorage abstraction
-  providers/               Provider adapters
-  store/                   Zustand app state and actions
-  types/                   Domain types
-public/
-  manifest.webmanifest
-  sw.js
-  icons/
-```
+- Local-first data storage (no cloud backend)
+- User profile with biometric data (age, height, weight, etc.)
+- Workout tracking
+- AI-powered coach (coming soon)
+- PWA support for offline access
 
-## Core system design
+## Getting Started
 
-The UI talks to a single Zustand store. The store hydrates from IndexedDB, performs optimistic updates, and saves snapshots back to IndexedDB after each important action. Provider keys are never placed in remote config or environment variables; users add them in Settings, where they are encrypted locally.
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Run the development server: `npm run dev`
 
-AI calls are optional. If no provider is connected, the coach builds the same local training context and returns a deterministic mock coaching response. Local endpoints such as Ollama and LM Studio can run without API keys.
+## Biometric Data Update
 
-## Setup
+We've recently updated the `UserProfile` domain type and IndexedDB seed data to include the following biometric fields:
 
-```bash
-npm install
-npm run dev
-```
+- `age`
+- `height`
+- `weight`
+- `targetPhysique`
+- `dietaryPreferences`
 
-Open `http://localhost:3000`.
-
-Useful checks:
-
-```bash
-npm run typecheck
-npm run lint
-npm run build
-```
-
-## Deployment
-
-### Vercel
-
-Deploy normally. The app has no backend requirement and exports statically.
-
-### GitHub Pages
-
-Set `NEXT_PUBLIC_BASE_PATH` to your repository path, then build:
-
-```bash
-NEXT_PUBLIC_BASE_PATH=/your-repo-name npm run build
-```
-
-Publish the generated `out/` directory.
-
-## Notes
-
-- Browser-to-provider requests may depend on each provider’s CORS rules. OpenRouter and localhost OpenAI-compatible servers are typically friendlier for direct browser use.
-- The app includes future extension points for wearable integrations, optional cloud sync, Apple Health, Google Fit, voice logging, generated routines, image analysis, and barcode scanning.
-- No telemetry, analytics, or forced accounts are included.
+This change was made to bypass complex onboarding forms and fix an iOS Safari hydration race condition. The new fields are now displayed on the settings screen.

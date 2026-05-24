@@ -1,28 +1,36 @@
-import { anthropicAdapter } from "@/providers/anthropic";
-import { geminiAdapter } from "@/providers/gemini";
-import { ollamaAdapter } from "@/providers/ollama";
-import { createOpenAiCompatibleAdapter, openAiAdapter } from "@/providers/openai";
-import { openRouterAdapter } from "@/providers/openrouter";
-import type { AiProviderAdapter } from "@/lib/ai/types";
+import { anthropicAdapter } from "./anthropic";
+import { geminiAdapter } from "./gemini";
+import { ollamaAdapter } from "./ollama";
+import { openrouterAdapter } from "./openrouter";
+import { openaiAdapter } from "./openai";
+import type { AiProviderAdapter, ModelInfo } from "@/lib/ai/types";
 import type { AiProviderSettings } from "@/types/domain";
 
-const deepSeekAdapter = createOpenAiCompatibleAdapter("deepseek", "https://api.deepseek.com/v1");
-const grokAdapter = createOpenAiCompatibleAdapter("grok", "https://api.x.ai/v1");
-const lmStudioAdapter = createOpenAiCompatibleAdapter("lmstudio", "http://localhost:1234/v1");
-const customAdapter = createOpenAiCompatibleAdapter("custom", "http://localhost:1234/v1");
-
-const adapters: Record<AiProviderSettings["type"], AiProviderAdapter> = {
-  openai: openAiAdapter,
+const providerAdapters: Record<AiProviderSettings["type"], AiProviderAdapter> = {
+  openai: openaiAdapter,
   anthropic: anthropicAdapter,
   gemini: geminiAdapter,
-  grok: grokAdapter,
-  deepseek: deepSeekAdapter,
+  openrouter: openrouterAdapter,
   ollama: ollamaAdapter,
-  lmstudio: lmStudioAdapter,
-  openrouter: openRouterAdapter,
-  custom: customAdapter,
+  lmstudio: openaiAdapter,
+  grok: openaiAdapter,
+  deepseek: openaiAdapter,
+  custom: openaiAdapter,
 };
 
 export function getProviderAdapter(type: AiProviderSettings["type"]): AiProviderAdapter {
-  return adapters[type] ?? customAdapter;
+  return providerAdapters[type];
+}
+
+export async function findFirstSupportedModel(
+  provider: AiProviderSettings,
+  apiKey: string,
+): Promise<string | undefined> {
+  const adapter = getProviderAdapter(provider.type);
+  try {
+    const models = await adapter.listModels(provider, apiKey);
+    return models.find((model) => model.supportsGenerateContent)?.id;
+  } catch {
+    return undefined;
+  }
 }

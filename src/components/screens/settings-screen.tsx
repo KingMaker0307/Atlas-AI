@@ -4,8 +4,10 @@ import { motion } from "framer-motion";
 import {
   Bell,
   Bot,
+  Check,
   CheckCircle2,
   Cloud,
+  Cloudy,
   Database,
   Download,
   LinkIcon,
@@ -22,7 +24,7 @@ import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
-import type { AiProviderSettings, ThemeMode, UnitSystem } from "@/types/domain";
+import type { AiProviderSettings, HeightUnit, ThemeMode, WeightUnit } from "@/types/domain";
 
 const providerTypes: AiProviderSettings["type"][] = [
   "openai",
@@ -36,20 +38,28 @@ const providerTypes: AiProviderSettings["type"][] = [
   "custom",
 ];
 
+const hasDriveKeys = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+
 export function SettingsScreen() {
   const profile = useAtlasStore((state) => state.profile);
   const theme = useAtlasStore((state) => state.theme);
-  const units = useAtlasStore((state) => state.units);
+  const weightUnit = useAtlasStore((state) => state.weightUnit);
+  const heightUnit = useAtlasStore((state) => state.heightUnit);
   const providers = useAtlasStore((state) => state.aiProviders);
   const activeProviderId = useAtlasStore((state) => state.activeProviderId);
+  const isDriveLinked = useAtlasStore((state) => state.isDriveLinked);
+  const isDriveSyncing = useAtlasStore((state) => state.isDriveSyncing);
+  const isGisInitialized = useAtlasStore((state) => state.isGisInitialized);
   const setTheme = useAtlasStore((state) => state.setTheme);
-  const setUnits = useAtlasStore((state) => state.setUnits);
+  const setWeightUnit = useAtlasStore((state) => state.setWeightUnit);
+  const setHeightUnit = useAtlasStore((state) => state.setHeightUnit);
   const saveProvider = useAtlasStore((state) => state.saveProvider);
   const setActiveProvider = useAtlasStore((state) => state.setActiveProvider);
   const testProvider = useAtlasStore((state) => state.testProvider);
   const exportEncryptedProfile = useAtlasStore((state) => state.exportEncryptedProfile);
   const importEncryptedProfile = useAtlasStore((state) => state.importEncryptedProfile);
   const resetLocalData = useAtlasStore((state) => state.resetLocalData);
+  const linkGoogleDrive = useAtlasStore((state) => state.linkGoogleDrive);
   const providerBusy = useAtlasStore((state) => state.providerBusy);
   const [selectedProviderId, setSelectedProviderId] = useState(providers[0]?.id ?? "");
   const selectedProvider = useMemo(
@@ -112,20 +122,47 @@ export function SettingsScreen() {
             <p className="text-sm text-zinc-500">{profile?.goal}</p>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-3 gap-3">
           <SegmentedSetting<ThemeMode>
             label="Theme"
             value={theme}
             values={["dark", "light", "system"]}
             onChange={(value) => void setTheme(value)}
           />
-          <SegmentedSetting<UnitSystem>
-            label="Units"
-            value={units}
-            values={["imperial", "metric"]}
-            onChange={(value) => void setUnits(value)}
+          <SegmentedSetting<WeightUnit>
+            label="Weight"
+            value={weightUnit}
+            values={["lbs", "kg"]}
+            onChange={(value) => void setWeightUnit(value)}
+          />
+          <SegmentedSetting<HeightUnit>
+            label="Height"
+            value={heightUnit}
+            values={["in", "cm"]}
+            onChange={(value) => void setHeightUnit(value)}
           />
         </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Cloud Sync</h2>
+            <p className="text-sm text-zinc-500">
+              {isDriveLinked ? `Syncing to Google Drive...` : "Sync data across devices"}
+            </p>
+          </div>
+          <Cloudy className="text-zinc-500" size={18} />
+        </div>
+        <Button
+          className="w-full"
+          variant={isDriveLinked ? "primary" : "secondary"}
+          disabled={!hasDriveKeys || !isGisInitialized || isDriveLinked || isDriveSyncing}
+          onClick={() => void linkGoogleDrive()}
+          icon={isDriveLinked ? <Check size={16} /> : undefined}
+        >
+          {isDriveLinked ? "Linked to Google Drive" : "Link Google Drive"}
+        </Button>
       </Card>
 
       <Card className="p-4">
@@ -316,7 +353,7 @@ export function SettingsScreen() {
               onChange={(event) => setImportPassphrase(event.target.value)}
             />
             <Button
-              className="mt-3 w-full"
+              className="w-full"
               icon={<Upload size={16} />}
               disabled={!importFile || !importPassphrase}
               onClick={() => void handleImport()}
@@ -362,27 +399,6 @@ export function SettingsScreen() {
           </Surface>
         </div>
       </Card>
-
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold text-white">Future-ready hooks</h2>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {[
-            "Apple Health",
-            "Google Fit",
-            "Wearables",
-            "Voice logging",
-            "AI routines",
-            "Image analysis",
-            "Barcode scanning",
-            "Optional cloud sync",
-          ].map((item) => (
-            <Surface key={item} className="flex items-center gap-3 p-3">
-              <Cloud className="text-zinc-500" size={16} />
-              <span className="text-sm text-zinc-300">{item}</span>
-            </Surface>
-          ))}
-        </div>
-      </Card>
     </motion.div>
   );
 }
@@ -413,6 +429,7 @@ function SegmentedSetting<T extends string>({
       <div className="grid gap-1 rounded-xl border border-white/10 bg-black/25 p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map((item) => (
           <button
+            type="button"
             className={`rounded-lg px-2 py-2 text-xs font-semibold capitalize transition ${
               item === value ? "bg-white text-zinc-950" : "text-zinc-400 hover:bg-white/10 hover:text-white"
             }`}

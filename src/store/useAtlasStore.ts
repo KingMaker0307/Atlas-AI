@@ -1,37 +1,44 @@
 "use client";
 
 import { create } from "zustand";
-import { exercises, getExerciseById } from "@/data/exercises";
+import { exercises as staticExercises } from "@/data/exercises";
 import {
   defaultProfile,
   defaultProviders,
-  defaultRoutines,
   initialAiMessages,
   sampleBodyMetrics,
   sampleRecoveryLogs,
   sampleWorkouts,
 } from "@/data/seed";
-import { buildCoachContext, mockCoachResponse } from "@/lib/coach/context";
+import { parseAiWorkoutPlan } from "@/lib/ai/parser";
+import { buildCoachContext } from "@/lib/coach/context";
 import { createId, minutesBetween } from "@/lib/id";
 import { getProgressionRecommendations } from "@/lib/progression/engine";
 import { decryptExport, decryptString, encryptForExport, encryptString } from "@/lib/security/crypto";
-import { loadSnapshot, saveSnapshot, writeLocalSetting } from "@/lib/storage/db";
-import { getProviderAdapter } from "@/providers";
+import { loadSnapshot, saveSnapshot } from "@/lib/storage/db";
+import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
 import type {
   AiMessage,
   AiProviderSettings,
   AtlasSnapshot,
   BodyMetric,
+  Exercise,
+  HeightUnit,
   RecoveryLog,
   Routine,
   ThemeMode,
-  UnitSystem,
   UserProfile,
+  WeightUnit,
   Workout,
   WorkoutSet,
 } from "@/types/domain";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
+
+interface OnboardingData extends UserProfile {
+  apiKey?: string;
+  providerType?: AiProviderSettings["type"];
+}
 
 interface AtlasState {
   hydrated: boolean;
@@ -46,17 +53,20 @@ interface AtlasState {
   aiProviders: AiProviderSettings[];
   activeProviderId?: string;
   routines: Routine[];
+  exercises: Exercise[];
   theme: ThemeMode;
-  units: UnitSystem;
+  weightUnit: WeightUnit;
+  heightUnit: HeightUnit;
   hasOnboarded: boolean;
   coachBusy: boolean;
   providerBusy: boolean;
   setActiveTab: (tab: AtlasTab) => void;
   hydrate: () => Promise<void>;
-  completeOnboarding: (profile: UserProfile) => Promise<void>;
-  updateProfile: (profile: UserProfile) => Promise<void>;
+  completeOnboarding: (data: OnboardingData) => Promise<void>;
+  updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
-  setUnits: (units: UnitSystem) => Promise<void>;
+  setWeightUnit: (unit: WeightUnit) => Promise<void>;
+  setHeightUnit: (unit: HeightUnit) => Promise<void>;
   logRecovery: (log: RecoveryLog) => Promise<void>;
   logBodyMetric: (metric: BodyMetric) => Promise<void>;
   startWorkout: (routine: Routine) => Promise<void>;
@@ -72,13 +82,17 @@ interface AtlasState {
   saveProvider: (provider: AiProviderSettings, apiKeyPlain?: string) => Promise<void>;
   setActiveProvider: (providerId: string) => Promise<void>;
   testProvider: (providerId: string) => Promise<void>;
-  sendCoachMessage: (content: string) => Promise<void>;
+  sendCoachMessage: (content: string, isRoutineGeneration?: boolean) => Promise<void>;
   exportEncryptedProfile: (passphrase: string) => Promise<string>;
   importEncryptedProfile: (fileText: string, passphrase: string) => Promise<void>;
   resetLocalData: () => Promise<void>;
+  getExerciseById: (id: string) => Exercise | undefined;
+  saveRoutines: (routines: Routine[]) => Promise<void>;
 }
 
-function freshSnapshot(): AtlasSnapshot {
+type StoredSnapshot = AtlasSnapshot & { exercises: Exercise[] };
+
+function freshSnapshot(): StoredSnapshot {
   return {
     profile: defaultProfile,
     workouts: sampleWorkouts,
@@ -88,15 +102,28 @@ function freshSnapshot(): AtlasSnapshot {
     aiMessages: initialAiMessages,
     aiProviders: defaultProviders,
     activeProviderId: undefined,
-    routines: defaultRoutines,
-    theme: "dark",
-    units: "imperial",
+    routines: [],
+    exercises: staticExercises,
+    theme: "system",
+    weightUnit: "lbs",
+    heightUnit: "in",
     hasOnboarded: false,
     updatedAt: new Date().toISOString(),
   };
 }
 
-function snapshotFromState(state: AtlasState): AtlasSnapshot {
+function isValidSnapshot(data: any): data is StoredSnapshot {
+  return (
+    data &&
+    typeof data === "object" &&
+    "profile" in data &&
+    "routines" in data &&
+    "exercises" in data &&
+    "workouts" in data
+  );
+}
+
+function snapshotFromState(state: AtlasState): StoredSnapshot {
   return {
     profile: state.profile,
     workouts: state.workouts,
@@ -107,8 +134,10 @@ function snapshotFromState(state: AtlasState): AtlasSnapshot {
     aiProviders: state.aiProviders,
     activeProviderId: state.activeProviderId,
     routines: state.routines,
+    exercises: state.exercises,
     theme: state.theme,
-    units: state.units,
+    weightUnit: state.weightUnit,
+    heightUnit: state.heightUnit,
     hasOnboarded: state.hasOnboarded,
     restTimerEndsAt: state.restTimerEndsAt,
     updatedAt: new Date().toISOString(),
@@ -116,7 +145,8 @@ function snapshotFromState(state: AtlasState): AtlasSnapshot {
 }
 
 async function persistState(state: AtlasState): Promise<void> {
-  await saveSnapshot(snapshotFromState(state));
+  const snapshot = snapshotFromState(state);
+  await saveSnapshot(snapshot);
 }
 
 function recentWeightForExercise(workouts: Workout[], exerciseId: string): number {
@@ -130,13 +160,13 @@ function recentWeightForExercise(workouts: Workout[], exerciseId: string): numbe
   return best?.weight ?? 0;
 }
 
-function buildWorkoutFromRoutine(routine: Routine, workouts: Workout[]): Workout {
+function buildWorkoutFromRoutine(state: AtlasState, routine: Routine): Workout {
   return {
     id: createId("workout"),
     name: routine.name,
     startedAt: new Date().toISOString(),
     exercises: routine.exercises.map((exercise) => {
-      const lastWeight = recentWeightForExercise(workouts, exercise.exerciseId);
+      const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
       return {
         id: createId("workout_exercise"),
@@ -157,42 +187,77 @@ function buildWorkoutFromRoutine(routine: Routine, workouts: Workout[]): Workout
 }
 
 export const useAtlasStore = create<AtlasState>((set, get) => ({
+  ...freshSnapshot(),
   hydrated: false,
   activeTab: "dashboard",
-  ...freshSnapshot(),
-  activeWorkout: null,
   coachBusy: false,
   providerBusy: false,
+  getExerciseById: (id: string) => {
+    return get().exercises.find((exercise) => exercise.id === id);
+  },
   setActiveTab: (tab) => set({ activeTab: tab }),
   hydrate: async () => {
-    const stored = await loadSnapshot();
-    const snapshot = stored ?? freshSnapshot();
+    const localData = await loadSnapshot();
+    const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
     set({
       ...snapshot,
-      activeWorkout: snapshot.activeWorkout ?? null,
       hydrated: true,
       activeTab: "dashboard",
       coachBusy: false,
       providerBusy: false,
     });
   },
-  completeOnboarding: async (profile) => {
-    set({ profile, hasOnboarded: true, units: profile.units });
+  saveRoutines: async (routines: Routine[]) => {
+    set({ routines });
     await persistState(get());
   },
-  updateProfile: async (profile) => {
-    set({ profile, units: profile.units });
+  completeOnboarding: async (data) => {
+    const { apiKey, providerType, ...profile } = data;
+    
+    if (apiKey && providerType) {
+      const providerId = createId("provider");
+      const tempProvider: AiProviderSettings = {
+        id: providerId,
+        type: providerType,
+        label: providerType,
+        model: "temp",
+        temperature: 0.7,
+        contextLength: 8000,
+        streaming: false,
+        enabled: true,
+      };
+      const model = await findFirstSupportedModel(tempProvider, apiKey);
+      if (!model) {
+        throw new Error("No supported models found for this provider.");
+      }
+      const newProvider: AiProviderSettings = {
+        ...tempProvider,
+        model,
+        apiKey: await encryptString(apiKey),
+      };
+      set({ aiProviders: [newProvider], activeProviderId: providerId });
+    }
+
+    set({ profile, hasOnboarded: true });
+    await persistState(get());
+  },
+  updateProfile: async (patch) => {
+    const profile = get().profile;
+    if (!profile) return;
+    const updatedProfile = { ...profile, ...patch };
+    set({ profile: updatedProfile });
     await persistState(get());
   },
   setTheme: async (theme) => {
     set({ theme });
-    writeLocalSetting("theme", theme);
     await persistState(get());
   },
-  setUnits: async (units) => {
-    const profile = get().profile;
-    set({ units, profile: profile ? { ...profile, units } : profile });
-    writeLocalSetting("units", units);
+  setWeightUnit: async (unit) => {
+    set({ weightUnit: unit });
+    await persistState(get());
+  },
+  setHeightUnit: async (unit) => {
+    set({ heightUnit: unit });
     await persistState(get());
   },
   logRecovery: async (log) => {
@@ -207,7 +272,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   },
   startWorkout: async (routine) => {
     set({
-      activeWorkout: buildWorkoutFromRoutine(routine, get().workouts),
+      activeWorkout: buildWorkoutFromRoutine(get(), routine),
       activeTab: "workout",
     });
     await persistState(get());
@@ -215,7 +280,6 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   addSet: async (workoutExerciseId) => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
-
     set({
       activeWorkout: {
         ...activeWorkout,
@@ -243,7 +307,6 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   updateSet: async (workoutExerciseId, setId, patch) => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
-
     set({
       activeWorkout: {
         ...activeWorkout,
@@ -271,34 +334,17 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       completedAt,
       durationMinutes: minutesBetween(activeWorkout.startedAt, completedAt),
     };
-    const recoveryScore = get().recoveryLogs.at(-1)
-      ? undefined
-      : {
-          id: createId("recovery"),
-          date: new Date().toISOString().slice(0, 10),
-          sleepHours: 7,
-          soreness: fatigueRating,
-          stress: 4,
-          readiness: 7,
-          energy: 7,
-        };
-
     set({
       workouts: [...get().workouts, completedWorkout],
       activeWorkout: null,
       restTimerEndsAt: undefined,
-      recoveryLogs: recoveryScore ? [...get().recoveryLogs, recoveryScore] : get().recoveryLogs,
       aiMessages: [
         ...get().aiMessages,
         {
           id: createId("assistant"),
           role: "assistant",
           createdAt: new Date().toISOString(),
-          content: `Logged ${completedWorkout.name}. I updated progression recommendations for ${completedWorkout.exercises
-            .map((exercise) => getExerciseById(exercise.exerciseId)?.name)
-            .filter(Boolean)
-            .slice(0, 2)
-            .join(" and ")}.`,
+          content: `Logged ${completedWorkout.name}.`,
         },
       ],
       activeTab: "dashboard",
@@ -319,7 +365,6 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     const providers = get().aiProviders.some((item) => item.id === provider.id)
       ? get().aiProviders.map((item) => (item.id === provider.id ? nextProvider : item))
       : [...get().aiProviders, nextProvider];
-
     set({
       aiProviders: providers,
       activeProviderId: provider.enabled ? provider.id : get().activeProviderId,
@@ -331,7 +376,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       activeProviderId: providerId,
       aiProviders: get().aiProviders.map((provider) => ({
         ...provider,
-        enabled: provider.id === providerId ? true : provider.enabled,
+        enabled: provider.id === providerId,
       })),
     });
     await persistState(get());
@@ -339,7 +384,6 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   testProvider: async (providerId) => {
     const provider = get().aiProviders.find((item) => item.id === providerId);
     if (!provider) return;
-
     set({ providerBusy: true });
     try {
       const apiKey = await decryptString(provider.apiKey);
@@ -375,7 +419,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     }
     await persistState(get());
   },
-  sendCoachMessage: async (content) => {
+  sendCoachMessage: async (content, isRoutineGeneration = false) => {
     const userMessage: AiMessage = {
       id: createId("user"),
       role: "user",
@@ -389,99 +433,67 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       content: "",
       createdAt: new Date().toISOString(),
     };
-
     set({
       aiMessages: [...get().aiMessages, userMessage, assistantMessage],
       coachBusy: true,
     });
-
-    const context = buildCoachContext({
-      profile: get().profile,
-      workouts: get().workouts,
-      recoveryLogs: get().recoveryLogs,
-      bodyMetrics: get().bodyMetrics,
-    });
+    const context = buildCoachContext(get());
     const activeProvider = get().aiProviders.find((provider) => provider.id === get().activeProviderId);
-
     try {
-      let response = "";
-      const apiKey = await decryptString(activeProvider?.apiKey);
-
-      if (!activeProvider || (!apiKey && !["ollama", "lmstudio", "custom"].includes(activeProvider.type))) {
-        response = mockCoachResponse(content, context, get().aiMessages);
-      } else {
-        const adapter = getProviderAdapter(activeProvider.type);
-        response = await adapter.chat({
-          provider: activeProvider,
-          apiKey,
-          messages: [...get().aiMessages.filter((message) => message.id !== assistantId)],
-          systemContext: context,
-          onToken: (token) => {
-            set({
-              aiMessages: get().aiMessages.map((message) =>
-                message.id === assistantId
-                  ? { ...message, content: `${message.content}${token}` }
-                  : message,
-              ),
-            });
-          },
-        });
-      }
-
+      if (!activeProvider) throw new Error("No active AI provider found.");
+      const apiKey = await decryptString(activeProvider.apiKey);
+      if (!apiKey) throw new Error("API key is missing or invalid.");
+      const adapter = getProviderAdapter(activeProvider.type);
+      const response = await adapter.chat({
+        provider: activeProvider,
+        apiKey,
+        messages: get().aiMessages.filter((m) => m.id !== assistantId),
+        systemContext: context,
+      });
+      const finalMessage = { ...assistantMessage, content: response };
       set({
-        aiMessages: get().aiMessages.map((message) =>
-          message.id === assistantId ? { ...message, content: response } : message,
-        ),
+        aiMessages: get().aiMessages.map((m) => (m.id === assistantId ? finalMessage : m)),
         coachBusy: false,
       });
+      if (isRoutineGeneration) {
+        const plan = parseAiWorkoutPlan(response);
+        if (plan) {
+          set({ routines: plan.routines, exercises: [...staticExercises, ...plan.exercises], activeTab: "dashboard" });
+        }
+      }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       set({
-        aiMessages: get().aiMessages.map((message) =>
-          message.id === assistantId
+        aiMessages: get().aiMessages.map((m) =>
+          m.id === assistantId
             ? {
-                ...message,
-                content: `I could not reach that provider, so I stayed local. ${mockCoachResponse(
-                  content,
-                  context,
-                  get().aiMessages,
-                )}\n\nProvider error: ${error instanceof Error ? error.message : "Unknown error"}`,
+                ...m,
+                content: `I couldn't connect to the AI provider. Please check your API key and network connection in Settings.\n\n**Error:** ${errorMessage}`,
               }
-            : message,
+            : m,
         ),
         coachBusy: false,
       });
     }
-
     await persistState(get());
   },
   exportEncryptedProfile: async (passphrase) => {
     return encryptForExport(snapshotFromState(get()), passphrase);
   },
   importEncryptedProfile: async (fileText, passphrase) => {
-    const snapshot = await decryptExport<AtlasSnapshot>(fileText, passphrase);
-    set({
-      ...snapshot,
-      activeWorkout: snapshot.activeWorkout ?? null,
-      hydrated: true,
-      coachBusy: false,
-      providerBusy: false,
-    });
-    await persistState(get());
+    const snapshot = await decryptExport<any>(fileText, passphrase);
+    if (isValidSnapshot(snapshot)) {
+      set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+    }
   },
   resetLocalData: async () => {
-    const snapshot = freshSnapshot();
-    set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+    set({ ...freshSnapshot(), hydrated: true });
     await persistState(get());
   },
 }));
 
-export function useExerciseLookup() {
-  return exercises;
-}
-
 export function useProgressionRecommendations() {
-  const workouts = useAtlasStore((state) => state.workouts);
-  const recoveryLogs = useAtlasStore((state) => state.recoveryLogs);
+  const { workouts, recoveryLogs } = useAtlasStore();
   const latestRecovery = recoveryLogs.at(-1);
   const score = latestRecovery
     ? Math.round(

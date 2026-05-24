@@ -12,6 +12,7 @@ export interface CoachChatRequest {
 export interface ModelInfo {
   id: string;
   label?: string;
+  supportsGenerateContent: boolean;
 }
 
 export interface AiProviderAdapter {

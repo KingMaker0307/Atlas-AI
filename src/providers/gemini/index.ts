@@ -28,43 +28,61 @@ async function parseError(response: Response): Promise<never> {
 export const geminiAdapter: AiProviderAdapter = {
   type: "gemini",
   async chat({ provider, apiKey, messages, systemContext, signal }: CoachChatRequest) {
+    const contents = toProviderMessages(messages)
+      .filter((message) => message.role !== "system")
+      .map((message) => ({
+        role: message.role === "assistant" ? "model" : "user",
+        parts: [{ text: message.content }],
+      }));
+
+    const body = {
+      generationConfig: {
+        temperature: provider.temperature,
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `You are Atlas AI Coach. Use this local context:\n${systemContext}` }],
+        },
+        {
+          role: "model",
+          parts: [{ text: "Understood. I will act as the user's expert fitness coach." }],
+        },
+        ...contents,
+      ],
+    };
+
     const response = await fetch(
       `${baseUrl(provider)}/models/${provider.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: `You are Atlas AI Coach. Use this local context:\n${systemContext}` }],
-          },
-          generationConfig: {
-            temperature: provider.temperature,
-          },
-          contents: toProviderMessages(messages)
-            .filter((message) => message.role !== "system")
-            .map((message) => ({
-              role: message.role === "assistant" ? "model" : "user",
-              parts: [{ text: message.content }],
-            })),
-        }),
+        body: JSON.stringify(body),
         signal,
       },
     );
 
     if (!response.ok) await parseError(response);
-    const body = (await response.json()) as {
+    const responseBody = (await response.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
 
-    return body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+    return responseBody.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
   },
   async listModels(settings: AiProviderSettings, apiKey: string): Promise<ModelInfo[]> {
     const response = await fetch(`${baseUrl(settings)}/models?key=${encodeURIComponent(apiKey)}`);
     if (!response.ok) await parseError(response);
-    const body = (await response.json()) as { models?: Array<{ name: string; displayName?: string }> };
+    const body = (await response.json()) as {
+      models?: Array<{
+        name: string;
+        displayName?: string;
+        supportedGenerationMethods?: string[];
+      }>;
+    };
     return (body.models ?? []).map((model) => ({
       id: model.name.replace(/^models\//, ""),
       label: model.displayName,
+      supportsGenerateContent: model.supportedGenerationMethods?.includes("generateContent") ?? false,
     }));
   },
   async validate(settings: AiProviderSettings, apiKey: string): Promise<boolean> {
