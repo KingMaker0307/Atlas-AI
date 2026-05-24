@@ -216,4 +216,6 @@ export interface AtlasSnapshot {
   hasOnboarded: boolean;
   restTimerEndsAt?: string;
   updatedAt: string;
+  apiCallCount: number; // Added to AtlasSnapshot
+  tokenCount: number; // Added to AtlasSnapshot
 }

@@ -113,7 +113,15 @@ interface AtlasState {
   deleteRoutine: (planId: string, routineId: string) => Promise<void>;
 }
 
-type StoredSnapshot = AtlasSnapshot & { exercises: Exercise[]; startupChoice: StartupChoice, activeSubScreen: SubScreen, editingWorkoutPlanId: string | null, editingRoutineId: string | null };
+type StoredSnapshot = AtlasSnapshot & { 
+  exercises: Exercise[]; 
+  startupChoice: StartupChoice; 
+  activeSubScreen: SubScreen; 
+  editingWorkoutPlanId: string | null; 
+  editingRoutineId: string | null;
+  apiCallCount: number; // Added to StoredSnapshot
+  tokenCount: number; // Added to StoredSnapshot
+};
 
 function freshSnapshot(): StoredSnapshot {
   return {
