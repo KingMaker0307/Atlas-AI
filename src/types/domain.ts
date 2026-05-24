@@ -1,5 +1,6 @@
 export type ThemeMode = "dark" | "light" | "system";
-export type UnitSystem = "metric" | "imperial";
+export type WeightUnit = "lbs" | "kg";
+export type HeightUnit = "in" | "cm";
 export type TrainingStyle =
   | "strength"
   | "hypertrophy"
@@ -31,6 +32,10 @@ export type Equipment =
   | "cardio"
   | "other";
 
+export type BodyType = "ectomorph" | "mesomorph" | "endomorph";
+export type EquipmentPreference = "full gym" | "home gym" | "bodyweight";
+export type Physique = "lean" | "athletic" | "bulky" | "shredded" | "toned";
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -38,8 +43,17 @@ export interface UserProfile {
   experience: "beginner" | "intermediate" | "advanced";
   trainingStyle: TrainingStyle;
   daysPerWeek: number;
-  units: UnitSystem;
+  weightUnit: WeightUnit;
+  heightUnit: HeightUnit;
   createdAt: string;
+  age?: number;
+  height?: number;
+  weight?: number;
+  targetPhysique?: Physique;
+  dietaryPreferences?: string;
+  bodyType?: BodyType;
+  equipment?: EquipmentPreference;
+  customGoal?: string;
 }
 
 export interface Exercise {
@@ -99,13 +113,21 @@ export interface Routine {
   name: string;
   focus: string;
   estimatedMinutes: number;
-  days: string[];
+  day: string;
   exercises: Array<{
     exerciseId: string;
     targetSets: number;
     targetReps: string;
     restSeconds: number;
   }>;
+}
+
+export interface WorkoutPlan {
+  id: string;
+  name: string;
+  goal: string;
+  targetDate?: string;
+  routines: Routine[];
 }
 
 export interface RecoveryLog {
@@ -187,9 +209,10 @@ export interface AtlasSnapshot {
   aiMessages: AiMessage[];
   aiProviders: AiProviderSettings[];
   activeProviderId?: string;
-  routines: Routine[];
+  workoutPlans: WorkoutPlan[];
   theme: ThemeMode;
-  units: UnitSystem;
+  weightUnit: WeightUnit;
+  heightUnit: HeightUnit;
   hasOnboarded: boolean;
   restTimerEndsAt?: string;
   updatedAt: string;

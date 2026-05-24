@@ -2,21 +2,42 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dumbbell, Sparkles } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
+import type { HeightUnit, WeightUnit, BodyType, AiProviderSettings, Physique } from "@/types/domain";
+
+const providerTypes: AiProviderSettings["type"][] = [
+  "openai",
+  "anthropic",
+  "gemini",
+  "grok",
+  "deepseek",
+  "openrouter",
+  "ollama",
+  "lmstudio",
+  "custom",
+];
 
 const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  goal: z.string().min(8, "Add a specific goal"),
+  customGoal: z.string().min(8, "Add a specific goal"),
+  bodyType: z.enum(["ectomorph", "mesomorph", "endomorph"]),
   experience: z.enum(["beginner", "intermediate", "advanced"]),
   trainingStyle: z.enum(["strength", "hypertrophy", "powerbuilding", "endurance", "general"]),
-  daysPerWeek: z.number().min(1).max(7),
-  units: z.enum(["metric", "imperial"]),
+  targetPhysique: z.enum(["lean", "athletic", "bulky", "shredded", "toned"]),
+  daysPerWeek: z.coerce.number().min(1).max(7),
+  weightUnit: z.enum(["lbs", "kg"]),
+  heightUnit: z.enum(["in", "cm"]),
+  age: z.coerce.number().positive("Age must be positive"),
+  height: z.coerce.number().positive("Height must be positive"),
+  weight: z.coerce.number().positive("Weight must be positive"),
+  providerType: z.enum(providerTypes),
+  apiKey: z.string().optional(),
 });
 
 type OnboardingForm = z.infer<typeof onboardingSchema>;
@@ -26,18 +47,27 @@ export function Onboarding() {
   const {
     register,
     handleSubmit,
+    control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       name: "Athlete",
-      goal: "Build strength while staying recovered",
+      customGoal: "Build strength and improve my physique",
+      bodyType: "mesomorph",
       experience: "intermediate",
       trainingStyle: "powerbuilding",
+      targetPhysique: "athletic",
       daysPerWeek: 4,
-      units: "imperial",
+      weightUnit: "lbs",
+      heightUnit: "in",
+      providerType: "openai",
     },
   });
+
+  const selectedWeightUnit = watch("weightUnit");
+  const selectedHeightUnit = watch("heightUnit");
 
   return (
     <main className="min-h-dvh bg-[#07080a] px-4 py-6 text-white">
@@ -53,11 +83,10 @@ export function Onboarding() {
         </div>
 
         <Card className="p-4">
-          <Surface className="mb-4 flex items-start gap-3 bg-emerald-300/10">
+          <Surface className="mb-4 flex items-start gap-3 bg-emerald-300/10 p-3">
             <Sparkles className="mt-0.5 text-emerald-200" size={18} />
             <p className="text-sm leading-6 text-zinc-300">
-              Your plan, training logs, AI memory, and provider keys stay on this device unless
-              you export them.
+              Tell us about yourself to get started. We'll generate a personalized workout plan for you.
             </p>
           </Surface>
 
@@ -66,24 +95,33 @@ export function Onboarding() {
             onSubmit={handleSubmit(async (values) => {
               await completeOnboarding({
                 id: createId("user"),
-                ...values,
                 createdAt: new Date().toISOString(),
+                goal: values.customGoal,
+                ...values,
               });
             })}
           >
             <div>
               <Label>Name</Label>
               <Input {...register("name")} autoComplete="name" />
-              {errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name.message}</p> : null}
+              {errors.name && <p className="mt-1 text-xs text-rose-300">{errors.name.message}</p>}
             </div>
 
             <div>
-              <Label>Goal</Label>
-              <Textarea {...register("goal")} />
-              {errors.goal ? <p className="mt-1 text-xs text-rose-300">{errors.goal.message}</p> : null}
+              <Label>Custom Goal</Label>
+              <Textarea {...register("customGoal")} />
+              {errors.customGoal && <p className="mt-1 text-xs text-rose-300">{errors.customGoal.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Body Type</Label>
+                <Select {...register("bodyType")}>
+                  <option value="ectomorph">Ectomorph</option>
+                  <option value="mesomorph">Mesomorph</option>
+                  <option value="endomorph">Endomorph</option>
+                </Select>
+              </div>
               <div>
                 <Label>Experience</Label>
                 <Select {...register("experience")}>
@@ -92,15 +130,11 @@ export function Onboarding() {
                   <option value="advanced">Advanced</option>
                 </Select>
               </div>
-              <div>
-                <Label>Days</Label>
-                <Input type="number" min={1} max={7} {...register("daysPerWeek", { valueAsNumber: true })} />
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Style</Label>
+                <Label>Training Style</Label>
                 <Select {...register("trainingStyle")}>
                   <option value="strength">Strength</option>
                   <option value="hypertrophy">Hypertrophy</option>
@@ -110,20 +144,124 @@ export function Onboarding() {
                 </Select>
               </div>
               <div>
-                <Label>Units</Label>
-                <Select {...register("units")}>
-                  <option value="imperial">lb / in</option>
-                  <option value="metric">kg / cm</option>
+                <Label>Target Physique</Label>
+                <Select {...register("targetPhysique")}>
+                  <option value="lean">Lean</option>
+                  <option value="athletic">Athletic</option>
+                  <option value="bulky">Bulky</option>
+                  <option value="shredded">Shredded</option>
+                  <option value="toned">Toned</option>
                 </Select>
+                {errors.targetPhysique && <p className="mt-1 text-xs text-rose-300">{errors.targetPhysique.message}</p>}
               </div>
             </div>
 
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Age</Label>
+                <Input type="number" {...register("age")} />
+                {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
+              </div>
+              <div>
+                <Label>Height</Label>
+                <Input type="number" {...register("height")} />
+                {errors.height && <p className="mt-1 text-xs text-rose-300">{errors.height.message}</p>}
+              </div>
+              <div>
+                <Label>Weight</Label>
+                <Input type="number" {...register("weight")} />
+                {errors.weight && <p className="mt-1 text-xs text-rose-300">{errors.weight.message}</p>}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <Label>Days/Week</Label>
+                <Input type="number" {...register("daysPerWeek")} />
+                {errors.daysPerWeek && <p className="mt-1 text-xs text-rose-300">{errors.daysPerWeek.message}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Height Unit</Label>
+                <Controller
+                  name="heightUnit"
+                  control={control}
+                  render={({ field }) => (
+                    <SegmentedSetting<HeightUnit>
+                      value={field.value}
+                      values={["in", "cm"]}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+              <div>
+                <Label>Weight Unit</Label>
+                <Controller
+                  name="weightUnit"
+                  control={control}
+                  render={({ field }) => (
+                    <SegmentedSetting<WeightUnit>
+                      value={field.value}
+                      values={["lbs", "kg"]}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>AI Provider</Label>
+              <Select {...register("providerType")}>
+                {providerTypes.map((type) => (
+                  <option value={type} key={type}>
+                    {type}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            <div>
+              <Label>API Key</Label>
+              <Input type="password" {...register("apiKey")} />
+            </div>
+
             <Button className="w-full" size="lg" variant="primary" disabled={isSubmitting}>
-              Start coaching
+              Generate Workout Plan
             </Button>
           </form>
         </Card>
       </div>
     </main>
+  );
+}
+
+function SegmentedSetting<T extends string>({
+  value,
+  values,
+  onChange,
+}: {
+  value: T;
+  values: T[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="grid gap-1 rounded-xl border border-white/10 bg-black/25 p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+      {values.map((item) => (
+        <button
+          type="button"
+          className={`rounded-lg px-2 py-2 text-xs font-semibold capitalize transition ${
+            item === value ? "bg-white text-zinc-950" : "text-zinc-400 hover:bg-white/10 hover:text-white"
+          }`}
+          key={item}
+          onClick={() => onChange(item)}
+        >
+          {item}
+        </button>
+      ))}
+    </div>
   );
 }

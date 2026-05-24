@@ -1,11 +1,10 @@
-import type { NextConfig } from "next";
-
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: "export",
   basePath,
-  assetPrefix: basePath || undefined,
+  assetPrefix: basePath,
   images: {
     unoptimized: true,
   },
@@ -14,4 +13,4 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
 };
 
-export default nextConfig;
+module.exports = nextConfig;

@@ -16,8 +16,9 @@ async function parseOpenAiError(response: Response): Promise<never> {
   try {
     const body = (await response.json()) as { error?: { message?: string } };
     message = body.error?.message ?? message;
-  } catch {
-    // Keep the status message.
+  } catch (e) {
+    // Keep the status message, but also log the parsing error
+    console.error("Failed to parse OpenAI error response:", e);
   }
   throw new AiProviderError(message, response.status);
 }
@@ -76,41 +77,46 @@ export function createOpenAiCompatibleAdapter(
       signal,
       onToken,
     }: CoachChatRequest) {
-      const response = await fetch(`${normalizeBaseUrl(provider.baseUrl ?? defaultBaseUrl)}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-          "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "https://localhost",
-          "X-Title": "Atlas AI Coach",
-        },
-        body: JSON.stringify({
-          model: provider.model,
-          temperature: provider.temperature,
-          stream: provider.streaming,
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are Atlas AI Coach, a precise, supportive fitness coach. Use only the supplied user context and avoid medical diagnosis.",
-            },
-            { role: "system", content: systemContext },
-            ...toProviderMessages(messages).filter((message) => message.role !== "system"),
-          ],
-        }),
-        signal,
-      });
+      try {
+        const response = await fetch(`${normalizeBaseUrl(provider.baseUrl ?? defaultBaseUrl)}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "https://localhost",
+            "X-Title": "Atlas AI Coach",
+          },
+          body: JSON.stringify({
+            model: provider.model,
+            temperature: provider.temperature,
+            stream: provider.streaming,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are Atlas AI Coach, a precise, supportive fitness coach. Use only the supplied user context and avoid medical diagnosis.",
+              },
+              { role: "system", content: systemContext },
+              ...toProviderMessages(messages).filter((message) => message.role !== "system"),
+            ],
+          }),
+          signal,
+        });
 
-      if (!response.ok) await parseOpenAiError(response);
+        if (!response.ok) await parseOpenAiError(response);
 
-      if (provider.streaming) {
-        return readOpenAiStream(response, onToken);
+        if (provider.streaming) {
+          return readOpenAiStream(response, onToken);
+        }
+
+        const body = (await response.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        return body.choices?.[0]?.message?.content ?? "";
+      } catch (e) {
+        if (e instanceof AiProviderError) throw e;
+        throw new AiProviderError(e instanceof Error ? e.message : "Load failed");
       }
-
-      const body = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      return body.choices?.[0]?.message?.content ?? "";
     },
     async listModels(settings: AiProviderSettings, apiKey: string): Promise<ModelInfo[]> {
       const response = await fetch(`${normalizeBaseUrl(settings.baseUrl ?? defaultBaseUrl)}/models`, {

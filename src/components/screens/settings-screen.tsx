@@ -5,7 +5,6 @@ import {
   Bell,
   Bot,
   CheckCircle2,
-  Cloud,
   Database,
   Download,
   LinkIcon,
@@ -14,6 +13,8 @@ import {
   RefreshCcw,
   Save,
   Upload,
+  Pencil,
+  Cloud,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -22,7 +23,7 @@ import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
-import type { AiProviderSettings, ThemeMode, UnitSystem } from "@/types/domain";
+import type { AiProviderSettings, HeightUnit, ThemeMode, WeightUnit, UserProfile, Physique } from "@/types/domain";
 
 const providerTypes: AiProviderSettings["type"][] = [
   "openai",
@@ -36,14 +37,18 @@ const providerTypes: AiProviderSettings["type"][] = [
   "custom",
 ];
 
+const physiqueOptions: Physique[] = ["lean", "athletic", "bulky", "shredded", "toned"];
+
 export function SettingsScreen() {
   const profile = useAtlasStore((state) => state.profile);
   const theme = useAtlasStore((state) => state.theme);
-  const units = useAtlasStore((state) => state.units);
+  const weightUnit = useAtlasStore((state) => state.weightUnit);
+  const heightUnit = useAtlasStore((state) => state.heightUnit);
   const providers = useAtlasStore((state) => state.aiProviders);
   const activeProviderId = useAtlasStore((state) => state.activeProviderId);
   const setTheme = useAtlasStore((state) => state.setTheme);
-  const setUnits = useAtlasStore((state) => state.setUnits);
+  const setWeightUnit = useAtlasStore((state) => state.setWeightUnit);
+  const setHeightUnit = useAtlasStore((state) => state.setHeightUnit);
   const saveProvider = useAtlasStore((state) => state.saveProvider);
   const setActiveProvider = useAtlasStore((state) => state.setActiveProvider);
   const testProvider = useAtlasStore((state) => state.testProvider);
@@ -51,6 +56,16 @@ export function SettingsScreen() {
   const importEncryptedProfile = useAtlasStore((state) => state.importEncryptedProfile);
   const resetLocalData = useAtlasStore((state) => state.resetLocalData);
   const providerBusy = useAtlasStore((state) => state.providerBusy);
+  const updateProfile = useAtlasStore((state) => state.updateProfile);
+
+  const [draftProfile, setDraftProfile] = useState<Partial<UserProfile>>({});
+
+  useEffect(() => {
+    if (profile) {
+      setDraftProfile(profile);
+    }
+  }, [profile]);
+
   const [selectedProviderId, setSelectedProviderId] = useState(providers[0]?.id ?? "");
   const selectedProvider = useMemo(
     () => providers.find((provider) => provider.id === selectedProviderId),
@@ -90,6 +105,10 @@ export function SettingsScreen() {
     setImportPassphrase("");
   }
 
+  const handleProfileChange = (field: keyof UserProfile, value: any) => {
+    setDraftProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -112,19 +131,75 @@ export function SettingsScreen() {
             <p className="text-sm text-zinc-500">{profile?.goal}</p>
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-3 gap-3">
           <SegmentedSetting<ThemeMode>
             label="Theme"
             value={theme}
             values={["dark", "light", "system"]}
             onChange={(value) => void setTheme(value)}
           />
-          <SegmentedSetting<UnitSystem>
-            label="Units"
-            value={units}
-            values={["imperial", "metric"]}
-            onChange={(value) => void setUnits(value)}
+          <SegmentedSetting<WeightUnit>
+            label="Weight"
+            value={weightUnit}
+            values={["lbs", "kg"]}
+            onChange={(value) => void setWeightUnit(value)}
           />
+          <SegmentedSetting<HeightUnit>
+            label="Height"
+            value={heightUnit}
+            values={["in", "cm"]}
+            onChange={(value) => void setHeightUnit(value)}
+          />
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-white">Your Biometrics</h2>
+          <Button variant="ghost" size="icon" onClick={() => updateProfile(draftProfile)}>
+            <Save size={16} />
+          </Button>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Field label="Age">
+            <Input
+              type="number"
+              value={draftProfile.age ?? ""}
+              onChange={(e) => handleProfileChange("age", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Weight">
+            <Input
+              type="number"
+              value={draftProfile.weight ?? ""}
+              onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Height">
+            <Input
+              type="number"
+              value={draftProfile.height ?? ""}
+              onChange={(e) => handleProfileChange("height", Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Target Physique">
+            <Select
+              value={draftProfile.targetPhysique ?? ""}
+              onChange={(e) => handleProfileChange("targetPhysique", e.target.value)}
+            >
+              {physiqueOptions.map(option => (
+                <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+        <div className="mt-3">
+          <Field label="Dietary Preferences">
+            <Input
+              value={draftProfile.dietaryPreferences ?? ""}
+              onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
+            />
+          </Field>
         </div>
       </Card>
 
@@ -279,6 +354,19 @@ export function SettingsScreen() {
       <Card className="p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
+            <h2 className="text-lg font-semibold text-white">Cloud Sync</h2>
+            <p className="text-sm text-zinc-500">Sync your data with a cloud provider</p>
+          </div>
+          <Cloud className="text-zinc-500" size={18} />
+        </div>
+        <Button className="w-full" variant="secondary">
+          Sync with Google Drive
+        </Button>
+      </Card>
+
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
             <h2 className="text-lg font-semibold text-white">Encrypted profile backup</h2>
             <p className="text-sm text-zinc-500">Export and import JSON with a passphrase</p>
           </div>
@@ -316,7 +404,7 @@ export function SettingsScreen() {
               onChange={(event) => setImportPassphrase(event.target.value)}
             />
             <Button
-              className="mt-3 w-full"
+              className="w-full"
               icon={<Upload size={16} />}
               disabled={!importFile || !importPassphrase}
               onClick={() => void handleImport()}
@@ -362,27 +450,6 @@ export function SettingsScreen() {
           </Surface>
         </div>
       </Card>
-
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold text-white">Future-ready hooks</h2>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {[
-            "Apple Health",
-            "Google Fit",
-            "Wearables",
-            "Voice logging",
-            "AI routines",
-            "Image analysis",
-            "Barcode scanning",
-            "Optional cloud sync",
-          ].map((item) => (
-            <Surface key={item} className="flex items-center gap-3 p-3">
-              <Cloud className="text-zinc-500" size={16} />
-              <span className="text-sm text-zinc-300">{item}</span>
-            </Surface>
-          ))}
-        </div>
-      </Card>
     </motion.div>
   );
 }
@@ -413,6 +480,7 @@ function SegmentedSetting<T extends string>({
       <div className="grid gap-1 rounded-xl border border-white/10 bg-black/25 p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map((item) => (
           <button
+            type="button"
             className={`rounded-lg px-2 py-2 text-xs font-semibold capitalize transition ${
               item === value ? "bg-white text-zinc-950" : "text-zinc-400 hover:bg-white/10 hover:text-white"
             }`}
