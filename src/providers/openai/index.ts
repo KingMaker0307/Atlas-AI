@@ -2,6 +2,7 @@ import {
   AiProviderError,
   type AiProviderAdapter,
   type CoachChatRequest,
+  type CoachChatResponse, // Import CoachChatResponse
   type ModelInfo,
   toProviderMessages,
 } from "@/lib/ai/types";
@@ -76,7 +77,7 @@ export function createOpenAiCompatibleAdapter(
       systemContext,
       signal,
       onToken,
-    }: CoachChatRequest) {
+    }: CoachChatRequest): Promise<CoachChatResponse> { // Updated return type
       try {
         const response = await fetch(`${normalizeBaseUrl(provider.baseUrl ?? defaultBaseUrl)}/chat/completions`, {
           method: "POST",
@@ -106,13 +107,22 @@ export function createOpenAiCompatibleAdapter(
         if (!response.ok) await parseOpenAiError(response);
 
         if (provider.streaming) {
-          return readOpenAiStream(response, onToken);
+          const content = await readOpenAiStream(response, onToken);
+          return { content, tokenCount: undefined }; // Token count not available for streaming in this implementation
         }
 
         const body = (await response.json()) as {
           choices?: Array<{ message?: { content?: string } }>;
+          usage?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            total_tokens: number;
+          };
         };
-        return body.choices?.[0]?.message?.content ?? "";
+        const content = body.choices?.[0]?.message?.content ?? "";
+        const tokenCount = body.usage?.total_tokens;
+
+        return { content, tokenCount };
       } catch (e) {
         if (e instanceof AiProviderError) throw e;
         throw new AiProviderError(e instanceof Error ? e.message : "Load failed");
