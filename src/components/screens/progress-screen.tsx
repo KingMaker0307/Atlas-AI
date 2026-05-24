@@ -135,15 +135,21 @@ export function ProgressScreen() {
           ))}
         </Select>
         <div className="mt-4 h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={strengthSeries}>
-              <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-              <XAxis dataKey="date" stroke="#71717a" fontSize={12} />
-              <YAxis stroke="#71717a" fontSize={12} />
-              <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a" }} />
-              <Line dataKey="estimated1rm" stroke="#6ee7b7" strokeWidth={3} dot={{ r: 4 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {strengthSeries.length > 1 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={strengthSeries}>
+                <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke="#71717a" fontSize={12} />
+                <YAxis stroke="#71717a" fontSize={12} />
+                <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a" }} />
+                <Line dataKey="estimated1rm" stroke="#6ee7b7" strokeWidth={3} dot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+             <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+               Not enough data
+             </div>
+          )}
         </div>
       </Card>
 
@@ -151,34 +157,46 @@ export function ProgressScreen() {
         <Card className="p-4">
           <h2 className="text-lg font-semibold text-white">Weekly volume</h2>
           <div className="mt-4 h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={volumeSeries}>
-                <XAxis dataKey="week" stroke="#71717a" fontSize={12} />
-                <YAxis stroke="#71717a" fontSize={12} />
-                <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a" }} />
-                <Bar dataKey="volume" radius={[6, 6, 0, 0]} fill="#38bdf8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {volumeSeries.length > 1 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={volumeSeries}>
+                  <XAxis dataKey="week" stroke="#71717a" fontSize={12} />
+                  <YAxis stroke="#71717a" fontSize={12} />
+                  <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a" }} />
+                  <Bar dataKey="volume" radius={[6, 6, 0, 0]} fill="#38bdf8" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+               <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                 Not enough data
+               </div>
+            )}
           </div>
         </Card>
 
         <Card className="p-4">
           <h2 className="text-lg font-semibold text-white">Bodyweight</h2>
           <div className="mt-4 h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={bodyweightSeries}>
-                <defs>
-                  <linearGradient id="progressBodyweight" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} />
-                    <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" stroke="#71717a" fontSize={12} />
-                <YAxis stroke="#71717a" fontSize={12} domain={["dataMin - 2", "dataMax + 2"]} />
-                <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a" }} />
-                <Area dataKey="weight" stroke="#a78bfa" fill="url(#progressBodyweight)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {bodyweightSeries.length > 1 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={bodyweightSeries}>
+                  <defs>
+                    <linearGradient id="progressBodyweight" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.5} />
+                      <stop offset="95%" stopColor="#a78bfa" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="date" stroke="#71717a" fontSize={12} />
+                  <YAxis stroke="#71717a" fontSize={12} domain={["dataMin - 2", "dataMax + 2"]} />
+                  <Tooltip contentStyle={{ background: "#09090b", border: "1px solid #27272a" }} />
+                  <Area dataKey="weight" stroke="#a78bfa" fill="url(#progressBodyweight)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                 Not enough data
+              </div>
+            )}
           </div>
         </Card>
       </div>

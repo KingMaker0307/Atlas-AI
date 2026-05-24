@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/input";
 import { useAtlasStore } from "@/store/useAtlasStore";
+import { parseAiWorkoutPlan } from "@/lib/ai/parser";
 
 const quickPrompts = [
   "Adjust today for fatigue",
@@ -33,6 +34,10 @@ export function CoachScreen() {
     setMessage("");
     await sendCoachMessage(trimmed);
   }
+
+  const isWorkoutPlan = (content: string) => {
+    return parseAiWorkoutPlan(content) !== null;
+  };
 
   return (
     <motion.div
@@ -99,7 +104,9 @@ export function CoachScreen() {
                   : "rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.065] px-4 py-3 text-sm leading-6 text-zinc-200"
               }
             >
-              {item.content || (
+              {item.role === "assistant" && isWorkoutPlan(item.content) ? (
+                "Workout plan generated! You can view it on your dashboard."
+              ) : item.content || (
                 <span className="inline-flex items-center gap-2 text-zinc-500">
                   <Sparkles size={14} /> Thinking
                 </span>

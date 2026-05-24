@@ -26,3 +26,12 @@ const adapters: Record<AiProviderSettings["type"], AiProviderAdapter> = {
 export function getProviderAdapter(type: AiProviderSettings["type"]): AiProviderAdapter {
   return adapters[type] ?? customAdapter;
 }
+
+export async function findFirstSupportedModel(
+  provider: AiProviderSettings,
+  apiKey: string,
+): Promise<string | null> {
+  const adapter = getProviderAdapter(provider.type);
+  const models = await adapter.listModels(provider, apiKey);
+  return models.at(0)?.id ?? null;
+}

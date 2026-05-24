@@ -8,6 +8,10 @@ import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
 import { ProgressScreen } from "@/components/screens/progress-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
+import { WelcomeScreen } from "@/components/screens/welcome-screen";
+import { RoutineBuilderScreen } from "@/components/screens/routine-builder-screen";
+import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
+import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
 import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Onboarding } from "@/components/onboarding";
@@ -33,8 +37,10 @@ export function AtlasApp() {
   const hydrate = useAtlasStore((state) => state.hydrate);
   const activeTab = useAtlasStore((state) => state.activeTab);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const activeSubScreen = useAtlasStore((state) => state.activeSubScreen);
   const hasOnboarded = useAtlasStore((state) => state.hasOnboarded);
   const theme = useAtlasStore((state) => state.theme);
+  const startupChoice = useAtlasStore((state) => state.startupChoice);
 
   useEffect(() => {
     void hydrate();
@@ -49,7 +55,21 @@ export function AtlasApp() {
   }, [theme]);
 
   if (!hydrated) return <LoadingApp />;
+  if (!startupChoice) return <WelcomeScreen />;
   if (!hasOnboarded) return <Onboarding />;
+
+  const renderSubScreen = () => {
+    switch (activeSubScreen) {
+      case "routine-builder":
+        return <RoutineBuilderScreen />;
+      case "workout-plan-builder":
+        return <WorkoutPlanBuilderScreen />;
+      case "workout-plan-detail":
+        return <WorkoutPlanDetailScreen />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-[#07080a] text-white selection:bg-emerald-300 selection:text-zinc-950">
@@ -74,13 +94,17 @@ export function AtlasApp() {
 
       <main className="mx-auto w-full max-w-6xl px-4 pt-[calc(5rem+env(safe-area-inset-top))] md:px-6">
         <AnimatePresence mode="wait">
-          <motion.div key={activeTab}>
-            {activeTab === "dashboard" ? <DashboardScreen /> : null}
-            {activeTab === "workout" ? <WorkoutScreen /> : null}
-            {activeTab === "coach" ? <CoachScreen /> : null}
-            {activeTab === "progress" ? <ProgressScreen /> : null}
-            {activeTab === "settings" ? <SettingsScreen /> : null}
-          </motion.div>
+          {activeSubScreen ? (
+            renderSubScreen()
+          ) : (
+            <motion.div key={activeTab}>
+              {activeTab === "dashboard" ? <DashboardScreen /> : null}
+              {activeTab === "workout" ? <WorkoutScreen /> : null}
+              {activeTab === "coach" ? <CoachScreen /> : null}
+              {activeTab === "progress" ? <ProgressScreen /> : null}
+              {activeTab === "settings" ? <SettingsScreen /> : null}
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 

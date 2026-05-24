@@ -23,7 +23,7 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise } from "@/types/domain";
 
 export function WorkoutScreen() {
-  const routines = useAtlasStore((state) => state.routines);
+  const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const restTimerEndsAt = useAtlasStore((state) => state.restTimerEndsAt);
   const startWorkout = useAtlasStore((state) => state.startWorkout);
@@ -76,7 +76,7 @@ export function WorkoutScreen() {
         </section>
 
         <div className="grid gap-3 md:grid-cols-3">
-          {routines.map((routine) => (
+          {workoutPlans.flatMap(plan => plan.routines).map((routine) => (
             <Card className="p-4" key={routine.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -89,11 +89,9 @@ export function WorkoutScreen() {
                 <Dumbbell className="text-zinc-500" size={20} />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                {routine.days.map((day) => (
-                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-zinc-300" key={day}>
-                    {day}
-                  </span>
-                ))}
+                <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-zinc-300" key={routine.day}>
+                  {routine.day}
+                </span>
               </div>
               <Button className="mt-4 w-full" variant="primary" onClick={() => void startWorkout(routine)}>
                 Start
