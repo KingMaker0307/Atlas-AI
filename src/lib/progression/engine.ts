@@ -102,27 +102,61 @@ export function getStrengthSeries(
     .slice(-10);
 }
 
-export function getCurrentStreak(workouts: Workout[]): number {
-  const completedDates = new Set(
-    workouts
-      .filter((workout) => workout.completedAt)
-      .map((workout) => workout.startedAt.slice(0, 10)),
-  );
+export function getCurrentStreak(workouts: Workout[], planId: string | null): number {
+  const planWorkouts = workouts.filter((w) => w.planId === planId);
+  const completedWorkouts = planWorkouts
+    .filter((w) => w.completedAt)
+    .sort((a, b) => a.completedAt!.localeCompare(b.completedAt!));
+
+  if (completedWorkouts.length === 0) return 0;
 
   let streak = 0;
-  const cursor = new Date();
+  let lastDate: Date | null = null;
 
-  for (let i = 0; i < 30; i += 1) {
-    const key = cursor.toISOString().slice(0, 10);
-    if (completedDates.has(key)) {
-      streak += 1;
-    } else if (i > 0) {
-      break;
+  for (const workout of completedWorkouts) {
+    const currentDate = new Date(workout.startedAt);
+    if (lastDate) {
+      const gapDays = (currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (gapDays > 3) {
+        // Reset streak if gap is more than 3 days
+        streak = 1;
+      } else {
+        streak += 1;
+      }
+    } else {
+      streak = 1;
     }
-    cursor.setDate(cursor.getDate() - 1);
+    lastDate = currentDate;
+  }
+
+  // Check if the user hasn't worked out in the last 3 days
+  if (lastDate) {
+    const gapDays = (Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (gapDays > 3) {
+      return 0; // Streak has expired
+    }
   }
 
   return streak;
+}
+
+export function getTrainingConsistency(workouts: Workout[], daysPerWeek: number, planId: string | null): number {
+  if (!planId) return 0;
+  const planWorkouts = workouts.filter((w) => w.planId === planId && w.completedAt);
+  if (planWorkouts.length === 0) return 0;
+
+  // Target workouts in the last 30 days is (daysPerWeek * 30 / 7)
+  const targetWorkouts = (daysPerWeek * 30) / 7;
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const completedIn30Days = planWorkouts.filter(w => {
+    return new Date(w.completedAt!).getTime() >= thirtyDaysAgo.getTime();
+  }).length;
+
+  const score = Math.round((completedIn30Days / targetWorkouts) * 100);
+  return Math.min(100, score);
 }
 
 export function getRecentPrs(workouts: Workout[]): Array<{

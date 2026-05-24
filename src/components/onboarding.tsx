@@ -24,20 +24,20 @@ const providerTypes = [
 ] as const;
 
 const onboardingSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  customGoal: z.string().min(8, "Add a specific goal"),
+  name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
+  customGoal: z.string().min(8, "Add a specific goal").max(120, "Goal must be 120 characters or less"),
   bodyType: z.enum(["ectomorph", "mesomorph", "endomorph"]),
   experience: z.enum(["beginner", "intermediate", "advanced"]),
   trainingStyle: z.enum(["strength", "hypertrophy", "powerbuilding", "endurance", "general"]),
   targetPhysique: z.enum(["lean", "athletic", "bulky", "shredded", "toned"]),
-  daysPerWeek: z.coerce.number().min(1).max(7),
+  daysPerWeek: z.coerce.number().min(1, "Must be at least 1 day").max(7, "Must be at most 7 days"),
   weightUnit: z.enum(["lbs", "kg"]),
   heightUnit: z.enum(["in", "cm"]),
-  age: z.coerce.number().positive("Age must be positive"),
-  height: z.coerce.number().positive("Height must be positive"),
-  weight: z.coerce.number().positive("Weight must be positive"),
+  age: z.coerce.number().min(13, "Must be at least 13").max(120, "Must be 120 or less"),
+  height: z.coerce.number().min(20, "Height too low").max(300, "Height too high"),
+  weight: z.coerce.number().min(20, "Weight too low").max(1000, "Weight too high"),
   providerType: z.enum(providerTypes),
-  apiKey: z.string().optional(),
+  apiKey: z.string().max(500, "API key too long").optional(),
 });
 
 type OnboardingForm = z.infer<typeof onboardingSchema>;
@@ -103,13 +103,13 @@ export function Onboarding() {
           >
             <div>
               <Label>Name</Label>
-              <Input {...register("name")} autoComplete="name" />
+              <Input maxLength={30} {...register("name")} autoComplete="name" />
               {errors.name && <p className="mt-1 text-xs text-rose-300">{errors.name.message}</p>}
             </div>
 
             <div>
               <Label>Custom Goal</Label>
-              <Textarea {...register("customGoal")} />
+              <Textarea maxLength={120} {...register("customGoal")} />
               {errors.customGoal && <p className="mt-1 text-xs text-rose-300">{errors.customGoal.message}</p>}
             </div>
 
@@ -159,17 +159,17 @@ export function Onboarding() {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Age</Label>
-                <Input type="number" {...register("age")} />
+                <Input type="number" min={13} max={120} {...register("age")} />
                 {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
               </div>
               <div>
                 <Label>Height</Label>
-                <Input type="number" {...register("height")} />
+                <Input type="number" min={20} max={300} {...register("height")} />
                 {errors.height && <p className="mt-1 text-xs text-rose-300">{errors.height.message}</p>}
               </div>
               <div>
                 <Label>Weight</Label>
-                <Input type="number" {...register("weight")} />
+                <Input type="number" min={20} max={1000} {...register("weight")} />
                 {errors.weight && <p className="mt-1 text-xs text-rose-300">{errors.weight.message}</p>}
               </div>
             </div>
@@ -177,7 +177,7 @@ export function Onboarding() {
             <div className="grid grid-cols-1 gap-3">
               <div>
                 <Label>Days Per Week</Label>
-                <Input type="number" {...register("daysPerWeek")} />
+                <Input type="number" min={1} max={7} {...register("daysPerWeek")} />
                 {errors.daysPerWeek && <p className="mt-1 text-xs text-rose-300">{errors.daysPerWeek.message}</p>}
               </div>
             </div>
@@ -226,7 +226,8 @@ export function Onboarding() {
 
             <div>
               <Label>API Key</Label>
-              <Input type="password" {...register("apiKey")} />
+              <Input type="password" maxLength={500} {...register("apiKey")} />
+              {errors.apiKey && <p className="mt-1 text-xs text-rose-300">{errors.apiKey.message}</p>}
             </div>
 
             <Button className="w-full" size="lg" variant="primary" disabled={isSubmitting}>

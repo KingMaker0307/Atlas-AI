@@ -91,6 +91,10 @@ export function SettingsScreen() {
   const [models, setModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
+  
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -173,6 +177,122 @@ export function SettingsScreen() {
     setDraftProfile((prev) => ({ ...prev, [field]: value }));
   };
 
+  const saveProfileSettings = async () => {
+    const age = Number(draftProfile.age);
+    const weight = Number(draftProfile.weight);
+    const height = Number(draftProfile.height);
+    const diet = draftProfile.dietaryPreferences || "";
+
+    if (isNaN(age) || age < 13 || age > 120) {
+      setProfileError("Age must be between 13 and 120.");
+      return;
+    }
+    if (isNaN(weight) || weight < 20 || weight > 1000) {
+      setProfileError("Weight must be between 20 and 1000.");
+      return;
+    }
+    if (isNaN(height) || height < 20 || height > 300) {
+      setProfileError("Height must be between 20 and 300.");
+      return;
+    }
+    if (diet.length > 200) {
+      setProfileError("Dietary preferences must be 200 characters or less.");
+      return;
+    }
+
+    setProfileError(null);
+    await updateProfile(draftProfile);
+  };
+
+  const handleSaveProvider = async () => {
+    if (!draft) return;
+    
+    if (draft.label.length === 0 || draft.label.length > 30) {
+      setAiError("Label must be between 1 and 30 characters.");
+      return;
+    }
+    if (draft.baseUrl && draft.baseUrl.length > 200) {
+      setAiError("Base URL must be 200 characters or less.");
+      return;
+    }
+    if (draft.model && draft.model.length > 100) {
+      setAiError("Model name must be 100 characters or less.");
+      return;
+    }
+    if (apiKey && apiKey.length > 500) {
+      setAiError("API key must be 500 characters or less.");
+      return;
+    }
+    if (draft.temperature < 0 || draft.temperature > 2 || isNaN(draft.temperature)) {
+      setAiError("Temperature must be between 0 and 2.");
+      return;
+    }
+    if (draft.contextLength < 1024 || draft.contextLength > 1000000 || isNaN(draft.contextLength)) {
+      setAiError("Context Length must be between 1024 and 1,000,000.");
+      return;
+    }
+
+    setAiError(null);
+    await saveProvider(draft, apiKey);
+  };
+
+  const handleTestProvider = async () => {
+    if (!draft) return;
+    
+    if (draft.label.length === 0 || draft.label.length > 30) {
+      setAiError("Label must be between 1 and 30 characters.");
+      return;
+    }
+    if (draft.baseUrl && draft.baseUrl.length > 200) {
+      setAiError("Base URL must be 200 characters or less.");
+      return;
+    }
+    if (draft.model && draft.model.length > 100) {
+      setAiError("Model name must be 100 characters or less.");
+      return;
+    }
+    if (apiKey && apiKey.length > 500) {
+      setAiError("API key must be 500 characters or less.");
+      return;
+    }
+    if (draft.temperature < 0 || draft.temperature > 2 || isNaN(draft.temperature)) {
+      setAiError("Temperature must be between 0 and 2.");
+      return;
+    }
+    if (draft.contextLength < 1024 || draft.contextLength > 1000000 || isNaN(draft.contextLength)) {
+      setAiError("Context Length must be between 1024 and 1,000,000.");
+      return;
+    }
+
+    setAiError(null);
+    await saveProvider(draft, apiKey);
+    await testProvider(draft.id);
+  };
+
+  const handleExportWithValidation = async () => {
+    if (!exportPassphrase) return;
+    if (exportPassphrase.length > 64) {
+      setBackupError("Passphrase must be 64 characters or less.");
+      return;
+    }
+    setBackupError(null);
+    await handleExport();
+  };
+
+  const handleImportWithValidation = async () => {
+    if (!importFile || !importPassphrase) return;
+    if (importPassphrase.length > 64) {
+      setBackupError("Passphrase must be 64 characters or less.");
+      return;
+    }
+    setBackupError(null);
+    try {
+      await handleImport();
+    } catch (e: any) {
+      setBackupError(e.message || "Failed to import profile.");
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -220,7 +340,7 @@ export function SettingsScreen() {
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Your Biometrics</h2>
-          <Button variant="ghost" size="icon" onClick={() => updateProfile(draftProfile)}>
+          <Button variant="ghost" size="icon" onClick={saveProfileSettings}>
             <Save size={16} />
           </Button>
         </div>
@@ -228,6 +348,8 @@ export function SettingsScreen() {
           <Field label="Age">
             <Input
               type="number"
+              min={13}
+              max={120}
               value={draftProfile.age ?? ""}
               onChange={(e) => handleProfileChange("age", Number(e.target.value))}
             />
@@ -235,6 +357,8 @@ export function SettingsScreen() {
           <Field label="Weight">
             <Input
               type="number"
+              min={20}
+              max={1000}
               value={draftProfile.weight ?? ""}
               onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
             />
@@ -242,6 +366,8 @@ export function SettingsScreen() {
           <Field label="Height">
             <Input
               type="number"
+              min={20}
+              max={300}
               value={draftProfile.height ?? ""}
               onChange={(e) => handleProfileChange("height", Number(e.target.value))}
             />
@@ -261,10 +387,13 @@ export function SettingsScreen() {
           <Field label="Dietary Preferences">
             <Input
               value={draftProfile.dietaryPreferences ?? ""}
+              maxLength={200}
               onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
+              placeholder="e.g. Vegetarian, Gluten-free, no peanuts"
             />
           </Field>
         </div>
+        {profileError && <p className="mt-3 text-xs text-rose-300">{profileError}</p>}
       </Card>
 
       <Card className="p-4">
@@ -315,7 +444,7 @@ export function SettingsScreen() {
           <div className="mt-3 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Label" hint={providerHints.label}>
-                <Input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
+                <Input maxLength={30} value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
               </Field>
               <Field label="Type" hint={providerHints.type}>
                 <Select
@@ -335,6 +464,7 @@ export function SettingsScreen() {
             <Field label="Base URL" hint={providerHints.baseUrl}>
               <div className="flex items-center gap-2">
                 <Input
+                  maxLength={200}
                   value={draft.baseUrl ?? ""}
                   onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
                   placeholder="e.g. https://api.openai.com/v1"
@@ -362,6 +492,7 @@ export function SettingsScreen() {
               <Field label="API key" hint={providerHints.apiKey}>
                 <Input
                   type="password"
+                  maxLength={500}
                   value={apiKey}
                   onChange={(event) => setApiKey(event.target.value)}
                   placeholder={draft.apiKey ? "Stored locally" : "Paste key"}
@@ -383,12 +514,16 @@ export function SettingsScreen() {
                 <Input
                   type="number"
                   min={1024}
+                  max={1000000}
                   step={1024}
                   value={draft.contextLength}
                   onChange={(event) => setDraft({ ...draft, contextLength: Number(event.target.value) })}
                 />
               </Field>
             </div>
+            
+            {aiError && <p className="text-xs text-rose-300">{aiError}</p>}
+
             <div className="flex flex-wrap gap-2">
               <Button
                 variant={draft.streaming ? "primary" : "secondary"}
@@ -408,11 +543,7 @@ export function SettingsScreen() {
               </Button>
               <Button
                 icon={<Save size={16} />}
-                onClick={() => {
-                  if (draft) {
-                    void saveProvider(draft, apiKey);
-                  }
-                }}
+                onClick={handleSaveProvider}
                 title={providerHints.save}
               >
                 Save
@@ -420,12 +551,7 @@ export function SettingsScreen() {
               <Button
                 icon={<LinkIcon size={16} />}
                 disabled={providerBusy}
-                onClick={async () => {
-                  if (draft) {
-                    await saveProvider(draft, apiKey); // Save provider settings (with API key)
-                    await testProvider(draft.id); // Test with current API key
-                  }
-                }}
+                onClick={handleTestProvider}
                 title={providerHints.test}
               >
                 Test
@@ -467,6 +593,7 @@ export function SettingsScreen() {
             <Label>Export passphrase</Label>
             <Input
               type="password"
+              maxLength={64}
               value={exportPassphrase}
               onChange={(event) => setExportPassphrase(event.target.value)}
             />
@@ -475,7 +602,7 @@ export function SettingsScreen() {
               variant="primary"
               icon={<Download size={16} />}
               disabled={!exportPassphrase}
-              onClick={() => void handleExport()}
+              onClick={handleExportWithValidation}
             >
               Export JSON
             </Button>
@@ -490,19 +617,21 @@ export function SettingsScreen() {
             <Label className="mt-3">Import passphrase</Label>
             <Input
               type="password"
+              maxLength={64}
               value={importPassphrase}
               onChange={(event) => setImportPassphrase(event.target.value)}
             />
             <Button
-              className="w-full"
+              className="w-full mt-3"
               icon={<Upload size={16} />}
               disabled={!importFile || !importPassphrase}
-              onClick={() => void handleImport()}
+              onClick={handleImportWithValidation}
             >
               Import profile
             </Button>
           </Surface>
         </div>
+        {backupError && <p className="mt-3 text-xs text-rose-300">{backupError}</p>}
       </Card>
 
       <Card className="p-4">

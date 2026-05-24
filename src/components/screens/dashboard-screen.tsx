@@ -19,6 +19,7 @@ import {
   Calendar,
   Weight,
   Ruler,
+  Dumbbell,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
   getRecentPrs,
   getVolumeSeries,
   getWeeklyVolume,
+  getTrainingConsistency,
 } from "@/lib/progression/engine";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { parseAiWorkoutPlan } from "@/lib/ai/parser";
@@ -58,6 +60,10 @@ const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGenerate, is
   const handleSubmit = () => {
     if (!targetDate) {
       setError("Please select a target date.");
+      return;
+    }
+    if (additionalDetails.length > 250) {
+      setError("Additional details must be 250 characters or less.");
       return;
     }
     setError(null);
@@ -128,6 +134,7 @@ const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGenerate, is
               className="mt-2 h-24 resize-none"
               placeholder="e.g., 'I have a shoulder injury', 'I want to focus on legs', 'I only have dumbbells'"
               value={additionalDetails}
+              maxLength={250}
               onChange={(e) => setAdditionalDetails(e.target.value)}
             />
           </div>
@@ -164,8 +171,12 @@ export function DashboardScreen() {
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
   const deleteWorkoutPlan = useAtlasStore((state) => state.deleteWorkoutPlan);
+  const activeWorkoutPlanId = useAtlasStore((state) => state.activeWorkoutPlanId);
+  const setActiveWorkoutPlanId = useAtlasStore((state) => state.setActiveWorkoutPlanId);
 
   const [showAiCard, setShowAiCard] = useState(false);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [planToActivate, setPlanToActivate] = useState<string | null>(null);
 
   const recoveryScore = calculateRecoveryScore(recoveryLogs.at(-1));
   const fatigue = getFatigueLabel(recoveryScore);
@@ -238,7 +249,7 @@ export function DashboardScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="space-y-4 pb-28 relative"
+      className="flex flex-col gap-4 pb-28"
     >
       <AnimatePresence>
         {showAiCard && profile && (
@@ -309,33 +320,78 @@ export function DashboardScreen() {
           </div>
         </Card>
       ) : (
-        workoutPlans.map(plan => (
-          <Card className="overflow-hidden p-4" key={plan.id}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">{plan.name}</h2>
-                <p className="mt-1 max-w-[18rem] text-sm leading-6 text-zinc-400">{plan.goal}</p>
+        workoutPlans.map(plan => {
+          const planWorkouts = workouts.filter((w) => w.planId === plan.id && w.completedAt);
+          const completedRoutineNames = new Set(planWorkouts.map((w) => w.name));
+          const routinesCount = plan.routines.length;
+          const completedCount = plan.routines.filter((r) => completedRoutineNames.has(r.name)).length;
+          const progressPercent = routinesCount > 0 ? Math.round((completedCount / routinesCount) * 100) : 0;
+          const isActive = plan.id === activeWorkoutPlanId;
+
+          return (
+            <Card className="overflow-hidden p-4" key={plan.id}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-semibold text-white">{plan.name}</h2>
+                    {isActive && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 max-w-[18rem] text-sm leading-6 text-zinc-400">{plan.goal}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    setEditingWorkoutPlanId(plan.id);
+                    setActiveSubScreen("workout-plan-builder");
+                  }}>
+                    <Pencil size={16} />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteWorkoutPlan(plan.id)}>
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => {
+
+              {/* Progress Bar */}
+              <div className="mt-4 space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Routines Completed</span>
+                  <span className="font-medium text-emerald-300">{completedCount}/{routinesCount}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-zinc-850 overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
+                    style={{ width: `${progressPercent}%` }} 
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <Button className="flex-1" variant="primary" onClick={() => {
                   setEditingWorkoutPlanId(plan.id);
-                  setActiveSubScreen("workout-plan-builder");
+                  setActiveSubScreen("workout-plan-detail");
                 }}>
-                  <Pencil size={16} />
+                  View Plan
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => deleteWorkoutPlan(plan.id)}>
-                  <Trash2 size={16} />
-                </Button>
+                {!isActive && (
+                  <Button 
+                    className="flex-1"
+                    variant="secondary"
+                    onClick={() => {
+                      setPlanToActivate(plan.id);
+                      setShowSwitchModal(true);
+                    }}
+                  >
+                    Set Active
+                  </Button>
+                )}
               </div>
-            </div>
-            <Button className="mt-4 w-full" variant="primary" onClick={() => {
-              setEditingWorkoutPlanId(plan.id);
-              setActiveSubScreen("workout-plan-detail");
-            }}>
-              View Plan
-            </Button>
-          </Card>
-        ))
+            </Card>
+          );
+        })
       )}
 
       {workoutPlans.length > 0 && (
@@ -366,16 +422,23 @@ export function DashboardScreen() {
       <div className="grid grid-cols-2 gap-3">
         <MetricCard
           label="Streak"
-          value={`${getCurrentStreak(workouts)}d`}
+          value={`${getCurrentStreak(workouts, activeWorkoutPlanId)}d`}
           detail="training days"
           icon={<Flame size={18} />}
           tone="amber"
         />
         <MetricCard
+          label="Consistency"
+          value={`${getTrainingConsistency(workouts, profile?.daysPerWeek ?? 3, activeWorkoutPlanId)}%`}
+          detail="monthly target"
+          icon={<Activity size={18} />}
+          tone="emerald"
+        />
+        <MetricCard
           label="Volume"
           value={Math.round(getWeeklyVolume(workouts)).toLocaleString()}
           detail="this week"
-          icon={<Activity size={18} />}
+          icon={<Dumbbell size={18} />}
           tone="sky"
         />
         <MetricCard
@@ -391,6 +454,7 @@ export function DashboardScreen() {
           detail="last log"
           icon={<Moon size={18} />}
           tone="violet"
+          className="col-span-2"
         />
       </div>
 
@@ -493,6 +557,40 @@ export function DashboardScreen() {
           </div>
         </div>
       </Card>
+
+      {showSwitchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <Card className="w-full max-w-sm p-6 space-y-4 relative">
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+              setShowSwitchModal(false);
+              setPlanToActivate(null);
+            }}>
+              <X size={20} />
+            </Button>
+            <h2 className="text-xl font-semibold text-white">Switch Active Plan</h2>
+            <p className="text-zinc-300 text-sm leading-relaxed">
+              Switching Active Plan: This will recalculate your streaks, consistency, and progress metrics for the new plan. Old progress will be saved separately. Do you want to continue?
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => {
+                setShowSwitchModal(false);
+                setPlanToActivate(null);
+              }} className="flex-1">
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={async () => {
+                if (planToActivate) {
+                  await setActiveWorkoutPlanId(planToActivate);
+                }
+                setShowSwitchModal(false);
+                setPlanToActivate(null);
+              }} className="flex-1">
+                Confirm Switch
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </motion.div>
   );
 }

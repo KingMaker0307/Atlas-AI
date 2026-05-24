@@ -37,7 +37,7 @@ import { CoachChatResponse } from "@/lib/ai/types";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "backup" | null;
-export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | null;
+export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | "active-workout" | null;
 
 interface OnboardingData extends UserProfile {
   apiKey?: string;
@@ -76,7 +76,9 @@ interface AtlasState {
   apiCallCount: number; // New state for API call count
   tokenCount: number; // New state for token count
   startupChoice: StartupChoice;
+  activeWorkoutPlanId: string | null;
   setStartupChoice: (choice: StartupChoice) => void;
+  setActiveWorkoutPlanId: (id: string | null) => Promise<void>;
   setActiveTab: (tab: AtlasTab) => void;
   setActiveSubScreen: (subScreen: SubScreen) => void;
   setEditingWorkoutPlanId: (id: string | null) => void;
@@ -99,6 +101,8 @@ interface AtlasState {
   finishWorkout: (fatigueRating?: number, notes?: string) => Promise<void>;
   discardWorkout: () => Promise<void>;
   startRestTimer: (seconds: number) => Promise<void>;
+  stopRestTimer: () => Promise<void>; // New action
+  adjustRestTimer: (seconds: number) => Promise<void>; // New action
   saveProvider: (provider: AiProviderSettings, apiKeyPlain?: string) => Promise<void>;
   setActiveProvider: (providerId: string) => Promise<void>;
   testProvider: (providerId: string) => Promise<void>;
@@ -121,6 +125,7 @@ type StoredSnapshot = AtlasSnapshot & {
   editingRoutineId: string | null;
   apiCallCount: number; // Added to StoredSnapshot
   tokenCount: number; // Added to StoredSnapshot
+  activeWorkoutPlanId: string | null;
 };
 
 function freshSnapshot(): StoredSnapshot {
@@ -146,6 +151,7 @@ function freshSnapshot(): StoredSnapshot {
     editingRoutineId: null,
     apiCallCount: 0, // Initialize API call count
     tokenCount: 0, // Initialize token count
+    activeWorkoutPlanId: null,
   };
 }
 
@@ -189,15 +195,33 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     editingRoutineId: state.editingRoutineId,
     apiCallCount: state.apiCallCount, // Include in snapshot
     tokenCount: state.tokenCount, // Include in snapshot
+    activeWorkoutPlanId: state.activeWorkoutPlanId,
   };
 }
 
 async function persistState(state: AtlasState): Promise<void> {
+  console.log("persistState: Starting...");
   const snapshot = snapshotFromState(state);
-  await saveSnapshot(snapshot);
+  try {
+    await saveSnapshot(snapshot);
+    console.log("persistState: saveSnapshot successful.");
+  } catch (error) {
+    console.error("persistState: saveSnapshot failed:", error);
+    throw error;
+  }
+  console.log("persistState: Finished.");
+}
+
+function getLocalDateString(dateOrStr: Date | string): string {
+  const d = typeof dateOrStr === "string" ? new Date(dateOrStr) : dateOrStr;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function recentWeightForExercise(workouts: Workout[], exerciseId: string): number {
+
   const last = [...workouts]
     .reverse()
     .flatMap((workout) => workout.exercises)
@@ -209,10 +233,11 @@ function recentWeightForExercise(workouts: Workout[], exerciseId: string): numbe
 }
 
 function buildWorkoutFromRoutine(state: AtlasState, routine: Routine): Workout {
-  return {
+  const newWorkout: Workout = {
     id: createId("workout"),
     name: routine.name,
     startedAt: new Date().toISOString(),
+    planId: state.activeWorkoutPlanId,
     exercises: routine.exercises.map((exercise) => {
       const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
@@ -232,6 +257,8 @@ function buildWorkoutFromRoutine(state: AtlasState, routine: Routine): Workout {
       };
     }),
   };
+  console.log("buildWorkoutFromRoutine: New workout created:", newWorkout);
+  return newWorkout;
 }
 
 export const useAtlasStore = create<AtlasState>((set, get) => ({
@@ -249,20 +276,26 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     return get().exercises.find((exercise) => exercise.id === id);
   },
   setStartupChoice: (choice) => set({ startupChoice: choice }),
-  setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveTab: (tab) => set({ activeTab: tab, activeSubScreen: null }),
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
   setEditingWorkoutPlanId: (id) => set({ editingWorkoutPlanId: id }),
   setEditingRoutineId: (id) => set({ editingRoutineId: id }),
   hydrate: async () => {
     const localData = await loadSnapshot();
     const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
+    const activeWorkoutPlanId = snapshot.activeWorkoutPlanId || snapshot.workoutPlans[0]?.id || null;
     set({
       ...snapshot,
+      activeWorkoutPlanId,
       hydrated: true,
       activeTab: "dashboard",
       coachBusy: false,
       providerBusy: false,
     });
+  },
+  setActiveWorkoutPlanId: async (id) => {
+    set({ activeWorkoutPlanId: id });
+    await persistState(get());
   },
   saveWorkoutPlan: async (plan: WorkoutPlan) => {
     const plans = get().workoutPlans;
@@ -359,11 +392,45 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     await persistState(get());
   },
   startWorkout: async (routine) => {
+    console.log("startWorkout: Function called.");
+    console.log("startWorkout: Routine received:", routine);
+
+    // Check if the user has reached the daily limit of 3 workouts
+    const workouts = get().workouts;
+    const todayStr = getLocalDateString(new Date());
+    const workoutsToday = workouts.filter((w) => getLocalDateString(w.startedAt) === todayStr);
+
+    if (workoutsToday.length >= 3) {
+      console.warn("startWorkout: Daily workout limit reached (max 3). Cannot start a new session.");
+      if (typeof window !== "undefined") {
+        window.alert("Daily Limit Reached: You have already logged 3 workouts today. To prevent overtraining and ensure safe recovery, you cannot start another session today.");
+      }
+      return;
+    }
+
+    const currentActiveWorkout = get().activeWorkout;
+    console.log("startWorkout: activeWorkout BEFORE update:", currentActiveWorkout);
+
+
+    const newWorkout = buildWorkoutFromRoutine(get(), routine);
+    
     set({
-      activeWorkout: buildWorkoutFromRoutine(get(), routine),
+      activeWorkout: newWorkout,
       activeTab: "workout",
+      activeSubScreen: "active-workout",
     });
-    await persistState(get());
+
+    console.log("startWorkout: activeWorkout AFTER update (should be new workout):", get().activeWorkout);
+    console.log("startWorkout: State updated, attempting to persist...");
+    try {
+      await persistState(get());
+      console.log("startWorkout: Persist successful.");
+    } catch (error) {
+      console.error("startWorkout: Persist failed:", error);
+      // Re-throw to ensure the error is visible if not handled elsewhere
+      throw error;
+    }
+    console.log("startWorkout: Finished.");
   },
   addSet: async (workoutExerciseId) => {
     const activeWorkout = get().activeWorkout;
@@ -436,15 +503,31 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
         },
       ],
       activeTab: "dashboard",
+      activeSubScreen: null,
     });
     await persistState(get());
   },
   discardWorkout: async () => {
-    set({ activeWorkout: null, restTimerEndsAt: undefined });
+    set({ activeWorkout: null, restTimerEndsAt: undefined, activeSubScreen: null });
     await persistState(get());
   },
   startRestTimer: async (seconds) => {
     set({ restTimerEndsAt: new Date(Date.now() + seconds * 1000).toISOString() });
+    await persistState(get());
+  },
+  stopRestTimer: async () => {
+    set({ restTimerEndsAt: undefined });
+    await persistState(get());
+  },
+  adjustRestTimer: async (seconds) => {
+    const currentEndsAt = get().restTimerEndsAt;
+    if (currentEndsAt) {
+      const newEndsAt = new Date(new Date(currentEndsAt).getTime() + seconds * 1000).toISOString();
+      set({ restTimerEndsAt: newEndsAt });
+    } else {
+      // If no timer is active, start one for the given seconds
+      set({ restTimerEndsAt: new Date(Date.now() + seconds * 1000).toISOString() });
+    }
     await persistState(get());
   },
   saveProvider: async (provider, apiKeyPlain) => {

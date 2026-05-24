@@ -12,12 +12,11 @@ import { createId } from "@/lib/id";
 import type { RecoveryLog } from "@/types/domain";
 
 const recoverySchema = z.object({
-  sleepHours: z.number().min(0).max(16),
-  soreness: z.number().min(1).max(10),
-  stress: z.number().min(1).max(10),
-  readiness: z.number().min(1).max(10),
-  energy: z.number().min(1).max(10),
-  note: z.string().optional(),
+  sleepHours: z.number().min(0, "Sleep must be at least 0 hours").max(24, "Sleep cannot exceed 24 hours"),
+  soreness: z.number().min(1, "Min value is 1").max(10, "Max value is 10"),
+  stress: z.number().min(1, "Min value is 1").max(10, "Max value is 10"),
+  energy: z.number().min(1, "Min value is 1").max(10, "Max value is 10"),
+  note: z.string().max(250, "Note must be 250 characters or less").optional(),
 });
 
 type RecoveryForm = z.infer<typeof recoverySchema>;
@@ -43,7 +42,6 @@ export function DailyRecoveryModal({
       sleepHours: dailyRecoveryLog?.sleepHours ?? 7.5,
       soreness: dailyRecoveryLog?.soreness ?? 4,
       stress: dailyRecoveryLog?.stress ?? 3,
-      readiness: dailyRecoveryLog?.readiness ?? 8,
       energy: dailyRecoveryLog?.energy ?? 7,
       note: dailyRecoveryLog?.note ?? "",
     },
@@ -54,16 +52,22 @@ export function DailyRecoveryModal({
       sleepHours: dailyRecoveryLog?.sleepHours ?? 7.5,
       soreness: dailyRecoveryLog?.soreness ?? 4,
       stress: dailyRecoveryLog?.stress ?? 3,
-      readiness: dailyRecoveryLog?.readiness ?? 8,
       energy: dailyRecoveryLog?.energy ?? 7,
       note: dailyRecoveryLog?.note ?? "",
     });
   }, [dailyRecoveryLog, form]);
 
   const onSubmit = async (values: RecoveryForm) => {
+    // Automatically calculate readiness score (1-10) based on sleep, energy, soreness, and stress
+    const sleepRating = Math.min(Math.max((values.sleepHours / 8) * 10, 1), 10);
+    const calculatedReadiness = Math.round(
+      (sleepRating + values.energy + (10 - values.soreness) + (10 - values.stress)) / 4
+    );
+
     await logRecovery({
       id: dailyRecoveryLog?.id || createId("recovery"),
       date: selectedDate,
+      readiness: calculatedReadiness,
       ...values,
     });
     onClose();
@@ -84,28 +88,29 @@ export function DailyRecoveryModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="sleepHours">Sleep (hours)</Label>
-              <Input type="number" step="0.1" {...form.register("sleepHours", { valueAsNumber: true })} />
+              <Input type="number" step="0.1" min={0} max={24} {...form.register("sleepHours", { valueAsNumber: true })} />
+              {form.formState.errors.sleepHours && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.sleepHours.message}</p>}
             </div>
             <div>
               <Label htmlFor="energy">Energy (1-10)</Label>
-              <Input type="number" min="1" max="10" {...form.register("energy", { valueAsNumber: true })} />
+              <Input type="number" min={1} max={10} {...form.register("energy", { valueAsNumber: true })} />
+              {form.formState.errors.energy && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.energy.message}</p>}
             </div>
             <div>
               <Label htmlFor="soreness">Soreness (1-10)</Label>
-              <Input type="number" min="1" max="10" {...form.register("soreness", { valueAsNumber: true })} />
+              <Input type="number" min={1} max={10} {...form.register("soreness", { valueAsNumber: true })} />
+              {form.formState.errors.soreness && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.soreness.message}</p>}
             </div>
             <div>
               <Label htmlFor="stress">Stress (1-10)</Label>
-              <Input type="number" min="1" max="10" {...form.register("stress", { valueAsNumber: true })} />
+              <Input type="number" min={1} max={10} {...form.register("stress", { valueAsNumber: true })} />
+              {form.formState.errors.stress && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.stress.message}</p>}
             </div>
           </div>
           <div>
-            <Label htmlFor="readiness">Readiness (1-10)</Label>
-            <Input type="number" min="1" max="10" {...form.register("readiness", { valueAsNumber: true })} />
-          </div>
-          <div>
             <Label htmlFor="note">Note</Label>
-            <Textarea {...form.register("note")} />
+            <Textarea maxLength={250} {...form.register("note")} />
+            {form.formState.errors.note && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.note.message}</p>}
           </div>
           <Button type="submit" variant="primary" icon={<Save size={16} />} className="w-full">
             {dailyRecoveryLog ? "Update Log" : "Save Log"}

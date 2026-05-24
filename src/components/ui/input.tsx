@@ -24,12 +24,17 @@ export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectE
 export function Label({
   children,
   className,
+  htmlFor,
 }: {
   children: ReactNode;
   className?: string;
+  htmlFor?: string;
 }) {
   return (
-    <label className={cn("mb-1.5 block text-xs font-medium uppercase tracking-[0.12em] text-zinc-500", className)}>
+    <label
+      htmlFor={htmlFor}
+      className={cn("mb-1.5 block text-xs font-medium uppercase tracking-[0.12em] text-zinc-500", className)}
+    >
       {children}
     </label>
   );

@@ -10,14 +10,12 @@ import type { Routine, Exercise } from "@/types/domain";
 import { createId } from "@/lib/id";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 
-const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
 const freshRoutine = (): Routine => ({
   id: createId("routine"),
   name: "New Routine",
   focus: "General",
   estimatedMinutes: 0,
-  day: "Sunday",
+  day: "",
   exercises: [],
 });
 
@@ -50,9 +48,7 @@ export function RoutineBuilderScreen() {
     exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const setDay = (day: string) => {
-    setRoutine((prev) => ({ ...prev, day }));
-  };
+
 
   const addExerciseToRoutine = (exercise: Exercise) => {
     if (routine.exercises.some((ex) => ex.exerciseId === exercise.id)) {
@@ -93,13 +89,53 @@ export function RoutineBuilderScreen() {
       setErrorMessage("No workout plan selected.");
       return;
     }
+    const name = routine.name.trim();
+    const focus = routine.focus.trim();
+    
+    if (name.length === 0) {
+      setErrorMessage("Routine name is required.");
+      return;
+    }
+    if (name.length > 40) {
+      setErrorMessage("Routine name must be 40 characters or less.");
+      return;
+    }
+    if (focus.length > 60) {
+      setErrorMessage("Focus must be 60 characters or less.");
+      return;
+    }
     if (routine.exercises.length === 0) {
       setErrorMessage("A routine must have at least one exercise.");
       return;
     }
+
+    // Validate exercises details
+    for (const ex of routine.exercises) {
+      const sets = Number(ex.targetSets);
+      const reps = ex.targetReps.trim();
+      const rest = Number(ex.restSeconds);
+
+      if (isNaN(sets) || sets < 1 || sets > 20) {
+        setErrorMessage("Exercise sets must be between 1 and 20.");
+        return;
+      }
+      if (reps.length === 0 || reps.length > 10) {
+        setErrorMessage("Exercise reps format must be between 1 and 10 characters (e.g. '8-12').");
+        return;
+      }
+      if (isNaN(rest) || rest < 0 || rest > 3600) {
+        setErrorMessage("Exercise rest seconds must be between 0 and 3600.");
+        return;
+      }
+    }
+
     setErrorMessage(null);
 
-    saveRoutine(editingWorkoutPlanId, routine);
+    saveRoutine(editingWorkoutPlanId, {
+      ...routine,
+      name,
+      focus,
+    });
     setEditingRoutineId(null);
     setActiveSubScreen("workout-plan-detail");
   };
@@ -141,6 +177,7 @@ export function RoutineBuilderScreen() {
         <Label>Routine Name</Label>
         <Input
           value={routine.name}
+          maxLength={40}
           onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
           className="mt-2"
         />
@@ -148,25 +185,13 @@ export function RoutineBuilderScreen() {
         <Label className="mt-4 block">Focus</Label>
         <Input
           value={routine.focus}
+          maxLength={60}
           onChange={(e) => setRoutine({ ...routine, focus: e.target.value })}
           className="mt-2"
         />
       </Card>
 
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold text-white">Assign Day</h2>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {daysOfWeek.map((day) => (
-            <Button
-              key={day}
-              variant={routine.day === day ? "primary" : "secondary"}
-              onClick={() => setDay(day)}
-            >
-              {day.substring(0, 3)}
-            </Button>
-          ))}
-        </div>
-      </Card>
+
 
       <Card className="p-4">
         <h2 className="text-lg font-semibold text-white">Exercises</h2>
@@ -189,6 +214,8 @@ export function RoutineBuilderScreen() {
                     <Label>Sets</Label>
                     <Input
                       type="number"
+                      min={1}
+                      max={20}
                       value={ex.targetSets}
                       onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetSets", Number(e.target.value))}
                     />
@@ -197,6 +224,7 @@ export function RoutineBuilderScreen() {
                     <Label>Reps</Label>
                     <Input
                       value={ex.targetReps}
+                      maxLength={10}
                       onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetReps", e.target.value)}
                     />
                   </div>
@@ -204,6 +232,8 @@ export function RoutineBuilderScreen() {
                     <Label>Rest (s)</Label>
                     <Input
                       type="number"
+                      min={0}
+                      max={3600}
                       value={ex.restSeconds}
                       onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "restSeconds", Number(e.target.value))}
                     />

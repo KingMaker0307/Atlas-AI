@@ -106,6 +106,7 @@ export interface Workout {
   exercises: WorkoutExercise[];
   notes?: string;
   fatigueRating?: number;
+  planId?: string | null;
 }
 
 export interface Routine {

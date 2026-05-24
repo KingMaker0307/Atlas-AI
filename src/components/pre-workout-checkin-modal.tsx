@@ -20,14 +20,34 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
 
   const lastSleepHours = recoveryLogs.at(-1)?.sleepHours ?? 7.5;
   const [sleepHours, setSleepHours] = useState<number | undefined>(lastSleepHours);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const handleChange = (val: string) => {
+    if (val === "") {
+      setSleepHours(undefined);
+      setError("Sleep hours is required or skip.");
+      return;
+    }
+    const num = Number(val);
+    setSleepHours(num);
+    if (isNaN(num) || num < 0 || num > 24) {
+      setError("Sleep hours must be between 0 and 24.");
+    } else {
+      setError(null);
+    }
+  };
+
   const handleSave = async () => {
+    if (sleepHours === undefined || isNaN(sleepHours) || sleepHours < 0 || sleepHours > 24) {
+      setError("Sleep hours must be between 0 and 24.");
+      return;
+    }
     await logRecovery({
       id: todayKey(), // Use today's date as ID for daily log
       date: todayKey(),
-      sleepHours: sleepHours ?? 0, // Default to 0 if undefined
+      sleepHours: sleepHours,
       soreness: recoveryLogs.at(-1)?.soreness ?? 5, // Keep previous values or default
       stress: recoveryLogs.at(-1)?.stress ?? 5,
       readiness: recoveryLogs.at(-1)?.readiness ?? 5,
@@ -57,18 +77,19 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
             type="number"
             step="0.1"
             min="0"
-            max="16"
+            max="24"
             value={sleepHours ?? ""}
-            onChange={(e) => setSleepHours(Number(e.target.value))}
+            onChange={(e) => handleChange(e.target.value)}
             placeholder="e.g., 7.5"
           />
+          {error && <p className="mt-1 text-xs text-rose-300">{error}</p>}
         </div>
 
         <div className="flex gap-2">
           <Button variant="secondary" onClick={handleSkip} className="flex-1">
             Skip
           </Button>
-          <Button variant="primary" onClick={handleSave} className="flex-1">
+          <Button variant="primary" onClick={handleSave} disabled={!!error} className="flex-1">
             Save & Start
           </Button>
         </div>

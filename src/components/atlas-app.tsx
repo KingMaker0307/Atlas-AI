@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, Dumbbell, Home, Settings } from "lucide-react";
+import { BarChart3, Bot, ClipboardList, Home, Settings } from "lucide-react";
 import { useEffect } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
@@ -26,7 +26,7 @@ const navItems: Array<{
   icon: typeof Home;
 }> = [
   { id: "dashboard", label: "Dashboard", icon: Home },
-  { id: "workout", label: "Workout", icon: Dumbbell },
+  { id: "workout", label: "Plans", icon: ClipboardList },
   { id: "coach", label: "Coach", icon: Bot },
   { id: "progress", label: "Progress", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings },
@@ -66,6 +66,8 @@ export function AtlasApp() {
         return <WorkoutPlanBuilderScreen />;
       case "workout-plan-detail":
         return <WorkoutPlanDetailScreen />;
+      case "active-workout":
+        return <WorkoutScreen />;
       default:
         return null;
     }

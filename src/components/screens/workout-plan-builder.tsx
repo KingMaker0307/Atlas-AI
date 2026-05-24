@@ -24,8 +24,25 @@ export function WorkoutPlanBuilderScreen() {
     return { id: createId("plan"), name: "New Plan", goal: "", routines: [] };
   });
 
+  const [error, setError] = useState<string | null>(null);
+
   const handleSave = () => {
-    saveWorkoutPlan(plan);
+    const name = plan.name.trim();
+    const goal = plan.goal.trim();
+    if (name.length === 0) {
+      setError("Plan name is required.");
+      return;
+    }
+    if (name.length > 40) {
+      setError("Plan name must be 40 characters or less.");
+      return;
+    }
+    if (goal.length > 120) {
+      setError("Goal must be 120 characters or less.");
+      return;
+    }
+    setError(null);
+    saveWorkoutPlan({ ...plan, name, goal });
     setActiveSubScreen(null);
   };
 
@@ -48,10 +65,17 @@ export function WorkoutPlanBuilderScreen() {
         <Button onClick={handleSave}>Save</Button>
       </section>
 
+      {error && (
+        <Card className="p-4 border-red-500/50 bg-red-900/20 text-red-400 text-sm font-medium">
+          {error}
+        </Card>
+      )}
+
       <Card className="p-4">
         <Label>Plan Name</Label>
         <Input
           value={plan.name}
+          maxLength={40}
           onChange={(e) => setPlan({ ...plan, name: e.target.value })}
         />
       </Card>
@@ -60,6 +84,7 @@ export function WorkoutPlanBuilderScreen() {
         <Label>Goal</Label>
         <Input
           value={plan.goal}
+          maxLength={120}
           onChange={(e) => setPlan({ ...plan, goal: e.target.value })}
         />
       </Card>

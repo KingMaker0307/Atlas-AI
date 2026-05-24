@@ -30,10 +30,51 @@ export function PostWorkoutCheckinModal({
   const [soreness, setSoreness] = useState<number>(lastRecovery?.soreness ?? 5);
   const [stress, setStress] = useState<number>(lastRecovery?.stress ?? 5);
   const [readiness, setReadiness] = useState<number>(lastRecovery?.readiness ?? 5);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const validateScores = (eng: number, sor: number, str: number, read: number): boolean => {
+    if (isNaN(eng) || eng < 1 || eng > 10) return false;
+    if (isNaN(sor) || sor < 1 || sor > 10) return false;
+    if (isNaN(str) || str < 1 || str > 10) return false;
+    if (isNaN(read) || read < 1 || read > 10) return false;
+    return true;
+  };
+
+  const handleFieldChange = (field: string, val: string) => {
+    const num = Number(val);
+    let nextEnergy = energy;
+    let nextSoreness = soreness;
+    let nextStress = stress;
+    let nextReadiness = readiness;
+
+    if (field === "energy") {
+      setEnergy(num);
+      nextEnergy = num;
+    } else if (field === "soreness") {
+      setSoreness(num);
+      nextSoreness = num;
+    } else if (field === "stress") {
+      setStress(num);
+      nextStress = num;
+    } else if (field === "readiness") {
+      setReadiness(num);
+      nextReadiness = num;
+    }
+
+    if (!validateScores(nextEnergy, nextSoreness, nextStress, nextReadiness)) {
+      setError("All metrics must be numbers between 1 and 10.");
+    } else {
+      setError(null);
+    }
+  };
+
   const handleSave = async () => {
+    if (!validateScores(energy, soreness, stress, readiness)) {
+      setError("Please ensure all metrics are numbers between 1 and 10.");
+      return;
+    }
     await logRecovery({
       id: todayKey(),
       date: todayKey(),
@@ -64,8 +105,8 @@ export function PostWorkoutCheckinModal({
               type="number"
               min="1"
               max="10"
-              value={energy}
-              onChange={(e) => setEnergy(Number(e.target.value))}
+              value={energy || ""}
+              onChange={(e) => handleFieldChange("energy", e.target.value)}
             />
           </div>
           <div>
@@ -75,8 +116,8 @@ export function PostWorkoutCheckinModal({
               type="number"
               min="1"
               max="10"
-              value={soreness}
-              onChange={(e) => setSoreness(Number(e.target.value))}
+              value={soreness || ""}
+              onChange={(e) => handleFieldChange("soreness", e.target.value)}
             />
           </div>
           <div>
@@ -86,8 +127,8 @@ export function PostWorkoutCheckinModal({
               type="number"
               min="1"
               max="10"
-              value={stress}
-              onChange={(e) => setStress(Number(e.target.value))}
+              value={stress || ""}
+              onChange={(e) => handleFieldChange("stress", e.target.value)}
             />
           </div>
         </div>
@@ -98,12 +139,14 @@ export function PostWorkoutCheckinModal({
             type="number"
             min="1"
             max="10"
-            value={readiness}
-            onChange={(e) => setReadiness(Number(e.target.value))}
+            value={readiness || ""}
+            onChange={(e) => handleFieldChange("readiness", e.target.value)}
           />
         </div>
 
-        <Button variant="primary" onClick={handleSave} className="w-full">
+        {error && <p className="text-xs text-rose-300">{error}</p>}
+
+        <Button variant="primary" onClick={handleSave} disabled={!!error} className="w-full">
           Log Recovery
         </Button>
       </Card>

@@ -12,9 +12,9 @@ import { createId } from "@/lib/id";
 import type { BodyMetric } from "@/types/domain";
 
 const bodySchema = z.object({
-  bodyweight: z.number().min(0),
-  waist: z.number().min(0),
-  bodyFat: z.number().min(0).max(80),
+  bodyweight: z.number().min(20, "Must be at least 20").max(1000, "Must be at most 1000"),
+  waist: z.number().min(5, "Must be at least 5").max(200, "Must be at most 200"),
+  bodyFat: z.number().min(1, "Must be at least 1%").max(70, "Must be at most 70%"),
 });
 
 type BodyForm = z.infer<typeof bodySchema>;
@@ -25,6 +25,7 @@ interface DailyBodyMetricModalProps {
   selectedDate: string;
   dailyBodyMetric: BodyMetric | undefined;
   logBodyMetric: (metric: BodyMetric) => Promise<void>;
+  latestBodyweight?: number;
 }
 
 export function DailyBodyMetricModal({
@@ -33,11 +34,12 @@ export function DailyBodyMetricModal({
   selectedDate,
   dailyBodyMetric,
   logBodyMetric,
+  latestBodyweight,
 }: DailyBodyMetricModalProps) {
   const form = useForm<BodyForm>({
     resolver: zodResolver(bodySchema),
     defaultValues: {
-      bodyweight: dailyBodyMetric?.bodyweight ?? 0,
+      bodyweight: dailyBodyMetric?.bodyweight || latestBodyweight || 0,
       waist: dailyBodyMetric?.waist ?? 0,
       bodyFat: dailyBodyMetric?.bodyFat ?? 0,
     },
@@ -45,11 +47,11 @@ export function DailyBodyMetricModal({
 
   useEffect(() => {
     form.reset({
-      bodyweight: dailyBodyMetric?.bodyweight ?? 0,
+      bodyweight: dailyBodyMetric?.bodyweight || latestBodyweight || 0,
       waist: dailyBodyMetric?.waist ?? 0,
       bodyFat: dailyBodyMetric?.bodyFat ?? 0,
     });
-  }, [dailyBodyMetric, form]);
+  }, [dailyBodyMetric, latestBodyweight, form]);
 
   const onSubmit = async (values: BodyForm) => {
     await logBodyMetric({
@@ -75,15 +77,18 @@ export function DailyBodyMetricModal({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label htmlFor="bodyweight">Weight</Label>
-              <Input type="number" step="0.1" {...form.register("bodyweight", { valueAsNumber: true })} />
+              <Input type="number" step="0.1" min={20} max={1000} {...form.register("bodyweight", { valueAsNumber: true })} />
+              {form.formState.errors.bodyweight && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.bodyweight.message}</p>}
             </div>
             <div>
               <Label htmlFor="waist">Waist</Label>
-              <Input type="number" step="0.1" {...form.register("waist", { valueAsNumber: true })} />
+              <Input type="number" step="0.1" min={5} max={200} {...form.register("waist", { valueAsNumber: true })} />
+              {form.formState.errors.waist && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.waist.message}</p>}
             </div>
             <div>
               <Label htmlFor="bodyFat">Body fat</Label>
-              <Input type="number" step="0.1" {...form.register("bodyFat", { valueAsNumber: true })} />
+              <Input type="number" step="0.1" min={1} max={70} {...form.register("bodyFat", { valueAsNumber: true })} />
+              {form.formState.errors.bodyFat && <p className="mt-1 text-[10px] text-rose-300 leading-normal">{form.formState.errors.bodyFat.message}</p>}
             </div>
           </div>
           <Surface className="border-dashed border-white/10 text-sm text-zinc-500">
