@@ -36,7 +36,7 @@ import type {
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "backup" | null;
-export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail";
+export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | null;
 
 interface OnboardingData extends UserProfile {
   apiKey?: string;
