@@ -27,6 +27,8 @@ export function RoutineBuilderScreen() {
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const editingRoutineId = useAtlasStore((state) => state.editingRoutineId);
   const setEditingRoutineId = useAtlasStore((state) => state.setEditingRoutineId);
+  const coachBusy = useAtlasStore((state) => state.coachBusy);
+  const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
 
   const [routine, setRoutine] = useState<Routine>(freshRoutine());
   const [searchTerm, setSearchTerm] = useState("");
@@ -296,6 +298,33 @@ export function RoutineBuilderScreen() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {searchTerm.trim().length > 2 && (
+          <div className="mt-3 flex items-center justify-between p-3 rounded-2xl border border-purple-500/10 bg-purple-950/10 select-none">
+            <div className="min-w-0 pr-2">
+              <p className="text-xs font-bold text-white leading-none">Can't find "{searchTerm}"?</p>
+              <p className="text-[10px] text-zinc-400 mt-1 leading-normal">Our AI Coach can generate its biomechanical profile instantly!</p>
+            </div>
+            <Button
+              size="sm"
+              disabled={coachBusy}
+              onClick={async () => {
+                try {
+                  setErrorMessage(null);
+                  const generated = await generateGlobalExercise(searchTerm.trim());
+                  if (generated) {
+                    addExerciseToRoutine(generated);
+                    setSearchTerm("");
+                  }
+                } catch (e: any) {
+                  setErrorMessage(e.message || "Failed to generate exercise profile.");
+                }
+              }}
+              className="h-7 text-[10px] font-bold uppercase bg-purple-600 hover:bg-purple-500 border-none shrink-0 text-white"
+            >
+              {coachBusy ? "Generating..." : "AI Generate"}
+            </Button>
+          </div>
+        )}
         <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
           {filteredExercises.map((exercise, index) => (
             <div key={`${exercise.id}-${index}`} className="flex items-center justify-between rounded-lg bg-zinc-800 p-3">

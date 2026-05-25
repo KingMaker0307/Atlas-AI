@@ -29,6 +29,9 @@ import {
   Target,
   Heart,
   Footprints,
+  Mic,
+  MicOff,
+  Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -74,6 +77,86 @@ const getExerciseStats = (workouts: any[], exerciseId: string, weightUnit: strin
   };
 };
 
+const WORD_TO_NUM: Record<string, number> = {
+  one: 1, 
+  two: 2, 
+  three: 3, 
+  four: 4, 
+  five: 5, 
+  six: 6, 
+  seven: 7, 
+  eight: 8, 
+  nine: 9, 
+  ten: 10,
+  first: 1,
+  second: 2,
+  third: 3,
+  fourth: 4,
+  fifth: 5,
+  sixth: 6,
+  seventh: 7,
+  eighth: 8,
+  ninth: 9,
+  tenth: 10
+};
+
+function calculatePlates(targetWeight: number, unit: string) {
+  const base = unit === "kg" ? 20 : 45;
+  if (targetWeight <= base) return null;
+  const targetPerSide = (targetWeight - base) / 2;
+  const plates = unit === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
+  
+  const result: number[] = [];
+  let remaining = targetPerSide;
+  for (const plate of plates) {
+    while (remaining >= plate - 0.01) {
+      result.push(plate);
+      remaining -= plate;
+    }
+  }
+  return result;
+}
+
+function parseSpeechCommand(text: string) {
+  const normalized = text.toLowerCase();
+  
+  // Pattern 1: e.g. "log set 2 135 pounds 8 reps"
+  const mainRegex = /log\s+set\s+(\w+)\s+(\d+(?:\.\d+)?)\s*(?:pounds|libs|kilos|kg|lbs)?\s*(?:at)?\s*(\d+)\s*(?:reps|rep)?/i;
+  const match = normalized.match(mainRegex);
+  if (match) {
+    const setWord = match[1];
+    const weightVal = parseFloat(match[2]);
+    const repsVal = parseInt(match[3], 10);
+    
+    let setNumber = parseInt(setWord, 10);
+    if (isNaN(setNumber)) {
+      setNumber = WORD_TO_NUM[setWord] || 0;
+    }
+    
+    return {
+      command: "log_set",
+      setNumber,
+      weight: weightVal,
+      reps: repsVal
+    };
+  }
+  
+  if (normalized.includes("skip exercise")) {
+    return { command: "skip_exercise" };
+  }
+  if (normalized.includes("add set")) {
+    return { command: "add_set" };
+  }
+  if (normalized.includes("start rest")) {
+    return { command: "start_rest" };
+  }
+  if (normalized.includes("stop rest") || normalized.includes("stop timer")) {
+    return { command: "stop_rest" };
+  }
+  
+  return null;
+}
+
 export function WorkoutScreen() {
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
@@ -103,6 +186,7 @@ export function WorkoutScreen() {
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
   const deleteSet = useAtlasStore((state) => state.deleteSet);
+  const profile = useAtlasStore((state) => state.profile);
 
   // Daily limit check
   const getLocalDateString = (dateOrStr: Date | string) => {
@@ -117,6 +201,104 @@ export function WorkoutScreen() {
   const workoutsToday = workouts.filter((w) => getLocalDateString(w.startedAt) === todayStr);
   const isLimitReached = workoutsToday.length >= 3;
 
+  const handleGpxUpload = (event: React.ChangeEvent<HTMLInputElement>, workoutExerciseId: string, sets: any[]) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        
+        // Parse track points
+        const trkpts = xmlDoc.getElementsByTagName("trkpt");
+        if (trkpts.length === 0) {
+          alert("Invalid GPX File: No trackpoints (<trkpt>) found in the upload.");
+          return;
+        }
+        
+        // Calculate total duration (seconds) from track point times
+        let durationSeconds = 1800; // fallback: 30 minutes
+        const pointTimes: Date[] = [];
+        for (let i = 0; i < trkpts.length; i++) {
+          const timeNode = trkpts[i].getElementsByTagName("time")[0];
+          if (timeNode?.textContent) {
+            pointTimes.push(new Date(timeNode.textContent));
+          }
+        }
+        
+        if (pointTimes.length > 1) {
+          durationSeconds = Math.round((pointTimes[pointTimes.length - 1].getTime() - pointTimes[0].getTime()) / 1000);
+        }
+        
+        // Calculate total distance (miles) using Haversine formula
+        let totalDistanceMiles = 0;
+        const deg2rad = (deg: number) => deg * (Math.PI / 180);
+        
+        for (let i = 0; i < trkpts.length - 1; i++) {
+          const lat1 = parseFloat(trkpts[i].getAttribute("lat") || "0");
+          const lon1 = parseFloat(trkpts[i].getAttribute("lon") || "0");
+          const lat2 = parseFloat(trkpts[i + 1].getAttribute("lat") || "0");
+          const lon2 = parseFloat(trkpts[i + 1].getAttribute("lon") || "0");
+          
+          const R = 3958.8; // Radius of the Earth in miles
+          const dLat = deg2rad(lat2 - lat1);
+          const dLon = deg2rad(lon2 - lon1);
+          const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          const distance = R * c;
+          totalDistanceMiles += distance;
+        }
+        
+        totalDistanceMiles = parseFloat(totalDistanceMiles.toFixed(2));
+        
+        // Parse average heart rate if heart rate extension fields exist
+        let hrSum = 0;
+        let hrCount = 0;
+        const hrs = xmlDoc.getElementsByTagName("gpxtpx:hr");
+        const hrsAlternative = xmlDoc.getElementsByTagName("hr");
+        const activeHrs = hrs.length > 0 ? hrs : hrsAlternative;
+        for (let i = 0; i < activeHrs.length; i++) {
+          const hrVal = parseInt(activeHrs[i].textContent || "0", 10);
+          if (hrVal > 0) {
+            hrSum += hrVal;
+            hrCount++;
+          }
+        }
+        const avgHr = hrCount > 0 ? Math.round(hrSum / hrCount) : undefined;
+        
+        // Estimate calories based on general cardio METs (8.0 METs) and user bodyweight
+        const userWeightLbs = profile?.weight || 150;
+        const weightKg = userWeightLbs / 2.20462;
+        const durationMinutes = durationSeconds / 60;
+        const metVal = 8.0; 
+        const estimatedCalories = Math.round(metVal * 3.5 * (weightKg / 200) * durationMinutes);
+        
+        // Autofill first set
+        if (sets.length > 0) {
+          const firstSet = sets[0];
+          void updateSet(workoutExerciseId, firstSet.id, {
+            durationSeconds,
+            distance: totalDistanceMiles,
+            calories: estimatedCalories,
+            completed: true
+          });
+          
+          alert(`GPX Telemetry Imported Successfully!\n\n• Duration: ${Math.floor(durationMinutes)}m ${durationSeconds % 60}s\n• Distance: ${totalDistanceMiles} miles\n${avgHr ? `• Avg Heart Rate: ${avgHr} BPM\n` : ""}• Est. Energy Expended: ${estimatedCalories} kcal`);
+        }
+      } catch (err: any) {
+        alert("Error parsing GPX file. Please verify it is a standard tracklog file.");
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [query, setQuery] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -126,6 +308,94 @@ export function WorkoutScreen() {
   const [elapsedWorkoutTime, setElapsedWorkoutTime] = useState(0);
   const [activeSwapExercise, setActiveSwapExercise] = useState<any | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
+
+  const [isListening, setIsListening] = useState(false);
+  const [speechFeedback, setSpeechFeedback] = useState<string | null>(null);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser. Please use Chrome or Safari.");
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setSpeechFeedback("Listening... Say: 'log set 2 135 pounds 8 reps'");
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+      setSpeechFeedback(`Error: ${event.error}`);
+      setTimeout(() => setSpeechFeedback(null), 3000);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setSpeechFeedback(`Heard: "${transcript}"`);
+      
+      const parsed = parseSpeechCommand(transcript);
+      if (parsed) {
+        handleSpeechCommand(parsed);
+      } else {
+        setSpeechFeedback(`Couldn't parse: "${transcript}". Try 'log set 1 135 pounds 8 reps'`);
+        setTimeout(() => setSpeechFeedback(null), 4000);
+      }
+    };
+
+    recognition.start();
+  };
+
+  const handleSpeechCommand = (cmd: any) => {
+    if (!activeWorkout) return;
+    
+    const activeEx = activeWorkout.exercises.find(ex => !ex.skipped && ex.sets.some(s => !s.completed)) || activeWorkout.exercises[0];
+    if (!activeEx) return;
+
+    if (cmd.command === "log_set") {
+      const setIdx = cmd.setNumber - 1;
+      const targetSet = activeEx.sets[setIdx];
+      if (targetSet) {
+        void updateSet(activeEx.id, targetSet.id, {
+          weight: cmd.weight,
+          reps: cmd.reps,
+          completed: true
+        });
+        void startRestTimer(activeEx.restSeconds);
+        setSpeechFeedback(`Set ${cmd.setNumber} logged: ${cmd.weight} ${weightUnit} x ${cmd.reps} reps!`);
+      } else {
+        setSpeechFeedback(`Set ${cmd.setNumber} not found in this exercise.`);
+      }
+    } else if (cmd.command === "add_set") {
+      void addSet(activeEx.id);
+      setSpeechFeedback("Added a new set!");
+    } else if (cmd.command === "skip_exercise") {
+      void skipWorkoutExercise(activeEx.id);
+      setSpeechFeedback("Exercise skipped.");
+    } else if (cmd.command === "start_rest") {
+      void startRestTimer(activeEx.restSeconds);
+      setSpeechFeedback("Rest timer started.");
+    } else if (cmd.command === "stop_rest") {
+      void stopRestTimer();
+      setSpeechFeedback("Rest timer stopped.");
+    }
+    setTimeout(() => setSpeechFeedback(null), 3000);
+  };
 
   const originalEx = useMemo(() => {
     if (!activeSwapExercise) return null;
@@ -804,6 +1074,22 @@ export function WorkoutScreen() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Hands-Free Voice Logger Button */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className={`h-8 w-8 rounded-lg shrink-0 transition-all ${
+                isListening
+                  ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35"
+                  : "bg-transparent text-zinc-400 hover:text-white border border-white/5"
+              }`}
+              onClick={toggleListening}
+              aria-label="Voice command logger"
+              title="Voice command logging"
+            >
+              {isListening ? <Mic size={15} className="text-rose-500 animate-pulse" /> : <MicOff size={15} />}
+            </Button>
+
             {/* Active Timer badge */}
             <div className="text-right">
               <p className="text-xs font-bold text-emerald-400 font-mono leading-none">
@@ -855,6 +1141,14 @@ export function WorkoutScreen() {
             </Button>
           </div>
         </div>
+
+        {/* Voice Logger Transcription Feedback Alert Banner */}
+        {speechFeedback && (
+          <div className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
+            <Sparkles size={12} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+            <span>{speechFeedback}</span>
+          </div>
+        )}
 
         {/* Floating rest-timer action controllers */}
         {restTimerEndsAt && remaining > 0 && (
@@ -1041,6 +1335,25 @@ export function WorkoutScreen() {
                     if (isCardio) {
                       return (
                         <>
+                          <div className="flex items-center justify-between gap-3 mb-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2.5 rounded-xl border border-purple-500/10 select-none">
+                            <div className="flex items-center gap-2">
+                              <Upload size={14} className="text-purple-400 shrink-0" />
+                              <div className="text-left">
+                                <p className="text-[11px] font-bold text-white leading-tight">Cardio Telemetry Garmin/Watch Sync</p>
+                                <p className="text-[9px] text-zinc-400 mt-0.5 leading-none">Auto-fill duration, distance, and calories from a .GPX file.</p>
+                              </div>
+                            </div>
+                            <label className="h-6 px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white flex items-center justify-center transition-all select-none">
+                              Upload GPX
+                              <input 
+                                type="file" 
+                                accept=".gpx" 
+                                className="hidden" 
+                                onChange={(e) => handleGpxUpload(e, workoutExercise.id, workoutExercise.sets)} 
+                              />
+                            </label>
+                          </div>
+
                           <div className="grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
                             <span className="text-left">#</span>
                             <span>Min</span>
@@ -1292,6 +1605,56 @@ export function WorkoutScreen() {
                             Rest {Math.round(workoutExercise.restSeconds / 60)}m
                           </Button>
                         </div>
+
+                        {/* Plate Loader Assist & RIR Advisor Panel */}
+                        {(() => {
+                          const isBarbell = exercise.equipment.includes("barbell");
+                          const activeSet = workoutExercise.sets.find((s) => !s.completed) || workoutExercise.sets[workoutExercise.sets.length - 1];
+                          const activeWeight = activeSet?.weight || 0;
+                          const platesList = isBarbell && activeWeight ? calculatePlates(activeWeight, weightUnit) : null;
+                          const lastCompletedSet = [...workoutExercise.sets].reverse().find((s) => s.completed);
+                          const rirVal = lastCompletedSet?.rir;
+
+                          if (!platesList && rirVal === undefined) return null;
+
+                          return (
+                            <div className="mt-3 p-3 rounded-xl bg-surface/40 border border-surface-border space-y-2 text-xs">
+                              {platesList && platesList.length > 0 && (
+                                <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
+                                  <div className="flex items-center gap-1.5 text-zinc-400 font-medium">
+                                    <Dumbbell size={13} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+                                    <span>Barbell Plates per side ({activeWeight} {weightUnit}):</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {platesList.map((plate, idx) => (
+                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-zinc-850 border border-zinc-700 text-[10px] font-bold text-white font-mono">
+                                        {plate}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {rirVal !== undefined && (
+                                <div className="flex items-start gap-2">
+                                  <Sparkles size={13} className="text-amber-400 mt-0.5 shrink-0" />
+                                  <div className="space-y-0.5">
+                                    <p className="font-semibold text-white leading-tight">
+                                      Set {workoutExercise.sets.findIndex(s => s.id === lastCompletedSet?.id) + 1} RIR feedback ({rirVal} RIR):
+                                    </p>
+                                    <p className="text-zinc-400 text-[11px] leading-relaxed">
+                                      {rirVal <= 1 
+                                        ? "Optimal hypertrophy threshold reached! Maintain weight or increase by +2.5% next session."
+                                        : rirVal >= 4 
+                                          ? "Low-intensity stimulus. Consider increasing load by 5-10% to target hypertrophy."
+                                          : "Moderate-intensity stimulus. Perfect sweet spot for safe progressive overload."}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </>
                     );
                   })()}

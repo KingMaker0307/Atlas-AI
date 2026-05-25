@@ -392,6 +392,132 @@ export function WorkoutPlanBuilderScreen() {
     setActiveSubScreen(null);
   };
 
+  const handleSeedSplit = (type: "ppl" | "upper-lower" | "full-body") => {
+    let routines: any[] = [];
+    let goal = "";
+    let name = "";
+    
+    const startDay = plan.startDay || "Monday";
+
+    if (type === "ppl") {
+      name = "PPL Power & Hypertrophy";
+      goal = "Targeted muscular adaptations with Push, Pull, and Legs routines";
+      routines = [
+        {
+          id: createId("routine"),
+          name: "Push Day",
+          focus: "Chest, Shoulders & Triceps",
+          estimatedMinutes: 60,
+          day: "Day 1",
+          exercises: [
+            { exerciseId: "bench-press", targetSets: 4, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "dumbbell-shoulder-press", targetSets: 3, targetReps: "8-12", restSeconds: 75 },
+            { exerciseId: "incline-dumbbell-press", targetSets: 3, targetReps: "10-12", restSeconds: 75 },
+            { exerciseId: "tricep-pushdown", targetSets: 3, targetReps: "12-15", restSeconds: 60 }
+          ]
+        },
+        {
+          id: createId("routine"),
+          name: "Pull Day",
+          focus: "Back, Rear Delts & Biceps",
+          estimatedMinutes: 60,
+          day: "Day 2",
+          exercises: [
+            { exerciseId: "deadlift", targetSets: 3, targetReps: "5", restSeconds: 120 },
+            { exerciseId: "lat-pulldown", targetSets: 3, targetReps: "8-12", restSeconds: 75 },
+            { exerciseId: "barbell-row", targetSets: 3, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "dumbbell-curl", targetSets: 3, targetReps: "12-15", restSeconds: 60 }
+          ]
+        },
+        {
+          id: createId("routine"),
+          name: "Legs Day",
+          focus: "Quads, Hamstrings & Calves",
+          estimatedMinutes: 60,
+          day: "Day 3",
+          exercises: [
+            { exerciseId: "barbell-back-squat", targetSets: 4, targetReps: "6-8", restSeconds: 120 },
+            { exerciseId: "romanian-deadlift", targetSets: 3, targetReps: "8-10", restSeconds: 90 },
+            { exerciseId: "leg-press", targetSets: 3, targetReps: "10-12", restSeconds: 90 },
+            { exerciseId: "calf-raise-machine", targetSets: 3, targetReps: "15", restSeconds: 60 }
+          ]
+        }
+      ];
+    } else if (type === "upper-lower") {
+      name = "Upper/Lower Hypertrophy Split";
+      goal = "High frequency stimulation of upper and lower halves";
+      routines = [
+        {
+          id: createId("routine"),
+          name: "Upper Body",
+          focus: "Chest, Back & Arms",
+          estimatedMinutes: 60,
+          day: "Day 1",
+          exercises: [
+            { exerciseId: "bench-press", targetSets: 4, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "barbell-row", targetSets: 4, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "dumbbell-shoulder-press", targetSets: 3, targetReps: "10-12", restSeconds: 75 },
+            { exerciseId: "lat-pulldown", targetSets: 3, targetReps: "10-12", restSeconds: 75 }
+          ]
+        },
+        {
+          id: createId("routine"),
+          name: "Lower Body",
+          focus: "Quads, Hamstrings & Core",
+          estimatedMinutes: 60,
+          day: "Day 2",
+          exercises: [
+            { exerciseId: "barbell-back-squat", targetSets: 4, targetReps: "8-10", restSeconds: 120 },
+            { exerciseId: "romanian-deadlift", targetSets: 3, targetReps: "10-12", restSeconds: 90 },
+            { exerciseId: "leg-extension", targetSets: 3, targetReps: "12-15", restSeconds: 60 },
+            { exerciseId: "hanging-leg-raise", targetSets: 3, targetReps: "15", restSeconds: 60 }
+          ]
+        }
+      ];
+    } else if (type === "full-body") {
+      name = "Full Body Strength & Conditioning";
+      goal = "Functional full body movements with recovery pacing";
+      routines = [
+        {
+          id: createId("routine"),
+          name: "Full Body A",
+          focus: "Squat, Push & Pull focus",
+          estimatedMinutes: 60,
+          day: "Day 1",
+          exercises: [
+            { exerciseId: "barbell-back-squat", targetSets: 3, targetReps: "8-10", restSeconds: 120 },
+            { exerciseId: "bench-press", targetSets: 3, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "barbell-row", targetSets: 3, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "plank", targetSets: 3, targetReps: "60s", restSeconds: 60 }
+          ]
+        },
+        {
+          id: createId("routine"),
+          name: "Full Body B",
+          focus: "Deadlift & Shoulder focus",
+          estimatedMinutes: 60,
+          day: "Day 2",
+          exercises: [
+            { exerciseId: "deadlift", targetSets: 3, targetReps: "5", restSeconds: 120 },
+            { exerciseId: "overhead-press", targetSets: 3, targetReps: "8-10", restSeconds: 90 },
+            { exerciseId: "lat-pulldown", targetSets: 3, targetReps: "10-12", restSeconds: 75 },
+            { exerciseId: "hanging-leg-raise", targetSets: 3, targetReps: "15", restSeconds: 60 }
+          ]
+        }
+      ];
+    }
+
+    const assignedRoutines = assignRoutinesToDays(routines, startDay);
+
+    setPlan({
+      ...plan,
+      name,
+      goal,
+      routines: assignedRoutines,
+      creatorType: "manual"
+    });
+  };
+
   const handleGeneratePlan = async ({ targetDate, additionalDetails, startDay }: { targetDate: string; additionalDetails: string; startDay: string }) => {
     setShowAiCard(false);
     setActiveSubScreen(null);
@@ -846,6 +972,52 @@ export function WorkoutPlanBuilderScreen() {
               placeholder="e.g., Build strength, lose fat, improve conditioning"
               onChange={(e) => setPlan({ ...plan, goal: e.target.value })}
             />
+          </Card>
+
+          {/* Seeding Split Templates Card */}
+          <Card className="p-4 space-y-3">
+            <div>
+              <Label className="text-sm font-bold text-white flex items-center gap-1.5">
+                <Sparkles size={14} className="text-violet-400" />
+                <span>Seed Split Templates</span>
+              </Label>
+              <p className="text-[11px] text-zinc-500 mt-1 leading-normal">
+                Instantly populate your routines and exercises with pre-configured split programs. Perfect for speeding up manual planning.
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="text-xs py-2.5 h-auto bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
+                onClick={() => handleSeedSplit("ppl")}
+              >
+                <span className="font-bold">Push / Pull / Legs</span>
+                <span className="text-[9px] text-zinc-500 font-medium">3-Day Classic Split</span>
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="text-xs py-2.5 h-auto bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
+                onClick={() => handleSeedSplit("upper-lower")}
+              >
+                <span className="font-bold">Upper / Lower</span>
+                <span className="text-[9px] text-zinc-500 font-medium">4-Day Muscle Split</span>
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="text-xs py-2.5 h-auto bg-sky-500/10 border-sky-500/20 text-sky-300 hover:bg-sky-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
+                onClick={() => handleSeedSplit("full-body")}
+              >
+                <span className="font-bold">Full Body</span>
+                <span className="text-[9px] text-zinc-500 font-medium">3-Day Alternating Plan</span>
+              </Button>
+            </div>
           </Card>
 
           {/* Routines preview */}
