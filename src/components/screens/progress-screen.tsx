@@ -775,7 +775,7 @@ export function ProgressScreen() {
         
         <p className="text-[11px] text-zinc-400 mt-1 mb-3">28-day training heatmap. Click any cell to log daily recovery or body weight metrics directly.</p>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
           {activeRecoveryHeatmap.map((day) => {
             const isTrained = day.trained;
             const isRecovered = day.recovered;

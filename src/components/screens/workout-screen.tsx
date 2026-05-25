@@ -1354,7 +1354,7 @@ export function WorkoutScreen() {
                             </label>
                           </div>
 
-                          <div className="grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
+                          <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
                             <span className="text-left">#</span>
                             <span>Min</span>
                             <span>Dist (mi)</span>
@@ -1365,14 +1365,15 @@ export function WorkoutScreen() {
                           </div>
 
                           {workoutExercise.sets.map((set, setIndex) => (
-                            <div
-                              className={`grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] items-center gap-2 rounded-xl border p-1.5 transition-all duration-300 ${
-                                set.completed
-                                  ? "bg-emerald-500/5 border-emerald-550/20 dark:border-emerald-500/20"
-                                  : "bg-input border-input focus-within:border-card-border"
-                              }`}
-                              key={set.id}
-                            >
+                            <div key={set.id} className="space-y-2">
+                              {/* Desktop/Tablet Spreadsheet Row Layout (Shown only on larger screens) */}
+                              <div
+                                className={`hidden sm:grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] items-center gap-2 rounded-xl border p-1.5 transition-all duration-300 ${
+                                  set.completed
+                                    ? "bg-emerald-500/5 border-emerald-550/20 dark:border-emerald-500/20"
+                                    : "bg-input border-input focus-within:border-card-border"
+                                }`}
+                              >
                               <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 text-center leading-none">
                                 {setIndex + 1}
                               </span>
@@ -1465,6 +1466,131 @@ export function WorkoutScreen() {
                               >
                                 <Check size={14} className={set.completed ? "stroke-[3px]" : "stroke-[2px]"} />
                               </Button>
+                              </div>
+
+                              {/* Mobile Cardio Set Card (Shown only on small screens) */}
+                              <div
+                                className={`flex flex-col gap-2.5 p-3 rounded-2xl border transition-all duration-300 sm:hidden ${
+                                  set.completed
+                                    ? "bg-emerald-500/5 border-emerald-500/20"
+                                    : "bg-zinc-950/25 border-zinc-800/40 focus-within:border-card-border"
+                                }`}
+                              >
+                                {/* Card Header Row */}
+                                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                  <span className="text-xs font-black text-zinc-400">
+                                    SET #{setIndex + 1}
+                                  </span>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    {/* Delete Button */}
+                                    <Button
+                                      aria-label="Delete set"
+                                      className="h-8 w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+
+                                    {/* Tactical Complete Button */}
+                                    <Button
+                                      aria-label="Complete set"
+                                      className={`h-8 w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${
+                                        set.completed
+                                          ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
+                                          : "bg-surface text-zinc-450 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
+                                      }`}
+                                      variant="ghost"
+                                      onClick={() => {
+                                        if (navigator.vibrate) navigator.vibrate(12);
+                                        void updateSet(workoutExercise.id, set.id, { completed: !set.completed });
+                                        if (!set.completed) void startRestTimer(workoutExercise.restSeconds);
+                                      }}
+                                    >
+                                      {set.completed ? (
+                                        <>
+                                          <Check size={12} className="stroke-[3px]" />
+                                          Done
+                                        </>
+                                      ) : (
+                                        "Check"
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Form Inputs Grid (4 columns, touch-friendly pads) */}
+                                <div className="grid grid-cols-4 gap-2 text-left">
+                                  <div>
+                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Min</label>
+                                    <Input
+                                      inputMode="decimal"
+                                      type="number"
+                                      min={0}
+                                      max={999}
+                                      step="any"
+                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                      value={set.durationSeconds !== undefined ? parseFloat((set.durationSeconds / 60).toFixed(2)) : 30}
+                                      onChange={(event) => {
+                                        const val = Math.min(999, Math.max(0, parseFloat(event.target.value) || 0));
+                                        void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(val * 60) });
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Dist (mi)</label>
+                                    <Input
+                                      inputMode="decimal"
+                                      type="number"
+                                      min={0}
+                                      max={999}
+                                      step="any"
+                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                      value={set.distance ?? 0}
+                                      onChange={(event) => {
+                                        const val = Math.min(999, Math.max(0, parseFloat(event.target.value) || 0));
+                                        void updateSet(workoutExercise.id, set.id, { distance: val });
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1 truncate">{cardioLabel}</label>
+                                    <Input
+                                      inputMode="decimal"
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      step="any"
+                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                      value={isTreadmill ? (set.incline ?? 0) : (set.resistance ?? 0)}
+                                      onChange={(event) => {
+                                        const val = Math.min(100, Math.max(0, parseFloat(event.target.value) || 0));
+                                        void updateSet(workoutExercise.id, set.id, isTreadmill ? { incline: val } : { resistance: val });
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">kcal</label>
+                                    <Input
+                                      inputMode="numeric"
+                                      type="number"
+                                      min={0}
+                                      max={9999}
+                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                      value={set.calories ?? 0}
+                                      onChange={(event) => {
+                                        const val = Math.min(9999, Math.max(0, parseInt(event.target.value, 10) || 0));
+                                        void updateSet(workoutExercise.id, set.id, { calories: val });
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ))}
 
@@ -1485,7 +1611,7 @@ export function WorkoutScreen() {
 
                     return (
                       <>
-                        <div className="grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
+                        <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
                           <span className="text-left">#</span>
                           <span>Reps</span>
                           <span>Load ({weightUnit})</span>
@@ -1495,31 +1621,32 @@ export function WorkoutScreen() {
                         </div>
 
                         {workoutExercise.sets.map((set, setIndex) => (
-                          <div
-                            className={`grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] items-center gap-2 rounded-xl border p-1.5 transition-all duration-300 ${
-                              set.completed
-                                ? "bg-emerald-500/5 border-emerald-550/20 dark:border-emerald-500/20"
-                                : "bg-input border-input focus-within:border-card-border"
-                            }`}
-                            key={set.id}
-                          >
-                            <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 text-center leading-none">
-                              {setIndex + 1}
-                            </span>
-                            
-                            {/* Reps selector */}
-                            <Input
-                              inputMode="numeric"
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                              value={set.reps}
-                              onChange={(event) => {
-                                  const val = Math.min(100, Math.max(0, Number(event.target.value)));
-                                  void updateSet(workoutExercise.id, set.id, { reps: val });
-                              }}
-                            />
+                          <div key={set.id} className="space-y-2">
+                            {/* Desktop/Tablet Spreadsheet Row Layout (Shown only on larger screens) */}
+                            <div
+                              className={`hidden sm:grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] items-center gap-2 rounded-xl border p-1.5 transition-all duration-300 ${
+                                set.completed
+                                  ? "bg-emerald-500/5 border-emerald-550/20 dark:border-emerald-500/20"
+                                  : "bg-input border-input focus-within:border-card-border"
+                              }`}
+                            >
+                              <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 text-center leading-none">
+                                {setIndex + 1}
+                              </span>
+                              
+                              {/* Reps selector */}
+                              <Input
+                                inputMode="numeric"
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
+                                value={set.reps}
+                                onChange={(event) => {
+                                    const val = Math.min(100, Math.max(0, Number(event.target.value)));
+                                    void updateSet(workoutExercise.id, set.id, { reps: val });
+                                }}
+                              />
 
                             {/* Weight Selector */}
                             <Input
@@ -1579,6 +1706,119 @@ export function WorkoutScreen() {
                               <Check size={14} className={set.completed ? "stroke-[3px]" : "stroke-[2px]"} />
                             </Button>
                           </div>
+
+                          {/* Mobile Strength Set Card (Shown only on small screens) */}
+                          <div
+                            className={`flex flex-col gap-2.5 p-3 rounded-2xl border transition-all duration-300 sm:hidden ${
+                              set.completed
+                                ? "bg-emerald-500/5 border-emerald-500/20"
+                                : "bg-zinc-950/25 border-zinc-800/40 focus-within:border-card-border"
+                            }`}
+                          >
+                            {/* Card Header Row */}
+                            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-zinc-400">
+                                  SET #{setIndex + 1}
+                                </span>
+                                {set.isDropSet && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[8px] font-black uppercase tracking-wider text-amber-400">
+                                    Dropset
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {/* Delete Button */}
+                                <Button
+                                  aria-label="Delete set"
+                                  className="h-8 w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                >
+                                  <Trash2 size={13} />
+                                </Button>
+
+                                {/* Tactical Complete Button */}
+                                <Button
+                                  aria-label="Complete set"
+                                  className={`h-8 w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${
+                                    set.completed
+                                      ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
+                                      : "bg-surface text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
+                                  }`}
+                                  variant="ghost"
+                                  onClick={() => {
+                                    if (navigator.vibrate) navigator.vibrate(12);
+                                    void updateSet(workoutExercise.id, set.id, { completed: !set.completed });
+                                    if (!set.completed) void startRestTimer(workoutExercise.restSeconds);
+                                  }}
+                                >
+                                  {set.completed ? (
+                                    <>
+                                      <Check size={12} className="stroke-[3px]" />
+                                      Done
+                                    </>
+                                  ) : (
+                                    "Check"
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Form Inputs Grid (3 columns, touch-friendly pads) */}
+                            <div className="grid grid-cols-3 gap-2.5 text-left">
+                              <div>
+                                <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Reps</label>
+                                <Input
+                                  inputMode="numeric"
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                  value={set.reps}
+                                  onChange={(event) => {
+                                    const val = Math.min(100, Math.max(0, Number(event.target.value)));
+                                    void updateSet(workoutExercise.id, set.id, { reps: val });
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Load ({weightUnit})</label>
+                                <Input
+                                  inputMode="decimal"
+                                  type="number"
+                                  min={0}
+                                  max={2000}
+                                  className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                  value={set.weight}
+                                  onChange={(event) => {
+                                    const val = Math.min(2000, Math.max(0, Number(event.target.value)));
+                                    void updateSet(workoutExercise.id, set.id, { weight: val });
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">RIR</label>
+                                <Input
+                                  inputMode="numeric"
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                  value={set.rir ?? 2}
+                                  onChange={(event) => {
+                                    const val = Math.min(10, Math.max(0, Number(event.target.value)));
+                                    void updateSet(workoutExercise.id, set.id, { rir: val });
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                         ))}
 
                         <div className="mt-3 flex gap-2">

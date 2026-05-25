@@ -443,13 +443,13 @@ export function Onboarding() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <Label htmlFor="age">Age</Label>
                         <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" />
                         {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
                       </div>
-                      <div className="col-span-2">
+                      <div className="sm:col-span-2">
                         <Label>Height ({selectedHeightUnit === "in" ? "ft & in" : "cm"})</Label>
                         {selectedHeightUnit === "in" ? (
                           <div className="grid grid-cols-2 gap-2.5 animate-fadeIn">

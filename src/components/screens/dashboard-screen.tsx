@@ -519,7 +519,7 @@ export function DashboardScreen() {
       </section>
 
       {/* ─── PHYSIOLOGICAL METRICS GRID with Expandable Coach Insights ─── */}
-      <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Streak */}
         <div className="flex flex-col">
           <MetricCard
