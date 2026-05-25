@@ -1,6 +1,6 @@
 "use client";
 
-import { create } from "zustand";
+import { create, GetState } from "zustand";
 import { exercises as staticExercises } from "@/data/exercises";
 import {
   defaultProfile,
@@ -300,14 +300,15 @@ function recentWeightForExercise(workouts: Workout[], exerciseId: string): numbe
   return best?.weight ?? 0;
 }
 
-function buildWorkoutFromRoutine(state: AtlasState, routine: Routine, parentPlanId?: string | null): Workout {
+function buildWorkoutFromRoutine(get: GetState<AtlasState>, routine: Routine, parentPlanId?: string | null): Workout {
+  const state = get(); // Get the current state inside the function
   const newWorkout: Workout = {
     id: createId("workout"),
     name: routine.name,
     startedAt: new Date().toISOString(),
     planId: parentPlanId || state.activeWorkoutPlanId,
     exercises: routine.exercises.map((exercise) => {
-      const exerciseData = getExerciseById(exercise.exerciseId);
+      const exerciseData = get().getExerciseById(exercise.exerciseId); // Corrected call
       const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
       const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
@@ -833,7 +834,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const parentPlan = plans.find((p) => p.routines.some((r) => r.id === routine.id));
     const parentPlanId = parentPlan ? parentPlan.id : get().activeWorkoutPlanId;
 
-    const newWorkout = buildWorkoutFromRoutine(get(), routine, parentPlanId);
+    const newWorkout = buildWorkoutFromRoutine(get, routine, parentPlanId); // Corrected call
     
     set({
       activeWorkout: newWorkout,
