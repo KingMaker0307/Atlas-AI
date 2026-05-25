@@ -1,6 +1,6 @@
 "use client";
 
-import { create, GetState } from "zustand";
+import { create } from "zustand";
 import { exercises as staticExercises } from "@/data/exercises";
 import {
   defaultProfile,
@@ -300,7 +300,10 @@ function recentWeightForExercise(workouts: Workout[], exerciseId: string): numbe
   return best?.weight ?? 0;
 }
 
-function buildWorkoutFromRoutine(get: GetState<AtlasState>, routine: Routine, parentPlanId?: string | null): Workout {
+// Define AtlasGetState type manually
+type AtlasGetState = () => AtlasState;
+
+function buildWorkoutFromRoutine(get: AtlasGetState, routine: Routine, parentPlanId?: string | null): Workout {
   const state = get(); // Get the current state inside the function
   const newWorkout: Workout = {
     id: createId("workout"),
