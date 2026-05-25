@@ -324,6 +324,10 @@ export function Onboarding() {
         <Card className="p-5 border-white/5 bg-zinc-950/60 shadow-2xl backdrop-blur-2xl">
           <form
             onSubmit={handleSubmit(async (values) => {
+              if (typeof navigator !== "undefined" && !navigator.onLine) {
+                setSubmitError("Cannot create profile without an active internet connection. Please reconnect to continue.");
+                return;
+              }
               setSubmitError(null);
               try {
                 await completeOnboarding({

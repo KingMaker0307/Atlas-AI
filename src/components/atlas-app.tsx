@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, ClipboardList, Home, Settings } from "lucide-react";
-import { useEffect } from "react";
+import { BarChart3, Bot, ClipboardList, Home, Settings, WifiOff, ShieldAlert } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
@@ -41,6 +41,44 @@ export function AtlasApp() {
   const hasOnboarded = useAtlasStore((state) => state.hasOnboarded);
   const theme = useAtlasStore((state) => state.theme);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
+  const blocked = useAtlasStore((state) => state.blocked);
+  const profile = useAtlasStore((state) => state.profile);
+
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || !profile?.id || !online) return;
+
+    const checkBlocked = async () => {
+      try {
+        const res = await fetch(`/api/profile?userId=${profile.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.blocked) {
+            useAtlasStore.setState({ blocked: true });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check blocked status:", e);
+      }
+    };
+
+    void checkBlocked();
+    const interval = setInterval(checkBlocked, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [hydrated, profile?.id, online]);
 
   useEffect(() => {
     void hydrate();
@@ -54,6 +92,8 @@ export function AtlasApp() {
     root.style.colorScheme = shouldDark ? "dark" : "light";
   }, [theme]);
 
+  if (!online) return <OfflineBlockerScreen />;
+  if (blocked) return <BlockedBlockerScreen />;
   if (!hydrated) return <LoadingApp />;
   if (!startupChoice) return <WelcomeScreen />;
   if (!hasOnboarded) return <Onboarding />;
@@ -154,6 +194,53 @@ function LoadingApp() {
           <div className="grid grid-cols-2 gap-3">
             <div className="h-20 animate-pulse rounded-xl bg-white/10" />
             <div className="h-20 animate-pulse rounded-xl bg-white/10" />
+          </div>
+        </div>
+      </Card>
+    </main>
+  );
+}
+
+function OfflineBlockerScreen() {
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[#07080a] p-4 text-center text-white">
+      <Card className="w-full max-w-md p-8 border border-white/10 bg-[#0c0e12]/60 shadow-[0_24px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl space-y-6">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-300 animate-pulse">
+          <WifiOff size={32} />
+        </div>
+        <div className="space-y-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Internet Connection Required</h1>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            Atlas AI Coach is a secure web-based application and requires an active internet connection to synchronize your training profile and function properly.
+          </p>
+        </div>
+        <div className="pt-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-3.5 py-1.5 text-xs text-zinc-500 font-medium">
+            <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+            Waiting for connection...
+          </div>
+        </div>
+      </Card>
+    </main>
+  );
+}
+
+function BlockedBlockerScreen() {
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-[#07080a] p-4 text-center text-white">
+      <Card className="w-full max-w-md p-8 border border-white/10 bg-[#0c0e12]/60 shadow-[0_24px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl space-y-6">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-400">
+          <ShieldAlert size={32} />
+        </div>
+        <div className="space-y-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Access Denied</h1>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            Your profile has been suspended or blocked by the administrator. Please contact support if you believe this is an error.
+          </p>
+        </div>
+        <div className="pt-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-3.5 py-1.5 text-xs text-rose-400 font-medium">
+            Account Suspended
           </div>
         </div>
       </Card>

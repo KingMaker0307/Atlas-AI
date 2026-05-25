@@ -17,6 +17,7 @@ import { getProgressionRecommendations } from "@/lib/progression/engine";
 import { decryptExport, decryptString, encryptForExport, encryptString } from "@/lib/security/crypto";
 import { loadSnapshot, saveSnapshot } from "@/lib/storage/db";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
+import { checkBlockedStatus, syncProfile } from "@/lib/sync";
 import type {
   AiMessage,
   AiProviderSettings,
@@ -77,6 +78,9 @@ interface AtlasState {
   tokenCount: number; // New state for token count
   startupChoice: StartupChoice;
   activeWorkoutPlanId: string | null;
+  blocked: boolean;
+  lastSyncedAt: string | null;
+  setBlocked: (blocked: boolean) => void;
   setStartupChoice: (choice: StartupChoice) => void;
   setActiveWorkoutPlanId: (id: string | null) => Promise<void>;
   setActiveTab: (tab: AtlasTab) => void;
@@ -126,6 +130,8 @@ type StoredSnapshot = AtlasSnapshot & {
   apiCallCount: number; // Added to StoredSnapshot
   tokenCount: number; // Added to StoredSnapshot
   activeWorkoutPlanId: string | null;
+  blocked: boolean;
+  lastSyncedAt: string | null;
 };
 
 function freshSnapshot(): StoredSnapshot {
@@ -152,6 +158,8 @@ function freshSnapshot(): StoredSnapshot {
     apiCallCount: 0, // Initialize API call count
     tokenCount: 0, // Initialize token count
     activeWorkoutPlanId: null,
+    blocked: false,
+    lastSyncedAt: null,
   };
 }
 
@@ -196,6 +204,8 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     apiCallCount: state.apiCallCount, // Include in snapshot
     tokenCount: state.tokenCount, // Include in snapshot
     activeWorkoutPlanId: state.activeWorkoutPlanId,
+    blocked: state.blocked,
+    lastSyncedAt: state.lastSyncedAt,
   };
 }
 
@@ -205,11 +215,30 @@ async function persistState(state: AtlasState): Promise<void> {
   try {
     await saveSnapshot(snapshot);
     console.log("persistState: saveSnapshot successful.");
+    // Silently sync to Google Drive
+    if (typeof window !== "undefined" && navigator.onLine && state.profile?.id) {
+      void syncProfileToDrive(state);
+    }
   } catch (error) {
     console.error("persistState: saveSnapshot failed:", error);
     throw error;
   }
   console.log("persistState: Finished.");
+}
+
+async function syncProfileToDrive(state: AtlasState): Promise<void> {
+  const profile = state.profile;
+  if (!profile || !profile.id) return;
+  try {
+    const res = await syncProfile(profile.id, snapshotFromState(state));
+    if (res.blocked) {
+      useAtlasStore.setState({ blocked: true });
+    } else if (res.success) {
+      useAtlasStore.setState({ lastSyncedAt: new Date().toISOString() });
+    }
+  } catch (error) {
+    console.error("Failed to execute Google Drive silent sync:", error);
+  }
 }
 
 function getLocalDateString(dateOrStr: Date | string): string {
@@ -272,6 +301,9 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   providerBusy: false,
   apiCallCount: 0, // Initialize in store
   tokenCount: 0, // Initialize in store
+  blocked: false,
+  lastSyncedAt: null,
+  setBlocked: (blocked) => set({ blocked }),
   getExerciseById: (id: string) => {
     return get().exercises.find((exercise) => exercise.id === id);
   },
@@ -292,6 +324,18 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
       coachBusy: false,
       providerBusy: false,
     });
+
+    // Check blocked status if online and onboarded
+    if (typeof window !== "undefined" && navigator.onLine && snapshot.profile?.id) {
+      try {
+        const isBlocked = await checkBlockedStatus(snapshot.profile.id);
+        if (isBlocked) {
+          set({ blocked: true });
+        }
+      } catch (error) {
+        console.error("Failed to check blocked status:", error);
+      }
+    }
   },
   setActiveWorkoutPlanId: async (id) => {
     set({ activeWorkoutPlanId: id });

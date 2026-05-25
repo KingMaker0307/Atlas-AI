@@ -75,6 +75,7 @@ export function SettingsScreen() {
   const heightUnit = useAtlasStore((state) => state.heightUnit);
   const providers = useAtlasStore((state) => state.aiProviders);
   const activeProviderId = useAtlasStore((state) => state.activeProviderId);
+  const themeMode = useAtlasStore((state) => state.theme); // Wait, make sure theme matches
   const setTheme = useAtlasStore((state) => state.setTheme);
   const setWeightUnit = useAtlasStore((state) => state.setWeightUnit);
   const setHeightUnit = useAtlasStore((state) => state.setHeightUnit);
@@ -86,6 +87,58 @@ export function SettingsScreen() {
   const resetLocalData = useAtlasStore((state) => state.resetLocalData);
   const providerBusy = useAtlasStore((state) => state.providerBusy);
   const updateProfile = useAtlasStore((state) => state.updateProfile);
+  const lastSyncedAt = useAtlasStore((state) => state.lastSyncedAt);
+
+  const [syncing, setSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  const handleManualSync = async () => {
+    if (!profile?.id) return;
+    setSyncing(true);
+    setSyncStatus("Syncing...");
+    try {
+      const state = useAtlasStore.getState();
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: profile.id,
+          snapshot: {
+            profile: state.profile,
+            workouts: state.workouts,
+            activeWorkout: state.activeWorkout,
+            recoveryLogs: state.recoveryLogs,
+            bodyMetrics: state.bodyMetrics,
+            aiMessages: state.aiMessages,
+            aiProviders: state.aiProviders,
+            activeProviderId: state.activeProviderId,
+            workoutPlans: state.workoutPlans,
+            theme: state.theme,
+            weightUnit: state.weightUnit,
+            heightUnit: state.heightUnit,
+            hasOnboarded: state.hasOnboarded,
+            restTimerEndsAt: state.restTimerEndsAt,
+          }
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.blocked) {
+          useAtlasStore.setState({ blocked: true });
+        } else {
+          useAtlasStore.setState({ lastSyncedAt: new Date().toISOString() });
+          setSyncStatus(`Sync successful! (${data.mode === "mock" ? "Mock Mode" : "Google Drive Mode"})`);
+        }
+      } else {
+        setSyncStatus(`Sync failed: ${await res.text()}`);
+      }
+    } catch (e: any) {
+      setSyncStatus(`Error: ${e.message}`);
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncStatus(null), 5000);
+    }
+  };
 
   const [draftProfile, setDraftProfile] = useState<Partial<UserProfile>>({});
   const [models, setModels] = useState<string[]>([]);
@@ -101,6 +154,18 @@ export function SettingsScreen() {
       setDraftProfile(profile);
     }
   }, [profile]);
+
+  const [syncMode, setSyncMode] = useState<"loading" | "drive" | "mock">("loading");
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    fetch(`/api/profile?userId=${profile.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.mode) setSyncMode(data.mode);
+      })
+      .catch(() => setSyncMode("mock"));
+  }, [profile?.id]);
 
   const [selectedProviderId, setSelectedProviderId] = useState(providers[0]?.id ?? "");
   const selectedProvider = useMemo(
@@ -597,17 +662,50 @@ export function SettingsScreen() {
         ) : null}
       </Card>
 
-      <Card className="p-4">
-        <div className="mb-3 flex items-center justify-between">
+      <Card className="p-4 space-y-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-white">Cloud Sync</h2>
-            <p className="text-sm text-zinc-500">Sync your data with a cloud provider</p>
+            <h2 className="text-lg font-semibold text-white">Google Drive Silent Sync</h2>
+            <p className="text-sm text-zinc-500 font-normal">Automatically syncs all user details, photos, and workouts.</p>
           </div>
-          <Cloud className="text-zinc-500" size={18} />
+          <Cloud className="text-emerald-400" size={20} />
         </div>
-        <Button className="w-full" variant="secondary">
-          Sync with Google Drive
+
+        <Surface className="p-3 text-sm space-y-2 bg-black/20 border border-white/5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-zinc-500 font-medium">Sync Mode:</span>
+            <span className={`font-semibold uppercase tracking-wider ${
+              syncMode === "drive" ? "text-emerald-400" : syncMode === "mock" ? "text-amber-400" : "text-zinc-400"
+            }`}>
+              {syncMode === "drive" ? "Service Account Connected" : syncMode === "mock" ? "Local Mock Mode" : "Loading..."}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-zinc-500 font-medium">Last Silent Sync:</span>
+            <span className="text-zinc-300 font-mono">
+              {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() + " " + new Date(lastSyncedAt).toLocaleDateString() : "Never"}
+            </span>
+          </div>
+
+          {syncMode === "mock" && (
+            <p className="text-[10px] text-zinc-500 italic leading-relaxed pt-1 border-t border-white/5">
+              Service account credentials not found in env. Synchronizing locally to <code className="text-zinc-400 font-mono">src/data/drive_mocks/</code> for testing. Set <code className="text-zinc-400 font-mono">blocked: true</code> in the file to block the user.
+            </p>
+          )}
+        </Surface>
+
+        <Button
+          className="w-full"
+          variant="secondary"
+          disabled={syncing || !profile?.id}
+          onClick={handleManualSync}
+        >
+          {syncing ? "Synchronising..." : "Sync Now"}
         </Button>
+        {syncStatus && (
+          <p className="text-center text-xs text-emerald-300 font-medium animate-pulse">{syncStatus}</p>
+        )}
       </Card>
 
       <Card className="p-4">
