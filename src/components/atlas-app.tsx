@@ -132,9 +132,64 @@ export function AtlasApp() {
   };
 
   return (
-    <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-950">
+    <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-950 md:pl-64">
       <PwaRegistrar />
-      <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl">
+      
+      {/* ─── DESKTOP SIDEBAR NAVIGATION PANEL (Hidden on mobile) ─── */}
+      <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-header border-r border-card-border p-5 z-40 select-none">
+        {/* Brand Header Logo block */}
+        <div className="flex items-center gap-3 mb-8 shrink-0">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 font-extrabold text-zinc-950">
+            A
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold leading-none text-foreground">Atlas AI Coach</p>
+            <p className="mt-1.5 text-[10px] font-medium text-zinc-500 leading-none">Private fitness intelligence</p>
+          </div>
+        </div>
+
+        {/* Sidebar Nav Buttons list */}
+        <div className="flex-1 flex flex-col gap-1.5 w-full">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(8);
+                  setActiveTab(item.id);
+                }}
+                className={cn(
+                  "relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition w-full justify-start leading-none",
+                  active ? "text-emerald-500 dark:text-emerald-250 font-black" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
+                )}
+              >
+                {active ? (
+                  <motion.span
+                    layoutId="nav-active-desktop"
+                    className="absolute inset-0 rounded-2xl bg-emerald-300/12"
+                  />
+                ) : null}
+                <Icon className="relative shrink-0" size={17} />
+                <span className="relative">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sidebar Telemetry Footer block */}
+        <div className="pt-4 border-t border-card-border flex flex-col gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <OfflineIndicator />
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-mono">System Standby</span>
+          </div>
+          <InstallPrompt />
+        </div>
+      </aside>
+
+      {/* ─── MOBILE BRAND TOP HEADER (Hidden on desktop) ─── */}
+      <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
         <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-950">
@@ -152,7 +207,8 @@ export function AtlasApp() {
         </header>
       </div>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pt-[calc(5rem+env(safe-area-inset-top))] md:px-6">
+      {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
+      <main className="mx-auto w-full max-w-6xl px-4 pt-[calc(5rem+env(safe-area-inset-top))] md:px-8 md:pt-[calc(2rem+env(safe-area-inset-top))] md:pb-8">
         <AnimatePresence mode="wait">
           {activeSubScreen ? (
             renderSubScreen()
@@ -168,7 +224,8 @@ export function AtlasApp() {
         </AnimatePresence>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl">
+      {/* ─── MOBILE BOTTOM BAR NAVIGATION (Hidden on desktop) ─── */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
         <div className="mx-auto grid h-20 max-w-md grid-cols-5 px-2 md:max-w-xl">
           {navItems.map((item) => {
             const Icon = item.icon;
