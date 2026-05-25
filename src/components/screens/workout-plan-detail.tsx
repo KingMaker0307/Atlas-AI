@@ -327,6 +327,54 @@ export function WorkoutPlanDetailScreen() {
                 <p className="text-[11px] text-zinc-450 max-w-[220px] mt-0.5 leading-normal">
                   Muscle hypertrophy and neural system recovery occur on rest cycles. Focus on targeted hydration and sleep.
                 </p>
+
+                {/* Quick Active Recovery cardio launchers */}
+                <div className="mt-4 w-full flex flex-col gap-1.5 border-t border-violet-500/10 pt-4">
+                  <p className="text-[10px] text-violet-300 font-bold uppercase tracking-wider text-left">Quick Active Recovery</p>
+                  <div className="grid grid-cols-2 gap-1.5 mt-1">
+                    {[
+                      { name: "Incline Hike", id: "treadmill-walk-incline", icon: "🏔️" },
+                      { name: "Stationary Bike", id: "stationary-bike-moderate", icon: "🚲" },
+                      { name: "Elliptical Ride", id: "elliptical-trainer", icon: "🌀" },
+                      { name: "Rowing Cardio", id: "rowing-machine", icon: "🚣" },
+                    ].map((item) => (
+                      <Button
+                        key={item.id}
+                        variant="ghost"
+                        className="h-8 text-[10px] text-zinc-300 hover:text-white bg-violet-500/5 hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2 font-semibold transition-all disabled:opacity-50"
+                        disabled={isLimitReached}
+                        onClick={() => {
+                          const quickRoutine: Routine = {
+                            id: `quick-cardio-${Date.now()}`,
+                            name: `Light Cardio: ${item.name}`,
+                            focus: "Active Recovery",
+                            estimatedMinutes: 30,
+                            day: "Rest Day",
+                            exercises: [
+                              {
+                                exerciseId: item.id,
+                                targetSets: 1,
+                                targetReps: "30 min LISS",
+                                restSeconds: 60,
+                              },
+                            ],
+                          };
+                          void startWorkout(quickRoutine);
+                          setActiveTab("workout");
+                          setActiveSubScreen("active-workout");
+                        }}
+                      >
+                        <span>{item.icon}</span>
+                        <span className="truncate">{item.name}</span>
+                      </Button>
+                    ))}
+                  </div>
+                  {isLimitReached && (
+                    <span className="text-[9px] text-amber-500 font-bold mt-1 select-none">
+                      Daily Limit Reached (3/3 sessions completed)
+                    </span>
+                  )}
+                </div>
               </Card>
             );
           }

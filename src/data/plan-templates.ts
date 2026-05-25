@@ -1369,4 +1369,170 @@ export const planTemplates: PlanTemplate[] = [
       },
     ],
   },
+  // ═══════════════════════════════════════════════════════════
+  // HYBRID / CARDIO & CONDITIONING PROGRAMS
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: "ppl-cardio-5day",
+    name: "PPL + Cardio Conditioning",
+    origin: "Atlas AI Creator",
+    description: "Classic Push-Pull-Legs split reinforced with 2 dedicated high-intensity metabolic conditioning and low-intensity recovery days.",
+    trainingStyles: ["hypertrophy", "endurance"],
+    experience: ["intermediate"],
+    equipment: ["full gym"],
+    daysPerWeek: [5],
+    durationMinutes: 60,
+    targetPhysiques: ["athletic", "shredded", "toned"],
+    tags: ["PPL", "cardio", "conditioning", "5-day", "metcon"],
+    routines: [
+      {
+        name: "Pull Day",
+        focus: "Back & Biceps",
+        estimatedMinutes: 60,
+        exercises: [
+          { exerciseId: "pullup", targetSets: 3, targetReps: "8-12", restSeconds: 90 },
+          { exerciseId: "barbell-row", targetSets: 3, targetReps: "8-10", restSeconds: 120 },
+          { exerciseId: "cable-row", targetSets: 3, targetReps: "10-12", restSeconds: 90 },
+          { exerciseId: "barbell-curl", targetSets: 3, targetReps: "10-12", restSeconds: 75 },
+        ],
+      },
+      {
+        name: "Push Day",
+        focus: "Chest, Shoulders & Triceps",
+        estimatedMinutes: 60,
+        exercises: [
+          { exerciseId: "bench-press", targetSets: 3, targetReps: "8-10", restSeconds: 120 },
+          { exerciseId: "overhead-press", targetSets: 3, targetReps: "8-10", restSeconds: 120 },
+          { exerciseId: "incline-dumbbell-press", targetSets: 3, targetReps: "10-12", restSeconds: 90 },
+          { exerciseId: "tricep-pushdown", targetSets: 3, targetReps: "12-15", restSeconds: 75 },
+        ],
+      },
+      {
+        name: "Legs Day",
+        focus: "Quads & Hamstrings",
+        estimatedMinutes: 60,
+        exercises: [
+          { exerciseId: "barbell-back-squat", targetSets: 3, targetReps: "8-10", restSeconds: 150 },
+          { exerciseId: "romanian-deadlift", targetSets: 3, targetReps: "10-12", restSeconds: 120 },
+          { exerciseId: "leg-press", targetSets: 3, targetReps: "12-15", restSeconds: 90 },
+          { exerciseId: "hanging-leg-raise", targetSets: 3, targetReps: "15", restSeconds: 60 },
+        ],
+      },
+      {
+        name: "HIIT & Metcon Day",
+        focus: "High-Intensity Conditioning",
+        estimatedMinutes: 45,
+        exercises: [
+          { exerciseId: "rowing-machine-hiit", targetSets: 4, targetReps: "Intervals", restSeconds: 90 },
+          { exerciseId: "treadmill-sprint-intervals", targetSets: 5, targetReps: "Sprints", restSeconds: 60 },
+          { exerciseId: "mountain-climber", targetSets: 3, targetReps: "30s", restSeconds: 45 },
+        ],
+      },
+      {
+        name: "Aerobic Recovery Day",
+        focus: "LISS Recovery",
+        estimatedMinutes: 45,
+        exercises: [
+          { exerciseId: "elliptical-trainer", targetSets: 1, targetReps: "30 mins", restSeconds: 60 },
+          { exerciseId: "stationary-bike-moderate", targetSets: 1, targetReps: "20 mins", restSeconds: 60 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hybrid-athlete-4day",
+    name: "Hybrid Athlete Training",
+    origin: "Nick Bare Inspired",
+    description: "Build exceptional strength and high-level aerobic conditioning. Features compound lifting days paired with intervals and steady-state runs.",
+    trainingStyles: ["strength", "endurance"],
+    experience: ["intermediate", "advanced"],
+    equipment: ["full gym"],
+    daysPerWeek: [4],
+    durationMinutes: 75,
+    targetPhysiques: ["athletic", "lean", "shredded"],
+    tags: ["hybrid", "strength", "running", "aerobic capacity", "treadmill"],
+    routines: [
+      {
+        name: "Upper Body Power + HIIT",
+        focus: "Heavy Pressing & Pulling + Ergometer",
+        estimatedMinutes: 75,
+        exercises: [
+          { exerciseId: "bench-press", targetSets: 4, targetReps: "5", restSeconds: 150 },
+          { exerciseId: "weighted-pullup", targetSets: 3, targetReps: "6-8", restSeconds: 120 },
+          { exerciseId: "overhead-press", targetSets: 3, targetReps: "6-8", restSeconds: 120 },
+          { exerciseId: "rowing-machine-hiit", targetSets: 4, targetReps: "500m intervals", restSeconds: 90 },
+        ],
+      },
+      {
+        name: "Lower Body Power + Bike",
+        focus: "Heavy Leg Drive + Low Impact Cardio",
+        estimatedMinutes: 70,
+        exercises: [
+          { exerciseId: "barbell-back-squat", targetSets: 4, targetReps: "5", restSeconds: 180 },
+          { exerciseId: "deadlift", targetSets: 3, targetReps: "5", restSeconds: 180 },
+          { exerciseId: "stationary-bike-moderate", targetSets: 1, targetReps: "25 mins", restSeconds: 60 },
+        ],
+      },
+      {
+        name: "Zone 2 Aerobic Engine",
+        focus: "Steady-State Conditioning",
+        estimatedMinutes: 50,
+        exercises: [
+          { exerciseId: "treadmill-jog", targetSets: 1, targetReps: "45 mins", restSeconds: 60 },
+        ],
+      },
+      {
+        name: "Strength-Endurance Metcon",
+        focus: "High-Density Conditioning",
+        estimatedMinutes: 60,
+        exercises: [
+          { exerciseId: "front-squat", targetSets: 3, targetReps: "8", restSeconds: 90 },
+          { exerciseId: "pullup", targetSets: 3, targetReps: "10", restSeconds: 60 },
+          { exerciseId: "kettlebell-swing", targetSets: 4, targetReps: "20", restSeconds: 60 },
+          { exerciseId: "stairclimber-intervals", targetSets: 5, targetReps: "Intervals", restSeconds: 60 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "liss-fatloss-3day",
+    name: "LISS Fat Loss & Endurance",
+    origin: "Atlas Conditioning",
+    description: "Low-Impact Steady-State (LISS) training optimized for cardiovascular health, fat oxidation, and metabolic efficiency.",
+    trainingStyles: ["endurance", "general"],
+    experience: ["beginner", "intermediate"],
+    equipment: ["full gym"],
+    daysPerWeek: [3],
+    durationMinutes: 45,
+    targetPhysiques: ["toned", "lean"],
+    tags: ["LISS", "fat loss", "cardio", "beginner friendly", "low impact"],
+    routines: [
+      {
+        name: "Incline & Walk Session",
+        focus: "Steady State Hike & Core",
+        estimatedMinutes: 45,
+        exercises: [
+          { exerciseId: "treadmill-12-3-30", targetSets: 1, targetReps: "30 mins", restSeconds: 60 },
+          { exerciseId: "hanging-leg-raise", targetSets: 3, targetReps: "12", restSeconds: 65 },
+        ],
+      },
+      {
+        name: "Low-Impact Recovery Ride",
+        focus: "Stationary Cycling",
+        estimatedMinutes: 40,
+        exercises: [
+          { exerciseId: "stationary-bike-moderate", targetSets: 1, targetReps: "35 mins", restSeconds: 60 },
+        ],
+      },
+      {
+        name: "Elliptical & Stair Climber",
+        focus: "Aerobic Base Training",
+        estimatedMinutes: 45,
+        exercises: [
+          { exerciseId: "elliptical-trainer", targetSets: 1, targetReps: "25 mins", restSeconds: 60 },
+          { exerciseId: "stairclimber", targetSets: 1, targetReps: "15 mins", restSeconds: 60 },
+        ],
+      },
+    ],
+  },
 ];

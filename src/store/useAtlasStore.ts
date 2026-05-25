@@ -736,7 +736,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       set({ aiProviders: [newProvider], activeProviderId: providerId });
     }
 
-    set({ profile: { ...profile, goal: customGoal ?? profile.goal }, hasOnboarded: true });
+    set({ profile: { ...profile, goal: customGoal ?? profile.goal }, hasOnboarded: true, activeTab: "dashboard" });
     await persistState(get());
   },
   updateProfile: async (patch) => {
@@ -867,17 +867,31 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         exercises: activeWorkout.exercises.map((exercise) => {
           if (exercise.id !== workoutExerciseId) return exercise;
           const last = exercise.sets.at(-1);
+          const exerciseData = get().getExerciseById(exercise.exerciseId);
+          const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
           return {
             ...exercise,
             sets: [
               ...exercise.sets,
-              {
-                id: createId("set"),
-                reps: last?.reps ?? 8,
-                weight: last?.weight ?? 0,
-                rir: last?.rir ?? 2,
-                completed: false,
-              },
+              isCardio
+                ? {
+                    id: createId("set"),
+                    reps: 0,
+                    weight: 0,
+                    completed: false,
+                    durationSeconds: last?.durationSeconds ?? 1800,
+                    distance: last?.distance ?? 0,
+                    incline: last?.incline ?? 0,
+                    resistance: last?.resistance ?? 0,
+                    calories: last?.calories ?? 0,
+                  }
+                : {
+                    id: createId("set"),
+                    reps: last?.reps ?? 8,
+                    weight: last?.weight ?? 0,
+                    rir: last?.rir ?? 2,
+                    completed: false,
+                  },
             ],
           };
         }),

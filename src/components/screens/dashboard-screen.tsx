@@ -481,23 +481,37 @@ export function DashboardScreen() {
                 </div>
               </div>
 
-              <div className="shrink-0 sm:text-right flex flex-col justify-between sm:h-28">
-                <div className="text-zinc-500 text-xs">
-                  Rest Day Cycle
+              <div className="shrink-0 sm:text-right flex flex-col justify-between gap-3 sm:min-w-[180px]">
+                <div className="text-zinc-400 font-bold font-mono text-[10px] tracking-widest">
+                  REST DAY CYCLE
                 </div>
-                <Button 
-                  onClick={() => {
-                    if (activePlan) {
-                      setEditingWorkoutPlanId(activePlan.id);
-                      setActiveSubScreen("workout-plan-detail");
-                    }
-                  }}
-                  variant="secondary"
-                  className="mt-4 sm:mt-0 font-semibold border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground flex items-center justify-center gap-1"
-                >
-                  <ClipboardList size={16} />
-                  View Weekly Schedule
-                </Button>
+                <div className="flex flex-col gap-2 mt-2 sm:mt-0">
+                  <Button 
+                    onClick={() => {
+                      if (activePlan) {
+                        setEditingWorkoutPlanId(activePlan.id);
+                        setActiveSubScreen("workout-plan-detail");
+                      }
+                    }}
+                    variant="secondary"
+                    className="w-full font-semibold border-btn-secondary-border bg-zinc-800 hover:bg-zinc-700 dark:bg-white/5 dark:hover:bg-white/10 text-foreground flex items-center justify-center gap-1.5 h-9 text-xs"
+                  >
+                    <ClipboardList size={14} />
+                    Weekly Schedule
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      if (activePlan) {
+                        setEditingWorkoutPlanId(activePlan.id);
+                        setActiveSubScreen("workout-plan-detail");
+                      }
+                    }}
+                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 dark:bg-violet-600 dark:hover:bg-violet-500 text-white flex items-center justify-center gap-1.5 h-9 text-xs shadow-lg shadow-violet-600/25 transition-all"
+                  >
+                    <Activity size={14} />
+                    Active Recovery
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

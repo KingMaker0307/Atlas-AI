@@ -325,7 +325,22 @@ export function Onboarding() {
 
         <Card className="p-5 shadow-2xl">
           <form
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (e.target instanceof HTMLTextAreaElement) {
+                  return;
+                }
+                e.preventDefault();
+                if (step < 4) {
+                  void nextStep();
+                }
+              }
+            }}
             onSubmit={handleSubmit(async (values) => {
+              if (step < 4) {
+                void nextStep();
+                return;
+              }
               if (typeof navigator !== "undefined" && !navigator.onLine) {
                 setSubmitError("Cannot create profile without an active internet connection. Please reconnect to continue.");
                 return;

@@ -182,3 +182,82 @@ textarea {
 .light .primary-btn-text {
   color: #ffffff !important;
 }
+
+/* ─── LIGHT MODE GLOBAL COLOR CORRECTIONS ─── */
+
+/* 1. Hardcoded dark backgrounds conversion */
+.light .bg-zinc-950:not(.keep-dark),
+.light .bg-zinc-900:not(.keep-dark),
+.light .bg-black:not(.keep-dark) {
+  background-color: #ffffff !important;
+}
+
+/* 2. Hardcoded semi-transparent dark layers conversion */
+.light .bg-zinc-950\/10:not(.keep-dark),
+.light .bg-zinc-950\/20:not(.keep-dark),
+.light .bg-zinc-950\/30:not(.keep-dark),
+.light .bg-zinc-950\/40:not(.keep-dark),
+.light .bg-zinc-950\/60:not(.keep-dark),
+.light .bg-zinc-950\/80:not(.keep-dark),
+.light .bg-zinc-900\/10:not(.keep-dark),
+.light .bg-zinc-900\/20:not(.keep-dark),
+.light .bg-zinc-900\/30:not(.keep-dark),
+.light .bg-zinc-900\/50:not(.keep-dark),
+.light .bg-black\/10:not(.keep-dark),
+.light .bg-black\/20:not(.keep-dark),
+.light .bg-black\/30:not(.keep-dark),
+.light .bg-black\/50:not(.keep-dark),
+.light .bg-black\/60:not(.keep-dark) {
+  background-color: var(--surface-bg) !important;
+}
+
+/* 3. Hardcoded dark borders conversion */
+.light .border-zinc-800:not(.keep-dark),
+.light .border-zinc-850:not(.keep-dark),
+.light .border-zinc-700:not(.keep-dark),
+.light .border-white\/5:not(.keep-dark),
+.light .border-white\/10:not(.keep-dark) {
+  border-color: var(--card-border) !important;
+}
+
+/* 4. White transparency overlays conversion */
+.light .bg-white\/\[0\.04\]:not(.keep-dark),
+.light .bg-white\/\[0\.02\]:not(.keep-dark),
+.light .bg-white\/\[0\.01\]:not(.keep-dark) {
+  background-color: rgba(9, 9, 11, 0.015) !important;
+}
+
+/* 5. Hardcoded dark container gradients conversion */
+.light .bg-gradient-to-br:not(.from-green-500\/10):not(.from-orange-500\/10):not(.from-blue-500\/10):not(.from-zinc-500\/10):not(.from-cyan-500\/10):not(.from-purple-500\/10):not(.from-teal-500\/10):not(.from-indigo-500\/10):not(.from-yellow-500\/10):not(.from-purple-950\/10):not(.from-emerald-950\/20),
+.light .bg-gradient-to-tr:not(.from-emerald-400),
+.light .bg-gradient-to-r:not(.from-emerald-500) {
+  background-image: none !important;
+  background-color: var(--card-bg) !important;
+}
+
+/* 6. Retro Terminal dark preservation */
+.light .keep-dark {
+  background-color: #0c0c0e !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.light .keep-dark .text-zinc-300 {
+  color: #d4d4d8 !important;
+}
+
+.light .keep-dark .text-zinc-400 {
+  color: #a1a1aa !important;
+}
+
+.light .keep-dark .text-zinc-500 {
+  color: #71717a !important;
+}
+
+.light .keep-dark .text-zinc-650 {
+  color: #52525b !important;
+}
+
+.light .keep-dark .text-white {
+  color: #ffffff !important;
+}
+

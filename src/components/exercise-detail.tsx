@@ -24,6 +24,172 @@ import type { Exercise } from "@/types/domain";
 function ExerciseSvgIllustration({ exerciseId }: { exerciseId: string }) {
   const normalizedId = exerciseId.toLowerCase();
 
+  // Cardio Machine: Running / Walking (Treadmill)
+  if (normalizedId.includes("treadmill") || normalizedId.includes("run") || normalizedId.includes("jog") || normalizedId.includes("walk")) {
+    return (
+      <svg viewBox="0 0 200 120" className="w-full h-full" aria-hidden="true">
+        <style>{`
+          @keyframes runnerBody {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+          }
+          @keyframes beltMove {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 32; }
+          }
+          .runner-skeleton { animation: runnerBody 0.8s infinite ease-in-out; }
+          .belt-flow { animation: beltMove 0.4s infinite linear; }
+        `}</style>
+        {/* Treadmill frame */}
+        <line x1="30" y1="95" x2="170" y2="95" stroke="#3f3f46" strokeWidth="4" strokeLinecap="round" />
+        <line x1="160" y1="95" x2="175" y2="45" stroke="#27272a" strokeWidth="3" />
+        <rect x="165" y="38" width="16" height="8" fill="#18181b" stroke="#52525b" strokeWidth="1" rx="1" />
+        
+        {/* Belt motion flow */}
+        <line x1="35" y1="99" x2="165" y2="99" stroke="#10b981" strokeWidth="1.5" strokeDasharray="8 8" className="belt-flow" />
+
+        {/* Runner Stick Figure */}
+        <g className="runner-skeleton">
+          {/* Head */}
+          <circle cx="100" cy="35" r="5" fill="#3b82f6" />
+          {/* Torso */}
+          <line x1="100" y1="40" x2="98" y2="60" stroke="#52525b" strokeWidth="3" strokeLinecap="round" />
+          {/* Left Arm */}
+          <path d="M 100,43 L 88,48 L 78,42" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" />
+          {/* Right Arm */}
+          <path d="M 100,43 L 112,48 L 105,58" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" />
+          {/* Left Leg */}
+          <path d="M 98,60 L 85,73 L 95,88" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Right Leg */}
+          <path d="M 98,60 L 108,71 L 115,85" fill="none" stroke="#047857" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+      </svg>
+    );
+  }
+
+  // Cardio Machine: Cycling (Stationary Bike)
+  if (normalizedId.includes("bike") || normalizedId.includes("cycling")) {
+    return (
+      <svg viewBox="0 0 200 120" className="w-full h-full" aria-hidden="true">
+        <style>{`
+          @keyframes pedaling {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .pedal-wheel {
+            transform-origin: 100px 75px;
+            animation: pedaling 1.5s infinite linear;
+          }
+        `}</style>
+        {/* Bike Frame */}
+        <path d="M 60,95 L 90,60 L 130,60 L 100,75 Z M 100,75 L 85,95 M 130,60 L 135,45 M 90,60 L 88,50" fill="none" stroke="#3f3f46" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Feet bases */}
+        <line x1="45" y1="95" x2="155" y2="95" stroke="#27272a" strokeWidth="2" />
+        
+        {/* Flywheel */}
+        <circle cx="100" cy="75" r="16" fill="none" stroke="#10b981" strokeWidth="2" strokeOpacity="0.3" />
+        
+        {/* Pedaling System */}
+        <g className="pedal-wheel">
+          <line x1="100" y1="75" x2="100" y2="60" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="100" y1="75" x2="100" y2="90" stroke="#047857" strokeWidth="2.5" strokeLinecap="round" />
+          <rect x="94" y="56" width="12" height="4" fill="#3b82f6" rx="1" />
+          <rect x="94" y="90" width="12" height="4" fill="#3b82f6" rx="1" />
+        </g>
+        
+        {/* Cyclist stick figure */}
+        <g>
+          {/* Head */}
+          <circle cx="115" cy="30" r="5" fill="#3b82f6" />
+          {/* Torso */}
+          <path d="M 115,35 L 95,58" fill="none" stroke="#52525b" strokeWidth="3" strokeLinecap="round" />
+          {/* Arm to Handlebar */}
+          <path d="M 112,38 L 128,45 L 135,45" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" />
+        </g>
+      </svg>
+    );
+  }
+
+  // Cardio Machine: Elliptical Trainer
+  if (normalizedId.includes("elliptical")) {
+    return (
+      <svg viewBox="0 0 200 120" className="w-full h-full" aria-hidden="true">
+        <style>{`
+          @keyframes glide1 {
+            0%, 100% { transform: translate(-8px, 4px); }
+            50% { transform: translate(8px, -4px); }
+          }
+          @keyframes glide2 {
+            0%, 100% { transform: translate(8px, -4px); }
+            50% { transform: translate(-8px, 4px); }
+          }
+          .glide-left { animation: glide1 2s infinite ease-in-out; }
+          .glide-right { animation: glide2 2s infinite ease-in-out; }
+        `}</style>
+        {/* Machine base */}
+        <line x1="30" y1="95" x2="170" y2="95" stroke="#3f3f46" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M 50,95 L 80,40 M 150,95 L 140,40" fill="none" stroke="#27272a" strokeWidth="2.5" />
+        
+        {/* Handles */}
+        <g className="glide-left">
+          <line x1="80" y1="40" x2="70" y2="15" stroke="#52525b" strokeWidth="2" strokeLinecap="round" />
+          <path d="M 60,90 L 100,90" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
+        </g>
+        <g className="glide-right">
+          <line x1="140" y1="40" x2="150" y2="15" stroke="#52525b" strokeWidth="2" strokeLinecap="round" />
+          <path d="M 100,90 L 140,90" fill="none" stroke="#047857" strokeWidth="3" strokeLinecap="round" />
+        </g>
+        
+        {/* User stick head */}
+        <circle cx="105" cy="32" r="5" fill="#3b82f6" />
+        <line x1="105" y1="37" x2="105" y2="60" stroke="#52525b" strokeWidth="3" />
+      </svg>
+    );
+  }
+
+  // Cardio Machine: Rowing Machine (Rower)
+  if (normalizedId.includes("rower") || normalizedId.includes("rowing")) {
+    return (
+      <svg viewBox="0 0 200 120" className="w-full h-full" aria-hidden="true">
+        <style>{`
+          @keyframes seatMove {
+            0%, 100% { transform: translateX(35px); }
+            50% { transform: translateX(-15px); }
+          }
+          @keyframes cablePull {
+            0%, 100% { x2: 120; y2: 60; }
+            50% { x2: 70; y2: 60; }
+          }
+          .seat-flow { animation: seatMove 2.5s infinite ease-in-out; }
+          .cable-flow { animation: cablePull 2.5s infinite ease-in-out; }
+        `}</style>
+        {/* Rower rail */}
+        <line x1="30" y1="85" x2="170" y2="85" stroke="#3f3f46" strokeWidth="3" strokeLinecap="round" />
+        <rect x="150" y="55" width="22" height="30" fill="#18181b" stroke="#3f3f46" rx="2" />
+        <circle cx="161" cy="70" r="8" fill="none" stroke="#10b981" strokeWidth="2.5" strokeOpacity="0.3" />
+
+        {/* Pulling Cable */}
+        <line x1="150" y1="60" x2="120" y2="60" stroke="#10b981" strokeWidth="1.5" className="cable-flow" />
+
+        {/* Stick Figure & Seat */}
+        <g className="seat-flow">
+          {/* Seat slider wheel */}
+          <circle cx="80" cy="83" r="3" fill="#3b82f6" />
+          <rect x="70" y="76" width="20" height="4" fill="#3f3f46" rx="1" />
+          
+          {/* Head */}
+          <circle cx="78" cy="42" r="5" fill="#3b82f6" />
+          {/* Spine */}
+          <line x1="78" y1="47" x2="80" y2="76" stroke="#52525b" strokeWidth="3" strokeLinecap="round" />
+          {/* Arm holding cable */}
+          <line x1="78" y1="52" x2="45" y2="60" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" />
+          {/* Leg knee joint */}
+          <path d="M 80,76 L 105,65 L 120,83" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      </svg>
+    );
+  }
+
   // 1. Squats & Quads & Leg Press
   if (
     normalizedId.includes("squat") || 
@@ -580,6 +746,7 @@ export function ExerciseDetail({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"guide" | "cues" | "safety">("guide");
+  const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
 
   // Compile setup and execution arrays into a single chronological timeline of steps
   const combinedSteps = useMemo(() => {
@@ -946,6 +1113,42 @@ export function ExerciseDetail({
           {/* TAB 2: Breathing & Tempo Cues */}
           {activeTab === "cues" && (
             <div className="space-y-3">
+              {/* Cardio Physiology Card */}
+              {isCardio && (
+                <div className="p-3.5 rounded-2xl bg-violet-500/5 border border-violet-500/10">
+                  <div className="flex items-center gap-2 mb-2 border-b border-violet-500/10 pb-2">
+                    <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                      <Activity size={14} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider leading-none">
+                        Cardiovascular Physiology
+                      </h4>
+                      <p className="text-[10px] text-zinc-500 leading-none mt-1">
+                        Aerobic zone & metabolic metrics
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-[11px] text-zinc-400">
+                    <div className="flex justify-between items-center bg-white/[0.01] p-1.5 rounded border border-white/5">
+                      <span className="font-bold text-zinc-300">Target Intensity Zone</span>
+                      <span className="text-violet-300 font-extrabold font-mono">
+                        {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "Zone 4 (80-90% HRmax)" : "Zone 2 (60-70% HRmax)"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white/[0.01] p-1.5 rounded border border-white/5">
+                      <span className="font-bold text-zinc-300">Est. Energy Expenditure</span>
+                      <span className="text-emerald-400 font-extrabold font-mono">
+                        {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "12-16 kcal/min" : "7-10 kcal/min"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-zinc-500 leading-relaxed italic mt-1.5">
+                      Adaptations: Promotes capillary density, increases left ventricular stroke volume, and enhances fat oxidation thresholds.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Tempo Cue card */}
               <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center gap-2">
@@ -962,7 +1165,7 @@ export function ExerciseDetail({
                   </div>
                 </div>
                 <p className="mt-2.5 text-xs text-zinc-300 leading-relaxed font-semibold">
-                  {exercise.tempo || "3-0-1-0 (3s Eccentric, 0s Stretch, 1s Concentric, 0s Lock)"}
+                  {exercise.tempo || (isCardio ? "Maintain steady state cadence (e.g. 80-90 RPM / 150-180 SPM)" : "3-0-1-0 (3s Eccentric, 0s Stretch, 1s Concentric, 0s Lock)")}
                 </p>
               </div>
 
@@ -982,7 +1185,7 @@ export function ExerciseDetail({
                   </div>
                 </div>
                 <p className="mt-2.5 text-xs text-zinc-300 leading-relaxed font-semibold">
-                  {exercise.breathing || "Inhale on eccentric loading phase, brace core, and exhale past sticking midrange."}
+                  {exercise.breathing || (isCardio ? "Deep diaphragmatic breathing. Inhale through nose for 2 strides, exhale through mouth for 2 strides." : "Inhale on eccentric loading phase, brace core, and exhale past sticking midrange.")}
                 </p>
               </div>
 

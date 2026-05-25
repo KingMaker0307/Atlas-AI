@@ -23,6 +23,7 @@ import {
   Shield,
   ShieldAlert,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -146,7 +147,6 @@ function getProviderInstructions(provider: string) {
         title: "xAI Grok Configuration",
         steps: [
           "Go to the xAI Console at console.x.ai.",
-          "Sign in using your account credentials.",
           "Select API Keys from the sidebar navigation.",
           "Click 'Create API Key' and copy it."
         ],
@@ -167,7 +167,6 @@ function getProviderInstructions(provider: string) {
         title: "OpenRouter Configuration",
         steps: [
           "Go to openrouter.ai and log in.",
-          "Click on your profile or Keys in the top-right menu.",
           "Select 'Keys' and click 'Create Key'.",
           "Copy the generated key (starts with 'sk-or-') and paste it below."
         ],
@@ -220,6 +219,13 @@ export function SettingsScreen() {
   const providerBusy = useAtlasStore((state) => state.providerBusy);
   const updateProfile = useAtlasStore((state) => state.updateProfile);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
+  const workouts = useAtlasStore((state) => state.workouts);
+  const recoveryLogs = useAtlasStore((state) => state.recoveryLogs);
+  const aiMessages = useAtlasStore((state) => state.aiMessages);
+  const workoutPlans = useAtlasStore((state) => state.workoutPlans);
+
+  // High-density preferences active tab state (Backups and System are unified)
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"profile" | "ai" | "system">("profile");
 
   const [draftProfile, setDraftProfile] = useState<Partial<UserProfile>>({});
   const [models, setModels] = useState<string[]>([]);
@@ -230,11 +236,11 @@ export function SettingsScreen() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
 
-
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "saving" | "error" | null>("saved");
   const [showApiKey, setShowApiKey] = useState(false);
   const [showExportPassphrase, setShowExportPassphrase] = useState(false);
   const [showImportPassphrase, setShowImportPassphrase] = useState(false);
+  const [showBmiGuidance, setShowBmiGuidance] = useState(false);
 
   const [initialized, setInitialized] = useState(false);
   const [selectedType, setSelectedType] = useState<AiProviderSettings["type"]>("openai");
@@ -264,7 +270,6 @@ export function SettingsScreen() {
 
   useEffect(() => {
     if (activeSavedProviderOfSelectedType && draft && draft.id === activeSavedProviderOfSelectedType.id) {
-      // Synchronize statuses without overriding local edits
       setDraft((d) => {
         if (!d) return null;
         return {
@@ -293,8 +298,6 @@ export function SettingsScreen() {
   useEffect(() => {
     async function fetchModels() {
       if (!draft) return;
-
-      // No key required for Ollama or LM Studio by default
       if (!apiKey && draft.type !== "ollama" && draft.type !== "lmstudio") {
         setModelsError("Enter API key to load models");
         setModels([]);
@@ -322,7 +325,6 @@ export function SettingsScreen() {
   useEffect(() => {
     if (!draftProfile || Object.keys(draftProfile).length === 0) return;
 
-    // Check if the draft profile differs from the active profile
     const isDifferent = Object.keys(draftProfile).some(
       (key) => (draftProfile as any)[key] !== (profile as any)[key]
     );
@@ -357,12 +359,11 @@ export function SettingsScreen() {
         setSaveIndicator("error");
         setProfileError("Failed to auto-save biometrics.");
       }
-    }, 1000); // 1s debounce
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [draftProfile, profile, updateProfile]);
 
-  // Handle switching AI tabs
   const handleSelectType = (type: AiProviderSettings["type"]) => {
     setSelectedType(type);
     const existing = providers.find((p) => p.type === type);
@@ -371,7 +372,7 @@ export function SettingsScreen() {
     } else {
       setDraft(defaultDraftForType(type));
     }
-    setApiKey(""); // Reset plain API key input field
+    setApiKey("");
     setAiError(null);
   };
 
@@ -500,563 +501,875 @@ export function SettingsScreen() {
     return draft ? activeProviderId === draft.id : false;
   }, [activeProviderId, draft]);
 
+  // Dynamic Anthropometrics Computations
+  const calculatedBmi = useMemo(() => {
+    const w = draftProfile.weight;
+    const h = draftProfile.height;
+    if (!w || !h) return null;
+
+    let bmiValue = 0;
+    if (heightUnit === "in") {
+      bmiValue = (703 * w) / (h * h);
+    } else {
+      const heightInMeters = h / 100;
+      bmiValue = w / (heightInMeters * heightInMeters);
+    }
+
+    let classification = "Normal";
+    let color = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
+    if (bmiValue < 18.5) {
+      classification = "Underweight";
+      color = "text-yellow-400 border-yellow-500/20 bg-yellow-500/5";
+    } else if (bmiValue < 25) {
+      classification = "Normal Range";
+      color = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
+    } else if (bmiValue < 30) {
+      classification = "Overweight";
+      color = "text-orange-400 border-orange-500/20 bg-orange-500/5";
+    } else {
+      classification = "Obese Range";
+      color = "text-red-400 border-red-500/20 bg-red-500/5";
+    }
+
+    return {
+      value: bmiValue.toFixed(1),
+      classification,
+      color,
+    };
+  }, [draftProfile.weight, draftProfile.height, heightUnit]);
+
+  // Expandable Physiological Improvement Advisor
+  const bmiAdvice = useMemo(() => {
+    const w = draftProfile.weight;
+    const h = draftProfile.height;
+    if (!w || !h) return null;
+
+    let bmiValue = 0;
+    if (heightUnit === "in") {
+      bmiValue = (703 * w) / (h * h);
+    } else {
+      const heightInMeters = h / 100;
+      bmiValue = w / (heightInMeters * heightInMeters);
+    }
+
+    if (bmiValue < 18.5) {
+      return {
+        title: "Anabolic Recovery Strategy",
+        tips: [
+          "Caloric Hypertrophy: Maintain a structured daily caloric surplus (+300 to +500 kcal/day) focusing on high-quality nutrient-dense foods (avocados, eggs, nuts, whole grains, and lean meats).",
+          "Progressive Overload: Focus on fundamental compound strength movements (squats, chest press, deadlifts) with longer rest intervals (2-3 mins) to stimulate myofibrillar growth.",
+          "Restrict Excess Cardio: Limit high-intensity conditioning or long cardio blocks to minimize unnecessary metabolic burn and preserve energy for muscle synthesis.",
+          "Sleep & Recovery: Prioritize 8-9 hours of consistent, quality sleep to optimize natural hormone levels and deep tissue cell repair."
+        ],
+        badge: "Underweight Insight",
+        color: "border-yellow-500/20 bg-yellow-500/5 text-yellow-400"
+      };
+    } else if (bmiValue < 25) {
+      return {
+        title: "Composition Preservation Strategy",
+        tips: [
+          "Sustain Progressive Loading: Your cellular composition is optimal. Continue gradual progressive overload (intensity/volume) to advance muscle density.",
+          "Optimal Protein Target: Fuel active cell repair with 0.8g to 1.2g of protein per lb of bodyweight to maintain and build lean body mass.",
+          "Active Rest Modalities: Include brief mobility flows, stretching, or light Zone 1/2 cardio on rest days to enhance circulation and lower cumulative fatigue."
+        ],
+        badge: "Optimal Range",
+        color: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400"
+      };
+    } else if (bmiValue < 30) {
+      return {
+        title: "Body Recomposition & LISS Strategy",
+        tips: [
+          "Targeted Caloric Deficit: Maintain a moderate, sustainable caloric deficit (-250 to -400 kcal/day) while keeping protein intake elevated to safeguard active lean tissues.",
+          "Aerobic Conditioning: Incorporate 3 weekly LISS blocks (walking, stationary cycling, elliptical) in Zone 2 (60-70% max HR) to maximize fat oxidation.",
+          "Joint Integrity Protection: Target moderate lifting loads with clean, controlled tempos, minimizing heavy spinal axial loading if experiencing joint friction."
+        ],
+        badge: "Recomposition Guide",
+        color: "border-orange-500/20 bg-orange-500/5 text-orange-400"
+      };
+    } else {
+      return {
+        title: "CNS Load & Joint Preservation Strategy",
+        tips: [
+          "Guided Load Isolation: Prioritize machine-based compound exercises and seated lifts to isolate muscle groups while avoiding excessive spinal or joint pressure.",
+          "Non-Impact Cardio: Utilize swimming, rowing, or low-resistance stationary cycling to build aerobic capacity with zero lower-body joint impact.",
+          "Consistent Hydration & CNS Rest: Drink 3L+ of water daily and ensure at least 48 hours of spacing between heavy training sessions to promote recovery."
+        ],
+        badge: "Joint Safety Protocol",
+        color: "border-red-500/20 bg-red-500/5 text-red-400"
+      };
+    }
+  }, [draftProfile.weight, draftProfile.height, heightUnit]);
+
+  const calculatedProtein = useMemo(() => {
+    const w = draftProfile.weight;
+    if (!w) return null;
+
+    const weightInLbs = weightUnit === "lbs" ? w : w * 2.20462;
+    const physique = draftProfile.targetPhysique || "athletic";
+
+    let multiplier = 1.0;
+    if (physique === "shredded") multiplier = 1.2;
+    else if (physique === "lean") multiplier = 1.1;
+    else if (physique === "athletic") multiplier = 1.0;
+    else if (physique === "toned") multiplier = 0.9;
+    else if (physique === "bulky") multiplier = 1.0;
+
+    const proteinTarget = weightInLbs * multiplier;
+    return {
+      value: Math.round(proteinTarget),
+      multiplier: multiplier.toFixed(1),
+    };
+  }, [draftProfile.weight, draftProfile.targetPhysique, weightUnit]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="mx-auto max-w-xl space-y-6 pb-28 pt-2"
+      className="mx-auto max-w-5xl space-y-5 pb-28 pt-2 flex flex-col"
     >
-      <section>
-        <p className="text-sm text-zinc-500 uppercase tracking-widest font-semibold font-mono">Preferences</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Settings</h1>
+      {/* ─── HEADER TITLE PANEL ─── */}
+      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3 select-none">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white">System Settings</h1>
+          <p className="text-xs text-zinc-400 font-medium">Configure profile biometrics, LLM endpoints, local storage backups &amp; preferences</p>
+        </div>
       </section>
 
-      {/* Header Card with profile metadata */}
-      <Card className="relative overflow-hidden p-6 shadow-2xl">
-        <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        
-        <div className="flex items-center gap-4">
-          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-lg shadow-emerald-500/10">
-            <User size={26} className="text-zinc-950" />
-            <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-input border border-card-border">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-            </span>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">{profile?.name ?? "Athlete"}</h2>
-            <p className="text-sm text-zinc-400 font-medium mt-0.5">{profile?.goal || "Fitness Goal Not Configured"}</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Biometrics Card with debounced autosaving */}
-      <Card className="p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-card-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <Palette className="text-emerald-400" size={20} />
-            <h2 className="text-lg font-bold text-foreground tracking-tight">Profile &amp; Biometrics</h2>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {saveIndicator === "saving" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Saving...
-              </span>
-            )}
-            {saveIndicator === "saved" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                Autosaved
-              </span>
-            )}
-            {saveIndicator === "error" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
-                Validation Error
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 animate-fadeIn">
-          <Field label="Age">
-            <Input
-              type="number"
-              min={13}
-              max={120}
-              value={draftProfile.age ?? ""}
-              onChange={(e) => handleProfileChange("age", Number(e.target.value))}
-            />
-          </Field>
-          <Field label="Target Physique">
-            <Select
-              value={draftProfile.targetPhysique ?? ""}
-              onChange={(e) => handleProfileChange("targetPhysique", e.target.value)}
-            >
-              {physiqueOptions.map(option => (
-                <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label={`Weight (${weightUnit})`}>
-            <Input
-              type="number"
-              min={20}
-              max={1000}
-              value={draftProfile.weight ?? ""}
-              onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
-            />
-          </Field>
-          <SegmentedSetting<WeightUnit>
-            label="Weight System"
-            value={weightUnit}
-            values={["lbs", "kg"]}
-            onChange={(value) => void setWeightUnit(value)}
-          />
-
-          <Field label={`Height (${heightUnit === "in" ? "ft & in" : "cm"})`}>
-            {heightUnit === "in" ? (
-              <div className="grid grid-cols-2 gap-2 animate-fadeIn">
-                <div>
-                  <Label className="text-[10px] text-zinc-500">Feet</Label>
-                  <Input
-                    type="number"
-                    min={2}
-                    max={8}
-                    value={draftProfile.height ? Math.floor(draftProfile.height / 12) : ""}
-                    onChange={(e) => {
-                      const feet = Number(e.target.value);
-                      const inches = (draftProfile.height ?? 0) % 12;
-                      handleProfileChange("height", feet * 12 + inches);
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px] text-zinc-500">Inches</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={11}
-                    value={draftProfile.height ? Math.round(draftProfile.height % 12) : ""}
-                    onChange={(e) => {
-                      const inches = Number(e.target.value);
-                      const feet = Math.floor((draftProfile.height ?? 0) / 12) || 5;
-                      handleProfileChange("height", feet * 12 + inches);
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <Input
-                type="number"
-                min={20}
-                max={300}
-                value={draftProfile.height ?? ""}
-                onChange={(e) => handleProfileChange("height", Number(e.target.value))}
-              />
-            )}
-          </Field>
-          <SegmentedSetting<HeightUnit>
-            label="Height System"
-            value={heightUnit}
-            values={["in", "cm"]}
-            onChange={(value) => void setHeightUnit(value)}
-          />
-        </div>
-        <div className="space-y-4">
-          <Field label="Dietary Preferences">
-            <Input
-              value={draftProfile.dietaryPreferences ?? ""}
-              maxLength={200}
-              onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
-              placeholder="e.g. Vegetarian, Gluten-free, no peanuts"
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Injuries / Limitations">
-              <Input
-                value={draftProfile.injuries ?? ""}
-                maxLength={100}
-                onChange={(e) => handleProfileChange("injuries", e.target.value)}
-                placeholder="e.g. Lower back pain, bad knees"
-              />
-            </Field>
-            <Field label="Workout Duration (min)">
-              <Input
-                type="number"
-                min={15}
-                max={180}
-                value={draftProfile.workoutDuration ?? ""}
-                onChange={(e) => handleProfileChange("workoutDuration", e.target.value ? Number(e.target.value) : undefined)}
-                placeholder="e.g. 60"
-              />
-            </Field>
-          </div>
-        </div>
-        {profileError && <p className="text-xs text-rose-400 font-medium">{profileError}</p>}
-      </Card>
-
-      {/* AI Provider Config with Grid of selectable brands and code diagnostics */}
-      <Card className="p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-card-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <Cpu className="text-purple-400" size={20} />
-            <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight">AI Intelligence Engine</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Configure cloud endpoints and local hosts</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 pb-1">
-          {providerTypes.map((type) => {
-            const config = providerConfig[type] || providerConfig.custom;
-            const active = selectedType === type;
-            const savedProvider = providers.find((p) => p.type === type);
-            const isDefaultActive = savedProvider && activeProviderId === savedProvider.id;
+      {/* ─── SIDE PANEL LAYOUT GRID ─── */}
+      <div className="flex gap-4 md:gap-6 items-start">
+        {/* Left Navigation Sidebar Panel (Always vertical side panel: wide on desktop, compact on mobile) */}
+        <aside className="w-20 md:w-56 shrink-0 md:sticky md:top-24 flex flex-col bg-zinc-950 border border-zinc-800 p-1.5 rounded-2xl select-none gap-1.5">
+          {[
+            { id: "profile", label: "Profile & Goals", shortLabel: "Profile", icon: <User size={16} /> },
+            { id: "ai", label: "AI Engine", shortLabel: "AI Adapter", icon: <Cpu size={16} /> },
+            { id: "system", label: "System & Backup", shortLabel: "System", icon: <Server size={16} /> },
+          ].map((tab) => {
+            const active = activeSettingsTab === tab.id;
             return (
               <button
-                type="button"
-                className={`relative flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all duration-300 hover:scale-[1.02] ${
+                key={tab.id}
+                onClick={() => setActiveSettingsTab(tab.id as any)}
+                className={`flex flex-row items-center gap-2.5 md:gap-3 p-2.5 md:px-4 md:py-3 text-[9px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all w-full justify-start whitespace-nowrap ${
                   active
-                    ? `bg-gradient-to-br ${config.gradient} text-white-keep shadow-lg`
-                    : "border-card-border bg-surface text-zinc-500 dark:text-zinc-400 hover:bg-input hover:text-foreground"
+                    ? "bg-white text-zinc-950 font-bold shadow-lg"
+                    : "text-zinc-400 hover:text-white"
                 }`}
-                key={type}
-                onClick={() => handleSelectType(type)}
               >
-                {isDefaultActive && (
-                  <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-purple-400 shadow-md shadow-purple-500/50 animate-pulse" />
-                )}
-                <div className={`text-xs font-bold leading-tight ${active ? config.text : "text-zinc-300"}`}>
-                  {config.label}
-                </div>
-                <div className="text-[9px] text-zinc-500 mt-1.5 uppercase tracking-wider font-mono">
-                  {type}
-                </div>
+                {tab.icon}
+                <span className="hidden md:inline">{tab.label}</span>
+                <span className="inline md:hidden text-[9px] tracking-tight">{tab.shortLabel}</span>
               </button>
             );
           })}
-        </div>
+        </aside>
 
-        {draft ? (
-          <div className="space-y-4 pt-2">
-            {/* Provider Key Help Card */}
-            {(() => {
-              const helper = getProviderInstructions(draft.type);
-              if (!helper) return null;
-              return (
-                <Surface className="p-3.5 bg-emerald-950/20 border border-emerald-500/10 text-zinc-300 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/15 text-emerald-400">
-                      <Sparkles size={11} className="stroke-[2.5]" />
+        {/* Right Main Settings Panel */}
+        <div className="flex-1 w-full space-y-5">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSettingsTab}
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-5"
+            >
+              {/* ─── PROFILE & BIOMETRICS TAB ─── */}
+              {activeSettingsTab === "profile" && (
+                <div className="space-y-5">
+                  {/* Profile Card Summary */}
+                  <Card className="relative overflow-hidden p-5 shadow-2xl border border-white/5 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950/45 flex items-center gap-4 select-none">
+                    <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-xl shadow-emerald-500/10 shrink-0">
+                      <User size={26} className="text-zinc-950" />
+                      <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-zinc-900 border border-white/5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                      {helper.title} Steps
-                    </span>
-                  </div>
-                  <ol className="list-decimal pl-4.5 text-[11px] text-zinc-400 space-y-1">
-                    {helper.steps.map((st, i) => (
-                      <li key={i} className="leading-relaxed">{st}</li>
-                    ))}
-                  </ol>
-                  {helper.url && (
-                    <a
-                      href={helper.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition"
-                    >
-                      Go to Console Website →
-                    </a>
+                    <div>
+                      <h2 className="text-xl font-black tracking-tight text-white">{profile?.name ?? "Athlete"}</h2>
+                      <p className="text-xs text-zinc-400 font-medium mt-0.5">{profile?.goal || "Goal not set"}</p>
+                    </div>
+                  </Card>
+
+                  {/* Physical Biometrics Panel */}
+                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <Palette className="text-emerald-400" size={18} />
+                        <h2 className="text-base font-bold text-white tracking-tight">Biometric Inputs</h2>
+                      </div>
+                      <div className="flex items-center gap-1.5 select-none">
+                        {saveIndicator === "saving" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-amber-300 border border-amber-500/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            Saving...
+                          </span>
+                        )}
+                        {saveIndicator === "saved" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-300 border border-emerald-500/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            Autosaved
+                          </span>
+                        )}
+                        {saveIndicator === "error" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-rose-300 border border-rose-500/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                            Error
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Age">
+                        <Input
+                          type="number"
+                          min={13}
+                          max={120}
+                          value={draftProfile.age ?? ""}
+                          onChange={(e) => handleProfileChange("age", Number(e.target.value))}
+                          className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                        />
+                      </Field>
+                      <Field label="Target Physique">
+                        <Select
+                          value={draftProfile.targetPhysique ?? ""}
+                          onChange={(e) => handleProfileChange("targetPhysique", e.target.value)}
+                          className="bg-zinc-950 border-zinc-800 text-xs font-bold"
+                        >
+                          {physiqueOptions.map(option => (
+                            <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
+                          ))}
+                        </Select>
+                      </Field>
+
+                      <Field label={`Weight (${weightUnit})`}>
+                        <Input
+                          type="number"
+                          min={20}
+                          max={1000}
+                          value={draftProfile.weight ?? ""}
+                          onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
+                          className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                        />
+                      </Field>
+                      <SegmentedSetting<WeightUnit>
+                        label="Weight System"
+                        value={weightUnit}
+                        values={["lbs", "kg"]}
+                        onChange={(value) => void setWeightUnit(value)}
+                      />
+
+                      <Field label={`Height (${heightUnit === "in" ? "ft & in" : "cm"})`}>
+                        {heightUnit === "in" ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Feet</Label>
+                              <Input
+                                type="number"
+                                min={2}
+                                max={8}
+                                value={draftProfile.height ? Math.floor(draftProfile.height / 12) : ""}
+                                onChange={(e) => {
+                                  const feet = Number(e.target.value);
+                                  const inches = (draftProfile.height ?? 0) % 12;
+                                  handleProfileChange("height", feet * 12 + inches);
+                                }}
+                                className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Inches</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={11}
+                                value={draftProfile.height ? Math.round(draftProfile.height % 12) : ""}
+                                onChange={(e) => {
+                                  const inches = Number(e.target.value);
+                                  const feet = Math.floor((draftProfile.height ?? 0) / 12) || 5;
+                                  handleProfileChange("height", feet * 12 + inches);
+                                }}
+                                className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={20}
+                            max={300}
+                            value={draftProfile.height ?? ""}
+                            onChange={(e) => handleProfileChange("height", Number(e.target.value))}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          />
+                        )}
+                      </Field>
+                      <SegmentedSetting<HeightUnit>
+                        label="Height System"
+                        value={heightUnit}
+                        values={["in", "cm"]}
+                        onChange={(value) => void setHeightUnit(value)}
+                      />
+                    </div>
+
+                    <div className="space-y-4 pt-1">
+                      <Field label="Dietary Preferences">
+                        <Input
+                          value={draftProfile.dietaryPreferences ?? ""}
+                          maxLength={200}
+                          onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
+                          placeholder="e.g. Vegetarian, Gluten-free, no peanuts"
+                          className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                        />
+                      </Field>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field label="Injuries / Limitations">
+                          <Input
+                            value={draftProfile.injuries ?? ""}
+                            maxLength={100}
+                            onChange={(e) => handleProfileChange("injuries", e.target.value)}
+                            placeholder="e.g. Lower back pain, bad knees"
+                            className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                          />
+                        </Field>
+                        <Field label="Workout Duration (min)">
+                          <Input
+                            type="number"
+                            min={15}
+                            max={180}
+                            value={draftProfile.workoutDuration ?? ""}
+                            onChange={(e) => handleProfileChange("workoutDuration", e.target.value ? Number(e.target.value) : undefined)}
+                            placeholder="e.g. 60"
+                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                    {profileError && <p className="text-xs text-rose-400 font-medium font-mono">{profileError}</p>}
+                  </Card>
+
+                  {/* Dynamic Health Widgets Panel */}
+                  {(calculatedBmi || calculatedProtein) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {calculatedBmi && (
+                        <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/20 space-y-2 select-none shadow-xl flex flex-col justify-between">
+                          <div>
+                            <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
+                            <h4 className="text-sm font-bold text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
+                          </div>
+                          
+                          <div className="py-2 flex items-baseline gap-2">
+                            <span className="text-3xl font-black text-white font-mono leading-none">{calculatedBmi.value}</span>
+                            <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
+                              {calculatedBmi.classification}
+                            </span>
+                          </div>
+
+                          <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                            Estimated tissue mass calculations. Values between 18.5 and 24.9 reflect standard health ranges.
+                          </p>
+
+                          {/* BMI Improvement Action Guide Toggle Button */}
+                          {bmiAdvice && (
+                            <div className="pt-1.5 border-t border-white/5 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => setShowBmiGuidance(!showBmiGuidance)}
+                                className="w-full flex items-center justify-between text-[10px] font-bold text-zinc-400 hover:text-white bg-white/5 border border-white/5 px-2.5 py-1.5 rounded-xl transition duration-200"
+                              >
+                                <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
+                                <Info size={12} className="text-zinc-500" />
+                              </button>
+
+                              <AnimatePresence>
+                                {showBmiGuidance && (
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="overflow-hidden pt-2"
+                                  >
+                                    <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-[10px] leading-relaxed space-y-1.5`}>
+                                      <div className="flex justify-between items-center select-none mb-1">
+                                        <span className="font-extrabold uppercase tracking-wide text-white">{bmiAdvice.title}</span>
+                                        <span className="text-[8px] font-bold bg-white/10 px-1.5 py-0.5 rounded uppercase font-mono text-zinc-300">
+                                          {bmiAdvice.badge}
+                                        </span>
+                                      </div>
+                                      <ul className="list-disc pl-3.5 space-y-1 text-zinc-300 font-medium">
+                                        {bmiAdvice.tips.map((tip, idx) => (
+                                          <li key={idx} className="leading-snug">{tip}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {calculatedProtein && (
+                        <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/20 space-y-2 select-none shadow-xl flex flex-col justify-between">
+                          <div>
+                            <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
+                            <h4 className="text-sm font-bold text-white mt-1 leading-none">Daily Protein Target</h4>
+                          </div>
+
+                          <div className="py-2.5 flex items-baseline gap-1.5">
+                            <span className="text-3xl font-black text-white font-mono leading-none">{calculatedProtein.value}</span>
+                            <span className="text-xs font-extrabold text-zinc-400 font-mono">g / day</span>
+                          </div>
+
+                          <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                            Calculated at <span className="text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </Surface>
-              );
-            })()}
-            {/* Base URL: Only for Custom/Ollama/LMStudio */}
-            {(draft.type === "custom" || draft.type === "ollama" || draft.type === "lmstudio") && (
-              <Field label="Base URL" hint={providerHints.baseUrl}>
-                <Input
-                  maxLength={200}
-                  value={draft.baseUrl ?? ""}
-                  onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
-                  placeholder="e.g. http://localhost:11434"
-                  className="focus:ring-2 focus:ring-purple-400/10"
-                />
-              </Field>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Model selection: Always visible */}
-              <Field label="Model" hint={providerHints.model}>
-                <Select
-                  value={draft.model}
-                  onChange={(event) => setDraft({ ...draft, model: event.target.value })}
-                  disabled={modelsLoading || !!modelsError || models.length === 0}
-                  className="focus:ring-2 focus:ring-purple-400/10"
-                >
-                  {modelsLoading && <option>Loading models...</option>}
-                  {modelsError && <option>{modelsError}</option>}
-                  {!modelsLoading && !modelsError && models.length === 0 && <option>No models found</option>}
-                  {models.length > 0 && models.map((model) => (
-                      <option value={model} key={model}>
-                        {model}
-                      </option>
-                    ))}
-                </Select>
-              </Field>
-
-              {/* API Key: Hidden for local offline hosts */}
-              {draft.type !== "ollama" && draft.type !== "lmstudio" && (
-                <Field label="API Key" hint={providerHints.apiKey}>
-                  <div className="relative">
-                    <Input
-                      type={showApiKey ? "text" : "password"}
-                      maxLength={500}
-                      value={apiKey}
-                      onChange={(event) => setApiKey(event.target.value)}
-                      placeholder={draft.apiKey ? "Stored securely" : "Paste key"}
-                      className="focus:ring-2 focus:ring-purple-400/10 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                    >
-                      {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </Field>
-              )}
-            </div>
-            
-            {aiError && <p className="text-xs text-rose-400 font-medium">{aiError}</p>}
-
-            <div className="flex flex-wrap gap-2 border-t border-card-border pt-3">
-              {isSaved && (
-                <Button
-                  variant={isActive ? "primary" : "secondary"}
-                  icon={<CheckCircle2 size={16} />}
-                  onClick={() => void setActiveProvider(draft.id)}
-                  title={providerHints.active}
-                  disabled={isActive}
-                >
-                  {isActive ? "Active Engine" : "Activate"}
-                </Button>
-              )}
-              <Button
-                icon={<Save size={16} />}
-                onClick={handleSaveProvider}
-                title={providerHints.save}
-              >
-                {isSaved ? "Update Provider" : "Save Credentials"}
-              </Button>
-              <Button
-                icon={<LinkIcon size={16} />}
-                disabled={providerBusy}
-                onClick={handleTestProvider}
-                title={providerHints.test}
-              >
-                Test Connection
-              </Button>
-            </div>
-
-            {/* Diagnostic Console */}
-            {draft.lastStatus ? (
-              <div className="rounded-xl border border-card-border bg-input p-4 font-mono text-xs shadow-inner">
-                <div className="flex items-center justify-between border-b border-card-border pb-2 mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`h-2 w-2 rounded-full ${
-                      draft.lastStatus === "ok" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
-                    }`} />
-                    <span className="text-zinc-500 uppercase font-bold text-[9px] tracking-wider">Diagnostics Console</span>
-                  </div>
-                  <span className="text-zinc-600 text-[9px]">
-                    {draft.lastTestedAt ? new Date(draft.lastTestedAt).toLocaleTimeString() : ""}
-                  </span>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-zinc-400">&gt; Status: 
-                    <span className={`font-bold ml-1.5 ${
-                      draft.lastStatus === "ok" ? "text-emerald-400" : "text-rose-400"
-                    }`}>
-                      {draft.lastStatus === "ok" ? "ONLINE" : "OFFLINE"}
-                    </span>
-                  </p>
-                  {draft.lastError && (
-                    <p className="text-rose-400 leading-normal break-all mt-1 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
-                      &gt; Error: {draft.lastError}
-                    </p>
-                  )}
-                  {draft.lastStatus === "ok" && (
-                    <p className="text-emerald-400/80 leading-normal">
-                      &gt; Model stream established. Connection active and response validated.
-                    </p>
-                  )}
+              )}
+
+              {/* ─── AI INTELLIGENCE TAB ─── */}
+              {activeSettingsTab === "ai" && (
+                <div className="space-y-5">
+                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <Cpu className="text-purple-400" size={18} />
+                        <h2 className="text-base font-bold text-white tracking-tight">AI Adapter Cloud Grid</h2>
+                      </div>
+                    </div>
+
+                    {/* API brand cards grid */}
+                    <div className="grid grid-cols-3 gap-2 select-none">
+                      {providerTypes.map((type) => {
+                        const config = providerConfig[type] || providerConfig.custom;
+                        const active = selectedType === type;
+                        const savedProvider = providers.find((p) => p.type === type);
+                        const isDefaultActive = savedProvider && activeProviderId === savedProvider.id;
+                        return (
+                          <button
+                            type="button"
+                            className={`relative flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 hover:scale-[1.02] ${
+                              active
+                                ? `bg-gradient-to-br ${config.gradient} text-white shadow-lg`
+                                : "border-zinc-800 bg-zinc-950/30 text-zinc-400 hover:bg-zinc-900/50 hover:text-white"
+                            }`}
+                            key={type}
+                            onClick={() => handleSelectType(type)}
+                          >
+                            {isDefaultActive && (
+                              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc] animate-pulse" />
+                            )}
+                            <div className={`text-xs font-black tracking-tight leading-none ${active ? config.text : "text-zinc-300"}`}>
+                              {config.label}
+                            </div>
+                            <div className="text-[8px] text-zinc-500 mt-1.5 uppercase tracking-wider font-mono leading-none">
+                              {type}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {draft && (
+                      <div className="space-y-4 pt-1">
+                        {/* Setup Guides */}
+                        {(() => {
+                          const helper = getProviderInstructions(draft.type);
+                          if (!helper) return null;
+                          return (
+                            <Surface className="p-3.5 bg-purple-950/10 border border-purple-500/10 text-zinc-300 rounded-2xl space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/15 text-purple-400">
+                                  <Sparkles size={11} className="stroke-[2.5]" />
+                                </div>
+                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-400 font-mono">
+                                  {helper.title} Steps
+                                </span>
+                              </div>
+                              <ol className="list-decimal pl-4 text-[11px] text-zinc-400 space-y-1 font-medium">
+                                {helper.steps.map((st, i) => (
+                                  <li key={i} className="leading-relaxed">{st}</li>
+                                ))}
+                              </ol>
+                              {helper.url && (
+                                <a
+                                  href={helper.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-block text-[10px] font-bold text-purple-400 hover:text-purple-300 underline underline-offset-2 transition"
+                                >
+                                  Go to Console Website →
+                                </a>
+                              )}
+                            </Surface>
+                          );
+                        })()}
+
+                        {/* Endpoint config form */}
+                        {(draft.type === "custom" || draft.type === "ollama" || draft.type === "lmstudio") && (
+                          <Field label="Base URL" hint={providerHints.baseUrl}>
+                            <Input
+                              maxLength={200}
+                              value={draft.baseUrl ?? ""}
+                              onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
+                              placeholder="e.g. http://localhost:11434"
+                              className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                            />
+                          </Field>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <Field label="Model" hint={providerHints.model}>
+                            <Select
+                              value={draft.model}
+                              onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+                              disabled={modelsLoading || !!modelsError || models.length === 0}
+                              className="bg-zinc-950 border-zinc-800 text-xs font-bold"
+                            >
+                              {modelsLoading && <option>Loading models...</option>}
+                              {modelsError && <option>{modelsError}</option>}
+                              {!modelsLoading && !modelsError && models.length === 0 && <option>No models found</option>}
+                              {models.length > 0 && models.map((model) => (
+                                <option value={model} key={model}>
+                                  {model}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+
+                          {draft.type !== "ollama" && draft.type !== "lmstudio" && (
+                            <Field label="API Key" hint={providerHints.apiKey}>
+                              <div className="relative">
+                                <Input
+                                  type={showApiKey ? "text" : "password"}
+                                  maxLength={500}
+                                  value={apiKey}
+                                  onChange={(event) => setApiKey(event.target.value)}
+                                  placeholder={draft.apiKey ? "Stored securely" : "Paste key"}
+                                  className="bg-zinc-950 border-zinc-800 text-xs font-mono pr-10"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowApiKey(!showApiKey)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                                >
+                                  {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                                </button>
+                              </div>
+                            </Field>
+                          )}
+                        </div>
+                        
+                        {aiError && <p className="text-xs text-rose-400 font-medium font-mono">{aiError}</p>}
+
+                        {/* Terminals Console Log */}
+                        {draft.lastStatus ? (
+                          <div className="rounded-2xl border border-zinc-850 bg-black/50 p-4 font-mono text-[11px] shadow-inner relative overflow-hidden backdrop-blur-md keep-dark">
+                            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
+                            
+                            <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2 select-none">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`h-2 w-2 rounded-full ${
+                                  draft.lastStatus === "ok" ? "bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
+                                }`} />
+                                <span className="text-zinc-500 uppercase font-black text-[8px] tracking-widest font-mono">system.adapter.diagnostics</span>
+                              </div>
+                              <span className="text-zinc-600 text-[8px] font-bold">
+                                {draft.lastTestedAt ? new Date(draft.lastTestedAt).toLocaleTimeString() : ""}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5 text-zinc-300">
+                              <p className="flex items-center gap-1">
+                                <span className="text-purple-400 font-bold">$</span>
+                                <span>ping -c 1 {draft.baseUrl || defaultBaseUrls[draft.type]}</span>
+                              </p>
+                              <p className="pl-3.5 text-zinc-650">PING {draft.baseUrl || defaultBaseUrls[draft.type]} (56 bytes)...</p>
+                              
+                              <p className="flex items-center gap-1 mt-1">
+                                <span className="text-purple-400 font-bold">$</span>
+                                <span>curl -X POST -H "Authorization: Bearer ****" -d "validate"</span>
+                              </p>
+                              
+                              {draft.lastError ? (
+                                <div className="pl-3.5 mt-1 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
+                                  <p className="text-rose-400 font-bold leading-normal">[ERROR] Connection Failure</p>
+                                  <p className="text-zinc-400 text-[10px] mt-0.5 leading-relaxed">{draft.lastError}</p>
+                                </div>
+                              ) : (
+                                <div className="pl-3.5 space-y-0.5">
+                                  <p className="text-emerald-400 font-bold">[SUCCESS] Adapter channel online.</p>
+                                  <p className="text-zinc-400 text-[10px]">
+                                    &gt; Model target: <span className="text-zinc-200 font-bold">{draft.model}</span>
+                                  </p>
+                                  <p className="text-zinc-400 text-[10px]">
+                                    &gt; Handshake validation verified successfully.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {/* Connection controller buttons */}
+                        <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3 select-none">
+                          {isSaved && (
+                            <Button
+                              variant={isActive ? "primary" : "secondary"}
+                              icon={<CheckCircle2 size={15} />}
+                              onClick={() => void setActiveProvider(draft.id)}
+                              title={providerHints.active}
+                              disabled={isActive}
+                              className="h-8 text-xs font-bold uppercase"
+                            >
+                              {isActive ? "Active Engine" : "Activate"}
+                            </Button>
+                          )}
+                          <Button
+                            icon={<Save size={15} />}
+                            onClick={handleSaveProvider}
+                            title={providerHints.save}
+                            className="h-8 text-xs font-bold uppercase"
+                          >
+                            {isSaved ? "Update Provider" : "Save Credentials"}
+                          </Button>
+                          <Button
+                            icon={<LinkIcon size={15} />}
+                            disabled={providerBusy}
+                            onClick={handleTestProvider}
+                            title={providerHints.test}
+                            className="h-8 text-xs font-bold uppercase bg-zinc-950 border border-zinc-800 hover:bg-zinc-900"
+                          >
+                            Test Connection
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </Card>
                 </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </Card>
+              )}
 
-      {/* Security backups with double column input forms and file selectors */}
-      <Card className="p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-card-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <Shield className="text-blue-400" size={20} />
-            <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight">Security &amp; Backups</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Encrypt your profile logs and transfer files</p>
-            </div>
-          </div>
+              {/* ─── SYSTEM, STORAGE & BACKUPS TAB (Unified Panel) ─── */}
+              {activeSettingsTab === "system" && (
+                <div className="space-y-5">
+                  {/* Preferences and Database Statistics */}
+                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <Server className="text-orange-400" size={18} />
+                        <h2 className="text-base font-bold text-white tracking-tight">App Preferences &amp; Storage Telemetry</h2>
+                      </div>
+                    </div>
+
+                    <div className="pb-3 border-b border-white/5 select-none">
+                      <SegmentedSetting<ThemeMode>
+                        label="App Display Theme"
+                        value={theme}
+                        values={["dark", "light", "system"]}
+                        onChange={(value) => void setTheme(value)}
+                      />
+                    </div>
+
+                    {/* Local Storage database statistics engine */}
+                    <div className="rounded-2xl border border-zinc-850 bg-zinc-950/30 p-4 shadow-xl space-y-3">
+                      <div className="flex items-center gap-2 border-b border-white/5 pb-2 select-none">
+                        <Database className="text-orange-400" size={15} />
+                        <span className="text-[10px] font-black uppercase tracking-widest font-mono text-zinc-400">Database Record Volume</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs leading-normal select-none">
+                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
+                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
+                        </div>
+                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
+                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                            {workouts.reduce((sum, w) => sum + w.exercises.reduce((es, e) => es + e.sets.filter(s => s.completed).length, 0), 0)}
+                          </span>
+                        </div>
+                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
+                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
+                        </div>
+                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
+                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
+                        </div>
+                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
+                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                            {useAtlasStore.getState().apiCallCount || 0}
+                          </span>
+                        </div>
+                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
+                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                            {(useAtlasStore.getState().tokenCount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2 pt-1 select-none">
+                      {/* Notifications permission */}
+                      <Surface className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/20 p-3.5 rounded-2xl shadow-xl">
+                        <div>
+                          <p className="font-bold text-white text-xs">App Notifications</p>
+                          <p className="text-[10px] text-zinc-500 mt-1 font-medium">State: <span className="font-mono text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          aria-label="Enable notifications"
+                          className="rounded-xl h-8 w-8 bg-zinc-900 border border-zinc-800"
+                          onClick={async () => {
+                            if (!("Notification" in window)) {
+                              setNotificationStatus("Unsupported");
+                              return;
+                            }
+                            const permission = await Notification.requestPermission();
+                            setNotificationStatus(permission);
+                          }}
+                        >
+                          <Bell size={15} />
+                        </Button>
+                      </Surface>
+
+                      {/* Hard factory reset alert block */}
+                      <Surface className="flex items-center justify-between gap-4 border border-rose-500/20 bg-rose-500/5 p-3.5 rounded-2xl shadow-xl">
+                        <div>
+                          <p className="font-bold text-rose-400 text-xs">Hard Factory Reset</p>
+                          <p className="text-[10px] text-rose-500/70 mt-1 font-semibold">Irreversible local database loss</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="danger"
+                          aria-label="Reset local data"
+                          className="rounded-xl h-8 w-8"
+                          onClick={() => {
+                            const warningMsg = activeWorkout
+                              ? "You have a workout session in progress. Performing a factory reset will discard your active workout and permanently delete all custom workouts, body metrics, and messages. Are you sure you want to proceed?"
+                              : "Are you sure you want to restore original seeded data? All custom workouts, body metrics, and messages will be permanently deleted.";
+                            if (window.confirm(warningMsg)) {
+                              void resetLocalData();
+                            }
+                          }}
+                        >
+                          <RefreshCcw size={15} />
+                        </Button>
+                      </Surface>
+                    </div>
+                  </Card>
+
+                  {/* Backup Vault Panel */}
+                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3 select-none">
+                      <div className="flex items-center gap-2.5">
+                        <Shield className="text-blue-400" size={18} />
+                        <h2 className="text-base font-bold text-white tracking-tight">Encrypted Profile Backups</h2>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2">
+                      {/* Export Box */}
+                      <Surface className="flex flex-col justify-between border border-zinc-800 bg-zinc-950/20 p-4 rounded-2xl select-none">
+                        <div className="space-y-3">
+                          <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans">Export training database</Label>
+                          <div className="relative">
+                            <Input
+                              type={showExportPassphrase ? "text" : "password"}
+                              maxLength={64}
+                              value={exportPassphrase}
+                              onChange={(event) => setExportPassphrase(event.target.value)}
+                              placeholder="Set encryption passphrase"
+                              className="bg-zinc-950 border-zinc-800 text-xs font-medium pr-10 text-zinc-100 font-sans"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowExportPassphrase(!showExportPassphrase)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                            >
+                              {showExportPassphrase ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </div>
+                        </div>
+                        <Button
+                          className="mt-4 w-full h-9 text-xs font-bold uppercase font-sans"
+                          variant="primary"
+                          icon={<Download size={15} />}
+                          disabled={!exportPassphrase}
+                          onClick={handleExportWithValidation}
+                        >
+                          Export Encrypted JSON
+                        </Button>
+                      </Surface>
+
+                      {/* Import Box */}
+                      <Surface className="flex flex-col justify-between border border-zinc-800 bg-zinc-950/20 p-4 rounded-2xl">
+                        <div className="space-y-3">
+                          <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest select-none font-sans">Import Backup File</Label>
+                          <div className="relative">
+                            <input
+                              type="file"
+                              id="import-file-uploader"
+                              accept="application/json"
+                              onChange={(event: ChangeEvent<HTMLInputElement>) => setImportFile(event.target.files?.[0] ?? null)}
+                              className="hidden"
+                            />
+                            <label
+                              htmlFor="import-file-uploader"
+                              className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-zinc-800 hover:border-zinc-700 rounded-xl bg-zinc-950/80 py-3.5 px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 transition duration-205 cursor-pointer w-full text-center font-sans"
+                            >
+                              <Upload size={18} className="text-blue-400" />
+                              <span className="truncate max-w-[180px] normal-case font-sans">{importFile ? importFile.name : "Select backup.json"}</span>
+                            </label>
+                          </div>
+                          
+                          <div className="relative">
+                            <Input
+                              type={showImportPassphrase ? "text" : "password"}
+                              maxLength={64}
+                              value={importPassphrase}
+                              onChange={(event) => setImportPassphrase(event.target.value)}
+                              placeholder="Enter decrypt passphrase"
+                              className="bg-zinc-950 border-zinc-800 text-xs font-medium pr-10 text-zinc-100 font-sans"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowImportPassphrase(!showImportPassphrase)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                            >
+                              {showImportPassphrase ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </div>
+                        </div>
+                        <Button
+                          className="w-full mt-4 h-9 text-xs font-bold uppercase font-sans"
+                          icon={<Upload size={15} />}
+                          disabled={!importFile || !importPassphrase}
+                          onClick={handleImportWithValidation}
+                        >
+                          Import Decrypted profile
+                        </Button>
+                      </Surface>
+                    </div>
+                    {backupError && <p className="text-xs text-rose-400 font-medium font-mono">{backupError}</p>}
+                  </Card>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Export Panel */}
-          <Surface className="flex flex-col justify-between border border-surface-border bg-surface p-4 rounded-2xl">
-            <div className="space-y-3">
-              <Label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Export Training Data</Label>
-              <div className="relative">
-                <Input
-                  type={showExportPassphrase ? "text" : "password"}
-                  maxLength={64}
-                  value={exportPassphrase}
-                  onChange={(event) => setExportPassphrase(event.target.value)}
-                  placeholder="Set encryption passphrase"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowExportPassphrase(!showExportPassphrase)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  {showExportPassphrase ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-            <Button
-              className="mt-4 w-full"
-              variant="primary"
-              icon={<Download size={16} />}
-              disabled={!exportPassphrase}
-              onClick={handleExportWithValidation}
-            >
-              Export JSON File
-            </Button>
-          </Surface>
-
-          {/* Import Panel */}
-          <Surface className="flex flex-col justify-between border border-surface-border bg-surface p-4 rounded-2xl">
-            <div className="space-y-3">
-              <Label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Import Backup File</Label>
-              <div className="relative">
-                <input
-                  type="file"
-                  id="import-file-uploader"
-                  accept="application/json"
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => setImportFile(event.target.files?.[0] ?? null)}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="import-file-uploader"
-                  className="flex items-center justify-center gap-2 border border-dashed border-card-border rounded-xl bg-input py-2.5 px-3 text-xs font-semibold text-zinc-400 hover:bg-input hover:text-foreground transition duration-200 cursor-pointer w-full text-center"
-                >
-                  <Upload size={14} />
-                  {importFile ? importFile.name : "Select backup.json"}
-                </label>
-              </div>
-              
-              <div className="relative">
-                <Input
-                  type={showImportPassphrase ? "text" : "password"}
-                  maxLength={64}
-                  value={importPassphrase}
-                  onChange={(event) => setImportPassphrase(event.target.value)}
-                  placeholder="Enter decrypt passphrase"
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowImportPassphrase(!showImportPassphrase)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  {showImportPassphrase ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-            <Button
-              className="w-full mt-4"
-              icon={<Upload size={16} />}
-              disabled={!importFile || !importPassphrase}
-              onClick={handleImportWithValidation}
-            >
-              Import profile
-            </Button>
-          </Surface>
-        </div>
-        {backupError && <p className="text-xs text-rose-400 font-medium">{backupError}</p>}
-      </Card>
-
-
-      {/* System card with database reset and PWA notifications */}
-      <Card className="p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-card-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <Server className="text-orange-400" size={20} />
-            <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight">System Preferences</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Manage device options and local databases</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="pb-4 border-b border-card-border mb-4">
-          <SegmentedSetting<ThemeMode>
-            label="App Display Theme"
-            value={theme}
-            values={["dark", "light", "system"]}
-            onChange={(value) => void setTheme(value)}
-          />
-        </div>
-
-        <div className="flex items-start gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs leading-normal text-rose-600 dark:text-rose-300">
-          <ShieldAlert className="mt-0.5 shrink-0 text-rose-500 dark:text-rose-400" size={16} />
-          <div>
-            <span className="font-bold uppercase tracking-wider text-rose-500 dark:text-rose-400 block mb-1">Irreversible Data Loss Warning</span>
-            Performing a Hard Factory Reset will instantly delete all of your custom routines, workout histories, biometrics, and progress logs. We **strongly advise** that you generate an encrypted JSON export above to save your backup first, or this data will be completely lost.
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Surface className="flex items-center justify-between gap-4 border border-surface-border bg-surface p-4 rounded-2xl">
-            <div>
-              <p className="font-semibold text-foreground text-sm">App Notifications</p>
-              <p className="text-xs text-zinc-500 mt-0.5">Current state: <span className="font-mono text-zinc-500 dark:text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
-            </div>
-            <Button
-              size="icon"
-              variant="secondary"
-              aria-label="Enable notifications"
-              className="rounded-xl"
-              onClick={async () => {
-                if (!("Notification" in window)) {
-                  setNotificationStatus("Unsupported");
-                  return;
-                }
-                const permission = await Notification.requestPermission();
-                setNotificationStatus(permission);
-              }}
-            >
-              <Bell size={18} />
-            </Button>
-          </Surface>
-          <Surface className="flex items-center justify-between gap-4 border border-surface-border bg-surface p-4 rounded-2xl">
-            <div>
-              <p className="font-semibold text-foreground text-sm">Hard Factory Reset</p>
-              <p className="text-xs text-zinc-500 mt-0.5">Restore all original seeded profiles</p>
-            </div>
-            <Button
-              size="icon"
-              variant="danger"
-              aria-label="Reset local data"
-              className="rounded-xl"
-              onClick={() => {
-                const warningMsg = activeWorkout
-                  ? "You have a workout session in progress. Performing a factory reset will discard your active workout and permanently delete all custom workouts, body metrics, and messages. Are you sure you want to proceed?"
-                  : "Are you sure you want to restore original seeded data? All custom workouts, body metrics, and messages will be permanently deleted.";
-                if (window.confirm(warningMsg)) {
-                  void resetLocalData();
-                }
-              }}
-            >
-              <RefreshCcw size={18} />
-            </Button>
-          </Surface>
-        </div>
-      </Card>
+      </div>
     </motion.div>
   );
 }
@@ -1064,11 +1377,11 @@ export function SettingsScreen() {
 function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1.5">
-        <Label className="mb-0">{label}</Label>
+      <div className="flex items-center gap-1.5 mb-1.5 select-none">
+        <Label className="mb-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</Label>
         {hint && (
           <span title={hint} className="cursor-help text-zinc-500 hover:text-zinc-300 transition-colors">
-            <Info size={14} />
+            <Info size={13} />
           </span>
         )}
       </div>
@@ -1091,7 +1404,7 @@ function SegmentedSetting<T extends string>({
   return (
     <div className="space-y-1.5">
       <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-0">{label}</Label>
-      <div className="relative grid gap-1 rounded-xl border border-card-border bg-input p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+      <div className="relative grid gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map((item) => {
           const active = item === value;
           return (
