@@ -335,8 +335,17 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   completeOnboarding: async (data) => {
     const { apiKey, providerType, customGoal, ...profile } = data;
     
-    if (apiKey && providerType) {
+    const isLocalProvider = providerType === "ollama" || providerType === "lmstudio";
+    if (providerType && (apiKey || isLocalProvider)) {
       const providerId = createId("provider");
+      
+      let defaultBaseUrl: string | undefined = undefined;
+      if (providerType === "ollama") {
+        defaultBaseUrl = "http://localhost:11434";
+      } else if (providerType === "lmstudio") {
+        defaultBaseUrl = "http://localhost:1234/v1";
+      }
+
       const tempProvider: AiProviderSettings = {
         id: providerId,
         type: providerType,
@@ -346,15 +355,19 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
         contextLength: 8000,
         streaming: false,
         enabled: true,
+        baseUrl: defaultBaseUrl,
       };
-      const model = await findFirstSupportedModel(tempProvider, apiKey);
+      
+      const keyToUse = apiKey || (isLocalProvider ? "local-key" : "");
+      const model = await findFirstSupportedModel(tempProvider, keyToUse);
       if (!model) {
-        throw new Error("No supported models found for this provider.");
+        throw new Error(`No models found for ${providerType}. Make sure your local model server is running.`);
       }
+      
       const newProvider: AiProviderSettings = {
         ...tempProvider,
         model,
-        apiKey: await encryptString(apiKey), // Store encrypted API key in memory
+        apiKey: keyToUse ? await encryptString(keyToUse) : undefined,
       };
       set({ aiProviders: [newProvider], activeProviderId: providerId });
     }

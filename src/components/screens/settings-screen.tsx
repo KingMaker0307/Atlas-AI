@@ -182,6 +182,8 @@ export function SettingsScreen() {
     const weight = Number(draftProfile.weight);
     const height = Number(draftProfile.height);
     const diet = draftProfile.dietaryPreferences || "";
+    const injuries = draftProfile.injuries || "";
+    const duration = Number(draftProfile.workoutDuration);
 
     if (isNaN(age) || age < 13 || age > 120) {
       setProfileError("Age must be between 13 and 120.");
@@ -197,6 +199,14 @@ export function SettingsScreen() {
     }
     if (diet.length > 200) {
       setProfileError("Dietary preferences must be 200 characters or less.");
+      return;
+    }
+    if (injuries.length > 100) {
+      setProfileError("Injuries description must be 100 characters or less.");
+      return;
+    }
+    if (draftProfile.workoutDuration !== undefined && (isNaN(duration) || duration < 15 || duration > 180)) {
+      setProfileError("Workout duration must be between 15 and 180 minutes.");
       return;
     }
 
@@ -390,6 +400,26 @@ export function SettingsScreen() {
               maxLength={200}
               onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
               placeholder="e.g. Vegetarian, Gluten-free, no peanuts"
+            />
+          </Field>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Field label="Injuries / Limitations">
+            <Input
+              value={draftProfile.injuries ?? ""}
+              maxLength={100}
+              onChange={(e) => handleProfileChange("injuries", e.target.value)}
+              placeholder="e.g. Lower back pain, bad knees"
+            />
+          </Field>
+          <Field label="Workout Duration (min)">
+            <Input
+              type="number"
+              min={15}
+              max={180}
+              value={draftProfile.workoutDuration ?? ""}
+              onChange={(e) => handleProfileChange("workoutDuration", e.target.value ? Number(e.target.value) : undefined)}
+              placeholder="e.g. 60"
             />
           </Field>
         </div>

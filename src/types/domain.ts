@@ -54,6 +54,8 @@ export interface UserProfile {
   bodyType?: BodyType;
   equipment?: EquipmentPreference;
   customGoal?: string;
+  injuries?: string;
+  workoutDuration?: number;
 }
 
 export interface Exercise {
