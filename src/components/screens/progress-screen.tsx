@@ -385,8 +385,8 @@ export function ProgressScreen() {
       {/* ─── HEADER PANEL ─── */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3 no-print">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-white">Training Intelligence</h1>
-          <p className="text-xs text-zinc-400 font-medium">Biological telemetry, progressive overload charts & recovery analytics</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Training Intelligence</h1>
+          <p className="text-[11px] sm:text-xs text-zinc-400 font-medium">Progressive overload charts & recovery analytics</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono select-year-label">Select Year:</span>
@@ -413,7 +413,7 @@ export function ProgressScreen() {
       {/* ─── BIOLOGICAL READINESS & ANNUAL SUMMARY CONSOLE ─── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Readiness Dial Card */}
-        <Card className="p-5 bg-gradient-to-br from-violet-950/15 via-zinc-900 to-zinc-950 border border-violet-500/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+        <Card className="p-4 sm:p-5 bg-gradient-to-br from-violet-950/15 via-zinc-900 to-zinc-950 border border-violet-500/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[180px] sm:min-h-[220px]">
           <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-violet-600/5 blur-3xl pointer-events-none" />
           
           <div className="flex items-start justify-between">
@@ -461,7 +461,7 @@ export function ProgressScreen() {
         </Card>
 
         {/* Active Plan Dials Card */}
-        <Card className="p-5 bg-gradient-to-br from-emerald-950/15 via-zinc-900 to-zinc-950 border border-emerald-500/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[220px] md:col-span-2">
+        <Card className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/15 via-zinc-900 to-zinc-950 border border-emerald-500/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[180px] sm:min-h-[220px] md:col-span-2">
           <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-600/5 blur-3xl pointer-events-none" />
           
           {activePlan ? (

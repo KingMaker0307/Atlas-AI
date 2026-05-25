@@ -118,42 +118,100 @@ function calculatePlates(targetWeight: number, unit: string) {
 }
 
 function parseSpeechCommand(text: string) {
-  const normalized = text.toLowerCase();
+  const normalized = text.toLowerCase()
+    .replace(/[,.:;\-_!?]/g, " ") // strip punctuation common in transcripts
+    .replace(/\s+/g, " ")        // normalize multiple spaces
+    .trim();
   
-  // Pattern 1: e.g. "log set 2 135 pounds 8 reps"
-  const mainRegex = /log\s+set\s+(\w+)\s+(\d+(?:\.\d+)?)\s*(?:pounds|libs|kilos|kg|lbs)?\s*(?:at)?\s*(\d+)\s*(?:reps|rep)?/i;
-  const match = normalized.match(mainRegex);
-  if (match) {
-    const setWord = match[1];
-    const weightVal = parseFloat(match[2]);
-    const repsVal = parseInt(match[3], 10);
-    
-    let setNumber = parseInt(setWord, 10);
-    if (isNaN(setNumber)) {
-      setNumber = WORD_TO_NUM[setWord] || 0;
+  // 1. Direct Command Matches
+  if (normalized.includes("skip exercise") || normalized.includes("skip movement") || normalized.includes("skip this")) {
+    return { command: "skip_exercise" };
+  }
+  if (normalized.includes("add set") || normalized.includes("new set") || normalized.includes("another set")) {
+    return { command: "add_set" };
+  }
+  if (normalized.includes("start rest") || normalized.includes("rest now") || normalized.includes("start timer")) {
+    return { command: "start_rest" };
+  }
+  if (normalized.includes("stop rest") || normalized.includes("stop timer") || normalized.includes("cancel rest")) {
+    return { command: "stop_rest" };
+  }
+
+  // 2. Intelligent Weight, Reps, and Set Extraction
+  let setNumber: number | null = null;
+  let weight: number | null = null;
+  let reps: number | null = null;
+
+  // Extract set number (e.g., "set 2", "set two", "first set", "2nd set")
+  const setMatch = normalized.match(/(?:log\s+)?set\s+(\w+)/i);
+  if (setMatch) {
+    const setWord = setMatch[1];
+    const parsedSetNum = parseInt(setWord, 10);
+    setNumber = !isNaN(parsedSetNum) ? parsedSetNum : (WORD_TO_NUM[setWord] || null);
+  }
+
+  if (setNumber === null) {
+    // Try word-based matching for standalone words ("first", "second", "one", "two")
+    for (const [word, num] of Object.entries(WORD_TO_NUM)) {
+      if (normalized.includes(` ${word} `) || normalized.startsWith(`${word} `) || normalized.endsWith(` ${word}`)) {
+        setNumber = num;
+        break;
+      }
     }
-    
+  }
+
+  if (setNumber === null) {
+    // Try ordinals like "1st", "2nd", "3rd", "4th"
+    const ordMatch = normalized.match(/(\d+)(?:st|nd|rd|th)\s+set/i);
+    if (ordMatch) {
+      setNumber = parseInt(ordMatch[1], 10);
+    }
+  }
+
+  // Extract weight/load (e.g. "135 pounds", "135 lbs", "135 kg", "weight 135", "load 135")
+  const weightMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:pounds|libs|kilos|kg|lbs|weight|load)/i)
+    || normalized.match(/(?:weight|load)\s+(\d+(?:\.\d+)?)/i);
+  if (weightMatch) {
+    weight = parseFloat(weightMatch[1]);
+  }
+
+  // Extract reps/rep/times (e.g. "8 reps", "8 rep", "8 times", "reps 8", "rep 8")
+  const repsMatch = normalized.match(/(\d+)\s*(?:reps|rep|times)/i)
+    || normalized.match(/(?:reps|rep)\s+(\d+)/i);
+  if (repsMatch) {
+    reps = parseInt(repsMatch[1], 10);
+  }
+
+  // Fallback sequential parser if weight or reps couldn't be extracted via keywords
+  if (weight === null || reps === null) {
+    const numbers = normalized.match(/\d+(?:\.\d+)?/g);
+    if (numbers) {
+      if (numbers.length >= 3) {
+        // e.g. "set 2 with 135 for 8" -> set 2, weight 135, reps 8
+        const seqSetNum = parseInt(numbers[0], 10);
+        if (setNumber === null || setNumber === seqSetNum) {
+          setNumber = seqSetNum;
+          weight = parseFloat(numbers[1]);
+          reps = parseInt(numbers[2], 10);
+        }
+      } else if (numbers.length === 2 && setNumber !== null) {
+        // e.g. "set 2: 135 for 8" (already parsed setNumber = 2) -> weight 135, reps 8
+        weight = parseFloat(numbers[0]);
+        reps = parseInt(numbers[1], 10);
+      }
+    }
+  }
+
+  // If we successfully found all three components, return the log command!
+  if (setNumber !== null && weight !== null && reps !== null) {
     return {
       command: "log_set",
       setNumber,
-      weight: weightVal,
-      reps: repsVal
+      weight,
+      reps
     };
   }
-  
-  if (normalized.includes("skip exercise")) {
-    return { command: "skip_exercise" };
-  }
-  if (normalized.includes("add set")) {
-    return { command: "add_set" };
-  }
-  if (normalized.includes("start rest")) {
-    return { command: "start_rest" };
-  }
-  if (normalized.includes("stop rest") || normalized.includes("stop timer")) {
-    return { command: "stop_rest" };
-  }
-  
+
   return null;
 }
 
@@ -552,7 +610,7 @@ export function WorkoutScreen() {
         <section className="flex items-center justify-between">
           <div>
             <p className="text-sm text-zinc-400">Manage and track your plans</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal text-white">Plans</h1>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-white">Plans</h1>
           </div>
           <Button
             size="sm"
@@ -1052,7 +1110,7 @@ export function WorkoutScreen() {
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
       <Card className="fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-20 px-3 py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
-        <div className="flex items-center justify-between gap-2 max-w-5xl mx-auto">
+        <div className="flex flex-wrap items-center justify-between gap-2 max-w-5xl mx-auto">
           <div className="flex items-center gap-2 min-w-0">
             <Button
               variant="ghost"
@@ -1064,7 +1122,7 @@ export function WorkoutScreen() {
               <ArrowLeft size={16} />
             </Button>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-foreground truncate max-w-[120px] sm:max-w-[240px] leading-tight capitalize">
+              <h1 className="text-sm font-bold text-foreground truncate max-w-[100px] sm:max-w-[240px] leading-tight capitalize">
                 {activeWorkout.name}
               </h1>
               <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-none mt-0.5 font-medium">
@@ -1073,12 +1131,12 @@ export function WorkoutScreen() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
             {/* Hands-Free Voice Logger Button */}
             <Button
               size="icon"
               variant="ghost"
-              className={`h-8 w-8 rounded-lg shrink-0 transition-all ${
+              className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg shrink-0 transition-all ${
                 isListening
                   ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35"
                   : "bg-transparent text-zinc-400 hover:text-white border border-white/5"
@@ -1087,7 +1145,7 @@ export function WorkoutScreen() {
               aria-label="Voice command logger"
               title="Voice command logging"
             >
-              {isListening ? <Mic size={15} className="text-rose-500 animate-pulse" /> : <MicOff size={15} />}
+              {isListening ? <Mic size={14} className="text-rose-500 animate-pulse" /> : <MicOff size={14} />}
             </Button>
 
             {/* Active Timer badge */}
@@ -1102,39 +1160,40 @@ export function WorkoutScreen() {
 
             {/* Rest state container */}
             <div
-              className={`px-2.5 py-1 rounded-lg border text-center transition-all duration-300 ${
+              className={`px-2 py-1 rounded-lg border text-center transition-all duration-300 ${
                 remaining > 0
                   ? "bg-amber-500/10 border-amber-500/25 text-amber-300 animate-pulse"
                   : "bg-emerald-500/10 border-emerald-500/25 text-emerald-300"
               }`}
             >
-              <p className="text-xs font-mono font-bold leading-none">
+              <p className="text-[11px] sm:text-xs font-mono font-bold leading-none">
                 {remaining > 0 ? formatTimer(remaining) : "Ready"}
               </p>
-              <p className="text-[8px] uppercase tracking-wider text-zinc-400 mt-0.5 leading-none">
+              <p className="text-[7px] sm:text-[8px] uppercase tracking-wider text-zinc-400 mt-0.5 leading-none">
                 Rest
               </p>
             </div>
 
-            {/* Quick Discard Button */}
+            {/* Quick Discard Button - icon-only on xs */}
             <Button
               size="sm"
               variant="secondary"
-              className="h-8 px-3 text-xs font-semibold shrink-0 bg-transparent text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 border border-rose-500/20"
+              className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold shrink-0 bg-transparent text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 border border-rose-500/20"
               onClick={() => {
                 if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
                   void discardWorkout();
                 }
               }}
             >
-              Discard
+              <span className="hidden sm:inline">Discard</span>
+              <Trash2 size={13} className="sm:hidden" />
             </Button>
 
             {/* Quick Finish Button */}
             <Button
               size="sm"
               variant="primary"
-              className="h-8 px-3 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
+              className="h-7 sm:h-8 px-2.5 sm:px-3 text-[10px] sm:text-xs font-bold shrink-0 bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
               onClick={handleFinishSessionClick}
             >
               Finish
@@ -1202,7 +1261,7 @@ export function WorkoutScreen() {
 
           return (
             <Card
-              className={`p-4 transition-all duration-300 relative overflow-hidden ${
+              className={`p-3 sm:p-4 transition-all duration-300 relative overflow-hidden ${
                 isSkipped
                   ? "opacity-60 border-dashed bg-surface/30 border-surface-border"
                   : "shadow-lg hover:shadow-xl"
@@ -1251,17 +1310,17 @@ export function WorkoutScreen() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 shrink-0">
                   {/* Step-by-Step Info Button */}
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                    className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                     onClick={() => setSelectedExercise(exercise)}
                     aria-label="View step-by-step instructions"
                   >
                     <Info size={12} />
-                    <span>Guide</span>
+                    <span className="hidden sm:inline">Guide</span>
                   </Button>
 
                   {/* Swap Alternatives button */}
@@ -1269,7 +1328,7 @@ export function WorkoutScreen() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                      className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                       onClick={() => {
                         setActiveSwapExercise(workoutExercise);
                         setSwapSearch("");
@@ -1277,7 +1336,7 @@ export function WorkoutScreen() {
                       aria-label="Swap exercise alternative"
                     >
                       <Shuffle size={12} />
-                      <span>Swap</span>
+                      <span className="hidden sm:inline">Swap</span>
                     </Button>
                   )}
 
@@ -1285,14 +1344,14 @@ export function WorkoutScreen() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className={`h-7 px-2 text-[10px] font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${
+                    className={`h-7 px-1.5 sm:px-2 text-[10px] font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${
                       isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-350"
                     }`}
                     onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                     aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
                   >
                     <SkipForward size={12} />
-                    <span>{isSkipped ? "Resume" : "Skip"}</span>
+                    <span className="hidden sm:inline">{isSkipped ? "Resume" : "Skip"}</span>
                   </Button>
 
                   {/* Add set button */}
@@ -1300,12 +1359,12 @@ export function WorkoutScreen() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-2 text-[10px] font-bold text-emerald-550 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                      className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-emerald-550 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                       onClick={() => void addSet(workoutExercise.id)}
                       aria-label="Add logging set"
                     >
                       <CirclePlus size={12} />
-                      <span>Add Set</span>
+                      <span className="hidden sm:inline">Add Set</span>
                     </Button>
                   )}
                 </div>
@@ -1335,16 +1394,16 @@ export function WorkoutScreen() {
                     if (isCardio) {
                       return (
                         <>
-                          <div className="flex items-center justify-between gap-3 mb-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2.5 rounded-xl border border-purple-500/10 select-none">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between gap-2 sm:gap-3 mb-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2 sm:p-2.5 rounded-xl border border-purple-500/10 select-none">
+                            <div className="flex items-center gap-2 min-w-0">
                               <Upload size={14} className="text-purple-400 shrink-0" />
-                              <div className="text-left">
-                                <p className="text-[11px] font-bold text-white leading-tight">Cardio Telemetry Garmin/Watch Sync</p>
-                                <p className="text-[9px] text-zinc-400 mt-0.5 leading-none">Auto-fill duration, distance, and calories from a .GPX file.</p>
+                              <div className="text-left min-w-0">
+                                <p className="text-[10px] sm:text-[11px] font-bold text-white leading-tight truncate">GPX Sync</p>
+                                <p className="text-[8px] sm:text-[9px] text-zinc-400 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance, and calories from a .GPX file.</p>
                               </div>
                             </div>
-                            <label className="h-6 px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white flex items-center justify-center transition-all select-none">
-                              Upload GPX
+                            <label className="h-6 px-2 sm:px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white flex items-center justify-center transition-all select-none shrink-0">
+                              Upload
                               <input 
                                 type="file" 
                                 accept=".gpx" 

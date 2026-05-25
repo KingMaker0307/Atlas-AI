@@ -191,7 +191,7 @@ export function RoutineBuilderScreen() {
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-normal text-white">
             {editingRoutineId ? "Edit Routine" : "Create Routine"}
           </h1>
         </div>

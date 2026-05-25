@@ -33,11 +33,11 @@ export function CoachScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="flex h-[calc(100dvh-12rem)] flex-col"
+      className="flex h-[calc(100dvh-15rem)] md:h-[calc(100dvh-8rem)] flex-col"
     >
-      <section className="mb-4 shrink-0">
-        <p className="text-sm text-zinc-400">Intelligent guidance</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-normal text-white">Coach</h1>
+      <section className="mb-3 sm:mb-4 shrink-0">
+        <p className="text-xs sm:text-sm text-zinc-400">Intelligent guidance</p>
+        <h1 className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-white">Coach</h1>
       </section>
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -163,11 +163,15 @@ export function CoachScreen() {
       </Card>
 
       {/* AI Usage Meter */}
-      <Card className="p-4 mt-4">
-        <h2 className="text-lg font-semibold text-white">AI Usage</h2>
-        <div className="mt-2 text-sm text-zinc-400">
-          <p>API Calls: {apiCallCount} / {apiQuotaLimit} ({apiCallPercentage.toFixed(2)}%)</p>
-          <p>Tokens Used: {tokenCount}</p>
+      <Card className="p-3 sm:p-4 mt-3 sm:mt-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm sm:text-base font-semibold text-white">AI Usage</h2>
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">Calls: {apiCallCount}/{apiQuotaLimit} · Tokens: {tokenCount.toLocaleString()}</p>
+          </div>
+          <div className="w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden shrink-0">
+            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(apiCallPercentage, 100)}%` }} />
+          </div>
         </div>
       </Card>
     </motion.div>

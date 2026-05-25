@@ -226,14 +226,14 @@ export function AtlasApp() {
 
       {/* ─── MOBILE BOTTOM BAR NAVIGATION (Hidden on desktop) ─── */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid h-20 max-w-md grid-cols-5 px-2 md:max-w-xl">
+        <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-5 px-1 sm:px-2 md:max-w-xl">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.id;
             return (
               <button
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-medium transition",
+                  "relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 rounded-2xl text-[10px] sm:text-[11px] font-medium transition",
                   active ? "text-emerald-500 dark:text-emerald-200" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                 )}
                 key={item.id}
@@ -245,10 +245,10 @@ export function AtlasApp() {
                 {active ? (
                   <motion.span
                     layoutId="nav-active"
-                    className="absolute inset-x-3 top-2 h-12 rounded-2xl bg-emerald-300/12"
+                    className="absolute inset-x-2 sm:inset-x-3 top-1 sm:top-2 h-10 sm:h-12 rounded-2xl bg-emerald-300/12"
                   />
                 ) : null}
-                <Icon className="relative" size={21} />
+                <Icon className="relative" size={19} />
                 <span className="relative">{item.label}</span>
               </button>
             );

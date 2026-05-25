@@ -221,10 +221,10 @@ export function DashboardScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="flex flex-col gap-5 pb-28"
+      className="flex flex-col gap-3 sm:gap-5 pb-28"
     >
       {/* ─── HEADER ZONE ─── */}
-      <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 rounded-2xl border border-card-border bg-card shadow-lg">
+      <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border border-card-border bg-card shadow-lg">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -232,7 +232,7 @@ export function DashboardScreen() {
             </span>
             <p className="text-xs font-bold text-emerald-450 uppercase tracking-wider">Atlas Bio-Telemetry</p>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Welcome back, {profile?.name ?? "Athlete"}
           </h1>
           <p className="text-xs text-zinc-400 flex items-center gap-1.5 pt-0.5">
@@ -242,8 +242,8 @@ export function DashboardScreen() {
         </div>
 
         {/* Dynamic Recovery Ring */}
-        <div className="flex items-center gap-4 p-3.5 rounded-xl bg-surface/50 border border-surface-border">
-          <div className="relative h-16 w-16 shrink-0 flex items-center justify-center">
+        <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
+          <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
             <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
               <motion.circle
@@ -299,7 +299,7 @@ export function DashboardScreen() {
                 </Button>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                 {/* Sleep Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">

@@ -626,39 +626,64 @@ export function SettingsScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="mx-auto max-w-5xl space-y-5 pb-28 pt-2 flex flex-col"
+      className="mx-auto max-w-5xl space-y-4 sm:space-y-5 pb-28 pt-2 flex flex-col"
     >
       {/* ─── HEADER TITLE PANEL ─── */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3 select-none">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-white">System Settings</h1>
-          <p className="text-xs text-zinc-400 font-medium">Configure profile biometrics, LLM endpoints, local storage backups &amp; preferences</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Settings</h1>
+          <p className="text-[11px] sm:text-xs text-zinc-400 font-medium">Profile, AI engine, storage &amp; preferences</p>
         </div>
       </section>
 
-      {/* ─── SIDE PANEL LAYOUT GRID ─── */}
+      {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}
+
+      {/* Mobile horizontal tabs */}
+      <div className="flex md:hidden bg-zinc-950 border border-zinc-800 p-1 rounded-2xl select-none gap-1">
+        {[
+          { id: "profile", label: "Profile", icon: <User size={14} /> },
+          { id: "ai", label: "AI Engine", icon: <Cpu size={14} /> },
+          { id: "system", label: "System", icon: <Server size={14} /> },
+        ].map((tab) => {
+          const active = activeSettingsTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveSettingsTab(tab.id as any)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${
+                active
+                  ? "bg-white text-zinc-950 font-bold shadow-lg"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex gap-4 md:gap-6 items-start">
-        {/* Left Navigation Sidebar Panel (Always vertical side panel: wide on desktop, compact on mobile) */}
-        <aside className="w-20 md:w-56 shrink-0 md:sticky md:top-24 flex flex-col bg-zinc-950 border border-zinc-800 p-1.5 rounded-2xl select-none gap-1.5">
+        {/* Desktop Sidebar Panel (hidden on mobile) */}
+        <aside className="hidden md:flex w-56 shrink-0 md:sticky md:top-24 flex-col bg-zinc-950 border border-zinc-800 p-1.5 rounded-2xl select-none gap-1.5">
           {[
-            { id: "profile", label: "Profile & Goals", shortLabel: "Profile", icon: <User size={16} /> },
-            { id: "ai", label: "AI Engine", shortLabel: "AI Adapter", icon: <Cpu size={16} /> },
-            { id: "system", label: "System & Backup", shortLabel: "System", icon: <Server size={16} /> },
+            { id: "profile", label: "Profile & Goals", icon: <User size={16} /> },
+            { id: "ai", label: "AI Engine", icon: <Cpu size={16} /> },
+            { id: "system", label: "System & Backup", icon: <Server size={16} /> },
           ].map((tab) => {
             const active = activeSettingsTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveSettingsTab(tab.id as any)}
-                className={`flex flex-row items-center gap-2.5 md:gap-3 p-2.5 md:px-4 md:py-3 text-[9px] md:text-xs font-black uppercase tracking-wider rounded-xl transition-all w-full justify-start whitespace-nowrap ${
+                className={`flex flex-row items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all w-full justify-start whitespace-nowrap ${
                   active
                     ? "bg-white text-zinc-950 font-bold shadow-lg"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
                 {tab.icon}
-                <span className="hidden md:inline">{tab.label}</span>
-                <span className="inline md:hidden text-[9px] tracking-tight">{tab.shortLabel}</span>
+                <span>{tab.label}</span>
               </button>
             );
           })}
@@ -722,7 +747,7 @@ export function SettingsScreen() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <Field label="Age">
                         <Input
                           type="number"
@@ -825,7 +850,7 @@ export function SettingsScreen() {
                           className="bg-zinc-950 border-zinc-800 text-xs font-medium"
                         />
                       </Field>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <Field label="Injuries / Limitations">
                           <Input
                             value={draftProfile.injuries ?? ""}
@@ -947,7 +972,7 @@ export function SettingsScreen() {
                     </div>
 
                     {/* API brand cards grid */}
-                    <div className="grid grid-cols-3 gap-2 select-none">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 select-none">
                       {providerTypes.map((type) => {
                         const config = providerConfig[type] || providerConfig.custom;
                         const active = selectedType === type;
@@ -1185,7 +1210,7 @@ export function SettingsScreen() {
                         <span className="text-[10px] font-black uppercase tracking-widest font-mono text-zinc-400">Database Record Volume</span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-xs leading-normal select-none">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs leading-normal select-none">
                         <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
                           <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
                           <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
