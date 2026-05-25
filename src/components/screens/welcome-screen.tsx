@@ -9,10 +9,10 @@ export function WelcomeScreen() {
   const setStartupChoice = useAtlasStore((state) => state.setStartupChoice);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#07080a] p-4 text-white">
+    <main className="flex min-h-dvh items-center justify-center bg-background p-4 text-foreground">
       <Card className="w-full max-w-sm p-6">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white">Welcome to Atlas</h1>
+          <h1 className="text-3xl font-bold text-foreground">Welcome to Atlas</h1>
           <p className="mt-2 text-zinc-400">Your AI-powered fitness coach</p>
         </div>
         <div className="mt-8 space-y-4">
@@ -20,20 +20,22 @@ export function WelcomeScreen() {
             className="w-full"
             variant="primary"
             size="lg"
-            onClick={() => setStartupChoice("local")}
+            onClick={() => setStartupChoice("google-drive")}
           >
-            <Sparkles className="mr-2" size={18} />
-            Start Fresh
+            <Cloud className="mr-2" size={18} />
+            Google Drive Sync
           </Button>
+
           <Button
             className="w-full"
             variant="secondary"
             size="lg"
-            onClick={() => setStartupChoice("google-drive")}
+            onClick={() => setStartupChoice("local")}
           >
-            <Cloud className="mr-2" size={18} />
-            Sync from Google Drive
+            <Sparkles className="mr-2" size={18} />
+            Start Fresh (Local Mode)
           </Button>
+
           <Button
             className="w-full"
             variant="secondary"

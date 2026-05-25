@@ -5,7 +5,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/10 bg-zinc-950/68 shadow-[0_18px_60px_rgba(0,0,0,0.28)] supports-[backdrop-filter]:bg-zinc-950/58 supports-[backdrop-filter]:backdrop-blur-xl",
+        "rounded-2xl border border-card-border bg-card shadow-[0_18px_60px_rgba(0,0,0,0.08)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.48)] supports-[backdrop-filter]:backdrop-blur-xl transition-all duration-300",
         className,
       )}
       {...props}
@@ -17,7 +17,7 @@ export function Surface({ className, ...props }: HTMLAttributes<HTMLDivElement>)
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/10 bg-white/[0.055] p-4",
+        "rounded-xl border border-surface-border bg-surface p-4 transition-all duration-300",
         className,
       )}
       {...props}

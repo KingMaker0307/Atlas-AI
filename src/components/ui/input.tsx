@@ -7,7 +7,7 @@ import type {
 import { cn } from "@/lib/cn";
 
 const fieldClass =
-  "w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-emerald-300/50 focus:bg-black/35";
+  "w-full rounded-xl border border-input-border bg-input px-3 py-2.5 text-sm text-foreground outline-none transition placeholder:text-zinc-500 focus:border-emerald-300/50 focus:bg-input-focus-bg";
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(fieldClass, className)} {...props} />;

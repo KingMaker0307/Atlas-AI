@@ -67,17 +67,36 @@ export function CoachScreen() {
                   >
                     {isWorkoutPlan ? (
                       <div className="space-y-3">
-                        <p className="font-medium text-emerald-200">
-                          I've generated a new workout plan for you.
-                        </p>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setActiveTab("dashboard")}
-                        >
-                          View on Dashboard
-                        </Button>
+                        {(() => {
+                          // Extract non-json text warning if present
+                          let nonJson = message.content;
+                          const jsonMatch = message.content.match(/```json\n([\s\S]*?)\n```/);
+                          if (jsonMatch) {
+                            nonJson = message.content.replace(jsonMatch[0], "").trim();
+                          } else if (message.content.trim().startsWith("{")) {
+                            nonJson = "";
+                          }
+                          return nonJson ? (
+                            <ReactMarkdown
+                              className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-300 max-w-none text-xs"
+                            >
+                              {nonJson}
+                            </ReactMarkdown>
+                          ) : null;
+                        })()}
+                        <div className="border-t border-emerald-300/10 pt-3">
+                          <p className="font-medium text-emerald-200 mb-2">
+                            I've generated a new workout plan for you.
+                          </p>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setActiveTab("dashboard")}
+                          >
+                            View on Dashboard
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <ReactMarkdown

@@ -49,6 +49,7 @@ interface OnboardingData extends UserProfile {
 interface SendCoachMessageOptions {
   isRoutineGeneration?: boolean;
   displayedContent?: string;
+  startDay?: string;
 }
 
 interface AtlasState {
@@ -83,6 +84,7 @@ interface AtlasState {
   setBlocked: (blocked: boolean) => void;
   setStartupChoice: (choice: StartupChoice) => void;
   setActiveWorkoutPlanId: (id: string | null) => Promise<void>;
+  checkAndAutoStopActiveWorkout: () => Promise<void>;
   setActiveTab: (tab: AtlasTab) => void;
   setActiveSubScreen: (subScreen: SubScreen) => void;
   setEditingWorkoutPlanId: (id: string | null) => void;
@@ -241,6 +243,38 @@ async function syncProfileToDrive(state: AtlasState): Promise<void> {
   }
 }
 
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+export function getDaysSequence(startDay: string): string[] {
+  const idx = DAYS_OF_WEEK.indexOf(startDay);
+  if (idx === -1) return DAYS_OF_WEEK;
+  return [...DAYS_OF_WEEK.slice(idx), ...DAYS_OF_WEEK.slice(0, idx)];
+}
+
+export function assignRoutinesToDays(routines: Routine[], startDay: string): Routine[] {
+  const sequence = getDaysSequence(startDay);
+  const N = routines.length;
+  
+  let trainingIndices = [0];
+  if (N === 2) trainingIndices = [0, 3];
+  else if (N === 3) trainingIndices = [0, 2, 4];
+  else if (N === 4) trainingIndices = [0, 1, 3, 4];
+  else if (N === 5) trainingIndices = [0, 1, 2, 4, 5];
+  else if (N === 6) trainingIndices = [0, 1, 2, 3, 4, 5];
+  else if (N === 7) trainingIndices = [0, 1, 2, 3, 4, 5, 6];
+  else if (N > 7) {
+    trainingIndices = Array.from({ length: Math.min(N, 7) }, (_, i) => i);
+  }
+  
+  return routines.slice(0, 7).map((routine, idx) => {
+    const dayIdx = trainingIndices[idx] ?? idx;
+    return {
+      ...routine,
+      day: sequence[dayIdx],
+    };
+  });
+}
+
 function getLocalDateString(dateOrStr: Date | string): string {
   const d = typeof dateOrStr === "string" ? new Date(dateOrStr) : dateOrStr;
   const year = d.getFullYear();
@@ -312,18 +346,107 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
   setEditingWorkoutPlanId: (id) => set({ editingWorkoutPlanId: id }),
   setEditingRoutineId: (id) => set({ editingRoutineId: id }),
+  checkAndAutoStopActiveWorkout: async () => {
+    const activeWorkout = get().activeWorkout;
+    if (!activeWorkout) return;
+    const elapsedMs = Date.now() - new Date(activeWorkout.startedAt).getTime();
+    const maxMs = 3 * 60 * 60 * 1000; // 3 hours
+    if (elapsedMs >= maxMs) {
+      const forceStoppedAt = new Date(new Date(activeWorkout.startedAt).getTime() + maxMs).toISOString();
+      const completedWorkout = {
+        ...activeWorkout,
+        notes: "Force stopped: Session exceeded maximum limit of 3 hours.",
+        fatigueRating: 5,
+        completedAt: forceStoppedAt,
+        durationMinutes: 180,
+      };
+      set({
+        workouts: [...get().workouts, completedWorkout],
+        activeWorkout: null,
+        restTimerEndsAt: undefined,
+        aiMessages: [
+          ...get().aiMessages,
+          {
+            id: createId("assistant"),
+            role: "assistant",
+            createdAt: new Date().toISOString(),
+            content: `The active workout "${activeWorkout.name}" was automatically stopped because it exceeded the 3-hour limit.`,
+          },
+        ],
+        activeSubScreen: null,
+      });
+      await persistState(get());
+    }
+  },
   hydrate: async () => {
     const localData = await loadSnapshot();
     const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
+    
+    // Migrate workout plans to ensure they have creatorType, startDay, and standard week day names
+    const migratedPlans = (snapshot.workoutPlans || []).map(plan => {
+      const creatorType = plan.creatorType || "manual";
+      const startDay = plan.startDay || "Monday";
+      const routines = (plan.routines || []).map((routine, i) => {
+        let day = routine.day;
+        if (!day || day.startsWith("Day ")) {
+          const sequence = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+          day = sequence[i % 7];
+        }
+        return { ...routine, day };
+      });
+      return { ...plan, creatorType, startDay, routines };
+    });
+    snapshot.workoutPlans = migratedPlans;
+
+    let activeWorkout = snapshot.activeWorkout;
+    let workouts = snapshot.workouts;
+    let aiMessages = snapshot.aiMessages;
+    let activeSubScreen = snapshot.activeSubScreen;
+    
+    if (activeWorkout) {
+      const elapsedMs = Date.now() - new Date(activeWorkout.startedAt).getTime();
+      const maxMs = 3 * 60 * 60 * 1000;
+      if (elapsedMs >= maxMs) {
+        const forceStoppedAt = new Date(new Date(activeWorkout.startedAt).getTime() + maxMs).toISOString();
+        const completedWorkout = {
+          ...activeWorkout,
+          notes: "Force stopped: Session exceeded maximum limit of 3 hours.",
+          fatigueRating: 5,
+          completedAt: forceStoppedAt,
+          durationMinutes: 180,
+        };
+        workouts = [...workouts, completedWorkout];
+        activeWorkout = null;
+        activeSubScreen = null;
+        aiMessages = [
+          ...aiMessages,
+          {
+            id: createId("assistant"),
+            role: "assistant",
+            createdAt: new Date().toISOString(),
+            content: `The active workout "${completedWorkout.name}" was automatically stopped because it exceeded the 3-hour limit.`,
+          },
+        ];
+      }
+    }
+    
     const activeWorkoutPlanId = snapshot.activeWorkoutPlanId || snapshot.workoutPlans[0]?.id || null;
     set({
       ...snapshot,
+      workouts,
+      activeWorkout,
+      activeSubScreen,
+      aiMessages,
       activeWorkoutPlanId,
       hydrated: true,
       activeTab: "dashboard",
       coachBusy: false,
       providerBusy: false,
     });
+    
+    if (snapshot.activeWorkout && !activeWorkout) {
+      await persistState(get());
+    }
 
     // Check blocked status if online and onboarded
     if (typeof window !== "undefined" && navigator.onLine && snapshot.profile?.id) {
@@ -338,21 +461,67 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     }
   },
   setActiveWorkoutPlanId: async (id) => {
-    set({ activeWorkoutPlanId: id });
+    const activeWorkout = get().activeWorkout;
+    let nextActiveWorkout = activeWorkout;
+    let nextRestTimer = get().restTimerEndsAt;
+    let nextSubScreen = get().activeSubScreen;
+    if (activeWorkout) {
+      nextActiveWorkout = null;
+      nextRestTimer = undefined;
+      if (get().activeSubScreen === "active-workout") {
+        nextSubScreen = null;
+      }
+    }
+    set({
+      activeWorkoutPlanId: id,
+      activeWorkout: nextActiveWorkout,
+      restTimerEndsAt: nextRestTimer,
+      activeSubScreen: nextSubScreen,
+    });
     await persistState(get());
   },
   saveWorkoutPlan: async (plan: WorkoutPlan) => {
     const plans = get().workoutPlans;
     const existing = plans.find(p => p.id === plan.id);
-    if (existing) {
-      set({ workoutPlans: plans.map(p => p.id === plan.id ? plan : p) });
-    } else {
-      set({ workoutPlans: [...plans, plan] });
+    const nextPlans = existing
+      ? plans.map(p => p.id === plan.id ? plan : p)
+      : [...plans, plan];
+
+    let activeId = get().activeWorkoutPlanId;
+    if (!activeId || nextPlans.length === 1 || !nextPlans.some(p => p.id === activeId)) {
+      activeId = nextPlans[0]?.id ?? null;
     }
+
+    set({ workoutPlans: nextPlans, activeWorkoutPlanId: activeId });
     await persistState(get());
   },
   deleteWorkoutPlan: async (planId: string) => {
-    set({ workoutPlans: get().workoutPlans.filter(p => p.id !== planId) });
+    const nextPlans = get().workoutPlans.filter(p => p.id !== planId);
+    let activeId = get().activeWorkoutPlanId;
+    if (activeId === planId || !activeId || nextPlans.length === 1 || !nextPlans.some(p => p.id === activeId)) {
+      activeId = nextPlans[0]?.id ?? null;
+    }
+
+    // Check if the current active workout belongs to the deleted plan
+    const activeWorkout = get().activeWorkout;
+    let nextActiveWorkout = activeWorkout;
+    let nextRestTimer = get().restTimerEndsAt;
+    let nextSubScreen = get().activeSubScreen;
+    if (activeWorkout && activeWorkout.planId === planId) {
+      nextActiveWorkout = null;
+      nextRestTimer = undefined;
+      if (get().activeSubScreen === "active-workout") {
+        nextSubScreen = null;
+      }
+    }
+
+    set({
+      workoutPlans: nextPlans,
+      activeWorkoutPlanId: activeId,
+      activeWorkout: nextActiveWorkout,
+      restTimerEndsAt: nextRestTimer,
+      activeSubScreen: nextSubScreen,
+    });
     await persistState(get());
   },
   saveRoutine: async (planId: string, routine: Routine) => {
@@ -699,7 +868,40 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
           const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
           // Correctly populate existingExercises with full Exercise objects from plan.exercises
           plan.exercises.forEach(e => existingExercises.set(e.id, e));
-          set({ workoutPlans: [plan], exercises: Array.from(existingExercises.values()), activeTab: "dashboard" });
+
+          const activeWorkout = get().activeWorkout;
+          let nextActiveWorkout = activeWorkout;
+          let nextRestTimer = get().restTimerEndsAt;
+          let nextSubScreen = get().activeSubScreen;
+          if (activeWorkout) {
+            nextActiveWorkout = null;
+            nextRestTimer = undefined;
+            if (get().activeSubScreen === "active-workout") {
+              nextSubScreen = null;
+            }
+          }
+
+          // Assign routines to days of the week starting from selected startDay
+          const selectedStartDay = options?.startDay || "Monday";
+          const parsedRoutines = plan.routines || [];
+          const assignedRoutines = assignRoutinesToDays(parsedRoutines, selectedStartDay);
+
+          const fullyConfiguredPlan = {
+            ...plan,
+            creatorType: "ai" as const,
+            startDay: selectedStartDay as any,
+            routines: assignedRoutines,
+          };
+
+          set({
+            workoutPlans: [fullyConfiguredPlan],
+            exercises: Array.from(existingExercises.values()),
+            activeWorkoutPlanId: plan.id,
+            activeWorkout: nextActiveWorkout,
+            restTimerEndsAt: nextRestTimer,
+            activeSubScreen: nextSubScreen,
+            activeTab: "dashboard",
+          });
         }
       }
     } catch (error) {

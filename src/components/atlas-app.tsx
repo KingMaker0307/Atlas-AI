@@ -43,6 +43,7 @@ export function AtlasApp() {
   const startupChoice = useAtlasStore((state) => state.startupChoice);
   const blocked = useAtlasStore((state) => state.blocked);
   const profile = useAtlasStore((state) => state.profile);
+  const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
 
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -63,7 +64,7 @@ export function AtlasApp() {
 
     const checkBlocked = async () => {
       try {
-        const res = await fetch(`/api/profile?userId=${profile.id}`);
+        const res = await fetch(`/api/profile/?userId=${profile.id}`);
         if (res.ok) {
           const data = await res.json();
           if (data.blocked) {
@@ -85,11 +86,28 @@ export function AtlasApp() {
   }, [hydrate]);
 
   useEffect(() => {
+    if (!hydrated) return;
+    const interval = setInterval(() => {
+      void checkAndAutoStopActiveWorkout();
+    }, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, [hydrated, checkAndAutoStopActiveWorkout]);
+
+  useEffect(() => {
     const root = document.documentElement;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const shouldDark = theme === "dark" || (theme === "system" && prefersDark);
-    root.classList.toggle("dark", shouldDark);
-    root.style.colorScheme = shouldDark ? "dark" : "light";
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    
+    const updateTheme = () => {
+      const prefersDark = mediaQuery.matches;
+      const shouldDark = theme === "dark" || (theme === "system" && prefersDark);
+      root.classList.toggle("dark", shouldDark);
+      root.classList.toggle("light", !shouldDark);
+      root.style.colorScheme = shouldDark ? "dark" : "light";
+    };
+
+    updateTheme();
+    mediaQuery.addEventListener("change", updateTheme);
+    return () => mediaQuery.removeEventListener("change", updateTheme);
   }, [theme]);
 
   if (!online) return <OfflineBlockerScreen />;
@@ -114,16 +132,16 @@ export function AtlasApp() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#07080a] text-white selection:bg-emerald-300 selection:text-zinc-950">
+    <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-950">
       <PwaRegistrar />
-      <div className="fixed inset-x-0 top-0 z-30 border-b border-white/10 bg-[#07080a]/82 pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl">
+      <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl">
         <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-950">
               A
             </div>
             <div>
-              <p className="text-sm font-semibold leading-none text-white">Atlas AI Coach</p>
+              <p className="text-sm font-semibold leading-none text-foreground">Atlas AI Coach</p>
               <p className="mt-1 text-xs text-zinc-500">Private fitness intelligence</p>
             </div>
           </div>
@@ -150,7 +168,7 @@ export function AtlasApp() {
         </AnimatePresence>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#08090b]/88 pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl">
         <div className="mx-auto grid h-20 max-w-md grid-cols-5 px-2 md:max-w-xl">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -159,7 +177,7 @@ export function AtlasApp() {
               <button
                 className={cn(
                   "relative flex flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-medium transition",
-                  active ? "text-emerald-200" : "text-zinc-500 hover:text-zinc-200",
+                  active ? "text-emerald-500 dark:text-emerald-200" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                 )}
                 key={item.id}
                 onClick={() => {
@@ -186,14 +204,14 @@ export function AtlasApp() {
 
 function LoadingApp() {
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[#07080a] p-4 text-white">
+    <main className="flex min-h-dvh items-center justify-center bg-background p-4 text-foreground">
       <Card className="w-full max-w-sm p-4">
-        <div className="h-5 w-32 animate-pulse rounded bg-white/10" />
+        <div className="h-5 w-32 animate-pulse rounded bg-foreground/10" />
         <div className="mt-5 space-y-3">
-          <div className="h-24 animate-pulse rounded-xl bg-white/10" />
+          <div className="h-24 animate-pulse rounded-xl bg-foreground/10" />
           <div className="grid grid-cols-2 gap-3">
-            <div className="h-20 animate-pulse rounded-xl bg-white/10" />
-            <div className="h-20 animate-pulse rounded-xl bg-white/10" />
+            <div className="h-20 animate-pulse rounded-xl bg-foreground/10" />
+            <div className="h-20 animate-pulse rounded-xl bg-foreground/10" />
           </div>
         </div>
       </Card>
@@ -203,19 +221,19 @@ function LoadingApp() {
 
 function OfflineBlockerScreen() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-[#07080a] p-4 text-center text-white">
-      <Card className="w-full max-w-md p-8 border border-white/10 bg-[#0c0e12]/60 shadow-[0_24px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl space-y-6">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-300 animate-pulse">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background p-4 text-center text-foreground">
+      <Card className="w-full max-w-md p-8 space-y-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.8)]">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-500 animate-pulse">
           <WifiOff size={32} />
         </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Internet Connection Required</h1>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Internet Connection Required</h1>
+          <p className="text-sm text-zinc-500 leading-relaxed">
             Atlas AI Coach is a secure web-based application and requires an active internet connection to synchronize your training profile and function properly.
           </p>
         </div>
         <div className="pt-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-3.5 py-1.5 text-xs text-zinc-500 font-medium">
+          <div className="inline-flex items-center gap-2 rounded-full border border-card-border bg-input px-3.5 py-1.5 text-xs text-zinc-500 font-medium">
             <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
             Waiting for connection...
           </div>
@@ -227,19 +245,19 @@ function OfflineBlockerScreen() {
 
 function BlockedBlockerScreen() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-[#07080a] p-4 text-center text-white">
-      <Card className="w-full max-w-md p-8 border border-white/10 bg-[#0c0e12]/60 shadow-[0_24px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl space-y-6">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-400">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background p-4 text-center text-foreground">
+      <Card className="w-full max-w-md p-8 space-y-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.8)]">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-500">
           <ShieldAlert size={32} />
         </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Access Denied</h1>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Access Denied</h1>
+          <p className="text-sm text-zinc-500 leading-relaxed">
             Your profile has been suspended or blocked by the administrator. Please contact support if you believe this is an error.
           </p>
         </div>
         <div className="pt-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-3.5 py-1.5 text-xs text-rose-400 font-medium">
+          <div className="inline-flex items-center gap-2 rounded-full border border-card-border bg-input px-3.5 py-1.5 text-xs text-rose-500 font-medium">
             Account Suspended
           </div>
         </div>

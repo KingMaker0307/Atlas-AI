@@ -40,7 +40,13 @@ export function RoutineBuilderScreen() {
         setRoutine(existingRoutine);
       }
     } else {
-      setRoutine(freshRoutine());
+      const plan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
+      const takenDays = new Set(plan?.routines.map(r => r.day) ?? []);
+      const availableDay = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].find(d => !takenDays.has(d)) || "Monday";
+      setRoutine({
+        ...freshRoutine(),
+        day: availableDay,
+      });
     }
   }, [editingWorkoutPlanId, editingRoutineId, workoutPlans]);
 
@@ -131,6 +137,18 @@ export function RoutineBuilderScreen() {
 
     setErrorMessage(null);
 
+    // Check for day of the week scheduling conflicts
+    const activePlan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
+    if (activePlan) {
+      const isDayTaken = activePlan.routines.some(
+        r => r.day.toLowerCase() === routine.day.toLowerCase() && r.id !== routine.id
+      );
+      if (isDayTaken) {
+        setErrorMessage(`A routine is already scheduled for ${routine.day}. Please select another day.`);
+        return;
+      }
+    }
+
     saveRoutine(editingWorkoutPlanId, {
       ...routine,
       name,
@@ -189,6 +207,17 @@ export function RoutineBuilderScreen() {
           onChange={(e) => setRoutine({ ...routine, focus: e.target.value })}
           className="mt-2"
         />
+
+        <Label className="mt-4 block">Day of the Week</Label>
+        <select
+          value={routine.day || "Monday"}
+          onChange={(e) => setRoutine({ ...routine, day: e.target.value })}
+          className="mt-2 block w-full rounded-xl border border-input-border bg-input px-3 py-2 text-sm text-foreground focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+        >
+          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
+            <option key={day} value={day}>{day}</option>
+          ))}
+        </select>
       </Card>
 
 

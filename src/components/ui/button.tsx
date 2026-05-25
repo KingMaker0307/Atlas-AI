@@ -9,12 +9,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants = {
   primary:
-    "border-white/10 bg-white text-zinc-950 shadow-[0_12px_40px_rgba(255,255,255,0.12)] hover:bg-zinc-100",
+    "border-transparent bg-foreground text-background hover:opacity-90 shadow-sm",
   secondary:
-    "border-white/10 bg-white/10 text-white hover:bg-white/15 supports-[backdrop-filter]:backdrop-blur-xl",
-  ghost: "border-transparent bg-transparent text-zinc-300 hover:bg-white/10 hover:text-white",
+    "border-btn-secondary-border bg-btn-secondary text-foreground hover:bg-btn-secondary-hover supports-[backdrop-filter]:backdrop-blur-xl",
+  ghost:
+    "border-transparent bg-transparent text-zinc-500 hover:bg-zinc-900/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white",
   danger:
-    "border-red-400/30 bg-red-500/15 text-red-100 hover:bg-red-500/25",
+    "border-red-500/20 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:border-red-400/30 dark:bg-red-500/15 dark:text-red-100 dark:hover:bg-red-500/25",
 };
 
 const sizes = {

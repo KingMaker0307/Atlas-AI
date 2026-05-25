@@ -84,6 +84,8 @@ export function WorkoutScreen() {
   const [showFinishSessionModal, setShowFinishSessionModal] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [planToActivate, setPlanToActivate] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
 
 
   // Effect for rest timer
@@ -196,6 +198,25 @@ export function WorkoutScreen() {
           </Button>
         </section>
 
+        {/* Warning banner for force stopped workout */}
+        {(() => {
+          const lastCompletedWorkout = workouts.filter(w => w.completedAt).at(-1);
+          if (lastCompletedWorkout?.notes?.includes("Force stopped")) {
+            return (
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm space-y-1">
+                <div className="flex items-center gap-2 font-semibold">
+                  <AlertTriangle size={18} className="text-rose-400 shrink-0" />
+                  <span>Last Workout Force Stopped</span>
+                </div>
+                <p className="text-zinc-300 leading-relaxed text-xs">
+                  Your last session ("{lastCompletedWorkout.name}") was automatically stopped because it exceeded the maximum 3-hour limit.
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {activeWorkout && (
           <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-sm flex items-center justify-between">
             <div>
@@ -225,7 +246,7 @@ export function WorkoutScreen() {
             <ClipboardList className="h-12 w-12 text-emerald-300 mb-4" />
             <h2 className="text-xl font-semibold text-white">No workout plans found</h2>
             <p className="text-sm text-zinc-400 mt-2 max-w-sm">
-              Create a custom workout plan manually or get help from the AI coach on the Dashboard tab.
+              Create a custom workout plan manually, use a template, or generate one with AI.
             </p>
             <Button
               className="mt-6"
@@ -235,7 +256,7 @@ export function WorkoutScreen() {
                 setActiveSubScreen("workout-plan-builder");
               }}
             >
-              Create Plan Manually
+              Create Plan
             </Button>
           </Card>
         ) : (
@@ -277,7 +298,10 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteWorkoutPlan(plan.id)}
+                          onClick={() => {
+                            setPlanToDelete({ id: plan.id, name: plan.name });
+                            setShowDeleteModal(true);
+                          }}
                         >
                           <Trash2 size={16} />
                         </Button>
@@ -384,7 +408,9 @@ export function WorkoutScreen() {
               </Button>
               <h2 className="text-xl font-semibold text-white">Switch Active Plan</h2>
               <p className="text-zinc-300 text-sm leading-relaxed">
-                Switching Active Plan: This will recalculate your streaks, consistency, and progress metrics for the new plan. Old progress will be saved separately. Do you want to continue?
+                {activeWorkout 
+                  ? "Switching Active Plan: You have a workout session in progress. Switching plans will discard your current active workout and reset active tracking. Do you want to continue?"
+                  : "Switching Active Plan: This will recalculate your streaks, consistency, and progress metrics for the new plan. Old progress will be saved separately. Do you want to continue?"}
               </p>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => {
@@ -401,6 +427,42 @@ export function WorkoutScreen() {
                   setPlanToActivate(null);
                 }} className="flex-1">
                   Confirm Switch
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {showDeleteModal && planToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <Card className="w-full max-w-sm p-6 space-y-4 relative">
+              <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+                setShowDeleteModal(false);
+                setPlanToDelete(null);
+              }}>
+                <X size={20} />
+              </Button>
+              <h2 className="text-xl font-semibold text-white">Delete Workout Plan</h2>
+              <p className="text-zinc-300 text-sm leading-relaxed">
+                {activeWorkout && activeWorkout.planId === planToDelete.id
+                  ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently remove the plan and discard your current active workout.`
+                  : `Are you sure you want to delete the plan "${planToDelete.name}"? This action cannot be undone and all routines inside this plan will be lost.`}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => {
+                  setShowDeleteModal(false);
+                  setPlanToDelete(null);
+                }} className="flex-1">
+                  Cancel
+                </Button>
+                <Button variant="danger" onClick={async () => {
+                  if (planToDelete) {
+                    await deleteWorkoutPlan(planToDelete.id);
+                  }
+                  setShowDeleteModal(false);
+                  setPlanToDelete(null);
+                }} className="flex-1">
+                  Delete Plan
                 </Button>
               </div>
             </Card>

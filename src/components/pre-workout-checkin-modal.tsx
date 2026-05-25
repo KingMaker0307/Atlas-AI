@@ -70,6 +70,12 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
         <h2 className="text-xl font-semibold text-white">Pre-Workout Check-in</h2>
         <p className="text-zinc-400 text-sm">How many hours did you sleep last night?</p>
 
+        {/* Workout Limit Notice */}
+        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-zinc-300 space-y-1">
+          <p className="font-semibold text-emerald-400">Workout Duration Notice</p>
+          <p>Please note: A workout session has a maximum limit of 3 hours. Sessions running longer will be automatically stopped and logged.</p>
+        </div>
+
         <div>
           <Label htmlFor="sleepHours">Sleep Hours</Label>
           <Input

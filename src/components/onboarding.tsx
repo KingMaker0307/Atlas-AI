@@ -249,7 +249,7 @@ export function Onboarding() {
   };
 
   return (
-    <main className="min-h-dvh bg-[#07080a] px-4 py-8 text-white flex flex-col items-center justify-center">
+    <main className="min-h-dvh bg-background px-4 py-8 text-foreground flex flex-col items-center justify-center">
       <div className="w-full max-w-lg">
         {/* App Logo & Header */}
         <div className="mb-6 flex items-center gap-4 justify-center sm:justify-start">
@@ -321,7 +321,7 @@ export function Onboarding() {
           </div>
         </div>
 
-        <Card className="p-5 border-white/5 bg-zinc-950/60 shadow-2xl backdrop-blur-2xl">
+        <Card className="p-5 shadow-2xl">
           <form
             onSubmit={handleSubmit(async (values) => {
               if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -736,7 +736,7 @@ export function Onboarding() {
             </AnimatePresence>
 
             {/* Bottom Actions Row */}
-            <div className="mt-6 flex gap-3 border-t border-white/5 pt-4">
+            <div className="mt-6 flex gap-3 border-t border-card-border pt-4">
               {step > 1 && (
                 <Button
                   type="button"
@@ -791,12 +791,12 @@ function SegmentedSetting<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="grid gap-1 rounded-xl border border-white/10 bg-black/25 p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+    <div className="grid gap-1 rounded-xl border border-card-border bg-input p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
       {values.map((item) => (
         <button
           type="button"
           className={`rounded-lg px-2 py-2 text-xs font-semibold capitalize transition ${
-            item === value ? "bg-white text-zinc-950" : "text-zinc-400 hover:bg-white/10 hover:text-white"
+            item === value ? "bg-foreground text-background" : "text-zinc-500 hover:bg-zinc-900/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
           }`}
           key={item}
           onClick={() => onChange(item)}
@@ -842,7 +842,7 @@ function CardGridSelector<T extends string>({
             className={`text-left p-3 rounded-xl border transition-all duration-200 ${
               isSelected
                 ? "bg-emerald-500/10 border-emerald-400/80 shadow-[0_4px_16px_rgba(52,211,153,0.06)]"
-                : "bg-black/20 border-white/5 hover:border-white/15 hover:bg-black/35"
+                : "bg-surface border-surface-border hover:border-card-border hover:bg-input"
             }`}
           >
             <div className="flex justify-between items-center gap-2 mb-1">

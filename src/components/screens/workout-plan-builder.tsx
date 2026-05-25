@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
-import { useAtlasStore } from "@/store/useAtlasStore";
+import { useAtlasStore, assignRoutinesToDays } from "@/store/useAtlasStore";
 import { useState, useMemo, type FC } from "react";
+import { AiPromptCard } from "@/components/ai-prompt-card";
 import type { WorkoutPlan } from "@/types/domain";
 import { createId } from "@/lib/id";
 import { getExerciseById } from "@/data/exercises";
@@ -255,7 +256,7 @@ const TemplateDetailView: FC<{
       </Button>
     </div>
   </motion.div>
-);
+);;
 
 // ─── Category Pill ───────────────────────────────────────────
 
@@ -284,10 +285,23 @@ export function WorkoutPlanBuilderScreen() {
   const editingWorkoutPlanId = useAtlasStore((state) => state.editingWorkoutPlanId);
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const profile = useAtlasStore((state) => state.profile);
+  const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
+  const coachBusy = useAtlasStore((state) => state.coachBusy);
+  const activeWorkout = useAtlasStore((state) => state.activeWorkout);
 
   // ── View state ──
   const [view, setView] = useState<BuilderView>(editingWorkoutPlanId ? "manual-form" : "choose-method");
   const [selectedTemplate, setSelectedTemplate] = useState<PlanTemplate | null>(null);
+  const [showAiCard, setShowAiCard] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Start Day Selection Popup State
+  const [showStartDayModal, setShowStartDayModal] = useState(false);
+  const [selectedStartDay, setSelectedStartDay] = useState("Monday");
+  const [startDayTarget, setStartDayTarget] = useState<"template" | "ai" | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<PlanTemplate | null>(null);
+  const [pendingAiData, setPendingAiData] = useState<{ targetDate: string; additionalDetails: string } | null>(null);
 
   // ── Template browser state ──
   const [activeCategory, setActiveCategory] = useState("all");
@@ -302,9 +316,8 @@ export function WorkoutPlanBuilderScreen() {
       const existingPlan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
       return existingPlan ? { ...existingPlan } : { id: createId("plan"), name: "New Plan", goal: "", routines: [] };
     }
-    return { id: createId("plan"), name: "New Plan", goal: "", routines: [] };
+    return { id: createId("plan"), name: "New Plan", goal: "", routines: [], creatorType: "manual", startDay: "Monday" };
   });
-  const [error, setError] = useState<string | null>(null);
 
   // ── Derived: user-profile-based filters ──
   const profileFilters: TemplateFilters = useMemo(() => ({
@@ -354,20 +367,119 @@ export function WorkoutPlanBuilderScreen() {
     if (name.length > 40) { setError("Plan name must be 40 characters or less."); return; }
     if (goal.length > 120) { setError("Goal must be 120 characters or less."); return; }
     setError(null);
-    saveWorkoutPlan({ ...plan, name, goal });
+    saveWorkoutPlan({
+      ...plan,
+      name,
+      goal,
+      creatorType: plan.creatorType || "manual",
+      startDay: plan.startDay || "Monday",
+    });
     setActiveSubScreen(null);
   };
 
-  const handleUseTemplate = (template: PlanTemplate) => {
-    const routines = templateToRoutines(template);
+  const handleUseTemplate = (template: PlanTemplate, startDay: string) => {
+    const rawRoutines = templateToRoutines(template);
+    const routines = assignRoutinesToDays(rawRoutines, startDay);
     const newPlan: WorkoutPlan = {
       id: createId("plan"),
       name: template.name,
       goal: template.trainingStyles.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" & "),
       routines,
+      creatorType: "template",
+      startDay: startDay as any,
     };
-    setPlan(newPlan);
-    setView("manual-form");
+    saveWorkoutPlan(newPlan);
+    setActiveSubScreen(null);
+  };
+
+  const handleGeneratePlan = async ({ targetDate, additionalDetails, startDay }: { targetDate: string; additionalDetails: string; startDay: string }) => {
+    setShowAiCard(false);
+    setActiveSubScreen(null);
+    setActiveTab("dashboard");
+    if (!profile) return;
+
+    const { experience, bodyType, age, height, weight, heightUnit, weightUnit, trainingStyle, daysPerWeek, goal } = profile;
+    const prompt = `You are a professional fitness coach. The user wants a workout plan.
+    
+    User Profile:
+    - Experience: ${experience}
+    - Body Type: ${bodyType}
+    - Age: ${age}
+    - Height: ${height} ${heightUnit}
+    - Weight: ${weight} ${weightUnit}
+    - Primary Goal: ${goal}
+    - Training Style: ${trainingStyle}
+    - Days Per Week: ${daysPerWeek}
+    
+    Target Date to achieve this goal: ${targetDate}.
+    Start Day of Week: ${startDay}.
+    
+    Additional Details: ${additionalDetails || "None"}
+
+    CRITICAL INSTRUCTIONS:
+    1. First, calculate if their goal is realistically achievable by the Target Date: ${targetDate}.
+       - If the goal is NOT realistically achievable within this timeframe (e.g. losing 15kg in 2 weeks, or building 10kg of muscle in a month), you MUST write a prominent and friendly warning explanation at the very beginning of your message (before the JSON block), warning them about the risks/unrealistic nature of the timeline and suggesting a healthier expectation.
+       - If the goal is achievable, write a brief, encouraging confirmation.
+    
+    2. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
+    {
+      "id": "generated-plan-id",
+      "name": "Plan Name",
+      "goal": "A summary of the workout plan goal",
+      "routines": [
+        {
+          "id": "routine-1",
+          "name": "Day 1: Upper Focus",
+          "focus": "Strength",
+          "estimatedMinutes": 60,
+          "day": "Day 1",
+          "exercises": [
+            {
+              "exerciseId": "bench-press",
+              "targetSets": 4,
+              "targetReps": "8-12",
+              "restSeconds": 90
+            }
+          ]
+        }
+      ],
+      "exercises": [
+        {
+          "id": "bench-press",
+          "name": "Bench Press",
+          "force": "push",
+          "level": "beginner",
+          "mechanic": "compound",
+          "equipment": "barbell",
+          "primaryMuscles": ["chest"],
+          "secondaryMuscles": ["triceps", "shoulders"],
+          "instructions": ["Lie on the bench", "Press the bar up"],
+          "category": "strength"
+        }
+      ]
+    }`;
+    
+    const displayedContent = additionalDetails 
+      ? `Generate a new workout plan for me starting on ${startDay} with the following additional details: ${additionalDetails}`
+      : `Generate a new workout plan for me starting on ${startDay} based on my profile.`;
+      
+    await sendCoachMessage(prompt, { isRoutineGeneration: true, displayedContent, startDay });
+  };
+
+  const handleConfirmStartDay = () => {
+    if (startDayTarget === "template" && pendingTemplate) {
+      handleUseTemplate(pendingTemplate, selectedStartDay);
+    } else if (startDayTarget === "ai" && pendingAiData) {
+      void handleGeneratePlan({
+        targetDate: pendingAiData.targetDate,
+        additionalDetails: pendingAiData.additionalDetails,
+        startDay: selectedStartDay,
+      });
+    }
+    setShowStartDayModal(false);
+    setPendingTemplate(null);
+    setPendingAiData(null);
+    setStartDayTarget(null);
   };
 
   // ═════════════════════════════════════════════════════════
@@ -375,9 +487,26 @@ export function WorkoutPlanBuilderScreen() {
   // ═════════════════════════════════════════════════════════
 
   return (
-    <AnimatePresence mode="wait">
-      {/* ── Choose Method ── */}
-      {view === "choose-method" && (
+    <>
+      <AnimatePresence>
+        {showAiCard && profile && (
+          <AiPromptCard
+            profile={profile}
+            onCancel={() => setShowAiCard(false)}
+            onGenerate={({ targetDate, additionalDetails }) => {
+              setPendingAiData({ targetDate, additionalDetails });
+              setStartDayTarget("ai");
+              setSelectedStartDay("Monday");
+              setShowStartDayModal(true);
+            }}
+            isBusy={coachBusy}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {/* ── Choose Method ── */}
+        {view === "choose-method" && (
         <motion.div
           key="choose"
           initial={{ opacity: 0, y: 12 }}
@@ -395,6 +524,36 @@ export function WorkoutPlanBuilderScreen() {
           <p className="text-sm text-zinc-400 leading-relaxed">
             Choose how you want to build your plan.
           </p>
+
+          {/* AI Generation option */}
+          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
+            <Card
+              className="p-0 overflow-hidden cursor-pointer group transition-all hover:border-purple-500/40"
+              onClick={() => {
+                if (activeWorkout) {
+                  const confirmGen = window.confirm(
+                    "You have a workout session in progress. Generating a new plan with AI will discard your current active workout and replace your existing plans. Do you want to continue?"
+                  );
+                  if (!confirmGen) return;
+                }
+                setShowAiCard(true);
+              }}
+            >
+              <div className="h-1 w-full bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="p-5 flex items-start gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20 shrink-0">
+                  <Sparkles size={24} className="text-purple-400" />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <h3 className="text-base font-semibold text-white">Generate with AI</h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    Let the AI Coach design a customized training program tailored exactly to your body type, goals, equipment, and schedule.
+                  </p>
+                </div>
+                <ChevronRight size={20} className="text-zinc-600 group-hover:text-purple-400 transition-colors mt-1 shrink-0" />
+              </div>
+            </Card>
+          </motion.div>
 
           {/* Template option */}
           <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
@@ -604,7 +763,12 @@ export function WorkoutPlanBuilderScreen() {
           key="detail"
           template={selectedTemplate}
           onBack={() => setSelectedTemplate(null)}
-          onUseTemplate={() => handleUseTemplate(selectedTemplate)}
+          onUseTemplate={() => {
+            setPendingTemplate(selectedTemplate);
+            setStartDayTarget("template");
+            setSelectedStartDay("Monday");
+            setShowStartDayModal(true);
+          }}
         />
       )}
 
@@ -657,6 +821,19 @@ export function WorkoutPlanBuilderScreen() {
           </Card>
 
           <Card className="p-4">
+            <Label>Start Day of Week</Label>
+            <select
+              value={plan.startDay || "Monday"}
+              onChange={(e) => setPlan({ ...plan, startDay: e.target.value as any })}
+              className="mt-2 block w-full rounded-xl border border-input-border bg-input px-3 py-2 text-sm text-foreground focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            >
+              {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
+                <option key={day} value={day}>{day}</option>
+              ))}
+            </select>
+          </Card>
+
+          <Card className="p-4">
             <Label>Goal</Label>
             <Input
               value={plan.goal}
@@ -704,6 +881,51 @@ export function WorkoutPlanBuilderScreen() {
           )}
         </motion.div>
       )}
+
+      {showStartDayModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+              setShowStartDayModal(false);
+              setPendingTemplate(null);
+              setPendingAiData(null);
+              setStartDayTarget(null);
+            }}>
+              <X size={20} />
+            </Button>
+            <h2 className="text-xl font-semibold text-white">Select Start Day</h2>
+            <p className="text-zinc-300 text-sm leading-relaxed">
+              Choose the start day of the week for your new plan. Your routines will be scheduled starting from this day.
+            </p>
+            <div className="space-y-2">
+              <Label>Start Day</Label>
+              <select
+                value={selectedStartDay}
+                onChange={(e) => setSelectedStartDay(e.target.value)}
+                className="w-full rounded-xl border border-input-border bg-input px-3 py-2 text-sm text-foreground focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+              >
+                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
+                  <option key={day} value={day}>{day}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="secondary" onClick={() => {
+                setShowStartDayModal(false);
+                setPendingTemplate(null);
+                setPendingAiData(null);
+                setStartDayTarget(null);
+              }} className="flex-1">
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={handleConfirmStartDay} className="flex-1">
+                Confirm &amp; Create
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </AnimatePresence>
+    </>
   );
 }

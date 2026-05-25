@@ -42,7 +42,7 @@ export async function checkBlockedStatus(userId: string): Promise<boolean> {
 
   if (hasBackend()) {
     try {
-      const url = getApiUrl(`/api/profile?userId=${encodeURIComponent(userId)}`);
+      const url = getApiUrl(`/api/profile/?userId=${encodeURIComponent(userId)}`);
       const res = await fetch(url, { method: "GET" });
       if (res.ok) {
         const data = await res.json();
@@ -75,7 +75,7 @@ export async function syncProfile(
 
   if (hasBackend()) {
     try {
-      const url = getApiUrl("/api/profile");
+      const url = getApiUrl("/api/profile/");
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

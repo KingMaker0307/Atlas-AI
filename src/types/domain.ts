@@ -131,6 +131,8 @@ export interface WorkoutPlan {
   goal: string;
   targetDate?: string;
   routines: Routine[];
+  creatorType?: "manual" | "template" | "ai";
+  startDay?: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
 }
 
 export interface RecoveryLog {

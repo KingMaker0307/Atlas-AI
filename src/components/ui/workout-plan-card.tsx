@@ -65,6 +65,12 @@ export function WorkoutPlanCard({ onBuild }: WorkoutPlanCardProps) {
         {activeWorkout ? "Resume" : isLimitReached ? "Daily Limit Reached (3/3)" : "Start"}
       </Button>
 
+      {!activeWorkout && !isLimitReached && (
+        <p className="text-[10px] text-zinc-505 dark:text-zinc-500 mt-2 text-center">
+          Note: Sessions have a maximum duration of 3 hours.
+        </p>
+      )}
+
       {isLimitReached && !activeWorkout && (
         <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1.5">
           <div className="flex items-center gap-1.5 font-semibold">
