@@ -1153,7 +1153,7 @@ export function SettingsScreen() {
                               onClick={() => void setActiveProvider(draft.id)}
                               title={providerHints.active}
                               disabled={isActive}
-                              className="h-8 text-xs font-bold uppercase"
+                              className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase"
                             >
                               {isActive ? "Active Engine" : "Activate"}
                             </Button>
@@ -1162,7 +1162,7 @@ export function SettingsScreen() {
                             icon={<Save size={15} />}
                             onClick={handleSaveProvider}
                             title={providerHints.save}
-                            className="h-8 text-xs font-bold uppercase"
+                            className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase"
                           >
                             {isSaved ? "Update Provider" : "Save Credentials"}
                           </Button>
@@ -1171,7 +1171,7 @@ export function SettingsScreen() {
                             disabled={providerBusy}
                             onClick={handleTestProvider}
                             title={providerHints.test}
-                            className="h-8 text-xs font-bold uppercase bg-zinc-950 border border-zinc-800 hover:bg-zinc-900"
+                            className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase bg-zinc-950 border border-zinc-800 hover:bg-zinc-900"
                           >
                             Test Connection
                           </Button>
@@ -1255,7 +1255,7 @@ export function SettingsScreen() {
                           size="icon"
                           variant="secondary"
                           aria-label="Enable notifications"
-                          className="rounded-xl h-8 w-8 bg-zinc-900 border border-zinc-800"
+                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 bg-zinc-900 border border-zinc-800"
                           onClick={async () => {
                             if (!("Notification" in window)) {
                               setNotificationStatus("Unsupported");
@@ -1279,7 +1279,7 @@ export function SettingsScreen() {
                           size="icon"
                           variant="danger"
                           aria-label="Reset local data"
-                          className="rounded-xl h-8 w-8"
+                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8"
                           onClick={() => {
                             const warningMsg = activeWorkout
                               ? "You have a workout session in progress. Performing a factory reset will discard your active workout and permanently delete all custom workouts, body metrics, and messages. Are you sure you want to proceed?"
@@ -1328,7 +1328,7 @@ export function SettingsScreen() {
                           </div>
                         </div>
                         <Button
-                          className="mt-4 w-full h-9 text-xs font-bold uppercase font-sans"
+                          className="mt-4 w-full h-11 sm:h-9 text-sm sm:text-xs font-bold uppercase font-sans"
                           variant="primary"
                           icon={<Download size={15} />}
                           disabled={!exportPassphrase}
@@ -1378,7 +1378,7 @@ export function SettingsScreen() {
                           </div>
                         </div>
                         <Button
-                          className="w-full mt-4 h-9 text-xs font-bold uppercase font-sans"
+                          className="w-full mt-4 h-11 sm:h-9 text-sm sm:text-xs font-bold uppercase font-sans"
                           icon={<Upload size={15} />}
                           disabled={!importFile || !importPassphrase}
                           onClick={handleImportWithValidation}

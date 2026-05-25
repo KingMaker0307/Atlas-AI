@@ -733,7 +733,7 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-zinc-400 hover:text-white"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white"
                           onClick={() => {
                             setEditingWorkoutPlanId(plan.id);
                             setActiveSubScreen("workout-plan-builder");
@@ -744,7 +744,7 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-zinc-450 hover:text-red-400"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400"
                           onClick={() => {
                             setPlanToDelete({ id: plan.id, name: plan.name });
                             setShowDeleteModal(true);
@@ -1545,7 +1545,7 @@ export function WorkoutScreen() {
                                     {/* Delete Button */}
                                     <Button
                                       aria-label="Delete set"
-                                      className="h-8 w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                      className="h-10 w-10 sm:h-8 sm:w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                                       size="icon"
                                       variant="ghost"
                                       onClick={() => void deleteSet(workoutExercise.id, set.id)}
@@ -1556,10 +1556,10 @@ export function WorkoutScreen() {
                                     {/* Tactical Complete Button */}
                                     <Button
                                       aria-label="Complete set"
-                                      className={`h-8 w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${
+                                      className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${
                                         set.completed
                                           ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
-                                          : "bg-surface text-zinc-450 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
+                                          : "bg-surface text-zinc-455 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
                                       }`}
                                       variant="ghost"
                                       onClick={() => {
@@ -1791,7 +1791,7 @@ export function WorkoutScreen() {
                                 {/* Delete Button */}
                                 <Button
                                   aria-label="Delete set"
-                                  className="h-8 w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                  className="h-10 w-10 sm:h-8 sm:w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                                   size="icon"
                                   variant="ghost"
                                   onClick={() => void deleteSet(workoutExercise.id, set.id)}
@@ -1802,7 +1802,7 @@ export function WorkoutScreen() {
                                 {/* Tactical Complete Button */}
                                 <Button
                                   aria-label="Complete set"
-                                  className={`h-8 w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${
+                                  className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${
                                     set.completed
                                       ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
                                       : "bg-surface text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"

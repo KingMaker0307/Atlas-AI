@@ -248,13 +248,13 @@ export function WorkoutPlanDetailScreen() {
 
                     {!isReadOnly && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white" onClick={() => {
+                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white" onClick={() => {
                           setEditingRoutineId(routine.id);
                           setActiveSubScreen("routine-builder");
                         }}>
                           <Pencil size={15} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-450 hover:text-red-400" onClick={() => {
+                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400" onClick={() => {
                           setRoutineToDelete({ id: routine.id, name: routine.name });
                           setShowDeleteModal(true);
                         }}>
@@ -341,7 +341,7 @@ export function WorkoutPlanDetailScreen() {
                       <Button
                         key={item.id}
                         variant="ghost"
-                        className="h-8 text-[10px] text-zinc-300 hover:text-white bg-violet-500/5 hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2 font-semibold transition-all disabled:opacity-50"
+                        className="h-10 sm:h-8 text-xs sm:text-[10px] text-zinc-300 hover:text-white bg-violet-500/5 hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2.5 sm:px-2 font-semibold transition-all disabled:opacity-50"
                         disabled={isLimitReached}
                         onClick={() => {
                           const quickRoutine: Routine = {

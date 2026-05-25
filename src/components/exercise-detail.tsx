@@ -828,7 +828,7 @@ export function ExerciseDetail({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
+            className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
             onClick={onClose}
             aria-label="Close exercise detail modal"
           >
@@ -1018,7 +1018,7 @@ export function ExerciseDetail({
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white disabled:opacity-40"
+                          className="h-10 w-10 sm:h-7 sm:w-7 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white disabled:opacity-40"
                           disabled={guideStep === 0}
                           onClick={handlePrevStep}
                           aria-label="Previous step"
@@ -1041,7 +1041,7 @@ export function ExerciseDetail({
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white disabled:opacity-40"
+                          className="h-10 w-10 sm:h-7 sm:w-7 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white disabled:opacity-40"
                           disabled={guideStep === combinedSteps.length - 1}
                           onClick={handleNextStep}
                           aria-label="Next step"

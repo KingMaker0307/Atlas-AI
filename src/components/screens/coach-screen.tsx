@@ -143,7 +143,7 @@ export function CoachScreen() {
             }}
           >
             <input
-              className="flex-1 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-emerald-300/50 focus:outline-none focus:ring-1 focus:ring-emerald-300/50"
+              className="flex-1 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2.5 md:py-2 text-base md:text-sm text-white placeholder:text-zinc-500 focus:border-emerald-300/50 focus:outline-none focus:ring-1 focus:ring-emerald-300/50"
               placeholder="Ask about your routine, fatigue, or nutrition..."
               value={draft}
               onChange={(event) => setDraft(event.target.value)}

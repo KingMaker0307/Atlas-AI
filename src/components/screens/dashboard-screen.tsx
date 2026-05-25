@@ -828,13 +828,13 @@ export function DashboardScreen() {
                   <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white" onClick={() => {
+                  <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white" onClick={() => {
                     setEditingWorkoutPlanId(plan.id);
                     setActiveSubScreen("workout-plan-builder");
                   }}>
                     <Pencil size={15} />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-450 hover:text-red-400" onClick={() => {
+                  <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400" onClick={() => {
                     setPlanToDelete({ id: plan.id, name: plan.name });
                     setShowDeleteModal(true);
                   }}>
