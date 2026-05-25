@@ -87,7 +87,11 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
               <Surface className="p-3 flex items-center gap-3">
                 <Ruler size={18} className="text-zinc-400" />
                 <span className="text-sm">
-                  {profile.height} {profile.heightUnit}
+                  {profile.height
+                    ? profile.heightUnit === "in"
+                      ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
+                      : `${profile.height} cm`
+                    : "N/A"}
                 </span>
               </Surface>
             </div>

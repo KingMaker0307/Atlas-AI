@@ -30,6 +30,10 @@ export type Equipment =
   | "kettlebell"
   | "band"
   | "cardio"
+  | "treadmill"
+  | "elliptical"
+  | "stationary-bike"
+  | "stairclimber"
   | "other";
 
 export type BodyType = "ectomorph" | "mesomorph" | "endomorph";
@@ -61,7 +65,7 @@ export interface UserProfile {
 export interface Exercise {
   id: string;
   name: string;
-  category: "compound" | "isolation" | "cardio" | "mobility";
+  category: "compound" | "isolation" | "cardio" | "steady-state" | "mobility";
   muscles: MuscleGroup[];
   equipment: Equipment[];
   difficulty: "beginner" | "intermediate" | "advanced";
@@ -86,6 +90,13 @@ export interface WorkoutSet {
   completed: boolean;
   isDropSet?: boolean;
   note?: string;
+  // Cardio-specific fields (optional — used for cardio/steady-state exercises)
+  durationSeconds?: number;
+  distance?: number;
+  pace?: string;
+  incline?: number;
+  resistance?: number;
+  calories?: number;
 }
 
 export interface WorkoutExercise {
@@ -97,6 +108,7 @@ export interface WorkoutExercise {
   supersetGroup?: string;
   notes?: string;
   sets: WorkoutSet[];
+  skipped?: boolean;
 }
 
 export interface Workout {
@@ -133,6 +145,7 @@ export interface WorkoutPlan {
   routines: Routine[];
   creatorType?: "manual" | "template" | "ai";
   startDay?: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+  notes?: string;
 }
 
 export interface RecoveryLog {

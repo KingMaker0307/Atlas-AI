@@ -405,7 +405,7 @@ export function WorkoutPlanBuilderScreen() {
     - Experience: ${experience}
     - Body Type: ${bodyType}
     - Age: ${age}
-    - Height: ${height} ${heightUnit}
+    - Height: ${heightUnit === "in" ? `${Math.floor((height ?? 0) / 12)}'${Math.round((height ?? 0) % 12)}"` : `${height} cm`}
     - Weight: ${weight} ${weightUnit}
     - Primary Goal: ${goal}
     - Training Style: ${trainingStyle}
@@ -418,7 +418,7 @@ export function WorkoutPlanBuilderScreen() {
 
     CRITICAL INSTRUCTIONS:
     1. First, calculate if their goal is realistically achievable by the Target Date: ${targetDate}.
-       - If the goal is NOT realistically achievable within this timeframe (e.g. losing 15kg in 2 weeks, or building 10kg of muscle in a month), you MUST write a prominent and friendly warning explanation at the very beginning of your message (before the JSON block), warning them about the risks/unrealistic nature of the timeline and suggesting a healthier expectation.
+       - If the goal is NOT realistically achievable within this timeframe (e.g. losing 15kg in 2 weeks, or building 10kg of muscle in a month), or if the target date is less than 7 days in the future, you MUST write a prominent and friendly warning explanation at the very beginning of your message (before the JSON block), warning them about the risks/unrealistic nature of the timeline, and giving clear suggestions to use as feedback to change the target date or give the normal aggressive training state understanding.
        - If the goal is achievable, write a brief, encouraging confirmation.
     
     2. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
@@ -426,6 +426,7 @@ export function WorkoutPlanBuilderScreen() {
       "id": "generated-plan-id",
       "name": "Plan Name",
       "goal": "A summary of the workout plan goal",
+      "notes": "A detailed warning, suggestion to change the target date, or explanation of the normal aggressive program requirements if the target date or calculation of the workout is not achievable. Leave as null or empty string if it is realistically achievable.",
       "routines": [
         {
           "id": "routine-1",
@@ -447,14 +448,18 @@ export function WorkoutPlanBuilderScreen() {
         {
           "id": "bench-press",
           "name": "Bench Press",
-          "force": "push",
-          "level": "beginner",
-          "mechanic": "compound",
-          "equipment": "barbell",
-          "primaryMuscles": ["chest"],
-          "secondaryMuscles": ["triceps", "shoulders"],
-          "instructions": ["Lie on the bench", "Press the bar up"],
-          "category": "strength"
+          "category": "compound",
+          "muscles": ["chest", "triceps", "shoulders"],
+          "equipment": ["barbell"],
+          "difficulty": "intermediate",
+          "setup": ["Plant feet, set shoulder blades down and back.", "Grip slightly wider than shoulder-width."],
+          "instructions": ["Lower the bar to lower chest under control.", "Press up and slightly back."],
+          "execution": ["Unrack with locked shoulders.", "Touch chest without bouncing.", "Finish with elbows extended."],
+          "breathing": "Brace before the descent, hold through the press, reset at the top.",
+          "tempo": "2-3 seconds down, soft touch, powerful press.",
+          "commonMistakes": ["Flaring elbows early", "Bouncing off the chest"],
+          "safetyTips": ["Use a spotter or safeties for hard sets."],
+          "progressionTips": ["Add 2.5 lb when top-set reps exceed the target range."]
         }
       ]
     }`;

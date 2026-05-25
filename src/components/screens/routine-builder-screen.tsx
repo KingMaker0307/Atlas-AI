@@ -144,8 +144,22 @@ export function RoutineBuilderScreen() {
         r => r.day.toLowerCase() === routine.day.toLowerCase() && r.id !== routine.id
       );
       if (isDayTaken) {
-        setErrorMessage(`A routine is already scheduled for ${routine.day}. Please select another day.`);
-        return;
+        const conflictingRoutine = activePlan.routines.find(
+          r => r.day.toLowerCase() === routine.day.toLowerCase() && r.id !== routine.id
+        );
+        const existingRoutine = activePlan.routines.find(r => r.id === editingRoutineId);
+        
+        if (conflictingRoutine && existingRoutine) {
+          // Swap: update conflicting routine to take the edited routine's old day
+          const oldDay = existingRoutine.day;
+          saveRoutine(editingWorkoutPlanId, {
+            ...conflictingRoutine,
+            day: oldDay,
+          });
+        } else {
+          setErrorMessage(`A routine is already scheduled for ${routine.day}. Please select another day.`);
+          return;
+        }
       }
     }
 

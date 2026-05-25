@@ -14,6 +14,7 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 import type { HeightUnit, WeightUnit, BodyType, Physique, EquipmentPreference } from "@/types/domain";
 
 const providerTypes = [
+  "none",
   "openai",
   "anthropic",
   "gemini",
@@ -194,6 +195,7 @@ export function Onboarding() {
     control,
     watch,
     trigger,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
@@ -208,7 +210,7 @@ export function Onboarding() {
       weightUnit: "lbs",
       heightUnit: "in",
       equipment: "full gym",
-      providerType: "openai",
+      providerType: "none",
       apiKey: "",
       injuries: "",
       workoutDuration: 60,
@@ -380,7 +382,19 @@ export function Onboarding() {
                           <SegmentedSetting<HeightUnit>
                             value={field.value}
                             values={["in", "cm"]}
-                            onChange={field.onChange}
+                            onChange={(newUnit) => {
+                              const currentUnit = watch("heightUnit");
+                              if (currentUnit !== newUnit) {
+                                const currentHeight = Number(watch("height"));
+                                if (currentHeight) {
+                                  const converted = newUnit === "in"
+                                    ? Math.round(currentHeight / 2.54)
+                                    : Math.round(currentHeight * 2.54);
+                                  setValue("height", converted);
+                                }
+                              }
+                              field.onChange(newUnit);
+                            }}
                           />
                         )}
                       />
@@ -394,31 +408,85 @@ export function Onboarding() {
                           <SegmentedSetting<WeightUnit>
                             value={field.value}
                             values={["lbs", "kg"]}
-                            onChange={field.onChange}
+                            onChange={(newUnit) => {
+                              const currentUnit = watch("weightUnit");
+                              if (currentUnit !== newUnit) {
+                                const currentWeight = Number(watch("weight"));
+                                if (currentWeight) {
+                                  const converted = newUnit === "lbs" 
+                                    ? Math.round(currentWeight * 2.20462 * 10) / 10
+                                    : Math.round((currentWeight / 2.20462) * 10) / 10;
+                                  setValue("weight", converted);
+                                }
+                              }
+                              field.onChange(newUnit);
+                            }}
                           />
                         )}
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label htmlFor="age">Age</Label>
-                      <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" />
-                      {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label htmlFor="age">Age</Label>
+                        <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" />
+                        {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Height ({selectedHeightUnit === "in" ? "ft & in" : "cm"})</Label>
+                        {selectedHeightUnit === "in" ? (
+                          <div className="grid grid-cols-2 gap-2.5 animate-fadeIn">
+                            <div>
+                              <Label className="text-[10px] text-zinc-500">Feet</Label>
+                              <Input
+                                type="number"
+                                min={2}
+                                max={8}
+                                placeholder="e.g. 5"
+                                value={watch("height") ? Math.floor(Number(watch("height")) / 12) : ""}
+                                onChange={(e) => {
+                                  const feet = Number(e.target.value);
+                                  const inches = Number(watch("height")) % 12 || 0;
+                                  setValue("height", feet * 12 + inches);
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-[10px] text-zinc-500">Inches</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={11}
+                                placeholder="e.g. 10"
+                                value={watch("height") ? Math.round(Number(watch("height")) % 12) : ""}
+                                onChange={(e) => {
+                                  const inches = Number(e.target.value);
+                                  const feet = Math.floor(Number(watch("height")) / 12) || 5;
+                                  setValue("height", feet * 12 + inches);
+                                }}
+                              />
+                            </div>
+                            <input type="hidden" {...register("height")} />
+                          </div>
+                        ) : (
+                          <div>
+                            <Label className="text-[10px] text-zinc-500">Value (cm)</Label>
+                            <Input
+                              id="height"
+                              type="number"
+                              min={20}
+                              max={300}
+                              {...register("height")}
+                              placeholder="e.g., 178"
+                            />
+                          </div>
+                        )}
+                        {errors.height && <p className="mt-1 text-xs text-rose-300">{errors.height.message}</p>}
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="height">Height ({selectedHeightUnit})</Label>
-                      <Input
-                        id="height"
-                        type="number"
-                        min={20}
-                        max={300}
-                        {...register("height")}
-                        placeholder={selectedHeightUnit === "in" ? "e.g., 70" : "e.g., 178"}
-                      />
-                      {errors.height && <p className="mt-1 text-xs text-rose-300">{errors.height.message}</p>}
-                    </div>
+
                     <div>
                       <Label htmlFor="weight">Weight ({selectedWeightUnit})</Label>
                       <Input
@@ -642,10 +710,10 @@ export function Onboarding() {
                   <div className="pb-1">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       <Sparkles className="text-emerald-400" size={18} />
-                      AI Coach Configuration
+                      AI Coach Configuration (Optional)
                     </h2>
                     <p className="text-zinc-400 text-xs mt-1">
-                      Atlas Coach is local-first. Bring your own key or connect a local offline model server.
+                      Atlas Coach is local-first and offline-first. You can connect a provider now or skip this step to configure it later in Settings.
                     </p>
                   </div>
 
@@ -654,7 +722,8 @@ export function Onboarding() {
                     <Select id="providerType" {...register("providerType")}>
                       {providerTypes.map((type) => (
                         <option value={type} key={type}>
-                          {type === "openai" ? "OpenAI (GPT-4o)" :
+                          {type === "none" ? "None (Skip for now, setup later)" :
+                           type === "openai" ? "OpenAI (GPT-4o)" :
                            type === "anthropic" ? "Anthropic (Claude)" :
                            type === "gemini" ? "Google Gemini" :
                            type === "grok" ? "xAI Grok" :
@@ -669,58 +738,62 @@ export function Onboarding() {
                     </Select>
                   </div>
 
-                  {/* Provider Key Help Card */}
-                  {(() => {
-                    const helper = getProviderInstructions(selectedProvider);
-                    if (!helper) return null;
-                    return (
-                      <Surface className="p-3.5 bg-emerald-950/20 border border-emerald-500/10 text-zinc-300 rounded-xl space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/15 text-emerald-400">
-                            <Sparkles size={11} className="stroke-[2.5]" />
-                          </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                            {helper.title} Steps
-                          </span>
-                        </div>
-                        <ol className="list-decimal pl-4.5 text-[11px] text-zinc-400 space-y-1">
-                          {helper.steps.map((st, i) => (
-                            <li key={i} className="leading-relaxed">{st}</li>
-                          ))}
-                        </ol>
-                        {helper.url && (
-                          <a
-                            href={helper.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition"
-                          >
-                            Go to Console Website →
-                          </a>
-                        )}
-                      </Surface>
-                    );
-                  })()}
+                  {selectedProvider !== "none" && (
+                    <>
+                      {/* Provider Key Help Card */}
+                      {(() => {
+                        const helper = getProviderInstructions(selectedProvider);
+                        if (!helper) return null;
+                        return (
+                          <Surface className="p-3.5 bg-emerald-950/20 border border-emerald-500/10 text-zinc-300 rounded-xl space-y-2 animate-fadeIn">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/15 text-emerald-400">
+                                <Sparkles size={11} className="stroke-[2.5]" />
+                              </div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                                {helper.title} Steps
+                              </span>
+                            </div>
+                            <ol className="list-decimal pl-4.5 text-[11px] text-zinc-400 space-y-1">
+                              {helper.steps.map((st, i) => (
+                                <li key={i} className="leading-relaxed">{st}</li>
+                              ))}
+                            </ol>
+                            {helper.url && (
+                              <a
+                                href={helper.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-block text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition"
+                              >
+                                Go to Console Website →
+                              </a>
+                            )}
+                          </Surface>
+                        );
+                      })()}
 
-                  <div>
-                    <Label htmlFor="apiKey">
-                      {selectedProvider === "ollama" || selectedProvider === "lmstudio"
-                        ? "API Key (Optional)"
-                        : "API Key"}
-                    </Label>
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      maxLength={500}
-                      {...register("apiKey")}
-                      placeholder={
-                        selectedProvider === "ollama" || selectedProvider === "lmstudio"
-                          ? "Not required for local servers"
-                          : "Paste API secret key here..."
-                      }
-                    />
-                    {errors.apiKey && <p className="mt-1 text-xs text-rose-300">{errors.apiKey.message}</p>}
-                  </div>
+                      <div>
+                        <Label htmlFor="apiKey">
+                          {selectedProvider === "ollama" || selectedProvider === "lmstudio"
+                            ? "API Key (Optional)"
+                            : "API Key (Optional - leave blank to skip)"}
+                        </Label>
+                        <Input
+                          id="apiKey"
+                          type="password"
+                          maxLength={500}
+                          {...register("apiKey")}
+                          placeholder={
+                            selectedProvider === "ollama" || selectedProvider === "lmstudio"
+                              ? "Not required for local servers"
+                              : "Optional - Paste key to set up now, or leave blank to skip"
+                          }
+                        />
+                        {errors.apiKey && <p className="mt-1 text-xs text-rose-300">{errors.apiKey.message}</p>}
+                      </div>
+                    </>
+                  )}
 
                   {submitError && (
                     <Surface className="p-3 bg-red-950/20 border border-red-500/15 text-rose-300 rounded-xl flex items-start gap-2.5">
@@ -801,7 +874,7 @@ function SegmentedSetting<T extends string>({
           key={item}
           onClick={() => onChange(item)}
         >
-          {item}
+          {item === "in" ? "ft & in" : item}
         </button>
       ))}
     </div>

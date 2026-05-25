@@ -1,5 +1,5 @@
 "use client";
-
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAtlasStore } from "@/store/useAtlasStore";
@@ -15,7 +15,10 @@ export function WorkoutPlanCard({ onBuild }: WorkoutPlanCardProps) {
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
-  const workouts = useAtlasStore((state) => state.workouts);
+  const allWorkouts = useAtlasStore((state) => state.workouts);
+  const workouts = useMemo(() => {
+    return allWorkouts.filter(w => w.exercises.some(ex => ex.sets.some(s => s.completed)));
+  }, [allWorkouts]);
 
   if (workoutPlans.length === 0) {
     return null;

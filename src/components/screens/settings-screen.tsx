@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
   Bot,
@@ -14,7 +14,6 @@ import {
   Save,
   Upload,
   Pencil,
-  Cloud,
   Server,
   Info,
   Eye,
@@ -230,6 +229,7 @@ export function SettingsScreen() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
+
 
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "saving" | "error" | null>("saved");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -512,7 +512,7 @@ export function SettingsScreen() {
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Settings</h1>
       </section>
 
-      {/* Header Card with profile metadata & sliding unit settings */}
+      {/* Header Card with profile metadata */}
       <Card className="relative overflow-hidden p-6 shadow-2xl">
         <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
         
@@ -527,26 +527,6 @@ export function SettingsScreen() {
             <h2 className="text-xl font-bold tracking-tight text-foreground">{profile?.name ?? "Athlete"}</h2>
             <p className="text-sm text-zinc-400 font-medium mt-0.5">{profile?.goal || "Fitness Goal Not Configured"}</p>
           </div>
-        </div>
-        <div className="mt-6 grid grid-cols-3 gap-3">
-          <SegmentedSetting<ThemeMode>
-            label="Theme"
-            value={theme}
-            values={["dark", "light", "system"]}
-            onChange={(value) => void setTheme(value)}
-          />
-          <SegmentedSetting<WeightUnit>
-            label="Weight"
-            value={weightUnit}
-            values={["lbs", "kg"]}
-            onChange={(value) => void setWeightUnit(value)}
-          />
-          <SegmentedSetting<HeightUnit>
-            label="Height"
-            value={heightUnit}
-            values={["in", "cm"]}
-            onChange={(value) => void setHeightUnit(value)}
-          />
         </div>
       </Card>
 
@@ -579,7 +559,7 @@ export function SettingsScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 animate-fadeIn">
           <Field label="Age">
             <Input
               type="number"
@@ -587,24 +567,6 @@ export function SettingsScreen() {
               max={120}
               value={draftProfile.age ?? ""}
               onChange={(e) => handleProfileChange("age", Number(e.target.value))}
-            />
-          </Field>
-          <Field label="Weight">
-            <Input
-              type="number"
-              min={20}
-              max={1000}
-              value={draftProfile.weight ?? ""}
-              onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
-            />
-          </Field>
-          <Field label="Height">
-            <Input
-              type="number"
-              min={20}
-              max={300}
-              value={draftProfile.height ?? ""}
-              onChange={(e) => handleProfileChange("height", Number(e.target.value))}
             />
           </Field>
           <Field label="Target Physique">
@@ -617,6 +579,71 @@ export function SettingsScreen() {
               ))}
             </Select>
           </Field>
+
+          <Field label={`Weight (${weightUnit})`}>
+            <Input
+              type="number"
+              min={20}
+              max={1000}
+              value={draftProfile.weight ?? ""}
+              onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
+            />
+          </Field>
+          <SegmentedSetting<WeightUnit>
+            label="Weight System"
+            value={weightUnit}
+            values={["lbs", "kg"]}
+            onChange={(value) => void setWeightUnit(value)}
+          />
+
+          <Field label={`Height (${heightUnit === "in" ? "ft & in" : "cm"})`}>
+            {heightUnit === "in" ? (
+              <div className="grid grid-cols-2 gap-2 animate-fadeIn">
+                <div>
+                  <Label className="text-[10px] text-zinc-500">Feet</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={8}
+                    value={draftProfile.height ? Math.floor(draftProfile.height / 12) : ""}
+                    onChange={(e) => {
+                      const feet = Number(e.target.value);
+                      const inches = (draftProfile.height ?? 0) % 12;
+                      handleProfileChange("height", feet * 12 + inches);
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] text-zinc-500">Inches</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={11}
+                    value={draftProfile.height ? Math.round(draftProfile.height % 12) : ""}
+                    onChange={(e) => {
+                      const inches = Number(e.target.value);
+                      const feet = Math.floor((draftProfile.height ?? 0) / 12) || 5;
+                      handleProfileChange("height", feet * 12 + inches);
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <Input
+                type="number"
+                min={20}
+                max={300}
+                value={draftProfile.height ?? ""}
+                onChange={(e) => handleProfileChange("height", Number(e.target.value))}
+              />
+            )}
+          </Field>
+          <SegmentedSetting<HeightUnit>
+            label="Height System"
+            value={heightUnit}
+            values={["in", "cm"]}
+            onChange={(value) => void setHeightUnit(value)}
+          />
         </div>
         <div className="space-y-4">
           <Field label="Dietary Preferences">
@@ -953,6 +980,7 @@ export function SettingsScreen() {
         {backupError && <p className="text-xs text-rose-400 font-medium">{backupError}</p>}
       </Card>
 
+
       {/* System card with database reset and PWA notifications */}
       <Card className="p-6 shadow-2xl space-y-4">
         <div className="flex items-center justify-between border-b border-card-border pb-3">
@@ -963,6 +991,15 @@ export function SettingsScreen() {
               <p className="text-xs text-zinc-500 mt-0.5">Manage device options and local databases</p>
             </div>
           </div>
+        </div>
+
+        <div className="pb-4 border-b border-card-border mb-4">
+          <SegmentedSetting<ThemeMode>
+            label="App Display Theme"
+            value={theme}
+            values={["dark", "light", "system"]}
+            onChange={(value) => void setTheme(value)}
+          />
         </div>
 
         <div className="flex items-start gap-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs leading-normal text-rose-600 dark:text-rose-300">
@@ -1073,7 +1110,7 @@ function SegmentedSetting<T extends string>({
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <span className="relative z-20">{item}</span>
+              <span className="relative z-20">{item === "in" ? "ft & in" : item}</span>
             </button>
           );
         })}

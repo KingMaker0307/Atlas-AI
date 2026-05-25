@@ -94,7 +94,10 @@ export function ProgressScreen() {
   const [selectedYear, setSelectedYear] = useState<number>(availableYears[0] || getDateFnsYear(new Date()));
 
   const workouts = useMemo(() => {
-    return allWorkouts.filter(w => getDateFnsYear(parseLocalDate(w.startedAt)) === selectedYear);
+    return allWorkouts.filter(w => 
+      getDateFnsYear(parseLocalDate(w.startedAt)) === selectedYear &&
+      w.exercises.some(ex => ex.sets.some(s => s.completed))
+    );
   }, [allWorkouts, selectedYear]);
 
   const recoveryLogs = useMemo(() => {
@@ -274,7 +277,24 @@ export function ProgressScreen() {
 
             {/* Routines completed progress bar */}
             {(() => {
-              const planWorkouts = allWorkouts.filter((w) => w.planId === activePlan.id && w.completedAt);
+              const startOfWeek = (() => {
+                const now = new Date();
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(now.setDate(diff));
+                monday.setHours(0, 0, 0, 0);
+                return monday;
+              })();
+
+              const planWorkouts = allWorkouts.filter((w) => {
+                const hasCompletedSets = w.exercises.some((ex) => ex.sets.some((s) => s.completed));
+                return (
+                  w.planId === activePlan.id &&
+                  w.completedAt &&
+                  new Date(w.completedAt).getTime() >= startOfWeek.getTime() &&
+                  hasCompletedSets
+                );
+              });
               const completedRoutineNames = new Set(planWorkouts.map((w) => w.name));
               const routinesCount = activePlan.routines.length;
               const completedCount = activePlan.routines.filter((r) => completedRoutineNames.has(r.name)).length;

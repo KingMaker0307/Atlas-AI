@@ -33,6 +33,7 @@ import type {
   Workout,
   WorkoutSet,
   WorkoutPlan,
+  EncryptedSecret,
 } from "@/types/domain";
 import { CoachChatResponse } from "@/lib/ai/types";
 
@@ -42,7 +43,7 @@ export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-pl
 
 interface OnboardingData extends UserProfile {
   apiKey?: string;
-  providerType?: AiProviderSettings["type"];
+  providerType?: AiProviderSettings["type"] | "none";
   customGoal?: string;
 }
 
@@ -104,8 +105,11 @@ interface AtlasState {
     setId: string,
     patch: Partial<WorkoutSet>,
   ) => Promise<void>;
+  deleteSet: (workoutExerciseId: string, setId: string) => Promise<void>;
   finishWorkout: (fatigueRating?: number, notes?: string) => Promise<void>;
   discardWorkout: () => Promise<void>;
+  swapWorkoutExercise: (workoutExerciseId: string, newExerciseId: string) => Promise<void>;
+  skipWorkoutExercise: (workoutExerciseId: string) => Promise<void>;
   startRestTimer: (seconds: number) => Promise<void>;
   stopRestTimer: () => Promise<void>; // New action
   adjustRestTimer: (seconds: number) => Promise<void>; // New action
@@ -117,6 +121,7 @@ interface AtlasState {
   importEncryptedProfile: (fileText: string, passphrase: string) => Promise<void>;
   resetLocalData: () => Promise<void>;
   getExerciseById: (id: string) => Exercise | undefined;
+  generateGlobalExercise: (name: string) => Promise<Exercise | null>;
   saveWorkoutPlan: (plan: WorkoutPlan) => Promise<void>;
   deleteWorkoutPlan: (planId: string) => Promise<void>;
   saveRoutine: (planId: string, routine: Routine) => Promise<void>;
@@ -295,22 +300,38 @@ function recentWeightForExercise(workouts: Workout[], exerciseId: string): numbe
   return best?.weight ?? 0;
 }
 
-function buildWorkoutFromRoutine(state: AtlasState, routine: Routine): Workout {
+function buildWorkoutFromRoutine(state: AtlasState, routine: Routine, parentPlanId?: string | null): Workout {
   const newWorkout: Workout = {
     id: createId("workout"),
     name: routine.name,
     startedAt: new Date().toISOString(),
-    planId: state.activeWorkoutPlanId,
+    planId: parentPlanId || state.activeWorkoutPlanId,
     exercises: routine.exercises.map((exercise) => {
+      const exerciseData = getExerciseById(exercise.exerciseId);
+      const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
       const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
+
+      // For steady-state cardio, default to 1 session; for interval cardio, keep targetSets
+      const numSets = isCardio && exerciseData?.category === "steady-state" ? 1 : exercise.targetSets;
+
       return {
         id: createId("workout_exercise"),
         exerciseId: exercise.exerciseId,
         targetSets: exercise.targetSets,
         targetReps: exercise.targetReps,
         restSeconds: exercise.restSeconds,
-        sets: Array.from({ length: exercise.targetSets }).map(() => ({
+        sets: Array.from({ length: numSets }).map(() => isCardio ? ({
+          id: createId("set"),
+          reps: 0,
+          weight: 0,
+          completed: false,
+          durationSeconds: 1800, // Default 30 min
+          distance: 0,
+          incline: 0,
+          resistance: 0,
+          calories: 0,
+        }) : ({
           id: createId("set"),
           reps: targetReps,
           weight: lastWeight,
@@ -340,6 +361,88 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   setBlocked: (blocked) => set({ blocked }),
   getExerciseById: (id: string) => {
     return get().exercises.find((exercise) => exercise.id === id);
+  },
+  generateGlobalExercise: async (name: string) => {
+    const activeProvider = get().aiProviders.find((p) => p.id === get().activeProviderId);
+    if (!activeProvider) {
+      throw new Error("No active AI provider found. Please configure one in Settings to unlock global exercise database search.");
+    }
+    if (!activeProvider.apiKey) {
+      throw new Error("API key is missing. Please set your key in Settings to search the global exercise database.");
+    }
+
+    set({ coachBusy: true, apiCallCount: get().apiCallCount + 1 });
+
+    try {
+      const apiKey = await decryptString(activeProvider.apiKey);
+      const adapter = getProviderAdapter(activeProvider.type);
+
+      const systemContext = `You are Atlas Biomechanics Coach, a clinical-grade sports physiotherapist and strength coach.
+Generate a comprehensive, scientifically accurate exercise profile for the requested exercise name.
+Your response MUST be a single, valid JSON object matching this TypeScript interface exactly:
+interface Exercise {
+  id: string; // URL-safe, kebab-case id based on exercise name (e.g., 'lat-pulldown')
+  name: string; // The capitalization and clean name (e.g., 'Lat Pulldown')
+  category: "compound" | "isolation" | "cardio" | "steady-state" | "mobility";
+  muscles: ("chest" | "back" | "shoulders" | "biceps" | "triceps" | "quads" | "hamstrings" | "glutes" | "calves" | "core" | "full body")[];
+  equipment: ("barbell" | "dumbbell" | "machine" | "cable" | "bodyweight" | "kettlebell" | "band" | "cardio" | "treadmill" | "elliptical" | "stationary-bike" | "stairclimber" | "other")[];
+  difficulty: "beginner" | "intermediate" | "advanced";
+  setup: string[]; // 2-4 detailed setup cues
+  instructions: string[]; // 2-4 primary cues
+  execution: string[]; // 2-4 precise drive/locking cues
+  breathing: string; // exactly how to breathe (e.g. Inhale on eccentric...)
+  tempo: string; // tempo description (e.g., 3-0-1-0)
+  commonMistakes: string[]; // 2-4 standard biomechanical errors
+  safetyTips: string[]; // 2-4 safety check-offs
+  progressionTips: string[]; // 2-4 progressive overload cues
+}
+
+Do NOT wrap the response in any markdown code block or include any explanatory text. Return ONLY the raw JSON object.`;
+
+      const userPrompt = `Generate the exercise profile for: "${name}"`;
+
+      const { content, tokenCount: responseTokenCount } = await adapter.chat({
+        provider: activeProvider,
+        apiKey,
+        messages: [{ id: createId("user"), role: "user", content: userPrompt, createdAt: new Date().toISOString() }],
+        systemContext,
+      });
+
+      // Clean JSON string in case the model wrapped it anyway
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith("```json")) {
+        cleanContent = cleanContent.replace(/^```json/, "").replace(/```$/, "").trim();
+      } else if (cleanContent.startsWith("```")) {
+        cleanContent = cleanContent.replace(/^```/, "").replace(/```$/, "").trim();
+      }
+
+      const parsedExercise = JSON.parse(cleanContent) as Exercise;
+      if (!parsedExercise.id || !parsedExercise.name) {
+        throw new Error("Invalid exercise structure returned.");
+      }
+
+      // Save it in our store's exercises database
+      const existing = get().exercises;
+      if (!existing.some((ex) => ex.id === parsedExercise.id)) {
+        set({
+          exercises: [...existing, parsedExercise],
+          coachBusy: false,
+          tokenCount: get().tokenCount + (responseTokenCount ?? 0)
+        });
+        await persistState(get());
+      } else {
+        set({ 
+          coachBusy: false,
+          tokenCount: get().tokenCount + (responseTokenCount ?? 0)
+        });
+      }
+
+      return parsedExercise;
+    } catch (error) {
+      set({ coachBusy: false });
+      console.error("Failed to generate exercise profile:", error);
+      throw error;
+    }
   },
   setStartupChoice: (choice) => set({ startupChoice: choice }),
   setActiveTab: (tab) => set({ activeTab: tab, activeSubScreen: null }),
@@ -548,8 +651,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   completeOnboarding: async (data) => {
     const { apiKey, providerType, customGoal, ...profile } = data;
     
-    const isLocalProvider = providerType === "ollama" || providerType === "lmstudio";
-    if (providerType && (apiKey || isLocalProvider)) {
+    if (providerType && providerType !== "none") {
       const providerId = createId("provider");
       
       let defaultBaseUrl: string | undefined = undefined;
@@ -559,28 +661,73 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
         defaultBaseUrl = "http://localhost:1234/v1";
       }
 
+      const isLocalProvider = providerType === "ollama" || providerType === "lmstudio";
+      const keyToUse = apiKey || (isLocalProvider ? "local-key" : "");
+
+      const defaultModelForType: Record<string, string> = {
+        openai: "gpt-4o",
+        anthropic: "claude-3-5-sonnet-20241022",
+        gemini: "gemini-1.5-pro",
+        grok: "grok-beta",
+        deepseek: "deepseek-chat",
+        openrouter: "meta-llama/llama-3.1-70b-instruct",
+        ollama: "llama3",
+        lmstudio: "model",
+        custom: "model"
+      };
+
+      const defaultBaseUrls: Record<string, string> = {
+        openai: "https://api.openai.com/v1",
+        anthropic: "https://api.anthropic.com/v1",
+        gemini: "https://generativelanguage.googleapis.com/v1beta",
+        grok: "https://api.x.ai/v1",
+        deepseek: "https://api.deepseek.com/v1",
+        openrouter: "https://openrouter.ai/api/v1",
+        ollama: "http://localhost:11434",
+        lmstudio: "http://localhost:1234/v1",
+        custom: ""
+      };
+
       const tempProvider: AiProviderSettings = {
         id: providerId,
         type: providerType,
-        label: providerType,
-        model: "temp",
+        label: providerType.charAt(0).toUpperCase() + providerType.slice(1),
+        model: defaultModelForType[providerType] || "model",
         temperature: 0.7,
         contextLength: 8000,
-        streaming: false,
+        streaming: true,
         enabled: true,
-        baseUrl: defaultBaseUrl,
+        baseUrl: defaultBaseUrl || defaultBaseUrls[providerType] || "",
       };
       
-      const keyToUse = apiKey || (isLocalProvider ? "local-key" : "");
-      const model = await findFirstSupportedModel(tempProvider, keyToUse);
-      if (!model) {
-        throw new Error(`No models found for ${providerType}. Make sure your local model server is running.`);
+      let finalModel = tempProvider.model;
+      let encryptedKey: EncryptedSecret | undefined = undefined;
+
+      if (apiKey) {
+        encryptedKey = await encryptString(apiKey);
+        try {
+          const fetchedModel = await findFirstSupportedModel(tempProvider, apiKey);
+          if (fetchedModel) {
+            finalModel = fetchedModel;
+          }
+        } catch (e) {
+          console.warn("Failed to validate API key during onboarding. Saving anyway.", e);
+        }
+      } else if (isLocalProvider) {
+        try {
+          const fetchedModel = await findFirstSupportedModel(tempProvider, "local-key");
+          if (fetchedModel) {
+            finalModel = fetchedModel;
+          }
+        } catch (e) {
+          console.warn("Failed to find local models during onboarding. Saving anyway.", e);
+        }
       }
-      
+
       const newProvider: AiProviderSettings = {
         ...tempProvider,
-        model,
-        apiKey: keyToUse ? await encryptString(keyToUse) : undefined,
+        model: finalModel,
+        apiKey: encryptedKey,
       };
       set({ aiProviders: [newProvider], activeProviderId: providerId });
     }
@@ -600,11 +747,51 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     await persistState(get());
   },
   setWeightUnit: async (unit) => {
-    set({ weightUnit: unit });
+    const currentUnit = get().weightUnit;
+    if (currentUnit !== unit && get().profile) {
+      const profile = get().profile!;
+      let newWeight = profile.weight;
+      if (profile.weight) {
+        if (unit === "lbs") {
+          newWeight = Math.round(profile.weight * 2.20462 * 10) / 10;
+        } else {
+          newWeight = Math.round((profile.weight / 2.20462) * 10) / 10;
+        }
+      }
+      set({ 
+        weightUnit: unit,
+        profile: { ...profile, weight: newWeight, weightUnit: unit }
+      });
+    } else {
+      set({ weightUnit: unit });
+      if (get().profile) {
+        set({ profile: { ...get().profile!, weightUnit: unit } });
+      }
+    }
     await persistState(get());
   },
   setHeightUnit: async (unit) => {
-    set({ heightUnit: unit });
+    const currentUnit = get().heightUnit;
+    if (currentUnit !== unit && get().profile) {
+      const profile = get().profile!;
+      let newHeight = profile.height;
+      if (profile.height) {
+        if (unit === "in") {
+          newHeight = Math.round(profile.height / 2.54);
+        } else {
+          newHeight = Math.round(profile.height * 2.54);
+        }
+      }
+      set({ 
+        heightUnit: unit,
+        profile: { ...profile, height: newHeight, heightUnit: unit }
+      });
+    } else {
+      set({ heightUnit: unit });
+      if (get().profile) {
+        set({ profile: { ...get().profile!, heightUnit: unit } });
+      }
+    }
     await persistState(get());
   },
   logRecovery: async (log) => {
@@ -624,7 +811,11 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     // Check if the user has reached the daily limit of 3 workouts
     const workouts = get().workouts;
     const todayStr = getLocalDateString(new Date());
-    const workoutsToday = workouts.filter((w) => getLocalDateString(w.startedAt) === todayStr);
+    const workoutsToday = workouts.filter(
+      (w) =>
+        getLocalDateString(w.startedAt) === todayStr &&
+        w.exercises.some((ex) => ex.sets.some((s) => s.completed))
+    );
 
     if (workoutsToday.length >= 3) {
       console.warn("startWorkout: Daily workout limit reached (max 3). Cannot start a new session.");
@@ -637,11 +828,16 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     const currentActiveWorkout = get().activeWorkout;
     console.log("startWorkout: activeWorkout BEFORE update:", currentActiveWorkout);
 
+    // Find the plan that contains this routine
+    const plans = get().workoutPlans;
+    const parentPlan = plans.find((p) => p.routines.some((r) => r.id === routine.id));
+    const parentPlanId = parentPlan ? parentPlan.id : get().activeWorkoutPlanId;
 
-    const newWorkout = buildWorkoutFromRoutine(get(), routine);
+    const newWorkout = buildWorkoutFromRoutine(get(), routine, parentPlanId);
     
     set({
       activeWorkout: newWorkout,
+      activeWorkoutPlanId: parentPlanId, // Automatically activate starting plan
       activeTab: "workout",
       activeSubScreen: "active-workout",
     });
@@ -704,6 +900,23 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     });
     await persistState(get());
   },
+  deleteSet: async (workoutExerciseId, setId) => {
+    const activeWorkout = get().activeWorkout;
+    if (!activeWorkout) return;
+    set({
+      activeWorkout: {
+        ...activeWorkout,
+        exercises: activeWorkout.exercises.map((exercise) => {
+          if (exercise.id !== workoutExerciseId) return exercise;
+          return {
+            ...exercise,
+            sets: exercise.sets.filter((s) => s.id !== setId),
+          };
+        }),
+      },
+    });
+    await persistState(get());
+  },
   finishWorkout: async (fatigueRating = 6, notes) => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
@@ -735,6 +948,83 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   },
   discardWorkout: async () => {
     set({ activeWorkout: null, restTimerEndsAt: undefined, activeSubScreen: null });
+    await persistState(get());
+  },
+  swapWorkoutExercise: async (workoutExerciseId, newExerciseId) => {
+    const activeWorkout = get().activeWorkout;
+    if (!activeWorkout) return;
+
+    const exerciseToSwap = activeWorkout.exercises.find((ex) => ex.id === workoutExerciseId);
+    if (!exerciseToSwap) return;
+
+    const oldExerciseId = exerciseToSwap.exerciseId;
+
+    // Update active workout exercises
+    const updatedExercises = activeWorkout.exercises.map((ex) => {
+      if (ex.id === workoutExerciseId) {
+        return { ...ex, exerciseId: newExerciseId };
+      }
+      return ex;
+    });
+
+    const nextActiveWorkout = {
+      ...activeWorkout,
+      exercises: updatedExercises,
+    };
+
+    // Update the parent plan's routine
+    let nextWorkoutPlans = get().workoutPlans;
+    if (activeWorkout.planId) {
+      nextWorkoutPlans = get().workoutPlans.map((plan) => {
+        if (plan.id !== activeWorkout.planId) return plan;
+
+        const updatedRoutines = plan.routines.map((routine) => {
+          if (routine.name !== activeWorkout.name) return routine;
+
+          const updatedExs = routine.exercises.map((re) => {
+            if (re.exerciseId === oldExerciseId) {
+              return { ...re, exerciseId: newExerciseId };
+            }
+            return re;
+          });
+
+          return { ...routine, exercises: updatedExs };
+        });
+
+        return { ...plan, routines: updatedRoutines };
+      });
+    }
+
+    set({
+      activeWorkout: nextActiveWorkout,
+      workoutPlans: nextWorkoutPlans,
+    });
+
+    await persistState(get());
+  },
+  skipWorkoutExercise: async (workoutExerciseId) => {
+    const activeWorkout = get().activeWorkout;
+    if (!activeWorkout) return;
+
+    const updatedExercises = activeWorkout.exercises.map((ex) => {
+      if (ex.id === workoutExerciseId) {
+        const nextSkipped = !ex.skipped;
+        return {
+          ...ex,
+          skipped: nextSkipped,
+          sets: ex.sets.map((s) => ({ ...s, completed: false })),
+        };
+      }
+      return ex;
+    });
+
+    set({
+      activeWorkout: {
+        ...activeWorkout,
+        exercises: updatedExercises,
+      },
+    });
+
     await persistState(get());
   },
   startRestTimer: async (seconds) => {
