@@ -288,14 +288,108 @@ export function ProgressScreen() {
       exit={{ opacity: 0, y: -8 }}
       className="space-y-4 pb-28 flex flex-col"
     >
+      {/* Print-Only Clinical Header */}
+      <div className="hidden print:flex items-center justify-between border-b-2 border-zinc-950 pb-3 mb-6">
+        <div>
+          <h1 className="text-xl font-black uppercase tracking-tight text-zinc-950">ATLAS AI CLINICAL REPORT</h1>
+          <p className="text-[10px] text-zinc-550 font-bold font-mono">Telemetry Data & Biological Analytics • Generated: {format(new Date(), "PPP")}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-extrabold text-zinc-950">{profile?.name || "Client Summary"}</p>
+          <p className="text-[9px] text-zinc-550 font-bold font-mono">Goal: {profile?.goal || "General Health"}</p>
+        </div>
+      </div>
+
+      {/* Dynamic media print overrides styles block */}
+      <style>{`
+        @media print {
+          /* Clean professional clinical styling */
+          html, body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            font-size: 11pt !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          /* Hide bottom tab nav bar, sidebars, headers, action buttons, modals, dropdowns */
+          nav, footer, header, button, select, 
+          .no-print, [role="navigation"], [role="tablist"],
+          .bg-header, .fixed, .absolute, .sticky,
+          button[aria-label], select, input {
+            display: none !important;
+          }
+          
+          /* Restructure layout for page flow */
+          .space-y-4 {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+          }
+          
+          /* Card style overrides */
+          .border-zinc-800, .border-card-border, .border-white\\/5, .border-surface-border {
+            border: 1px solid #e4e4e7 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+          }
+          
+          .bg-card, .bg-surface, .bg-surface\\/60, .bg-zinc-900, .bg-zinc-950, .bg-zinc-900\\/50, .bg-zinc-900\\/10 {
+            background-color: #f4f4f5 !important;
+            background: #f4f4f5 !important;
+            color: #18181b !important;
+          }
+          
+          /* High contrast colors for print */
+          h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #09090b !important;
+          }
+          .text-zinc-400, .text-zinc-550, .text-zinc-500, .text-zinc-650 {
+            color: #71717a !important;
+          }
+          .text-emerald-400, .text-emerald-450, .text-emerald-350, .text-emerald-300 {
+            color: #047857 !important;
+            font-weight: bold !important;
+          }
+          .text-violet-400, .text-violet-450 {
+            color: #6d28d9 !important;
+            font-weight: bold !important;
+          }
+          .text-amber-400, .text-amber-300, .text-amber-600 {
+            color: #b45309 !important;
+            font-weight: bold !important;
+          }
+          .text-rose-450, .text-rose-400, .text-rose-500 {
+            color: #be123c !important;
+            font-weight: bold !important;
+          }
+          
+          /* Ensure charts scale properly */
+          .recharts-responsive-container {
+            width: 100% !important;
+            height: 250px !important;
+          }
+          
+          /* Clinical 2-page print margins */
+          .page-break-before {
+            page-break-before: always !important;
+          }
+          
+          .aspect-square {
+            border: 1px solid #e4e4e7 !important;
+            background: #ffffff !important;
+          }
+        }
+      `}</style>
+
       {/* ─── HEADER PANEL ─── */}
-      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3 no-print">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-white">Training Intelligence</h1>
           <p className="text-xs text-zinc-400 font-medium">Biological telemetry, progressive overload charts & recovery analytics</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Select Year:</span>
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono select-year-label">Select Year:</span>
           <Select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -305,6 +399,14 @@ export function ProgressScreen() {
               <option key={year} value={year}>{year}</option>
             ))}
           </Select>
+          <Button
+            size="sm"
+            variant="primary"
+            className="h-8 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-black text-xs px-3 rounded-xl shadow"
+            onClick={() => window.print()}
+          >
+            Export PDF Report
+          </Button>
         </div>
       </section>
 
@@ -500,7 +602,7 @@ export function ProgressScreen() {
       </section>
 
       {/* ─── UNIFIED CHARTS DECK CONSOLE ─── */}
-      <Card className="p-4 mt-4 shadow-xl border border-zinc-800 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+      <Card className="p-4 mt-4 shadow-xl border border-zinc-800 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-950/40 page-break-before">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
           <div className="flex items-center gap-2">
             <LineChartIcon className="text-violet-400 animate-pulse" size={18} />
@@ -561,9 +663,9 @@ export function ProgressScreen() {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-1">
-                    <Info size={18} />
-                    <span>Not enough load points recorded for this lift to map 1RM trends.</span>
+                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
+                    <Info size={20} className="text-emerald-450 dark:text-emerald-400 shrink-0" />
+                    <span>Insufficient load point records available. Log completed strength training sets containing weight load, reps, and RIR inside your active workouts to map your estimated 1-Repetition Maximum (1RM) progressive overload curves.</span>
                   </div>
                 )}
               </div>
@@ -588,8 +690,8 @@ export function ProgressScreen() {
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
-                    <Activity size={22} className="text-violet-400 animate-pulse" />
-                    <span>No cardio metrics logged yet. Record treadmill runs, elliptical strides, or cycle recovery sessions to map conditioning trends.</span>
+                    <Activity size={22} className="text-violet-450 dark:text-violet-400 shrink-0" />
+                    <span>No cardiovascular conditioning data recorded. Record duration, distance, and calorie expenditure for treadmill runs, stationary cycle sessions, or import Garmin/Apple Watch telemetry files to view conditioning trends.</span>
                   </div>
                 )}
               </div>
@@ -615,9 +717,9 @@ export function ProgressScreen() {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-1">
-                    <Info size={18} />
-                    <span>Log daily readiness stats to view CNS and biological trends.</span>
+                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
+                    <Info size={20} className="text-amber-450 dark:text-amber-400 shrink-0" />
+                    <span>No biological telemetry recorded yet. Log daily recovery indicators—sleep duration, muscle soreness index, stress levels, and subjective fatigue—to compute your active Central Nervous System (CNS) readiness waves and performance potential.</span>
                   </div>
                 )}
               </div>
