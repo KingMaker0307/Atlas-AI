@@ -1,4 +1,14 @@
-import { exercises, getExerciseById } from "@/data/exercises";
+import { exercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
+import { useAtlasStore } from "@/store/useAtlasStore";
+
+function getExerciseById(id: string) {
+  try {
+    const storeExercises = useAtlasStore.getState().exercises;
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  } catch (e) {
+    return getStaticExerciseById(id);
+  }
+}
 import { clamp } from "@/lib/id";
 import type {
   BodyMetric,

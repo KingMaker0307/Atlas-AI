@@ -14,6 +14,8 @@ export function CoachScreen() {
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
+  const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const apiCallCount = useAtlasStore((state) => state.apiCallCount);
   const tokenCount = useAtlasStore((state) => state.tokenCount);
   const [draft, setDraft] = useState("");
@@ -106,9 +108,16 @@ export function CoachScreen() {
                             variant="secondary"
                             size="sm"
                             className="w-full"
-                            onClick={() => setActiveTab("dashboard")}
+                            onClick={() => {
+                              const plan = parseAiWorkoutPlan(message.content);
+                              if (plan) {
+                                setEditingWorkoutPlanId(plan.id);
+                                setActiveSubScreen("workout-plan-detail");
+                              }
+                              setActiveTab("workout");
+                            }}
                           >
-                            View on Dashboard
+                            View Plan Details
                           </Button>
                         </div>
                       </div>

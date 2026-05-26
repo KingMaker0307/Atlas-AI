@@ -39,7 +39,7 @@ import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select, Textarea }
  from "@/components/ui/input";
 import { ExerciseDetail } from "@/components/exercise-detail";
-import { exercises, getExerciseById } from "@/data/exercises";
+import { exercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise, Routine } from "@/types/domain";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
@@ -216,6 +216,10 @@ function parseSpeechCommand(text: string) {
 }
 
 export function WorkoutScreen() {
+  const storeExercises = useAtlasStore((state) => state.exercises);
+  const getExerciseById = (id: string) => {
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  };
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const restTimerEndsAt = useAtlasStore((state) => state.restTimerEndsAt);
@@ -240,7 +244,6 @@ export function WorkoutScreen() {
   const swapWorkoutExercise = useAtlasStore((state) => state.swapWorkoutExercise);
   const skipWorkoutExercise = useAtlasStore((state) => state.skipWorkoutExercise);
   const weightUnit = useAtlasStore((state) => state.weightUnit);
-  const storeExercises = useAtlasStore((state) => state.exercises);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
   const deleteSet = useAtlasStore((state) => state.deleteSet);

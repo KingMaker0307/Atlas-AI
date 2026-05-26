@@ -35,7 +35,7 @@ import type { Workout, RecoveryLog, BodyMetric } from "@/types/domain";
 import { format, getISOWeek, getYear as getDateFnsYear, parseISO } from "date-fns";
 import { DailyRecoveryModal } from "@/components/daily-recovery-modal";
 import { DailyBodyMetricModal } from "@/components/daily-body-metric-modal";
-import { getExerciseById } from "@/data/exercises";
+import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
 
 
 function parseLocalDate(dateStr: string): Date {
@@ -58,6 +58,10 @@ function getVolumeForWorkout(workout: Workout): number {
 }
 
 export function ProgressScreen() {
+  const storeExercises = useAtlasStore((state) => state.exercises);
+  const getExerciseById = (id: string) => {
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  };
   const allWorkouts = useAtlasStore((state) => state.workouts);
   const allRecoveryLogs = useAtlasStore((state) => state.recoveryLogs);
   const allBodyMetrics = useAtlasStore((state) => state.bodyMetrics);

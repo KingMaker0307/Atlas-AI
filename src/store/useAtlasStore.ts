@@ -1218,8 +1218,14 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           routines: assignedRoutines,
         };
 
+        const existingPlans = get().workoutPlans;
+        const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
+        const nextPlans = exists
+          ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
+          : [...existingPlans, fullyConfiguredPlan];
+
         const storeUpdate: Partial<AtlasState> = {
-          workoutPlans: [fullyConfiguredPlan],
+          workoutPlans: nextPlans,
           exercises: Array.from(existingExercises.values()),
           activeWorkoutPlanId: plan.id,
           activeWorkout: nextActiveWorkout,
@@ -1228,7 +1234,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         };
 
         if (options?.isRoutineGeneration) {
-          storeUpdate.activeTab = "dashboard";
+          storeUpdate.activeTab = "workout";
+          storeUpdate.editingWorkoutPlanId = plan.id;
+          storeUpdate.activeSubScreen = "workout-plan-detail";
         }
 
         set(storeUpdate);

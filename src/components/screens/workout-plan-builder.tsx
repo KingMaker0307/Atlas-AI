@@ -9,7 +9,7 @@ import { useState, useMemo, type FC } from "react";
 import { AiPromptCard } from "@/components/ai-prompt-card";
 import type { WorkoutPlan } from "@/types/domain";
 import { createId } from "@/lib/id";
-import { getExerciseById } from "@/data/exercises";
+import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import {
   planTemplates,
   templateCategories,
@@ -133,13 +133,18 @@ const TemplateDetailView: FC<{
   template: PlanTemplate;
   onBack: () => void;
   onUseTemplate: () => void;
-}> = ({ template, onBack, onUseTemplate }) => (
-  <motion.div
-    initial={{ opacity: 0, x: 30 }}
-    animate={{ opacity: 1, x: 0 }}
-    exit={{ opacity: 0, x: -30 }}
-    className="space-y-4 pb-28"
-  >
+}> = ({ template, onBack, onUseTemplate }) => {
+  const storeExercises = useAtlasStore((state) => state.exercises);
+  const getExerciseById = (id: string) => {
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 30 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -30 }}
+      className="space-y-4 pb-28"
+    >
     {/* Header */}
     <section className="flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -256,7 +261,8 @@ const TemplateDetailView: FC<{
       </Button>
     </div>
   </motion.div>
-);;
+  );
+};
 
 // ─── Category Pill ───────────────────────────────────────────
 
@@ -280,6 +286,10 @@ const CategoryPill: FC<{
 // ─── Main Component ──────────────────────────────────────────
 
 export function WorkoutPlanBuilderScreen() {
+  const storeExercises = useAtlasStore((state) => state.exercises);
+  const getExerciseById = (id: string) => {
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  };
   const saveWorkoutPlan = useAtlasStore((state) => state.saveWorkoutPlan);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const editingWorkoutPlanId = useAtlasStore((state) => state.editingWorkoutPlanId);

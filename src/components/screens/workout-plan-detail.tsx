@@ -5,13 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { AlertTriangle, ArrowLeft, Plus, Pencil, Trash2, Dumbbell, Play, Info, X, Moon, Sparkles } from "lucide-react";
-import { getExerciseById } from "@/data/exercises";
+import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import type { Routine } from "@/types/domain"; // Import Routine type
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal"; // Import the new modal
 import { RoutineDayConflictModal } from "@/components/routine-day-conflict-modal"; // Import the conflict modal
 import { useState, useMemo } from "react";
 
 export function WorkoutPlanDetailScreen() {
+  const storeExercises = useAtlasStore((state) => state.exercises);
+  const getExerciseById = (id: string) => {
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  };
   const editingWorkoutPlanId = useAtlasStore((state) => state.editingWorkoutPlanId);
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);

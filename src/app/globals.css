@@ -146,10 +146,26 @@ textarea {
 }
 
 /* Light Mode overrides for light text on light backgrounds */
-.light .text-white:not(.text-white-keep):not(.keep-dark):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]),
-.light .text-zinc-50:not(.text-white-keep):not(.keep-dark):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]),
-.light .text-zinc-100:not(.text-white-keep):not(.keep-dark):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]),
-.light .text-zinc-200:not(.text-white-keep):not(.keep-dark):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]) {
+.light .text-white:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-50:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-100:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-200:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]) {
+  color: var(--foreground) !important;
+}
+
+/* Ensure light text inside cards, surfaces, and inputs is overridden to dark foreground in light mode */
+.light .bg-card .text-white:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-white:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-white:not(.text-white-keep):not(button):not(a),
+.light .bg-card .text-zinc-50:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-zinc-50:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-zinc-50:not(.text-white-keep):not(button):not(a),
+.light .bg-card .text-zinc-100:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-zinc-100:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-zinc-100:not(.text-white-keep):not(button):not(a),
+.light .bg-card .text-zinc-200:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-zinc-200:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-zinc-200:not(.text-white-keep):not(button):not(a) {
   color: var(--foreground) !important;
 }
 
@@ -166,11 +182,30 @@ textarea {
 }
 
 /* Dark Mode overrides for dark text on dark backgrounds */
-.dark .text-black:not(.keep-light):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]),
-.dark .text-zinc-950:not(.keep-light):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]),
-.dark .text-zinc-900:not(.keep-light):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]),
-.dark .text-zinc-850:not(.keep-light):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]),
-.dark .text-zinc-800:not(.keep-light):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]) {
+.dark .text-black:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-950:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-900:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-850:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-800:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]) {
+  color: var(--foreground) !important;
+}
+
+/* Also ensure dark text inside cards, surfaces, and inputs is overridden to light foreground in dark mode */
+.dark .bg-card .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-950:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-950:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-950:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-900:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-900:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-900:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-850:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-850:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-850:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-800:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-800:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-800:not(.keep-light):not(button):not(a) {
   color: var(--foreground) !important;
 }
 
@@ -310,5 +345,27 @@ textarea {
 
 .light .keep-dark .text-white {
   color: #ffffff !important;
+}
+
+/* ─── HOVER STATES CONTRAST OVERRIDES ─── */
+
+/* Prevent hover texts from turning white in light mode on light backgrounds */
+.light .hover\:text-white:hover:not(button):not(a):not([class*="hover:bg-zinc"]):not([class*="hover:bg-black"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-rose"]):not([class*="hover:bg-red"]):not([class*="hover:bg-violet"]):not([class*="hover:bg-purple"]):not([class*="hover:bg-indigo"]):not([class*="hover:bg-blue"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-teal"]) {
+  color: var(--foreground) !important;
+}
+
+.light .group:hover .group-hover\:text-white:not(button):not(a):not([class*="hover:bg-zinc"]):not([class*="hover:bg-black"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-rose"]):not([class*="hover:bg-red"]):not([class*="hover:bg-violet"]):not([class*="hover:bg-purple"]):not([class*="hover:bg-indigo"]):not([class*="hover:bg-blue"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-teal"]) {
+  color: var(--foreground) !important;
+}
+
+/* Prevent hover texts from turning black or dark in dark mode on dark backgrounds */
+.dark .hover\:text-black:hover:not(button):not(a):not([class*="hover:bg-white"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-teal"]):not([class*="hover:bg-green"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-yellow"]) {
+  color: var(--foreground) !important;
+}
+.dark .hover\:text-zinc-950:hover:not(button):not(a):not([class*="hover:bg-white"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-teal"]):not([class*="hover:bg-green"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-yellow"]) {
+  color: var(--foreground) !important;
+}
+.dark .hover\:text-zinc-900:hover:not(button):not(a):not([class*="hover:bg-white"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-teal"]):not([class*="hover:bg-green"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-yellow"]) {
+  color: var(--foreground) !important;
 }
 
