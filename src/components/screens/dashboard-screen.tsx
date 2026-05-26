@@ -129,6 +129,25 @@ export function DashboardScreen() {
     return parseAiWorkoutPlan(content) !== null;
   };
 
+  const calculatedProtein = useMemo(() => {
+    const w = profile?.weight;
+    if (!w) return null;
+
+    const unit = profile?.weightUnit ?? "lbs";
+    const weightInLbs = unit === "lbs" ? w : w * 2.20462;
+    const physique = profile?.targetPhysique || "athletic";
+
+    let multiplier = 1.0;
+    if (physique === "shredded") multiplier = 1.2;
+    else if (physique === "lean") multiplier = 1.1;
+    else if (physique === "athletic") multiplier = 1.0;
+    else if (physique === "toned") multiplier = 0.9;
+    else if (physique === "bulky") multiplier = 1.0;
+
+    const proteinTarget = weightInLbs * multiplier;
+    return Math.round(proteinTarget);
+  }, [profile?.weight, profile?.targetPhysique, profile?.weightUnit]);
+
   const getLocalDateString = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -869,7 +888,7 @@ export function DashboardScreen() {
               <Pencil size={14} />
             </Button>
           </div>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Age</span>
               <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-450">yrs</span></p>
@@ -892,6 +911,12 @@ export function DashboardScreen() {
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Target Physique</span>
               <p className="font-bold text-emerald-600 dark:text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
                 {profile?.targetPhysique ?? "N/A"}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase">Protein Target</span>
+              <p className="font-bold text-emerald-600 dark:text-emerald-300 text-sm">
+                {calculatedProtein ? `${calculatedProtein} g/day` : "N/A"}
               </p>
             </div>
           </div>
