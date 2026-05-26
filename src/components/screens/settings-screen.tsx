@@ -223,6 +223,8 @@ export function SettingsScreen() {
   const recoveryLogs = useAtlasStore((state) => state.recoveryLogs);
   const aiMessages = useAtlasStore((state) => state.aiMessages);
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
+  const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
 
   // High-density preferences active tab state (Backups and System are unified)
   const [activeSettingsTab, setActiveSettingsTab] = useState<"profile" | "ai" | "system">("profile");
@@ -250,6 +252,7 @@ export function SettingsScreen() {
   const [importPassphrase, setImportPassphrase] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [notificationStatus, setNotificationStatus] = useState("Not enabled");
+  const [showDbStats, setShowDbStats] = useState(false);
 
   // Initialize selected type and draft based on active provider
   useEffect(() => {
@@ -878,7 +881,12 @@ export function SettingsScreen() {
 
                   {/* Dynamic Health Widgets Panel */}
                   {(calculatedBmi || calculatedProtein) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 px-1">
+                        <Sparkles size={14} className="text-emerald-400" />
+                        <h3 className="text-xs font-bold text-white uppercase tracking-wider">Physique Metrics</h3>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {calculatedBmi && (
                         <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/20 space-y-2 select-none shadow-xl flex flex-col justify-between">
                           <div>
@@ -955,6 +963,7 @@ export function SettingsScreen() {
                           </p>
                         </div>
                       )}
+                    </div>
                     </div>
                   )}
                 </div>
@@ -1194,54 +1203,78 @@ export function SettingsScreen() {
                       </div>
                     </div>
 
-                    <div className="pb-3 border-b border-white/5 select-none">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-3 border-b border-white/5 select-none">
                       <SegmentedSetting<ThemeMode>
                         label="App Display Theme"
                         value={theme}
                         values={["dark", "light", "system"]}
                         onChange={(value) => void setTheme(value)}
                       />
+                      <SegmentedSetting<string>
+                        label="Experience Mode"
+                        value={guidedMode ? "guided" : "advanced"}
+                        values={["guided", "advanced"]}
+                        onChange={(value) => void setGuidedMode(value === "guided")}
+                      />
                     </div>
 
                     {/* Local Storage database statistics engine */}
                     <div className="rounded-2xl border border-zinc-850 bg-zinc-950/30 p-4 shadow-xl space-y-3">
-                      <div className="flex items-center gap-2 border-b border-white/5 pb-2 select-none">
-                        <Database className="text-orange-400" size={15} />
-                        <span className="text-[10px] font-black uppercase tracking-widest font-mono text-zinc-400">Database Record Volume</span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowDbStats(!showDbStats)}
+                        className="w-full flex items-center justify-between border-b border-white/5 pb-2 select-none text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Database className="text-orange-400" size={15} />
+                          <span className="text-[10px] font-black uppercase tracking-widest font-mono text-zinc-400">System &amp; Database Diagnostic Logs</span>
+                        </div>
+                        <span className="text-xs text-zinc-500 font-bold">{showDbStats ? "Hide" : "Show"}</span>
+                      </button>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs leading-normal select-none">
-                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
-                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
-                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
-                        </div>
-                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
-                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
-                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
-                            {workouts.reduce((sum, w) => sum + w.exercises.reduce((es, e) => es + e.sets.filter(s => s.completed).length, 0), 0)}
-                          </span>
-                        </div>
-                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
-                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
-                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
-                        </div>
-                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
-                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
-                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
-                        </div>
-                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
-                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
-                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
-                            {useAtlasStore.getState().apiCallCount || 0}
-                          </span>
-                        </div>
-                        <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
-                          <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
-                          <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
-                            {(useAtlasStore.getState().tokenCount || 0).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
+                      <AnimatePresence>
+                        {showDbStats && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs leading-normal select-none pt-2">
+                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
+                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
+                              </div>
+                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
+                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                                  {workouts.reduce((sum, w) => sum + w.exercises.reduce((es, e) => es + e.sets.filter(s => s.completed).length, 0), 0)}
+                                </span>
+                              </div>
+                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
+                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
+                              </div>
+                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
+                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
+                              </div>
+                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
+                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                                  {useAtlasStore.getState().apiCallCount || 0}
+                                </span>
+                              </div>
+                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
+                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                                  {(useAtlasStore.getState().tokenCount || 0).toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-2 pt-1 select-none">

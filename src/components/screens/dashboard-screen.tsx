@@ -74,6 +74,8 @@ export function DashboardScreen() {
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const startWorkout = useAtlasStore((state) => state.startWorkout);
   const logRecovery = useAtlasStore((state) => state.logRecovery);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
+  const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
 
   // Modal & Edit States
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -197,6 +199,72 @@ export function DashboardScreen() {
 
   const insight = getCoachingInsight(recoveryScore);
 
+  const isNewUser = workouts.length === 0;
+  const isStep1Done = activeWorkoutPlanId !== null;
+
+  const handleLoadSeedPlan = async () => {
+    const newPlanId = createId("plan");
+    const newPlan = {
+      id: newPlanId,
+      name: "Beginner Full Body Split",
+      goal: "Build overall strength, movement coordination, and baseline fitness",
+      creatorType: "template" as const,
+      startDay: "Monday" as const,
+      routines: [
+        {
+          id: createId("routine"),
+          name: "Workout A",
+          focus: "Squat, Push & Pull focus",
+          estimatedMinutes: 45,
+          day: "Monday",
+          exercises: [
+            { exerciseId: "barbell-back-squat", targetSets: 3, targetReps: "8-10", restSeconds: 120 },
+            { exerciseId: "bench-press", targetSets: 3, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "barbell-row", targetSets: 3, targetReps: "8-12", restSeconds: 90 },
+            { exerciseId: "plank", targetSets: 3, targetReps: "60s", restSeconds: 60 }
+          ]
+        },
+        {
+          id: createId("routine"),
+          name: "Workout B",
+          focus: "Deadlift & Shoulder focus",
+          estimatedMinutes: 45,
+          day: "Wednesday",
+          exercises: [
+            { exerciseId: "deadlift", targetSets: 3, targetReps: "5", restSeconds: 120 },
+            { exerciseId: "overhead-press", targetSets: 3, targetReps: "8-10", restSeconds: 90 },
+            { exerciseId: "lat-pulldown", targetSets: 3, targetReps: "10-12", restSeconds: 75 },
+            { exerciseId: "hanging-leg-raise", targetSets: 3, targetReps: "15", restSeconds: 60 }
+          ]
+        },
+        {
+          id: createId("routine"),
+          name: "Workout C",
+          focus: "Squat, Incline Push & Biceps focus",
+          estimatedMinutes: 45,
+          day: "Friday",
+          exercises: [
+            { exerciseId: "barbell-back-squat", targetSets: 3, targetReps: "8-10", restSeconds: 120 },
+            { exerciseId: "incline-dumbbell-press", targetSets: 3, targetReps: "10-12", restSeconds: 75 },
+            { exerciseId: "dumbbell-curl", targetSets: 3, targetReps: "12-15", restSeconds: 60 },
+            { exerciseId: "hanging-leg-raise", targetSets: 3, targetReps: "15", restSeconds: 60 }
+          ]
+        }
+      ]
+    };
+    const saveWorkoutPlan = useAtlasStore.getState().saveWorkoutPlan;
+    const setActiveWorkoutPlanId = useAtlasStore.getState().setActiveWorkoutPlanId;
+    await saveWorkoutPlan(newPlan);
+    await setActiveWorkoutPlanId(newPlanId);
+  };
+
+  const handleGenerateAiPlan = () => {
+    if (typeof window !== "undefined") {
+      (window as any).coachPrompt = "Help me generate a beginner workout plan based on my biometrics.";
+    }
+    setActiveTab("coach");
+  };
+
   const toggleMetricInsight = (metric: string) => {
     setExpandedMetric(expandedMetric === metric ? null : metric);
   };
@@ -241,43 +309,148 @@ export function DashboardScreen() {
           </p>
         </div>
 
-        {/* Dynamic Recovery Ring */}
-        <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
-          <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
-            <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
-              <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
-              <motion.circle
-                cx="32"
-                cy="32"
-                r="28"
-                fill="none"
-                stroke={insight.ringColor}
-                strokeWidth="4.5"
-                strokeDasharray="176"
-                initial={{ strokeDashoffset: 176 }}
-                animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="text-center">
-              <span className="text-lg font-black text-white">{recoveryScore}</span>
-              <span className="text-[8px] font-bold text-zinc-500 block -mt-1 uppercase">%</span>
-            </div>
-          </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
-            <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
-            <button 
-              onClick={() => setShowQuickLog(!showQuickLog)}
-              className="mt-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Experience Mode Toggle */}
+          <div className="flex rounded-xl bg-surface p-1 border border-surface-border self-start sm:self-center select-none">
+            <button
+              type="button"
+              onClick={() => void setGuidedMode(true)}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
+                guidedMode ? "bg-emerald-400 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-white"
+              }`}
             >
-              <TimerReset size={12} />
-              Quick-Log Daily Recovery
+              Guided
             </button>
+            <button
+              type="button"
+              onClick={() => void setGuidedMode(false)}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
+                !guidedMode ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+              }`}
+            >
+              Advanced
+            </button>
+          </div>
+
+          {/* Dynamic Recovery Ring */}
+          <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
+            <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
+              <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
+                <motion.circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  fill="none"
+                  stroke={insight.ringColor}
+                  strokeWidth="4.5"
+                  strokeDasharray="176"
+                  initial={{ strokeDashoffset: 176 }}
+                  animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
+                  transition={{ duration: 1, ease: "easeOut" }}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="text-center">
+                <span className="text-lg font-black text-white">{recoveryScore}</span>
+                <span className="text-[8px] font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+              </div>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
+              <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
+              <button 
+                onClick={() => setShowQuickLog(!showQuickLog)}
+                className="mt-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
+              >
+                <TimerReset size={12} />
+                Quick-Log Daily Recovery
+              </button>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* ─── GETTING STARTED CHECKLIST (FOR NEW USERS) ─── */}
+      {isNewUser && (
+        <Card className="p-5 border border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-4">
+          <div className="flex items-center gap-2 border-b border-white/5 pb-3 select-none">
+            <Sparkles className="text-emerald-400 animate-pulse" size={18} />
+            <h2 className="text-base font-bold text-white tracking-tight">Getting Started Guide</h2>
+          </div>
+          
+          <div className="space-y-4">
+            {/* Step 1 */}
+            <div className="flex gap-3">
+              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold font-mono ${
+                isStep1Done 
+                  ? "bg-emerald-500/20 border border-emerald-400/35 text-emerald-400"
+                  : "bg-emerald-500/10 border border-emerald-400/25 text-emerald-400"
+              }`}>
+                {isStep1Done ? "✓" : "1"}
+              </div>
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2 select-none">
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-500 line-through" : "text-zinc-100"}`}>
+                    Activate a Workout Plan
+                  </h3>
+                  {isStep1Done && <span className="text-[10px] font-extrabold uppercase font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
+                </div>
+                {!isStep1Done && (
+                  <>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      To start tracking, you need a plan. Choose an option below to set up your routine instantly:
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleLoadSeedPlan}
+                        className="text-xs font-bold text-zinc-950 bg-emerald-450 hover:bg-emerald-400 px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        Load 3-Day Seed Plan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleGenerateAiPlan}
+                        className="text-xs font-bold text-zinc-350 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                      >
+                        <Bot size={13} className="text-emerald-450" />
+                        Generate with AI Coach
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Step 2 */}
+            <div className="flex gap-3 border-t border-white/5 pt-3">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-xs font-bold font-mono">
+                2
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Go to the <span className="text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-white font-bold">Start Training Session</span> to log sets.
+                </p>
+              </div>
+            </div>
+
+            {/* Step 3 */}
+            <div className="flex gap-3 border-t border-white/5 pt-3">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-xs font-bold font-mono">
+                3
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  After completing a workout, visit the <span className="text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("progress")}>Progress</span> tab to watch your strength and consistency charts update.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ─── INLINE RECOVERY LOGGER DRAWER ─── */}
       <AnimatePresence>
@@ -647,139 +820,143 @@ export function DashboardScreen() {
       </section>
 
       {/* ─── DYNAMIC BIOMETRICS hub ─── */}
-      <Card className="p-4 border border-card-border bg-card shadow">
-        <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-          <div className="flex items-center gap-2">
-            <User size={16} className="text-emerald-450" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Athlete Biometrics</h2>
+      {!guidedMode && (
+        <Card className="p-4 border border-card-border bg-card shadow">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+            <div className="flex items-center gap-2">
+              <User size={16} className="text-emerald-455" />
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Athlete Biometrics</h2>
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-white" onClick={() => setActiveTab("settings")}>
+              <Pencil size={14} />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-white" onClick={() => setActiveTab("settings")}>
-            <Pencil size={14} />
-          </Button>
-        </div>
-        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase">Age</span>
-            <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-450">yrs</span></p>
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase">Age</span>
+              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-450">yrs</span></p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase">Weight</span>
+              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-450">{profile?.weightUnit}</span></p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase">Height</span>
+              <p className="font-bold text-white text-sm">
+                {profile?.height
+                  ? profile.heightUnit === "in"
+                    ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
+                    : `${profile.height} cm`
+                  : "N/A"}
+              </p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+              <span className="text-[10px] text-zinc-500 font-bold uppercase">Target Physique</span>
+              <p className="font-bold text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
+                {profile?.targetPhysique ?? "N/A"}
+              </p>
+            </div>
           </div>
-          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase">Weight</span>
-            <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-450">{profile?.weightUnit}</span></p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase">Height</span>
-            <p className="font-bold text-white text-sm">
-              {profile?.height
-                ? profile.heightUnit === "in"
-                  ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
-                  : `${profile.height} cm`
-                : "N/A"}
-            </p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase">Target Physique</span>
-            <p className="font-bold text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
-              {profile?.targetPhysique ?? "N/A"}
-            </p>
-          </div>
-        </div>
-      </Card>
-
+        </Card>
+      )}
+  
       {/* ─── HIGH-FIDELITY TABBED TRENDS CONSOLE ─── */}
-      <Card className="p-5 border border-card-border bg-card shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-white leading-tight">Bio-Analytics Console</h2>
-            <p className="text-xs text-zinc-400">Biological markers and load volume trendlines</p>
-          </div>
-          
-          {/* Custom Tabs */}
-          <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
-            <button
-              onClick={() => setActiveChartTab("weight")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
-            >
-              <span className="flex items-center gap-1.5">
-                <Weight size={13} />
-                Bodyweight
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveChartTab("volume")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
-            >
-              <span className="flex items-center gap-1.5">
-                <TrendingUp size={13} />
-                Weekly Volume
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-5 h-48 relative">
-          <AnimatePresence mode="wait">
-            {activeChartTab === "weight" ? (
-              <motion.div 
-                key="weight-chart"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                className="w-full h-full"
+      {!guidedMode && (
+        <Card className="p-5 border border-card-border bg-card shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white leading-tight">Bio-Analytics Console</h2>
+              <p className="text-xs text-zinc-400">Biological markers and load volume trendlines</p>
+            </div>
+            
+            {/* Custom Tabs */}
+            <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
+              <button
+                onClick={() => setActiveChartTab("weight")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
               >
-                {bodySeries.length > 1 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={bodySeries} margin={{ left: -30, right: 10, top: 10, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="bodyweight" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.45} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} domain={["dataMin - 3", "dataMax + 3"]} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" name="weight" dataKey="weight" stroke="#10b981" strokeWidth={2.5} fill="url(#bodyweight)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
-                    Requires at least two bodyweight logs to generate analytical trendlines.
-                  </div>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="volume-chart"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                className="w-full h-full"
+                <span className="flex items-center gap-1.5">
+                  <Weight size={13} />
+                  Bodyweight
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveChartTab("volume")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
               >
-                {volumeSeries.length > 1 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={volumeSeries} margin={{ left: -30, right: 10, top: 10, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="volume" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.45} />
-                          <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="week" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Area type="monotone" name="volume" dataKey="volume" stroke="#0ea5e9" strokeWidth={2.5} fill="url(#volume)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
-                    Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </Card>
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp size={13} />
+                  Weekly Volume
+                </span>
+              </button>
+            </div>
+          </div>
+  
+          <div className="mt-5 h-48 relative">
+            <AnimatePresence mode="wait">
+              {activeChartTab === "weight" ? (
+                <motion.div 
+                  key="weight-chart"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="w-full h-full"
+                >
+                  {bodySeries.length > 1 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={bodySeries} margin={{ left: -30, right: 10, top: 10, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="bodyweight" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.45} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} domain={["dataMin - 3", "dataMax + 3"]} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area type="monotone" name="weight" dataKey="weight" stroke="#10b981" strokeWidth={2.5} fill="url(#bodyweight)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
+                      Requires at least two bodyweight logs to generate analytical trendlines.
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="volume-chart"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="w-full h-full"
+                >
+                  {volumeSeries.length > 1 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={volumeSeries} margin={{ left: -30, right: 10, top: 10, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="volume" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.45} />
+                            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="week" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Area type="monotone" name="volume" dataKey="volume" stroke="#0ea5e9" strokeWidth={2.5} fill="url(#volume)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
+                      Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Card>
+      )}
 
       {/* ─── DYNAMIC PLANS COLLECTION ─── */}
       <section className="space-y-3">

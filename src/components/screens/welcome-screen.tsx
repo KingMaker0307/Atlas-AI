@@ -55,7 +55,7 @@ export function WelcomeScreen() {
         
         {/* App Logo & Header */}
         <div className="text-center mb-6">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-lg shadow-emerald-500/10 mb-3">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] mb-3">
             <Dumbbell size={26} className="text-zinc-950" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Welcome to Atlas</h1>
@@ -79,10 +79,10 @@ export function WelcomeScreen() {
                   size="lg"
                   onClick={() => setStartupChoice("local")}
                 >
-                  <Sparkles className="mr-3 text-zinc-100 dark:text-zinc-950 shrink-0" size={20} />
+                  <Sparkles className="mr-3 text-zinc-100 dark:text-zinc-900 shrink-0" size={20} />
                   <div className="text-left">
-                    <p className="font-bold text-xs sm:text-sm text-zinc-100 dark:text-zinc-950">Start Fresh (Local Mode)</p>
-                    <p className="text-[9px] sm:text-[10px] text-zinc-350 dark:text-zinc-650 font-medium">Sandbox local offline mode with browser IndexedDB</p>
+                    <p className="font-bold text-xs sm:text-sm text-zinc-100 dark:text-zinc-900">Start Fresh (Local Mode)</p>
+                    <p className="text-[9px] sm:text-[10px] text-zinc-200/70 dark:text-zinc-500 font-medium">Sandbox local offline mode with browser IndexedDB</p>
                   </div>
                 </Button>
 

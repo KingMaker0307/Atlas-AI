@@ -35,8 +35,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input, Label, Textarea }
+import { Card, Surface } from "@/components/ui/card";
+import { Input, Label, Select, Textarea }
  from "@/components/ui/input";
 import { ExerciseDetail } from "@/components/exercise-detail";
 import { exercises, getExerciseById } from "@/data/exercises";
@@ -245,6 +245,7 @@ export function WorkoutScreen() {
   const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
   const deleteSet = useAtlasStore((state) => state.deleteSet);
   const profile = useAtlasStore((state) => state.profile);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
 
   // Daily limit check
   const getLocalDateString = (dateOrStr: Date | string) => {
@@ -624,6 +625,13 @@ export function WorkoutScreen() {
             Create Plan
           </Button>
         </section>
+
+        <Surface className="p-3.5 bg-emerald-950/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none">
+          <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+          <p className="text-xs leading-normal">
+            This screen holds your workout routines. Tap <span className="text-white font-bold">Start Training Session</span> to begin tracking sets, or tap <span className="text-white font-bold">Create Plan</span> to design a new routine.
+          </p>
+        </Surface>
 
         {/* Warning banner for force stopped workout */}
         {(() => {
@@ -1722,18 +1730,33 @@ export function WorkoutScreen() {
                             />
 
                             {/* RIR Input selector */}
-                            <Input
-                              inputMode="numeric"
-                              type="number"
-                              min={0}
-                              max={10}
-                              className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                              value={set.rir ?? 2}
-                              onChange={(event) => {
-                                  const val = Math.min(10, Math.max(0, Number(event.target.value)));
+                            {guidedMode ? (
+                              <Select
+                                value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
+                                onChange={(event) => {
+                                  const val = event.target.value === "easy" ? 8 : event.target.value === "hard" ? 0 : 4;
                                   void updateSet(workoutExercise.id, set.id, { rir: val });
-                              }}
-                            />
+                                }}
+                                className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
+                              >
+                                <option value="easy">Easy</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="hard">Hard</option>
+                              </Select>
+                            ) : (
+                              <Input
+                                inputMode="numeric"
+                                type="number"
+                                min={0}
+                                max={10}
+                                className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
+                                value={set.rir ?? 2}
+                                onChange={(event) => {
+                                    const val = Math.min(10, Math.max(0, Number(event.target.value)));
+                                    void updateSet(workoutExercise.id, set.id, { rir: val });
+                                }}
+                              />
+                            )}
 
                             {/* Delete Set Button */}
                             <Button
@@ -1862,18 +1885,33 @@ export function WorkoutScreen() {
 
                               <div>
                                 <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">RIR</label>
-                                <Input
-                                  inputMode="numeric"
-                                  type="number"
-                                  min={0}
-                                  max={10}
-                                  className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                  value={set.rir ?? 2}
-                                  onChange={(event) => {
-                                    const val = Math.min(10, Math.max(0, Number(event.target.value)));
-                                    void updateSet(workoutExercise.id, set.id, { rir: val });
-                                  }}
-                                />
+                                {guidedMode ? (
+                                  <Select
+                                    value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
+                                    onChange={(event) => {
+                                      const val = event.target.value === "easy" ? 8 : event.target.value === "hard" ? 0 : 4;
+                                      void updateSet(workoutExercise.id, set.id, { rir: val });
+                                    }}
+                                    className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                  >
+                                    <option value="easy">Easy</option>
+                                    <option value="moderate">Mod</option>
+                                    <option value="hard">Hard</option>
+                                  </Select>
+                                ) : (
+                                  <Input
+                                    inputMode="numeric"
+                                    type="number"
+                                    min={0}
+                                    max={10}
+                                    className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                    value={set.rir ?? 2}
+                                    onChange={(event) => {
+                                      const val = Math.min(10, Math.max(0, Number(event.target.value)));
+                                      void updateSet(workoutExercise.id, set.id, { rir: val });
+                                    }}
+                                  />
+                                )}
                               </div>
                             </div>
                           </div>

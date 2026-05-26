@@ -232,6 +232,7 @@ export interface AtlasSnapshot {
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
   hasOnboarded: boolean;
+  guidedMode?: boolean;
   restTimerEndsAt?: string;
   updatedAt: string;
   apiCallCount: number; // Added to AtlasSnapshot

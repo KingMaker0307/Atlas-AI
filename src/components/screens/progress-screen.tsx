@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Activity, Battery, LineChartIcon, Info, Moon, Zap, Thermometer, Dumbbell, Clock3, Weight, TrendingUp, PlusCircle, Edit, Flame, Calendar, ClipboardList, Search, ChevronUp, ChevronDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Area,
   AreaChart,
@@ -17,7 +17,7 @@ import {
   YAxis,
 } from "recharts";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, Surface } from "@/components/ui/card";
 import { Select, Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import {
@@ -66,6 +66,8 @@ export function ProgressScreen() {
   const profile = useAtlasStore((state) => state.profile);
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkoutPlanId = useAtlasStore((state) => state.activeWorkoutPlanId);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
+  
   const [selectedExercise, setSelectedExercise] = useState(topExercisesForAnalytics()[0]?.id ?? "bench-press");
   const [selectedHistoryView, setSelectedHistoryView] = useState<HistoryView>("day");
   const [modalSelectedDate, setModalSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -75,6 +77,11 @@ export function ProgressScreen() {
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [historySearch, setHistorySearch] = useState("");
   const [chartTab, setChartTab] = useState<"strength" | "cardio" | "recovery" | "mass">("strength");
+  const [showCharts, setShowCharts] = useState(false);
+
+  useEffect(() => {
+    setShowCharts(!guidedMode);
+  }, [guidedMode]);
 
   // Dynamically populate exercise dropdown list from actually logged exercises combined with default compound lifts
   const exercisesWithHistory = useMemo(() => {
@@ -410,6 +417,13 @@ export function ProgressScreen() {
         </div>
       </section>
 
+      <Surface className="p-3.5 bg-emerald-950/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none no-print">
+        <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+        <p className="text-xs leading-normal">
+          This is where your achievements are tracked. Once you log a workout, your strength progression charts and streak stats will update here automatically.
+        </p>
+      </Surface>
+
       {/* ─── BIOLOGICAL READINESS & ANNUAL SUMMARY CONSOLE ─── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Readiness Dial Card */}
@@ -603,34 +617,44 @@ export function ProgressScreen() {
 
       {/* ─── UNIFIED CHARTS DECK CONSOLE ─── */}
       <Card className="p-4 mt-4 shadow-xl border border-zinc-800 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-950/40 page-break-before">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+        <button
+          type="button"
+          onClick={() => setShowCharts(!showCharts)}
+          className="w-full flex items-center justify-between border-b border-white/5 pb-3 select-none text-left no-print"
+        >
           <div className="flex items-center gap-2">
             <LineChartIcon className="text-violet-400 animate-pulse" size={18} />
-            <h3 className="text-base font-bold text-white">Training Analytics & Charts</h3>
+            <h3 className="text-base font-bold text-white">Training Analytics &amp; Charts</h3>
           </div>
-          
-          {/* Segmented Controller */}
-          <div className="flex bg-zinc-950 border border-zinc-800 p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
-            {[
-              { id: "strength", label: "Strength" },
-              { id: "cardio", label: "Cardio" },
-              { id: "recovery", label: "Recovery" },
-              { id: "mass", label: "Mass & Vol" }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setChartTab(tab.id as any)}
-                className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                  chartTab === tab.id
-                    ? "bg-white text-zinc-950 font-bold shadow"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <span className="text-xs text-zinc-500 font-bold">{showCharts ? "Hide Charts" : "Show Charts"}</span>
+        </button>
+
+        <div className={`print:block ${showCharts ? "block" : "hidden"}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 py-3 no-print">
+            <p className="text-xs text-zinc-400 font-medium">Select a category to view training progression trendlines:</p>
+            
+            {/* Segmented Controller */}
+            <div className="flex bg-zinc-950 border border-zinc-800 p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
+              {[
+                { id: "strength", label: "Strength" },
+                { id: "cardio", label: "Cardio" },
+                { id: "recovery", label: "Recovery" },
+                { id: "mass", label: "Mass & Vol" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setChartTab(tab.id as any)}
+                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                    chartTab === tab.id
+                      ? "bg-white text-zinc-950 font-bold shadow"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
         <div className="mt-4 min-h-[260px] flex flex-col justify-center">
           {/* strength tab */}
@@ -756,6 +780,7 @@ export function ProgressScreen() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </Card>
 

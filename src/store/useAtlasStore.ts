@@ -74,6 +74,7 @@ interface AtlasState {
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
   hasOnboarded: boolean;
+  guidedMode: boolean;
   coachBusy: boolean;
   providerBusy: boolean;
   apiCallCount: number; // New state for API call count
@@ -96,6 +97,7 @@ interface AtlasState {
   setTheme: (theme: ThemeMode) => Promise<void>;
   setWeightUnit: (unit: WeightUnit) => Promise<void>;
   setHeightUnit: (unit: HeightUnit) => Promise<void>;
+  setGuidedMode: (guidedMode: boolean) => Promise<void>;
   logRecovery: (log: RecoveryLog) => Promise<void>;
   logBodyMetric: (metric: BodyMetric) => Promise<void>;
   startWorkout: (routine: Routine) => Promise<void>;
@@ -157,6 +159,7 @@ function freshSnapshot(): StoredSnapshot {
     weightUnit: "lbs",
     heightUnit: "in",
     hasOnboarded: false,
+    guidedMode: true,
     updatedAt: new Date().toISOString(),
     startupChoice: null,
     activeSubScreen: null,
@@ -202,6 +205,7 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     weightUnit: state.weightUnit,
     heightUnit: state.heightUnit,
     hasOnboarded: state.hasOnboarded,
+    guidedMode: state.guidedMode,
     restTimerEndsAt: state.restTimerEndsAt,
     updatedAt: new Date().toISOString(),
     startupChoice: state.startupChoice,
@@ -351,6 +355,7 @@ function buildWorkoutFromRoutine(get: AtlasGetState, routine: Routine, parentPla
 
 export const useAtlasStore = create<AtlasState>((set, get) => ({
   ...freshSnapshot(),
+  guidedMode: true,
   hydrated: false,
   activeTab: "dashboard",
   activeSubScreen: null,
@@ -545,6 +550,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeSubScreen,
       aiMessages,
       activeWorkoutPlanId,
+      guidedMode: snapshot.guidedMode !== undefined ? snapshot.guidedMode : true,
       hydrated: true,
       activeTab: "dashboard",
       coachBusy: false,
@@ -796,6 +802,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         set({ profile: { ...get().profile!, heightUnit: unit } });
       }
     }
+    await persistState(get());
+  },
+  setGuidedMode: async (guidedMode) => {
+    set({ guidedMode });
     await persistState(get());
   },
   logRecovery: async (log) => {

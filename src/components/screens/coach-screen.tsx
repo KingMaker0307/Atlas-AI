@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, Send, User, Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,13 @@ export function CoachScreen() {
   const tokenCount = useAtlasStore((state) => state.tokenCount);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).coachPrompt) {
+      setDraft((window as any).coachPrompt);
+      (window as any).coachPrompt = undefined;
+    }
+  }, []);
 
   // Define a placeholder quota limit for API calls
   const apiQuotaLimit = 20; // Based on your previous error message for gemini-2.5-flash
@@ -33,12 +40,19 @@ export function CoachScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="flex h-[calc(100dvh-15rem)] md:h-[calc(100dvh-8rem)] flex-col"
+      className="flex h-[calc(100dvh-15rem)] md:h-[calc(100dvh-8rem)] flex-col gap-3"
     >
-      <section className="mb-3 sm:mb-4 shrink-0">
+      <section className="shrink-0">
         <p className="text-xs sm:text-sm text-zinc-400">Intelligent guidance</p>
         <h1 className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-white">Coach</h1>
       </section>
+
+      <Surface className="p-3.5 bg-emerald-955/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none shrink-0">
+        <Info size={16} className="text-emerald-450 shrink-0 mt-0.5" />
+        <p className="text-xs leading-normal">
+          This is your private AI trainer. Ask questions like: <span className="text-white font-bold">"How do I perform a dumbbell curl?"</span> or <span className="text-white font-bold">"Give me a 10-minute warm-up"</span> for immediate guidance.
+        </p>
+      </Surface>
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4">
