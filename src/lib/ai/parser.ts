@@ -6,25 +6,37 @@ interface AiWorkoutPlan extends WorkoutPlan {
 
 export function parseAiWorkoutPlan(response: string): AiWorkoutPlan | null {
   try {
-    const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
-    if (jsonMatch && jsonMatch[1]) {
-      const parsed = JSON.parse(jsonMatch[1]);
-      if (isAiWorkoutPlan(parsed)) {
-        return parsed;
+    // 1. Try to extract JSON blocks matching ```json ... ``` or ``` ... ```
+    const regex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+    let match;
+    while ((match = regex.exec(response)) !== null) {
+      try {
+        const parsed = JSON.parse(match[1].trim());
+        if (isAiWorkoutPlan(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // Continue to check other blocks if this one failed to parse
       }
     }
 
-    // If no markdown block is found, try to parse the whole string
-    if (response.trim().startsWith("{")) {
-      const parsed = JSON.parse(response);
-      if (isAiWorkoutPlan(parsed)) {
-        return parsed;
+    // 2. If no valid markdown block succeeded, try to find any substring that starts with '{' and ends with '}'
+    const firstBrace = response.indexOf("{");
+    const lastBrace = response.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        const potentialJson = response.substring(firstBrace, lastBrace + 1);
+        const parsed = JSON.parse(potentialJson.trim());
+        if (isAiWorkoutPlan(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // Fail-through
       }
     }
 
     return null;
   } catch (e) {
-    // This is expected if the message is not a workout plan.
     return null;
   }
 }

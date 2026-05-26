@@ -1186,47 +1186,52 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         coachBusy: false,
         tokenCount: get().tokenCount + (responseTokenCount ?? 0), // Accumulate token count
       });
-      if (options?.isRoutineGeneration) {
-        const plan = parseAiWorkoutPlan(responseContent);
-        if (plan) {
-          const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
-          // Correctly populate existingExercises with full Exercise objects from plan.exercises
+      const plan = parseAiWorkoutPlan(responseContent);
+      if (plan) {
+        const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
+        // Correctly populate existingExercises with full Exercise objects from plan.exercises
+        if (Array.isArray(plan.exercises)) {
           plan.exercises.forEach(e => existingExercises.set(e.id, e));
-
-          const activeWorkout = get().activeWorkout;
-          let nextActiveWorkout = activeWorkout;
-          let nextRestTimer = get().restTimerEndsAt;
-          let nextSubScreen = get().activeSubScreen;
-          if (activeWorkout) {
-            nextActiveWorkout = null;
-            nextRestTimer = undefined;
-            if (get().activeSubScreen === "active-workout") {
-              nextSubScreen = null;
-            }
-          }
-
-          // Assign routines to days of the week starting from selected startDay
-          const selectedStartDay = options?.startDay || "Monday";
-          const parsedRoutines = plan.routines || [];
-          const assignedRoutines = assignRoutinesToDays(parsedRoutines, selectedStartDay);
-
-          const fullyConfiguredPlan = {
-            ...plan,
-            creatorType: "ai" as const,
-            startDay: selectedStartDay as any,
-            routines: assignedRoutines,
-          };
-
-          set({
-            workoutPlans: [fullyConfiguredPlan],
-            exercises: Array.from(existingExercises.values()),
-            activeWorkoutPlanId: plan.id,
-            activeWorkout: nextActiveWorkout,
-            restTimerEndsAt: nextRestTimer,
-            activeSubScreen: nextSubScreen,
-            activeTab: "dashboard",
-          });
         }
+
+        const activeWorkout = get().activeWorkout;
+        let nextActiveWorkout = activeWorkout;
+        let nextRestTimer = get().restTimerEndsAt;
+        let nextSubScreen = get().activeSubScreen;
+        if (activeWorkout) {
+          nextActiveWorkout = null;
+          nextRestTimer = undefined;
+          if (get().activeSubScreen === "active-workout") {
+            nextSubScreen = null;
+          }
+        }
+
+        // Assign routines to days of the week starting from selected startDay
+        const selectedStartDay = options?.startDay || "Monday";
+        const parsedRoutines = plan.routines || [];
+        const assignedRoutines = assignRoutinesToDays(parsedRoutines, selectedStartDay);
+
+        const fullyConfiguredPlan = {
+          ...plan,
+          creatorType: "ai" as const,
+          startDay: selectedStartDay as any,
+          routines: assignedRoutines,
+        };
+
+        const storeUpdate: Partial<AtlasState> = {
+          workoutPlans: [fullyConfiguredPlan],
+          exercises: Array.from(existingExercises.values()),
+          activeWorkoutPlanId: plan.id,
+          activeWorkout: nextActiveWorkout,
+          restTimerEndsAt: nextRestTimer,
+          activeSubScreen: nextSubScreen,
+        };
+
+        if (options?.isRoutineGeneration) {
+          storeUpdate.activeTab = "dashboard";
+        }
+
+        set(storeUpdate);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
