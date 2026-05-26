@@ -413,25 +413,58 @@ export function DashboardScreen() {
       </section>
 
       {coachBusy && (
-        <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
-            <div className="flex-1">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/40 to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
+        >
+          {/* Ambient glow orb */}
+          <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-violet-500/20 blur-[60px] pointer-events-none" />
+          <div className="absolute -bottom-6 -left-6 w-28 h-28 rounded-full bg-fuchsia-500/15 blur-[40px] pointer-events-none" />
+
+          <div className="relative flex items-start gap-4">
+            {/* Animated icon */}
+            <div className="shrink-0 h-10 w-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 10, 0] }}
+                transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
+                className="text-lg select-none"
+              >
+                🍳
+              </motion.div>
+            </div>
+
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">AI Coach</span>
+                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                  Cooking
+                </span>
+              </div>
+              <p className="text-sm font-bold text-white leading-snug">
+                Something amazing is being crafted for you.
+              </p>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Your AI Coach is designing a clinical-grade, personalised training program based on your biometrics and goals. This usually takes 15–30 seconds — grab a sip of water! 💧
+              </p>
+
+              {/* Shimmer progress bar */}
+              <div className="h-1.5 w-full rounded-full bg-violet-950/60 border border-violet-500/20 overflow-hidden mt-1">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-violet-500 rounded-full"
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{ repeat: Infinity, duration: 1.6, ease: "linear" }}
+                  style={{ width: "60%" }}
+                />
+              </div>
             </div>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
-            <motion.div
-              className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-400 rounded-full"
-              initial={{ left: "-100%" }}
-              animate={{ left: "100%" }}
-              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-              style={{ position: "absolute", width: "50%" }}
-            />
-          </div>
-        </Card>
+        </motion.div>
       )}
+
 
       {/* ─── GETTING STARTED CHECKLIST (FOR NEW USERS) ─── */}
       {isNewUser && (
@@ -444,10 +477,10 @@ export function DashboardScreen() {
           <div className="space-y-4">
             {/* Step 1 */}
             <div className="flex gap-3">
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold font-mono ${
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold font-mono ${
                 isStep1Done 
-                  ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-                  : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
               }`}>
                 {isStep1Done ? "✓" : "1"}
               </div>
@@ -468,7 +501,7 @@ export function DashboardScreen() {
                         type="button"
                         onClick={handleLoadSeedPlan}
                         disabled={coachBusy}
-                        className="text-xs font-bold text-white-keep bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Load 3-Day Seed Plan
                       </button>
@@ -476,7 +509,7 @@ export function DashboardScreen() {
                         type="button"
                         onClick={() => setShowCreatePlanModal(true)}
                         disabled={coachBusy}
-                        className="text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Create Plan
                       </button>
@@ -488,7 +521,7 @@ export function DashboardScreen() {
 
             {/* Step 2 */}
             <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-400 text-xs font-bold font-mono">
                 2
               </div>
               <div className="space-y-1">
@@ -501,7 +534,7 @@ export function DashboardScreen() {
 
             {/* Step 3 */}
             <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-400 text-xs font-bold font-mono">
                 3
               </div>
               <div className="space-y-1">
@@ -514,6 +547,7 @@ export function DashboardScreen() {
           </div>
         </Card>
       )}
+
 
       {/* ─── INLINE RECOVERY LOGGER DRAWER ─── */}
       <AnimatePresence>
@@ -1356,74 +1390,114 @@ export function DashboardScreen() {
                 Select a method to establish your training plan.
               </p>
             </div>
-            
-            <div className="space-y-3 pt-2">
-              {/* Option 1: Template Seed Plan */}
-              <button
-                onClick={() => {
-                  void handleLoadSeedPlan();
-                  setShowCreatePlanModal(false);
-                }}
-                disabled={coachBusy}
-                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 shrink-0">
-                  <ClipboardList size={18} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                    Load 3-Day Seed Plan
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
-                    Start tracking immediately with a pre-configured, beginner-friendly full-body template split.
-                  </p>
-                </div>
-              </button>
 
-              {/* Option 2: Custom Manual Builder */}
-              <button
-                onClick={() => {
-                  handleCreateManualPlan();
-                  setShowCreatePlanModal(false);
-                }}
-                disabled={coachBusy}
-                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
-                  <Plus size={18} />
+            {/* AI BUSY OVERLAY — shown instead of options when AI is generating */}
+            {coachBusy ? (
+              <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/50 to-zinc-950/80 p-5 space-y-3">
+                {/* Ambient glow */}
+                <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-violet-500/20 blur-[50px] pointer-events-none" />
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                    <motion.span
+                      animate={{ rotate: [0, 10, -10, 10, 0] }}
+                      transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
+                      className="text-lg select-none"
+                    >
+                      🍳
+                    </motion.span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">AI Coach</span>
+                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
+                        <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
+                        Cooking
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-white mt-0.5">Your plan is being generated!</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    Create Manual Plan
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
-                    Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
-                  </p>
+                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                  Your AI Coach is working hard to build a personalised, clinical-grade program for you. Other plan creation options are temporarily unavailable while generation is in progress.
+                </p>
+                {/* Shimmer bar */}
+                <div className="h-1.5 w-full rounded-full bg-violet-950/60 border border-violet-500/20 overflow-hidden">
+                  <motion.div
+                    className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-violet-500 rounded-full"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{ repeat: Infinity, duration: 1.6, ease: "linear" }}
+                    style={{ width: "60%" }}
+                  />
                 </div>
-              </button>
+                <p className="text-[10px] text-zinc-500 text-center italic">Switch to the Coach tab to watch the plan arrive in real-time ✨</p>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-2">
+                {/* Option 1: Template Seed Plan */}
+                <button
+                  onClick={() => {
+                    void handleLoadSeedPlan();
+                    setShowCreatePlanModal(false);
+                  }}
+                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                >
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 shrink-0">
+                    <ClipboardList size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      Load 3-Day Seed Plan
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                      Start tracking immediately with a pre-configured, beginner-friendly full-body template split.
+                    </p>
+                  </div>
+                </button>
 
-              {/* Option 3: AI Coach Planner */}
-              <button
-                onClick={() => {
-                  handleGenerateAiPlan();
-                  setShowCreatePlanModal(false);
-                }}
-                disabled={coachBusy}
-                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-455 shrink-0">
-                  <Bot size={18} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
-                    Generate with AI Coach
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
-                    Have the AI Coach write a personalized plan for you based on your biometrics, target goals, and training experience.
-                  </p>
-                </div>
-              </button>
-            </div>
+                {/* Option 2: Custom Manual Builder */}
+                <button
+                  onClick={() => {
+                    handleCreateManualPlan();
+                    setShowCreatePlanModal(false);
+                  }}
+                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                >
+                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
+                    <Plus size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      Create Manual Plan
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                      Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 3: AI Coach Planner */}
+                <button
+                  onClick={() => {
+                    handleGenerateAiPlan();
+                    setShowCreatePlanModal(false);
+                  }}
+                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                >
+                  <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-455 shrink-0">
+                    <Bot size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                      Generate with AI Coach
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                      Have the AI Coach write a personalized plan for you based on your biometrics, target goals, and training experience.
+                    </p>
+                  </div>
+                </button>
+              </div>
+            )}
           </Card>
         </div>
       )}

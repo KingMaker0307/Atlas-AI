@@ -1182,7 +1182,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       const { content: responseContent, tokenCount: responseTokenCount } = await adapter.chat({
         provider: activeProvider,
         apiKey,
-        messages: get().aiMessages.filter((m) => m.id !== assistantId),
+        // Filter the placeholder AND any past empty-content messages (e.g. from prior failed calls)
+        // to avoid sending empty model turns that cause provider errors (e.g. Gemini 400).
+        messages: get().aiMessages.filter((m) => m.id !== assistantId && m.content.trim() !== ""),
         systemContext: context,
       });
       const finalMessage = { ...assistantMessage, content: responseContent };

@@ -41,12 +41,23 @@ export const geminiAdapter: AiProviderAdapter = {
           generationConfig: {
             temperature: provider.temperature,
           },
-          contents: toProviderMessages(messages)
-            .filter((message) => message.role !== "system")
-            .map((message) => ({
-              role: message.role === "assistant" ? "model" : "user",
-              parts: [{ text: message.content }],
-            })),
+          contents: (() => {
+            // Gemini requires:
+            // 1. All messages have non-empty content
+            // 2. Conversation alternates user/model (no consecutive same-role)
+            // 3. First message must be from the user
+            const filtered = toProviderMessages(messages)
+              .filter((m) => m.role !== "system" && m.content.trim() !== "")
+              .map((m) => ({
+                role: m.role === "assistant" ? "model" as const : "user" as const,
+                parts: [{ text: m.content }],
+              }));
+            // Drop leading model turns (Gemini must start with user)
+            while (filtered.length > 0 && filtered[0].role === "model") {
+              filtered.shift();
+            }
+            return filtered;
+          })(),
         }),
         signal,
       },
@@ -65,6 +76,13 @@ export const geminiAdapter: AiProviderAdapter = {
     const content = body.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
     const tokenCount = body.usageMetadata?.totalTokenCount ??
                        ((body.usageMetadata?.promptTokenCount ?? 0) + (body.usageMetadata?.candidatesTokenCount ?? 0));
+
+    if (!content.trim()) {
+      // Gemini returned no usable text — surface a clear message instead of silently storing ""
+      throw new AiProviderError(
+        "The AI returned an empty response. This can happen when the model filters content or the conversation history contains empty messages. Please try rephrasing your request.",
+      );
+    }
 
     return { content, tokenCount };
   },
