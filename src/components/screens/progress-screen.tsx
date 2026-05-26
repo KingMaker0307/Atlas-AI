@@ -400,7 +400,7 @@ export function ProgressScreen() {
           <Select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="w-24 h-8 bg-zinc-900 border-zinc-800 text-xs font-bold"
+            className="w-28 h-10 py-1.5 bg-input border-input-border text-foreground text-xs font-bold rounded-xl focus:border-emerald-500/50"
           >
             {availableYears.map(year => (
               <option key={year} value={year}>{year}</option>
@@ -665,7 +665,7 @@ export function ProgressScreen() {
                 <Select 
                   value={selectedExercise} 
                   onChange={(e) => setSelectedExercise(e.target.value)}
-                  className="w-full sm:w-56 h-8 bg-zinc-900 border-zinc-800 text-xs font-bold font-sans"
+                  className="w-full sm:w-64 h-10 py-1.5 bg-input border-input-border text-foreground text-xs font-bold font-sans rounded-xl focus:border-emerald-500/50"
                 >
                   {exercisesWithHistory.map((exercise) => (
                     <option key={exercise.id} value={exercise.id}>

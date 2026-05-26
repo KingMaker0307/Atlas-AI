@@ -709,7 +709,7 @@ export function SettingsScreen() {
                   {/* Profile Card Summary */}
                   <Card className="relative overflow-hidden p-5 shadow-2xl border border-white/5 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950/45 flex items-center gap-4 select-none">
                     <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-xl shadow-emerald-500/10 shrink-0">
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] shrink-0">
                       <User size={26} className="text-zinc-950" />
                       <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-zinc-900 border border-white/5">
                         <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />

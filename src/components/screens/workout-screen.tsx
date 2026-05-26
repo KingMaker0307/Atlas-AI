@@ -1737,7 +1737,7 @@ export function WorkoutScreen() {
                                   const val = event.target.value === "easy" ? 8 : event.target.value === "hard" ? 0 : 4;
                                   void updateSet(workoutExercise.id, set.id, { rir: val });
                                 }}
-                                className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
+                                className="h-8 py-0.5 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
                               >
                                 <option value="easy">Easy</option>
                                 <option value="moderate">Moderate</option>
@@ -1892,7 +1892,7 @@ export function WorkoutScreen() {
                                       const val = event.target.value === "easy" ? 8 : event.target.value === "hard" ? 0 : 4;
                                       void updateSet(workoutExercise.id, set.id, { rir: val });
                                     }}
-                                    className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
+                                    className="h-8 py-0.5 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
                                   >
                                     <option value="easy">Easy</option>
                                     <option value="moderate">Mod</option>
