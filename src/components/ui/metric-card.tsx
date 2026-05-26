@@ -8,6 +8,8 @@ interface MetricCardProps {
   detail?: string;
   icon?: ReactNode;
   tone?: "emerald" | "amber" | "rose" | "sky" | "violet";
+  className?: string;
+  onClick?: () => void;
 }
 
 const tones = {
@@ -24,14 +26,16 @@ export function MetricCard({
   detail,
   icon,
   tone = "emerald",
+  className,
+  onClick,
 }: MetricCardProps) {
   return (
-    <Surface className={cn("bg-gradient-to-br", tones[tone])}>
+    <Surface onClick={onClick} className={cn("bg-gradient-to-br", tones[tone], className)}>
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500">{label}</span>
         {icon ? <span className="text-current">{icon}</span> : null}
       </div>
-      <div className="mt-3 text-2xl font-semibold tracking-normal text-white">{value}</div>
+      <div className="mt-3 text-xl sm:text-2xl font-semibold tracking-normal text-white">{value}</div>
       {detail ? <div className="mt-1 text-sm text-zinc-400">{detail}</div> : null}
     </Surface>
   );

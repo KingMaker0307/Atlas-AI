@@ -10,14 +10,12 @@ import type { Routine, Exercise } from "@/types/domain";
 import { createId } from "@/lib/id";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 
-const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
 const freshRoutine = (): Routine => ({
   id: createId("routine"),
   name: "New Routine",
   focus: "General",
   estimatedMinutes: 0,
-  day: "Sunday",
+  day: "",
   exercises: [],
 });
 
@@ -29,6 +27,8 @@ export function RoutineBuilderScreen() {
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const editingRoutineId = useAtlasStore((state) => state.editingRoutineId);
   const setEditingRoutineId = useAtlasStore((state) => state.setEditingRoutineId);
+  const coachBusy = useAtlasStore((state) => state.coachBusy);
+  const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
 
   const [routine, setRoutine] = useState<Routine>(freshRoutine());
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,7 +42,13 @@ export function RoutineBuilderScreen() {
         setRoutine(existingRoutine);
       }
     } else {
-      setRoutine(freshRoutine());
+      const plan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
+      const takenDays = new Set(plan?.routines.map(r => r.day) ?? []);
+      const availableDay = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].find(d => !takenDays.has(d)) || "Monday";
+      setRoutine({
+        ...freshRoutine(),
+        day: availableDay,
+      });
     }
   }, [editingWorkoutPlanId, editingRoutineId, workoutPlans]);
 
@@ -50,9 +56,7 @@ export function RoutineBuilderScreen() {
     exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const setDay = (day: string) => {
-    setRoutine((prev) => ({ ...prev, day }));
-  };
+
 
   const addExerciseToRoutine = (exercise: Exercise) => {
     if (routine.exercises.some((ex) => ex.exerciseId === exercise.id)) {
@@ -93,13 +97,79 @@ export function RoutineBuilderScreen() {
       setErrorMessage("No workout plan selected.");
       return;
     }
+    const name = routine.name.trim();
+    const focus = routine.focus.trim();
+    
+    if (name.length === 0) {
+      setErrorMessage("Routine name is required.");
+      return;
+    }
+    if (name.length > 40) {
+      setErrorMessage("Routine name must be 40 characters or less.");
+      return;
+    }
+    if (focus.length > 60) {
+      setErrorMessage("Focus must be 60 characters or less.");
+      return;
+    }
     if (routine.exercises.length === 0) {
       setErrorMessage("A routine must have at least one exercise.");
       return;
     }
+
+    // Validate exercises details
+    for (const ex of routine.exercises) {
+      const sets = Number(ex.targetSets);
+      const reps = ex.targetReps.trim();
+      const rest = Number(ex.restSeconds);
+
+      if (isNaN(sets) || sets < 1 || sets > 20) {
+        setErrorMessage("Exercise sets must be between 1 and 20.");
+        return;
+      }
+      if (reps.length === 0 || reps.length > 10) {
+        setErrorMessage("Exercise reps format must be between 1 and 10 characters (e.g. '8-12').");
+        return;
+      }
+      if (isNaN(rest) || rest < 0 || rest > 3600) {
+        setErrorMessage("Exercise rest seconds must be between 0 and 3600.");
+        return;
+      }
+    }
+
     setErrorMessage(null);
 
-    saveRoutine(editingWorkoutPlanId, routine);
+    // Check for day of the week scheduling conflicts
+    const activePlan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
+    if (activePlan) {
+      const isDayTaken = activePlan.routines.some(
+        r => r.day.toLowerCase() === routine.day.toLowerCase() && r.id !== routine.id
+      );
+      if (isDayTaken) {
+        const conflictingRoutine = activePlan.routines.find(
+          r => r.day.toLowerCase() === routine.day.toLowerCase() && r.id !== routine.id
+        );
+        const existingRoutine = activePlan.routines.find(r => r.id === editingRoutineId);
+        
+        if (conflictingRoutine && existingRoutine) {
+          // Swap: update conflicting routine to take the edited routine's old day
+          const oldDay = existingRoutine.day;
+          saveRoutine(editingWorkoutPlanId, {
+            ...conflictingRoutine,
+            day: oldDay,
+          });
+        } else {
+          setErrorMessage(`A routine is already scheduled for ${routine.day}. Please select another day.`);
+          return;
+        }
+      }
+    }
+
+    saveRoutine(editingWorkoutPlanId, {
+      ...routine,
+      name,
+      focus,
+    });
     setEditingRoutineId(null);
     setActiveSubScreen("workout-plan-detail");
   };
@@ -121,7 +191,7 @@ export function RoutineBuilderScreen() {
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-3xl font-semibold tracking-normal text-white">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-normal text-white">
             {editingRoutineId ? "Edit Routine" : "Create Routine"}
           </h1>
         </div>
@@ -141,6 +211,7 @@ export function RoutineBuilderScreen() {
         <Label>Routine Name</Label>
         <Input
           value={routine.name}
+          maxLength={40}
           onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
           className="mt-2"
         />
@@ -148,25 +219,24 @@ export function RoutineBuilderScreen() {
         <Label className="mt-4 block">Focus</Label>
         <Input
           value={routine.focus}
+          maxLength={60}
           onChange={(e) => setRoutine({ ...routine, focus: e.target.value })}
           className="mt-2"
         />
+
+        <Label className="mt-4 block">Day of the Week</Label>
+        <select
+          value={routine.day || "Monday"}
+          onChange={(e) => setRoutine({ ...routine, day: e.target.value })}
+          className="mt-2 block w-full rounded-xl border border-input-border bg-input px-3 py-2 text-sm text-foreground focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+        >
+          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => (
+            <option key={day} value={day}>{day}</option>
+          ))}
+        </select>
       </Card>
 
-      <Card className="p-4">
-        <h2 className="text-lg font-semibold text-white">Assign Day</h2>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {daysOfWeek.map((day) => (
-            <Button
-              key={day}
-              variant={routine.day === day ? "primary" : "secondary"}
-              onClick={() => setDay(day)}
-            >
-              {day.substring(0, 3)}
-            </Button>
-          ))}
-        </div>
-      </Card>
+
 
       <Card className="p-4">
         <h2 className="text-lg font-semibold text-white">Exercises</h2>
@@ -189,6 +259,8 @@ export function RoutineBuilderScreen() {
                     <Label>Sets</Label>
                     <Input
                       type="number"
+                      min={1}
+                      max={20}
                       value={ex.targetSets}
                       onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetSets", Number(e.target.value))}
                     />
@@ -197,6 +269,7 @@ export function RoutineBuilderScreen() {
                     <Label>Reps</Label>
                     <Input
                       value={ex.targetReps}
+                      maxLength={10}
                       onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetReps", e.target.value)}
                     />
                   </div>
@@ -204,6 +277,8 @@ export function RoutineBuilderScreen() {
                     <Label>Rest (s)</Label>
                     <Input
                       type="number"
+                      min={0}
+                      max={3600}
                       value={ex.restSeconds}
                       onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "restSeconds", Number(e.target.value))}
                     />
@@ -223,6 +298,33 @@ export function RoutineBuilderScreen() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+        {searchTerm.trim().length > 2 && (
+          <div className="mt-3 flex items-center justify-between p-3 rounded-2xl border border-purple-500/10 bg-purple-950/10 select-none">
+            <div className="min-w-0 pr-2">
+              <p className="text-xs font-bold text-white leading-none">Can't find "{searchTerm}"?</p>
+              <p className="text-[10px] text-zinc-400 mt-1 leading-normal">Our AI Coach can generate its biomechanical profile instantly!</p>
+            </div>
+            <Button
+              size="sm"
+              disabled={coachBusy}
+              onClick={async () => {
+                try {
+                  setErrorMessage(null);
+                  const generated = await generateGlobalExercise(searchTerm.trim());
+                  if (generated) {
+                    addExerciseToRoutine(generated);
+                    setSearchTerm("");
+                  }
+                } catch (e: any) {
+                  setErrorMessage(e.message || "Failed to generate exercise profile.");
+                }
+              }}
+              className="h-7 text-[10px] font-bold uppercase bg-purple-600 hover:bg-purple-500 border-none shrink-0 text-white"
+            >
+              {coachBusy ? "Generating..." : "AI Generate"}
+            </Button>
+          </div>
+        )}
         <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
           {filteredExercises.map((exercise, index) => (
             <div key={`${exercise.id}-${index}`} className="flex items-center justify-between rounded-lg bg-zinc-800 p-3">

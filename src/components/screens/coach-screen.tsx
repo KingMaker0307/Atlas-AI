@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, Send, User, Info } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -14,10 +14,21 @@ export function CoachScreen() {
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
+  const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const apiCallCount = useAtlasStore((state) => state.apiCallCount);
   const tokenCount = useAtlasStore((state) => state.tokenCount);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).coachPrompt) {
+      const prompt = (window as any).coachPrompt;
+      (window as any).coachPrompt = undefined;
+      setDraft("");
+      void sendCoachMessage(prompt);
+    }
+  }, []);
 
   // Define a placeholder quota limit for API calls
   const apiQuotaLimit = 20; // Based on your previous error message for gemini-2.5-flash
@@ -33,12 +44,19 @@ export function CoachScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="flex h-[calc(100dvh-12rem)] flex-col"
+      className="flex h-[calc(100dvh-15rem)] md:h-[calc(100dvh-8rem)] flex-col gap-3"
     >
-      <section className="mb-4 shrink-0">
-        <p className="text-sm text-zinc-400">Intelligent guidance</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-normal text-white">Coach</h1>
+      <section className="shrink-0">
+        <p className="text-xs sm:text-sm text-zinc-400">Intelligent guidance</p>
+        <h1 className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-white">Coach</h1>
       </section>
+
+      <Surface className="p-3.5 bg-emerald-955/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none shrink-0">
+        <Info size={16} className="text-emerald-450 shrink-0 mt-0.5" />
+        <p className="text-xs leading-normal">
+          This is your private AI trainer. Ask questions like: <span className="text-white font-bold">"How do I perform a dumbbell curl?"</span> or <span className="text-white font-bold">"Give me a 10-minute warm-up"</span> for immediate guidance.
+        </p>
+      </Surface>
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4">
@@ -67,17 +85,43 @@ export function CoachScreen() {
                   >
                     {isWorkoutPlan ? (
                       <div className="space-y-3">
-                        <p className="font-medium text-emerald-200">
-                          I've generated a new workout plan for you.
-                        </p>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setActiveTab("dashboard")}
-                        >
-                          View on Dashboard
-                        </Button>
+                        {(() => {
+                          // Extract non-json text warning if present
+                          let nonJson = message.content;
+                          const jsonMatch = message.content.match(/```json\n([\s\S]*?)\n```/);
+                          if (jsonMatch) {
+                            nonJson = message.content.replace(jsonMatch[0], "").trim();
+                          } else if (message.content.trim().startsWith("{")) {
+                            nonJson = "";
+                          }
+                          return nonJson ? (
+                            <ReactMarkdown
+                              className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-300 max-w-none text-xs"
+                            >
+                              {nonJson}
+                            </ReactMarkdown>
+                          ) : null;
+                        })()}
+                        <div className="border-t border-emerald-300/10 pt-3">
+                          <p className="font-medium text-emerald-200 mb-2">
+                            I've generated a new workout plan for you.
+                          </p>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              const plan = parseAiWorkoutPlan(message.content);
+                              if (plan) {
+                                setEditingWorkoutPlanId(plan.id);
+                                setActiveSubScreen("workout-plan-detail");
+                              }
+                              setActiveTab("workout");
+                            }}
+                          >
+                            View Plan Details
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <ReactMarkdown
@@ -95,19 +139,24 @@ export function CoachScreen() {
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-300 text-zinc-950">
                   <Bot size={16} />
                 </div>
-                <Surface className="rounded-tl-sm border-emerald-300/20 bg-emerald-300/5 p-3">
-                  <div className="flex gap-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50" />
-                    <span
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <span
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </div>
-                </Surface>
+                <div className="space-y-1.5 max-w-[85%]">
+                  <Surface className="rounded-tl-sm border-emerald-300/20 bg-emerald-300/5 p-3">
+                    <div className="flex gap-1">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50" />
+                      <span
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <span
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
+                        style={{ animationDelay: "300ms" }}
+                      />
+                    </div>
+                  </Surface>
+                  <p className="text-[10px] text-zinc-500 italic px-1 animate-pulse">
+                    Hang tight! Something awesome is cooking from your AI Coach...
+                  </p>
+                </div>
               </div>
             ) : null}
             <div ref={endRef} />
@@ -124,7 +173,7 @@ export function CoachScreen() {
             }}
           >
             <input
-              className="flex-1 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-emerald-300/50 focus:outline-none focus:ring-1 focus:ring-emerald-300/50"
+              className="flex-1 rounded-xl border border-white/10 bg-white/[0.045] px-4 py-2.5 md:py-2 text-base md:text-sm text-white placeholder:text-zinc-500 focus:border-emerald-300/50 focus:outline-none focus:ring-1 focus:ring-emerald-300/50"
               placeholder="Ask about your routine, fatigue, or nutrition..."
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -144,11 +193,15 @@ export function CoachScreen() {
       </Card>
 
       {/* AI Usage Meter */}
-      <Card className="p-4 mt-4">
-        <h2 className="text-lg font-semibold text-white">AI Usage</h2>
-        <div className="mt-2 text-sm text-zinc-400">
-          <p>API Calls: {apiCallCount} / {apiQuotaLimit} ({apiCallPercentage.toFixed(2)}%)</p>
-          <p>Tokens Used: {tokenCount}</p>
+      <Card className="p-3 sm:p-4 mt-3 sm:mt-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm sm:text-base font-semibold text-white">AI Usage</h2>
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">Calls: {apiCallCount}/{apiQuotaLimit} · Tokens: {tokenCount.toLocaleString()}</p>
+          </div>
+          <div className="w-16 h-1.5 rounded-full bg-zinc-800 overflow-hidden shrink-0">
+            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(apiCallPercentage, 100)}%` }} />
+          </div>
         </div>
       </Card>
     </motion.div>

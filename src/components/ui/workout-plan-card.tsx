@@ -1,9 +1,9 @@
 "use client";
-
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAtlasStore } from "@/store/useAtlasStore";
-import { Dumbbell } from "lucide-react";
+import { AlertTriangle, Dumbbell } from "lucide-react";
 
 interface WorkoutPlanCardProps {
   onBuild: () => void;
@@ -14,12 +14,30 @@ export function WorkoutPlanCard({ onBuild }: WorkoutPlanCardProps) {
   const startWorkout = useAtlasStore((state) => state.startWorkout);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
+  const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
+  const allWorkouts = useAtlasStore((state) => state.workouts);
+  const workouts = useMemo(() => {
+    return allWorkouts.filter(w => w.exercises.some(ex => ex.sets.some(s => s.completed)));
+  }, [allWorkouts]);
 
   if (workoutPlans.length === 0) {
     return null;
   }
 
   const routine = workoutPlans[0].routines[0]; // Default to the first routine of the first plan for now
+
+  // Daily limit check
+  const getLocalDateString = (dateOrStr: Date | string) => {
+    const d = typeof dateOrStr === "string" ? new Date(dateOrStr) : dateOrStr;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = getLocalDateString(new Date());
+  const workoutsToday = workouts.filter((w) => getLocalDateString(w.startedAt) === todayStr);
+  const isLimitReached = workoutsToday.length >= 3;
 
   return (
     <Card className="p-4">
@@ -33,24 +51,40 @@ export function WorkoutPlanCard({ onBuild }: WorkoutPlanCardProps) {
         </div>
         <Dumbbell className="text-zinc-500" size={20} />
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-zinc-300" key={routine.day}>
-          {routine.day}
-        </span>
-      </div>
+
       <Button
         className="mt-4 w-full"
         variant="primary"
+        disabled={isLimitReached && !activeWorkout}
         onClick={() => {
           if (activeWorkout) {
             setActiveTab("workout");
+            setActiveSubScreen("active-workout");
             return;
           }
           void startWorkout(routine);
         }}
       >
-        {activeWorkout ? "Resume" : "Start"}
+        {activeWorkout ? "Resume" : isLimitReached ? "Daily Limit Reached (3/3)" : "Start"}
       </Button>
+
+      {!activeWorkout && !isLimitReached && (
+        <p className="text-[10px] text-zinc-505 dark:text-zinc-500 mt-2 text-center">
+          Note: Sessions have a maximum duration of 3 hours.
+        </p>
+      )}
+
+      {isLimitReached && !activeWorkout && (
+        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 font-semibold">
+            <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+            <span>Overtraining Warning</span>
+          </div>
+          <p className="text-zinc-300 leading-relaxed">
+            You've completed 3 workouts today. Performing more than 3 high-intensity sessions in a single day is not recommended. Excessive training increases the risk of muscle breakdown (rhabdomyolysis), central nervous fatigue, and chronic joint strain. Prioritize recovery today.
+          </p>
+        </div>
+      )}
     </Card>
   );
 }

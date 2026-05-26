@@ -1,20 +1,69 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #f6f7f9;
   --foreground: #121417;
+  
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --card-border: rgba(9, 9, 11, 0.08);
+  
+  --surface-bg: rgba(9, 9, 11, 0.035);
+  --surface-border: rgba(9, 9, 11, 0.05);
+  
+  --header-bg: rgba(246, 247, 249, 0.82);
+  --nav-bg: rgba(255, 255, 255, 0.88);
+  
+  --input-bg: rgba(9, 9, 11, 0.03);
+  --input-border: rgba(9, 9, 11, 0.08);
+  --input-focus-bg: rgba(9, 9, 11, 0.05);
+  
+  --btn-secondary-bg: rgba(9, 9, 11, 0.05);
+  --btn-secondary-border: rgba(9, 9, 11, 0.08);
+  --btn-secondary-hover: rgba(9, 9, 11, 0.08);
+  
   --font-atlas-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
 }
 
 .dark {
+  color-scheme: dark;
   --background: #07080a;
   --foreground: #f5f7fa;
+  
+  --card-bg: rgba(9, 9, 11, 0.68);
+  --card-border: rgba(255, 255, 255, 0.08);
+  
+  --surface-bg: rgba(255, 255, 255, 0.045);
+  --surface-border: rgba(255, 255, 255, 0.05);
+  
+  --header-bg: rgba(7, 8, 10, 0.82);
+  --nav-bg: rgba(8, 9, 11, 0.88);
+  
+  --input-bg: rgba(0, 0, 0, 0.25);
+  --input-border: rgba(255, 255, 255, 0.08);
+  --input-focus-bg: rgba(0, 0, 0, 0.35);
+  
+  --btn-secondary-bg: rgba(255, 255, 255, 0.1);
+  --btn-secondary-border: rgba(255, 255, 255, 0.08);
+  --btn-secondary-hover: rgba(255, 255, 255, 0.15);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-surface: var(--surface-bg);
+  --color-surface-border: var(--surface-border);
+  --color-header: var(--header-bg);
+  --color-nav: var(--nav-bg);
+  --color-input: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-input-focus-bg: var(--input-focus-bg);
+  --color-btn-secondary: var(--btn-secondary-bg);
+  --color-btn-secondary-border: var(--btn-secondary-border);
+  --color-btn-secondary-hover: var(--btn-secondary-hover);
   --font-sans: var(--font-atlas-sans);
 }
 
@@ -59,6 +108,40 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+/* ─── NATIVE DATE / TIME PICKERS ─── */
+/* Force the native date/time picker chrome to match the active color-scheme */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"] {
+  color-scheme: inherit;   /* inherits from :root or .dark */
+}
+
+/* Light mode — make the picker control legible on white */
+.light input[type="date"],
+.light input[type="datetime-local"],
+.light input[type="time"],
+.light input[type="month"],
+.light input[type="week"] {
+  color-scheme: light;
+  color: #18181b;
+  background-color: rgba(9,9,11,0.04);
+  border-color: rgba(9,9,11,0.1);
+}
+
+/* Dark mode — make the picker control legible on dark */
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="time"],
+.dark input[type="month"],
+.dark input[type="week"] {
+  color-scheme: dark;
+  color: #f5f7fa;
+  background-color: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.1);
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -81,3 +164,256 @@ input[type="number"]::-webkit-outer-spin-button {
     user-select: text;
   }
 }
+
+/* Global Theme Transitions */
+html,
+body,
+.min-h-dvh,
+header,
+nav,
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl,
+button,
+input,
+select,
+textarea {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Light Mode overrides for light text on light backgrounds */
+.light .text-white:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-50:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-100:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-200:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]) {
+  color: var(--foreground) !important;
+}
+
+/* Ensure light text inside cards, surfaces, and inputs is overridden to dark foreground in light mode */
+.light .bg-card .text-white:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-white:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-white:not(.text-white-keep):not(button):not(a),
+.light .bg-card .text-zinc-50:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-zinc-50:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-zinc-50:not(.text-white-keep):not(button):not(a),
+.light .bg-card .text-zinc-100:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-zinc-100:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-zinc-100:not(.text-white-keep):not(button):not(a),
+.light .bg-card .text-zinc-200:not(.text-white-keep):not(button):not(a),
+.light .bg-surface .text-zinc-200:not(.text-white-keep):not(button):not(a),
+.light .bg-input .text-zinc-200:not(.text-white-keep):not(button):not(a) {
+  color: var(--foreground) !important;
+}
+
+.light .text-zinc-300 {
+  color: #52525b; /* zinc-600 */
+}
+
+.light .text-zinc-400 {
+  color: #71717a; /* zinc-500 */
+}
+
+.light .text-zinc-500 {
+  color: #71717a; /* zinc-500 */
+}
+
+/* Dark Mode overrides for dark text on dark backgrounds */
+.dark .text-black:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-950:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-900:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-850:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-800:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]) {
+  color: var(--foreground) !important;
+}
+
+/* Also ensure dark text inside cards, surfaces, and inputs is overridden to light foreground in dark mode */
+.dark .bg-card .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-950:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-950:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-950:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-900:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-900:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-900:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-850:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-850:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-850:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-800:not(.keep-light):not(button):not(a),
+.dark .bg-surface .text-zinc-800:not(.keep-light):not(button):not(a),
+.dark .bg-input .text-zinc-800:not(.keep-light):not(button):not(a) {
+  color: var(--foreground) !important;
+}
+
+/* Keep actual white text on high-contrast dark buttons & badges in light mode */
+.light .text-white-keep,
+.light .primary-btn-text,
+.light .keep-dark,
+.light .keep-dark *,
+.light button.bg-foreground,
+.light button.bg-foreground *,
+.light [class*="bg-zinc-950"].text-white,
+.light [class*="bg-zinc-950"] .text-white,
+.light [class*="bg-zinc-900"].text-white,
+.light [class*="bg-zinc-900"] .text-white,
+.light [class*="bg-zinc-850"].text-white,
+.light [class*="bg-zinc-850"] .text-white,
+.light [class*="bg-zinc-800"].text-white,
+.light [class*="bg-zinc-800"] .text-white,
+.light [class*="bg-zinc-700"].text-white,
+.light [class*="bg-zinc-700"] .text-white,
+.light [class*="bg-black"].text-white,
+.light [class*="bg-black"] .text-white,
+.light [class*="bg-emerald-500"].text-white,
+.light [class*="bg-emerald-500"] .text-white,
+.light [class*="bg-emerald-600"].text-white,
+.light [class*="bg-emerald-600"] .text-white,
+.light [class*="bg-rose-500"].text-white,
+.light [class*="bg-rose-500"] .text-white,
+.light [class*="bg-rose-600"].text-white,
+.light [class*="bg-rose-600"] .text-white,
+.light [class*="bg-red-550"].text-white,
+.light [class*="bg-red-550"] .text-white,
+.light [class*="bg-red-500"].text-white,
+.light [class*="bg-red-500"] .text-white,
+.light [class*="bg-red-600"].text-white,
+.light [class*="bg-red-600"] .text-white,
+.light [class*="bg-violet-500"].text-white,
+.light [class*="bg-violet-500"] .text-white,
+.light [class*="bg-violet-600"].text-white,
+.light [class*="bg-violet-600"] .text-white,
+.light [class*="bg-purple-500"].text-white,
+.light [class*="bg-purple-500"] .text-white,
+.light [class*="bg-purple-600"].text-white,
+.light [class*="bg-purple-600"] .text-white,
+.light [class*="bg-indigo-500"].text-white,
+.light [class*="bg-indigo-500"] .text-white,
+.light [class*="bg-indigo-600"].text-white,
+.light [class*="bg-indigo-600"] .text-white,
+.light [class*="bg-blue-500"].text-white,
+.light [class*="bg-blue-500"] .text-white,
+.light [class*="bg-blue-600"].text-white,
+.light [class*="bg-blue-600"] .text-white,
+.light [class*="bg-purple-650"].text-white,
+.light [class*="bg-purple-650"] .text-white,
+.light [class*="bg-violet-650"].text-white,
+.light [class*="bg-violet-650"] .text-white,
+.light [class*="bg-amber-500"].text-white,
+.light [class*="bg-amber-500"] .text-white,
+.light [class*="bg-amber-600"].text-white,
+.light [class*="bg-amber-600"] .text-white {
+  color: #ffffff !important;
+}
+
+/* ─── LIGHT MODE GLOBAL COLOR CORRECTIONS ─── */
+
+/* 1. Hardcoded dark backgrounds conversion */
+.light .bg-zinc-950:not(.keep-dark),
+.light .bg-zinc-900:not(.keep-dark),
+.light .bg-black:not(.keep-dark) {
+  background-color: #ffffff !important;
+}
+
+/* 2. Hardcoded semi-transparent dark layers conversion */
+.light .bg-zinc-950\/10:not(.keep-dark),
+.light .bg-zinc-950\/20:not(.keep-dark),
+.light .bg-zinc-950\/30:not(.keep-dark),
+.light .bg-zinc-950\/40:not(.keep-dark),
+.light .bg-zinc-950\/60:not(.keep-dark),
+.light .bg-zinc-950\/80:not(.keep-dark),
+.light .bg-zinc-900\/10:not(.keep-dark),
+.light .bg-zinc-900\/20:not(.keep-dark),
+.light .bg-zinc-900\/30:not(.keep-dark),
+.light .bg-zinc-900\/50:not(.keep-dark),
+.light .bg-black\/10:not(.keep-dark),
+.light .bg-black\/20:not(.keep-dark),
+.light .bg-black\/30:not(.keep-dark),
+.light .bg-black\/50:not(.keep-dark),
+.light .bg-black\/60:not(.keep-dark) {
+  background-color: var(--surface-bg) !important;
+}
+
+/* 3. Hardcoded dark borders conversion */
+.light .border-zinc-800:not(.keep-dark),
+.light .border-zinc-850:not(.keep-dark),
+.light .border-zinc-700:not(.keep-dark),
+.light .border-white\/5:not(.keep-dark),
+.light .border-white\/10:not(.keep-dark) {
+  border-color: var(--card-border) !important;
+}
+
+/* 4. White transparency overlays conversion */
+.light .bg-white\/\[0\.04\]:not(.keep-dark),
+.light .bg-white\/\[0\.02\]:not(.keep-dark),
+.light .bg-white\/\[0\.01\]:not(.keep-dark) {
+  background-color: rgba(9, 9, 11, 0.015) !important;
+}
+
+/* 5. Hardcoded dark container gradients conversion */
+.light .bg-gradient-to-br:not(.from-green-500\/10):not(.from-orange-500\/10):not(.from-blue-500\/10):not(.from-zinc-500\/10):not(.from-cyan-500\/10):not(.from-purple-500\/10):not(.from-teal-500\/10):not(.from-indigo-500\/10):not(.from-yellow-500\/10):not(.from-purple-950\/10):not(.from-emerald-950\/20),
+.light .bg-gradient-to-tr:not(.from-emerald-400),
+.light .bg-gradient-to-r:not(.from-emerald-500) {
+  background-image: none !important;
+  background-color: var(--card-bg) !important;
+}
+
+/* 6. Retro Terminal dark preservation */
+.light .keep-dark {
+  background-color: #0c0c0e !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.light .keep-dark .text-zinc-300 {
+  color: #d4d4d8 !important;
+}
+
+.light .keep-dark .text-zinc-400 {
+  color: #a1a1aa !important;
+}
+
+.light .keep-dark .text-zinc-500 {
+  color: #71717a !important;
+}
+
+.light .keep-dark .text-zinc-650 {
+  color: #52525b !important;
+}
+
+.light .keep-dark .text-zinc-800 {
+  color: #27272a !important;
+}
+
+.light .keep-dark .text-zinc-900 {
+  color: #18181b !important;
+}
+
+.light .keep-dark .text-zinc-950 {
+  color: #09090b !important;
+}
+
+.light .keep-dark .text-white {
+  color: #ffffff !important;
+}
+
+/* ─── HOVER STATES CONTRAST OVERRIDES ─── */
+
+/* Prevent hover texts from turning white in light mode on light backgrounds */
+.light .hover\:text-white:hover:not(button):not(a):not([class*="hover:bg-zinc"]):not([class*="hover:bg-black"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-rose"]):not([class*="hover:bg-red"]):not([class*="hover:bg-violet"]):not([class*="hover:bg-purple"]):not([class*="hover:bg-indigo"]):not([class*="hover:bg-blue"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-teal"]) {
+  color: var(--foreground) !important;
+}
+
+.light .group:hover .group-hover\:text-white:not(button):not(a):not([class*="hover:bg-zinc"]):not([class*="hover:bg-black"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-rose"]):not([class*="hover:bg-red"]):not([class*="hover:bg-violet"]):not([class*="hover:bg-purple"]):not([class*="hover:bg-indigo"]):not([class*="hover:bg-blue"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-teal"]) {
+  color: var(--foreground) !important;
+}
+
+/* Prevent hover texts from turning black or dark in dark mode on dark backgrounds */
+.dark .hover\:text-black:hover:not(button):not(a):not([class*="hover:bg-white"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-teal"]):not([class*="hover:bg-green"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-yellow"]) {
+  color: var(--foreground) !important;
+}
+.dark .hover\:text-zinc-950:hover:not(button):not(a):not([class*="hover:bg-white"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-teal"]):not([class*="hover:bg-green"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-yellow"]) {
+  color: var(--foreground) !important;
+}
+.dark .hover\:text-zinc-900:hover:not(button):not(a):not([class*="hover:bg-white"]):not([class*="hover:bg-emerald"]):not([class*="hover:bg-teal"]):not([class*="hover:bg-green"]):not([class*="hover:bg-amber"]):not([class*="hover:bg-yellow"]) {
+  color: var(--foreground) !important;
+}
+

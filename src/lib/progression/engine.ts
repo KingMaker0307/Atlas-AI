@@ -1,4 +1,14 @@
-import { exercises, getExerciseById } from "@/data/exercises";
+import { exercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
+import { useAtlasStore } from "@/store/useAtlasStore";
+
+function getExerciseById(id: string) {
+  try {
+    const storeExercises = useAtlasStore.getState().exercises;
+    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+  } catch (e) {
+    return getStaticExerciseById(id);
+  }
+}
 import { clamp } from "@/lib/id";
 import type {
   BodyMetric,
@@ -102,27 +112,101 @@ export function getStrengthSeries(
     .slice(-10);
 }
 
-export function getCurrentStreak(workouts: Workout[]): number {
-  const completedDates = new Set(
-    workouts
-      .filter((workout) => workout.completedAt)
-      .map((workout) => workout.startedAt.slice(0, 10)),
+export function getCurrentStreak(workouts: Workout[], planId: string | null): number {
+  const planWorkouts = workouts.filter(
+    (w) =>
+      w.planId === planId &&
+      w.completedAt &&
+      w.exercises.some((ex) => ex.sets.some((s) => s.completed))
   );
 
-  let streak = 0;
-  const cursor = new Date();
+  if (planWorkouts.length === 0) return 0;
 
-  for (let i = 0; i < 30; i += 1) {
-    const key = cursor.toISOString().slice(0, 10);
-    if (completedDates.has(key)) {
-      streak += 1;
-    } else if (i > 0) {
-      break;
+  // Group workouts by unique local calendar dates (YYYY-MM-DD) to prevent multi-workout inflation on the same day
+  const uniqueDates = Array.from(
+    new Set(
+      planWorkouts.map((w) => {
+        const d = new Date(w.startedAt);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const dayStr = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${dayStr}`;
+      })
+    )
+  ).sort();
+
+  if (uniqueDates.length === 0) return 0;
+
+  let streak = 0;
+  let lastDate: Date | null = null;
+
+  for (const dateStr of uniqueDates) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const currentDate = new Date(y, m - 1, d);
+    currentDate.setHours(0, 0, 0, 0);
+
+    if (lastDate) {
+      const gapDays = (currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (gapDays > 3) {
+        // Reset streak if gap is more than 3 days
+        streak = 1;
+      } else {
+        streak += 1;
+      }
+    } else {
+      streak = 1;
     }
-    cursor.setDate(cursor.getDate() - 1);
+    lastDate = currentDate;
+  }
+
+  // Check if the user hasn't worked out in the last 3 days
+  if (lastDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const gapDays = (today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (gapDays > 3) {
+      return 0; // Streak has expired
+    }
   }
 
   return streak;
+}
+
+export function getTrainingConsistency(workouts: Workout[], daysPerWeek: number, planId: string | null): number {
+  if (!planId) return 0;
+  
+  const planWorkouts = workouts.filter(
+    (w) =>
+      w.planId === planId &&
+      w.completedAt &&
+      w.exercises.some((ex) => ex.sets.some((s) => s.completed))
+  );
+  if (planWorkouts.length === 0) return 0;
+
+  // Target workouts in the last 30 days is (daysPerWeek * 30 / 7)
+  const targetWorkouts = (daysPerWeek * 30) / 7;
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+  const completedIn30Days = planWorkouts.filter((w) => {
+    return new Date(w.completedAt!).getTime() >= thirtyDaysAgo.getTime();
+  });
+
+  // Group by unique local calendar dates (YYYY-MM-DD) to count unique training days in the last 30 days
+  const uniqueDaysTrained = new Set(
+    completedIn30Days.map((w) => {
+      const d = new Date(w.startedAt);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dayStr = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dayStr}`;
+    })
+  ).size;
+
+  const score = Math.round((uniqueDaysTrained / targetWorkouts) * 100);
+  return Math.min(100, score);
 }
 
 export function getRecentPrs(workouts: Workout[]): Array<{
