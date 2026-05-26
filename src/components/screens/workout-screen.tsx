@@ -1158,7 +1158,7 @@ export function WorkoutScreen() {
 
             {/* Active Timer badge */}
             <div className="text-right">
-              <p className="text-xs font-bold text-emerald-400 font-mono leading-none">
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono leading-none">
                 {formatDuration(elapsedWorkoutTime)}
               </p>
               <p className="text-[8px] uppercase tracking-widest text-zinc-500 leading-none mt-0.5">
@@ -1170,8 +1170,8 @@ export function WorkoutScreen() {
             <div
               className={`px-2 py-1 rounded-lg border text-center transition-all duration-300 ${
                 remaining > 0
-                  ? "bg-amber-500/10 border-amber-500/25 text-amber-300 animate-pulse"
-                  : "bg-emerald-500/10 border-emerald-500/25 text-emerald-300"
+                  ? "bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-300 animate-pulse"
+                  : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-300"
               }`}
             >
               <p className="text-[11px] sm:text-xs font-mono font-bold leading-none">

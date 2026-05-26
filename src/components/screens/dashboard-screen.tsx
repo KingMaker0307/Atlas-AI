@@ -177,21 +177,21 @@ export function DashboardScreen() {
       return {
         label: "Peak Performance primed",
         text: "Your central nervous system is fully restored and homeostatic markers are optimal. This is the physiological window to push load volume or test progressive overload thresholds.",
-        color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+        color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
         ringColor: "#10b981",
       };
     } else if (score >= 50) {
       return {
         label: "Moderate training capability",
         text: "Your systems are functionally recovered, but minor neuromuscular fatigue is present. Train at planned target volumes, keeping RIR limits strictly managed.",
-        color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+        color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
         ringColor: "#f59e0b",
       };
     } else {
       return {
         label: "Prioritize System Recovery",
         text: "High metabolic strain and elevated cortisol indicators suggest fatigue accumulation. We advise active recovery flows, mobility work, and targeted sleep focus tonight to prevent injury.",
-        color: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+        color: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20",
         ringColor: "#f43f5e",
       };
     }
@@ -295,10 +295,10 @@ export function DashboardScreen() {
       <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border border-card-border bg-card shadow-lg">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Sparkles size={16} className="animate-pulse" />
             </span>
-            <p className="text-xs font-bold text-emerald-450 uppercase tracking-wider">Atlas Bio-Telemetry</p>
+            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Atlas Bio-Telemetry</p>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Welcome back, {profile?.name ?? "Athlete"}
@@ -316,7 +316,7 @@ export function DashboardScreen() {
               type="button"
               onClick={() => void setGuidedMode(true)}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                guidedMode ? "bg-emerald-400 text-zinc-950 shadow-sm" : "text-zinc-500 hover:text-white"
+                guidedMode ? "bg-emerald-500 text-white-keep shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               Guided
@@ -325,7 +325,7 @@ export function DashboardScreen() {
               type="button"
               onClick={() => void setGuidedMode(false)}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                !guidedMode ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                !guidedMode ? "bg-zinc-900 text-white dark:bg-zinc-800 dark:text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               Advanced
@@ -333,41 +333,43 @@ export function DashboardScreen() {
           </div>
 
           {/* Dynamic Recovery Ring */}
-          <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
-            <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
-              <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
-                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
-                <motion.circle
-                  cx="32"
-                  cy="32"
-                  r="28"
-                  fill="none"
-                  stroke={insight.ringColor}
-                  strokeWidth="4.5"
-                  strokeDasharray="176"
-                  initial={{ strokeDashoffset: 176 }}
-                  animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="text-center">
-                <span className="text-lg font-black text-white">{recoveryScore}</span>
-                <span className="text-[8px] font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+          {!guidedMode && (
+            <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
+              <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
+                <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
+                  <motion.circle
+                    cx="32"
+                    cy="32"
+                    r="28"
+                    fill="none"
+                    stroke={insight.ringColor}
+                    strokeWidth="4.5"
+                    strokeDasharray="176"
+                    initial={{ strokeDashoffset: 176 }}
+                    animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="text-center">
+                  <span className="text-lg font-black text-white">{recoveryScore}</span>
+                  <span className="text-[8px] font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
+                <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
+                <button 
+                  onClick={() => setShowQuickLog(!showQuickLog)}
+                  className="mt-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
+                >
+                  <TimerReset size={12} />
+                  Quick-Log Daily Recovery
+                </button>
               </div>
             </div>
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
-              <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
-              <button 
-                onClick={() => setShowQuickLog(!showQuickLog)}
-                className="mt-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
-              >
-                <TimerReset size={12} />
-                Quick-Log Daily Recovery
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -375,7 +377,7 @@ export function DashboardScreen() {
       {isNewUser && (
         <Card className="p-5 border border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-4 keep-dark">
           <div className="flex items-center gap-2 border-b border-white/5 pb-3 select-none">
-            <Sparkles className="text-emerald-400 animate-pulse" size={18} />
+            <Sparkles className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={18} />
             <h2 className="text-base font-bold text-white tracking-tight">Getting Started Guide</h2>
           </div>
           
@@ -384,8 +386,8 @@ export function DashboardScreen() {
             <div className="flex gap-3">
               <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold font-mono ${
                 isStep1Done 
-                  ? "bg-emerald-500/20 border border-emerald-400/35 text-emerald-400"
-                  : "bg-emerald-500/10 border border-emerald-400/25 text-emerald-400"
+                  ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
               }`}>
                 {isStep1Done ? "✓" : "1"}
               </div>
@@ -394,7 +396,7 @@ export function DashboardScreen() {
                   <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-500 line-through" : "text-zinc-100"}`}>
                     Activate a Workout Plan
                   </h3>
-                  {isStep1Done && <span className="text-[10px] font-extrabold uppercase font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
+                  {isStep1Done && <span className="text-[10px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
                 </div>
                 {!isStep1Done && (
                   <>
@@ -412,7 +414,7 @@ export function DashboardScreen() {
                       <button
                         type="button"
                         onClick={handleGenerateAiPlan}
-                        className="text-xs font-bold text-zinc-350 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                        className="text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
                       >
                         <Bot size={13} className="text-emerald-450" />
                         Generate with AI Coach
@@ -425,26 +427,26 @@ export function DashboardScreen() {
 
             {/* Step 2 */}
             <div className="flex gap-3 border-t border-white/5 pt-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold font-mono">
                 2
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Go to the <span className="text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-white font-bold">Start Training Session</span> to log sets.
+                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-white font-bold">Start Training Session</span> to log sets.
                 </p>
               </div>
             </div>
 
             {/* Step 3 */}
             <div className="flex gap-3 border-t border-white/5 pt-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold font-mono">
                 3
               </div>
               <div className="space-y-1">
                 <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  After completing a workout, visit the <span className="text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("progress")}>Progress</span> tab to watch your strength and consistency charts update.
+                  After completing a workout, visit the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("progress")}>Progress</span> tab to watch your strength and consistency charts update.
                 </p>
               </div>
             </div>
@@ -477,7 +479,7 @@ export function DashboardScreen() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-300 font-semibold">Sleep Duration</span>
-                    <span className="text-emerald-300 font-bold">{logSleep} Hours</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSleep} Hours</span>
                   </div>
                   <input
                     type="range"
@@ -494,7 +496,7 @@ export function DashboardScreen() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-300 font-semibold">Muscle Soreness</span>
-                    <span className="text-emerald-300 font-bold">{logSoreness}/10 (High = Pain)</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSoreness}/10 (High = Pain)</span>
                   </div>
                   <input
                     type="range"
@@ -511,7 +513,7 @@ export function DashboardScreen() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-300 font-semibold">Systemic Stress</span>
-                    <span className="text-emerald-300 font-bold">{logStress}/10 (High = Stressed)</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logStress}/10 (High = Stressed)</span>
                   </div>
                   <input
                     type="range"
@@ -528,7 +530,7 @@ export function DashboardScreen() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-zinc-300 font-semibold">Nervous Energy</span>
-                    <span className="text-emerald-300 font-bold">{logEnergy}/10 (High = Energetic)</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logEnergy}/10 (High = Energetic)</span>
                   </div>
                   <input
                     type="range"
@@ -556,20 +558,22 @@ export function DashboardScreen() {
       </AnimatePresence>
 
       {/* ─── PHYSIOLOGICAL GUIDANCE BLOCK ─── */}
-      <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-1.5 ${insight.color}`}>
-        <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]">
-          <BrainCircuit size={14} className="shrink-0" />
-          <span>Biomechanical System Guidance</span>
+      {!guidedMode && (
+        <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-1.5 ${insight.color}`}>
+          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+            <BrainCircuit size={14} className="shrink-0" />
+            <span>Biomechanical System Guidance</span>
+          </div>
+          <p className="text-zinc-300 leading-normal">{insight.text}</p>
         </div>
-        <p className="text-zinc-300 leading-normal">{insight.text}</p>
-      </div>
+      )}
 
       {/* ─── TODAY'S TARGET HERO SECTION ─── */}
       <section className="relative overflow-hidden">
         {workoutPlans.length === 0 ? (
           <Card className="p-6 border-dashed border-2 border-card-border bg-white/[0.01]">
             <div className="text-center space-y-4">
-              <ClipboardList className="mx-auto h-12 w-12 text-emerald-400/80" />
+              <ClipboardList className="mx-auto h-12 w-12 text-emerald-450" />
               <div>
                 <h2 className="text-xl font-bold text-white">No Active Plan Established</h2>
                 <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
@@ -594,7 +598,7 @@ export function DashboardScreen() {
                   Today's Scheduled Target · {todayRoutine.day}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white">{todayRoutine.name}</h2>
-                <p className="text-xs text-zinc-300 max-w-md leading-relaxed">
+                <p className="text-xs text-zinc-350 max-w-md leading-relaxed">
                   {todayRoutine.focus}
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1.5">
@@ -610,12 +614,12 @@ export function DashboardScreen() {
               </div>
 
               <div className="sm:text-right shrink-0 flex flex-col justify-between sm:h-28">
-                <div className="text-zinc-500 text-xs">
-                  <span className="font-bold text-zinc-300">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-300">{todayRoutine.estimatedMinutes}</span> mins
+                <div className="text-zinc-400 text-xs font-medium">
+                  <span className="font-bold text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
                 </div>
                 <Button 
                   onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
+                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-zinc-950 flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
                 >
                   <Dumbbell size={16} />
                   Launch Workout Session
@@ -635,7 +639,7 @@ export function DashboardScreen() {
                   Rest & Recovery Cycle · {todayDayName}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white">Active Muscle Restoration</h2>
-                <p className="text-xs text-zinc-300 max-w-md leading-relaxed">
+                <p className="text-xs text-zinc-350 max-w-md leading-relaxed">
                   Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -667,7 +671,7 @@ export function DashboardScreen() {
                       }
                     }}
                     variant="secondary"
-                    className="w-full font-semibold border-btn-secondary-border bg-zinc-800 hover:bg-zinc-700 dark:bg-white/5 dark:hover:bg-white/10 text-foreground flex items-center justify-center gap-1.5 h-9 text-xs"
+                    className="w-full font-semibold border-btn-secondary-border bg-zinc-800 hover:bg-zinc-700 dark:bg-white/5 dark:hover:bg-white/10 text-white flex items-center justify-center gap-1.5 h-9 text-xs"
                   >
                     <ClipboardList size={14} />
                     Weekly Schedule
@@ -691,10 +695,43 @@ export function DashboardScreen() {
         )}
       </section>
 
+      {/* ─── GUIDED TRACKING WALKTHROUGH (Only shown in Guided Mode) ─── */}
+      {guidedMode && (
+        <Card className="p-5 border border-emerald-500/10 bg-emerald-500/[0.02] space-y-3">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <ClipboardList className="text-emerald-600 dark:text-emerald-450" size={16} />
+            How to Train with Atlas
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="space-y-1">
+              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">1. Select a Plan</span>
+              <p className="text-zinc-500 leading-relaxed">
+                {activeWorkoutPlanId 
+                  ? "✓ Active plan selected. You can view or edit it anytime in the 'Plans' tab."
+                  : "Go to 'Plans' or use the checklist above to activate a training plan."}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">2. Launch Session</span>
+              <p className="text-zinc-500 leading-relaxed">
+                Tap the green <strong>Launch Workout Session</strong> button on today's target card above to start tracking.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">3. Log Sets & Save</span>
+              <p className="text-zinc-500 leading-relaxed">
+                Enter weight and reps for completed sets during your workout, then tap <strong>Finish Workout</strong> to save.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* ─── PHYSIOLOGICAL METRICS GRID with Expandable Coach Insights ─── */}
-      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {/* Streak */}
-        <div className="flex flex-col">
+      {!guidedMode && (
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Streak */}
+          <div className="flex flex-col">
           <MetricCard
             label="Streak"
             value={`${getCurrentStreak(workouts, activeWorkoutPlanId)}d`}
@@ -818,13 +855,14 @@ export function DashboardScreen() {
           </AnimatePresence>
         </div>
       </section>
+      )}
 
       {/* ─── DYNAMIC BIOMETRICS hub ─── */}
       {!guidedMode && (
         <Card className="p-4 border border-card-border bg-card shadow">
           <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
             <div className="flex items-center gap-2">
-              <User size={16} className="text-emerald-455" />
+              <User size={16} className="text-emerald-600 dark:text-emerald-400" />
               <h2 className="text-sm font-bold text-white uppercase tracking-wider">Athlete Biometrics</h2>
             </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-white" onClick={() => setActiveTab("settings")}>
@@ -852,7 +890,7 @@ export function DashboardScreen() {
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Target Physique</span>
-              <p className="font-bold text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
+              <p className="font-bold text-emerald-600 dark:text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
                 {profile?.targetPhysique ?? "N/A"}
               </p>
             </div>
@@ -958,196 +996,201 @@ export function DashboardScreen() {
         </Card>
       )}
 
-      {/* ─── DYNAMIC PLANS COLLECTION ─── */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <ClipboardList size={16} className="text-zinc-500" />
-          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Workout Programs</h2>
-        </div>
+      {/* ─── DYNAMIC PLANS, PERSONAL RECORDS & COACH NOTE (Only shown in Advanced Mode) ─── */}
+      {!guidedMode && (
+        <>
+          {/* ─── DYNAMIC PLANS COLLECTION ─── */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <ClipboardList size={16} className="text-zinc-500" />
+              <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Workout Programs</h2>
+            </div>
 
-        {workoutPlans.map(plan => {
-          const startOfWeek = (() => {
-            const now = new Date();
-            const day = now.getDay();
-            const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(now.setDate(diff));
-            monday.setHours(0, 0, 0, 0);
-            return monday;
-          })();
+            {workoutPlans.map(plan => {
+              const startOfWeek = (() => {
+                const now = new Date();
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(now.setDate(diff));
+                monday.setHours(0, 0, 0, 0);
+                return monday;
+              })();
 
-          const planWorkouts = workouts.filter((w) => {
-            const hasCompletedSets = w.exercises.some((ex) => ex.sets.some((s) => s.completed));
-            return (
-              w.planId === plan.id &&
-              w.completedAt &&
-              new Date(w.completedAt).getTime() >= startOfWeek.getTime() &&
-              hasCompletedSets
-            );
-          });
-          const completedRoutineNames = new Set(planWorkouts.map((w) => w.name));
-          const routinesCount = plan.routines.length;
-          const completedCount = plan.routines.filter((r) => completedRoutineNames.has(r.name)).length;
-          const progressPercent = routinesCount > 0 ? Math.round((completedCount / routinesCount) * 100) : 0;
-          const isActive = plan.id === activeWorkoutPlanId;
+              const planWorkouts = workouts.filter((w) => {
+                const hasCompletedSets = w.exercises.some((ex) => ex.sets.some((s) => s.completed));
+                return (
+                  w.planId === plan.id &&
+                  w.completedAt &&
+                  new Date(w.completedAt).getTime() >= startOfWeek.getTime() &&
+                  hasCompletedSets
+                );
+              });
+              const completedRoutineNames = new Set(planWorkouts.map((w) => w.name));
+              const routinesCount = plan.routines.length;
+              const completedCount = plan.routines.filter((r) => completedRoutineNames.has(r.name)).length;
+              const progressPercent = routinesCount > 0 ? Math.round((completedCount / routinesCount) * 100) : 0;
+              const isActive = plan.id === activeWorkoutPlanId;
 
-          return (
-            <Card className="p-4 border border-card-border bg-card shadow relative group" key={plan.id}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                    {isActive && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-450 border border-emerald-500/20">
-                        Active Plan
-                      </span>
+              return (
+                <Card className="p-4 border border-card-border bg-card shadow relative group" key={plan.id}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                        {isActive && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            Active Plan
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white" onClick={() => {
+                        setEditingWorkoutPlanId(plan.id);
+                        setActiveSubScreen("workout-plan-builder");
+                      }}>
+                        <Pencil size={15} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400" onClick={() => {
+                        setPlanToDelete({ id: plan.id, name: plan.name });
+                        setShowDeleteModal(true);
+                      }}>
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Progress Indicator */}
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-zinc-500 font-semibold">
+                      <span>Weekly Routines Progress</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-zinc-850 overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
+                        style={{ width: `${progressPercent}%` }} 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button className="flex-1 text-xs font-semibold py-2" variant="primary" onClick={() => {
+                      setEditingWorkoutPlanId(plan.id);
+                      setActiveSubScreen("workout-plan-detail");
+                    }}>
+                      View Detailed Plan
+                    </Button>
+                    {!isActive && (
+                      <Button 
+                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground"
+                        variant="secondary"
+                        onClick={() => {
+                          setPlanToActivate(plan.id);
+                          setShowSwitchModal(true);
+                        }}
+                      >
+                        Set Active Plan
+                      </Button>
                     )}
                   </div>
-                  <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white" onClick={() => {
-                    setEditingWorkoutPlanId(plan.id);
-                    setActiveSubScreen("workout-plan-builder");
-                  }}>
-                    <Pencil size={15} />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400" onClick={() => {
-                    setPlanToDelete({ id: plan.id, name: plan.name });
-                    setShowDeleteModal(true);
-                  }}>
-                    <Trash2 size={15} />
-                  </Button>
-                </div>
-              </div>
+                </Card>
+              );
+            })}
 
-              {/* Progress Indicator */}
-              <div className="mt-4 space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-zinc-500 font-semibold">
-                  <span>Weekly Routines Progress</span>
-                  <span className="font-bold text-emerald-350">{completedCount}/{routinesCount}</span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-zinc-850 overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
-                    style={{ width: `${progressPercent}%` }} 
-                  />
-                </div>
-              </div>
+            {coachBusy && (
+              <Card className="p-4 border border-card-border bg-card shadow flex items-center justify-center gap-3">
+                <Bot className="h-5 w-5 text-emerald-400 animate-pulse" />
+                <span className="text-xs text-zinc-450 font-bold uppercase tracking-wider">Coach is designing new program...</span>
+              </Card>
+            )}
+          </section>
 
-              <div className="mt-4 flex gap-2">
-                <Button className="flex-1 text-xs font-semibold py-2" variant="primary" onClick={() => {
-                  setEditingWorkoutPlanId(plan.id);
-                  setActiveSubScreen("workout-plan-detail");
-                }}>
-                  View Detailed Plan
-                </Button>
-                {!isActive && (
-                  <Button 
-                    className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground"
-                    variant="secondary"
-                    onClick={() => {
-                      setPlanToActivate(plan.id);
-                      setShowSwitchModal(true);
-                    }}
-                  >
-                    Set Active Plan
-                  </Button>
-                )}
+          {/* ─── PERSONAL RECORDS achievements SHELF ─── */}
+          <Card className="p-4 border border-card-border bg-card shadow">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Medal className="text-amber-400" size={16} />
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider">Recent Personal Records</h2>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3">
+              {recentPrs.length > 0 ? (
+                recentPrs.slice(0, 6).map((pr) => (
+                  <Surface key={`${pr.exerciseName}-${pr.value}`} className="flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface">
+                    <div>
+                      <p className="text-xs font-bold text-white truncate max-w-36">{pr.exerciseName}</p>
+                      <p className="text-[10px] text-zinc-500">{pr.date}</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold border border-amber-500/15">
+                      {pr.value}
+                    </span>
+                  </Surface>
+                ))
+              ) : (
+                <div className="col-span-full py-4 text-center text-xs text-zinc-500 italic">
+                  Perform sets in your scheduled workouts to register new personal records.
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* ─── INTERACTIVE COACH NOTE chat bubble ─── */}
+          {lastMessage && (
+            <Card className={`p-4 border relative overflow-hidden group shadow-lg ${isLastMessageError ? 'bg-red-950/15 border-red-500/20' : 'bg-emerald-950/15 border-emerald-500/20'}`}>
+              <div className="flex items-start gap-3.5 relative z-10">
+                <div className={`p-2 rounded-xl shrink-0 ${isLastMessageError ? 'bg-red-500/10 text-red-400 border border-red-500/15' : 'bg-emerald-500/10 text-emerald-450 border border-emerald-500/15'}`}>
+                  <Bot size={22} className={isLastMessageError ? 'text-red-400' : 'text-emerald-500'} />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${isLastMessageError ? 'text-red-400' : 'text-emerald-500'}`}>
+                    {isLastMessageError ? "Central Link Impaired" : "Dynamic Coaching Directive"}
+                  </span>
+                  <h3 className="text-sm font-bold text-white leading-snug">
+                    {isLastMessageError ? "AI Coach Connection Problem" : "Today's Biomechanical Note"}
+                  </h3>
+                  <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-300'}`}>
+                    {lastMessage && isWorkoutPlan(lastMessage.content) ? (
+                      <div className="space-y-3">
+                        {(() => {
+                          let nonJson = lastMessage.content;
+                          const jsonMatch = lastMessage.content.match(/```json\n([\s\S]*?)\n```/);
+                          if (jsonMatch) {
+                            nonJson = lastMessage.content.replace(jsonMatch[0], "").trim();
+                          } else if (lastMessage.content.trim().startsWith("{")) {
+                            nonJson = "";
+                          }
+                          return nonJson ? (
+                            <ReactMarkdown className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-450">
+                              {nonJson}
+                            </ReactMarkdown>
+                          ) : null;
+                        })() || null}
+                        <p className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          I have compiled and generated a customized training plan for your bio-profile. You can activate it directly below.
+                        </p>
+                      </div>
+                    ) : (
+                      lastMessage?.content
+                    )}
+                  </div>
+                  
+                  <div className="pt-2 flex justify-start">
+                    <Button
+                      className={`text-[11px] font-bold py-1.5 px-3 flex items-center gap-1 border ${isLastMessageError ? 'border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:border-red-500/20 dark:bg-red-950/30 dark:hover:bg-red-900/30 dark:text-red-300' : 'border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-300'}`}
+                      variant="secondary"
+                      onClick={() => setActiveTab("coach")}
+                    >
+                      Ask Coach Detailed Question
+                      <ArrowUpRight size={13} />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </Card>
-          );
-        })}
-
-        {coachBusy && (
-          <Card className="p-4 border border-card-border bg-card shadow flex items-center justify-center gap-3">
-            <Bot className="h-5 w-5 text-emerald-400 animate-pulse" />
-            <span className="text-xs text-zinc-450 font-bold uppercase tracking-wider">Coach is designing new program...</span>
-          </Card>
-        )}
-      </section>
-
-      {/* ─── PERSONAL RECORDS achievements SHELF ─── */}
-      <Card className="p-4 border border-card-border bg-card shadow">
-        <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-          <div className="flex items-center gap-2">
-            <Medal className="text-amber-400" size={16} />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Recent Personal Records</h2>
-          </div>
-        </div>
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3">
-          {recentPrs.length > 0 ? (
-            recentPrs.slice(0, 6).map((pr) => (
-              <Surface key={`${pr.exerciseName}-${pr.value}`} className="flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface">
-                <div>
-                  <p className="text-xs font-bold text-white truncate max-w-36">{pr.exerciseName}</p>
-                  <p className="text-[10px] text-zinc-500">{pr.date}</p>
-                </div>
-                <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold border border-amber-500/15">
-                  {pr.value}
-                </span>
-              </Surface>
-            ))
-          ) : (
-            <div className="col-span-full py-4 text-center text-xs text-zinc-500 italic">
-              Perform sets in your scheduled workouts to register new personal records.
-            </div>
           )}
-        </div>
-      </Card>
-
-      {/* ─── INTERACTIVE COACH NOTE chat bubble ─── */}
-      {lastMessage && (
-        <Card className={`p-4 border relative overflow-hidden group shadow-lg ${isLastMessageError ? 'bg-red-950/15 border-red-500/20' : 'bg-emerald-950/15 border-emerald-500/20'}`}>
-          <div className="flex items-start gap-3.5 relative z-10">
-            <div className={`p-2 rounded-xl shrink-0 ${isLastMessageError ? 'bg-red-500/10 text-red-400 border border-red-500/15' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15'}`}>
-              <Bot size={22} className={isLastMessageError ? 'text-red-400' : 'text-emerald-400'} />
-            </div>
-            <div className="flex-1 space-y-1">
-              <span className={`text-[9px] font-black uppercase tracking-widest ${isLastMessageError ? 'text-red-400' : 'text-emerald-400'}`}>
-                {isLastMessageError ? "Central Link Impaired" : "Dynamic Coaching Directive"}
-              </span>
-              <h3 className="text-sm font-bold text-white leading-snug">
-                {isLastMessageError ? "AI Coach Connection Problem" : "Today's Biomechanical Note"}
-              </h3>
-              <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-300'}`}>
-                {lastMessage && isWorkoutPlan(lastMessage.content) ? (
-                  <div className="space-y-3">
-                    {(() => {
-                      let nonJson = lastMessage.content;
-                      const jsonMatch = lastMessage.content.match(/```json\n([\s\S]*?)\n```/);
-                      if (jsonMatch) {
-                        nonJson = lastMessage.content.replace(jsonMatch[0], "").trim();
-                      } else if (lastMessage.content.trim().startsWith("{")) {
-                        nonJson = "";
-                      }
-                      return nonJson ? (
-                        <ReactMarkdown className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-350 max-w-none text-xs text-zinc-450">
-                          {nonJson}
-                        </ReactMarkdown>
-                      ) : null;
-                    })() || null}
-                    <p className="font-semibold text-emerald-400">
-                      I have compiled and generated a customized training plan for your bio-profile. You can activate it directly below.
-                    </p>
-                  </div>
-                ) : (
-                  lastMessage?.content
-                )}
-              </div>
-              
-              <div className="pt-2 flex justify-start">
-                <Button
-                  className={`text-[11px] font-bold py-1.5 px-3 flex items-center gap-1 border ${isLastMessageError ? 'border-red-500/20 bg-red-950/30 hover:bg-red-900/30 text-red-300' : 'border-emerald-500/20 bg-emerald-950/30 hover:bg-emerald-900/30 text-emerald-300'}`}
-                  variant="secondary"
-                  onClick={() => setActiveTab("coach")}
-                >
-                  Ask Coach Detailed Question
-                  <ArrowUpRight size={13} />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
+        </>
       )}
 
       {/* ─── MODALS & DIALOGS ─── */}

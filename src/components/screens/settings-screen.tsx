@@ -324,6 +324,42 @@ export function SettingsScreen() {
     void fetchModels();
   }, [draft, apiKey]);
 
+  const handleWeightUnitChange = async (unit: WeightUnit) => {
+    const currentUnit = draftProfile.weightUnit ?? weightUnit;
+    if (currentUnit !== unit) {
+      let newWeight = draftProfile.weight;
+      if (newWeight) {
+        if (unit === "lbs") {
+          newWeight = Math.round(newWeight * 2.20462 * 10) / 10;
+        } else {
+          newWeight = Math.round((newWeight / 2.20462) * 10) / 10;
+        }
+      }
+      const updated = { ...draftProfile, weight: newWeight, weightUnit: unit };
+      setDraftProfile(updated);
+      await setWeightUnit(unit);
+      await updateProfile(updated);
+    }
+  };
+
+  const handleHeightUnitChange = async (unit: HeightUnit) => {
+    const currentUnit = draftProfile.heightUnit ?? heightUnit;
+    if (currentUnit !== unit) {
+      let newHeight = draftProfile.height;
+      if (newHeight) {
+        if (unit === "in") {
+          newHeight = Math.round(newHeight / 2.54);
+        } else {
+          newHeight = Math.round(newHeight * 2.54);
+        }
+      }
+      const updated = { ...draftProfile, height: newHeight, heightUnit: unit };
+      setDraftProfile(updated);
+      await setHeightUnit(unit);
+      await updateProfile(updated);
+    }
+  };
+
   // Debounced auto-save for profile biometrics
   useEffect(() => {
     if (!draftProfile || Object.keys(draftProfile).length === 0) return;
@@ -510,8 +546,11 @@ export function SettingsScreen() {
     const h = draftProfile.height;
     if (!w || !h) return null;
 
-    const weightInKg = weightUnit === "lbs" ? w / 2.20462 : w;
-    const heightInMeters = heightUnit === "in" ? (h * 2.54) / 100 : h / 100;
+    const unit = draftProfile.weightUnit ?? weightUnit;
+    const hUnit = draftProfile.heightUnit ?? heightUnit;
+
+    const weightInKg = unit === "lbs" ? w / 2.20462 : w;
+    const heightInMeters = hUnit === "in" ? (h * 2.54) / 100 : h / 100;
     const bmiValue = weightInKg / (heightInMeters * heightInMeters);
 
     let classification = "Normal";
@@ -535,7 +574,7 @@ export function SettingsScreen() {
       classification,
       color,
     };
-  }, [draftProfile.weight, draftProfile.height, heightUnit, weightUnit]);
+  }, [draftProfile.weight, draftProfile.height, draftProfile.heightUnit, draftProfile.weightUnit, heightUnit, weightUnit]);
 
   // Expandable Physiological Improvement Advisor
   const bmiAdvice = useMemo(() => {
@@ -543,8 +582,11 @@ export function SettingsScreen() {
     const h = draftProfile.height;
     if (!w || !h) return null;
 
-    const weightInKg = weightUnit === "lbs" ? w / 2.20462 : w;
-    const heightInMeters = heightUnit === "in" ? (h * 2.54) / 100 : h / 100;
+    const unit = draftProfile.weightUnit ?? weightUnit;
+    const hUnit = draftProfile.heightUnit ?? heightUnit;
+
+    const weightInKg = unit === "lbs" ? w / 2.20462 : w;
+    const heightInMeters = hUnit === "in" ? (h * 2.54) / 100 : h / 100;
     const bmiValue = weightInKg / (heightInMeters * heightInMeters);
 
     if (bmiValue < 18.5) {
@@ -593,13 +635,14 @@ export function SettingsScreen() {
         color: "border-red-500/20 bg-red-500/5 text-red-400"
       };
     }
-  }, [draftProfile.weight, draftProfile.height, heightUnit, weightUnit]);
+  }, [draftProfile.weight, draftProfile.height, draftProfile.heightUnit, draftProfile.weightUnit, heightUnit, weightUnit]);
 
   const calculatedProtein = useMemo(() => {
     const w = draftProfile.weight;
     if (!w) return null;
 
-    const weightInLbs = weightUnit === "lbs" ? w : w * 2.20462;
+    const unit = draftProfile.weightUnit ?? weightUnit;
+    const weightInLbs = unit === "lbs" ? w : w * 2.20462;
     const physique = draftProfile.targetPhysique || "athletic";
 
     let multiplier = 1.0;
@@ -614,7 +657,7 @@ export function SettingsScreen() {
       value: Math.round(proteinTarget),
       multiplier: multiplier.toFixed(1),
     };
-  }, [draftProfile.weight, draftProfile.targetPhysique, weightUnit]);
+  }, [draftProfile.weight, draftProfile.targetPhysique, draftProfile.weightUnit, weightUnit]);
 
   return (
     <motion.div
@@ -777,9 +820,9 @@ export function SettingsScreen() {
                       </Field>
                       <SegmentedSetting<WeightUnit>
                         label="Weight System"
-                        value={weightUnit}
+                        value={draftProfile.weightUnit ?? weightUnit}
                         values={["lbs", "kg"]}
-                        onChange={(value) => void setWeightUnit(value)}
+                        onChange={(value) => void handleWeightUnitChange(value)}
                       />
 
                       <Field label={`Height (${heightUnit === "in" ? "ft & in" : "cm"})`}>
@@ -829,9 +872,9 @@ export function SettingsScreen() {
                       </Field>
                       <SegmentedSetting<HeightUnit>
                         label="Height System"
-                        value={heightUnit}
+                        value={draftProfile.heightUnit ?? heightUnit}
                         values={["in", "cm"]}
-                        onChange={(value) => void setHeightUnit(value)}
+                        onChange={(value) => void handleHeightUnitChange(value)}
                       />
                     </div>
 

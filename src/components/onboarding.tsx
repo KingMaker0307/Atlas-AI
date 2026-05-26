@@ -283,11 +283,11 @@ export function Onboarding() {
         {/* App Logo & Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 justify-center">
           <div className="flex items-center gap-4 justify-center sm:justify-start">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400 text-zinc-950 shadow-[0_4px_20px_rgba(52,211,153,0.25)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 dark:bg-emerald-400 text-white-keep dark:text-zinc-950 shadow-[0_4px_20px_rgba(52,211,153,0.25)]">
               <Dumbbell size={24} />
             </div>
             <div>
-              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Local-first Fitness OS</p>
+              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Local-first Fitness OS</p>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Atlas AI Coach</h1>
             </div>
           </div>
@@ -339,17 +339,17 @@ export function Onboarding() {
                     }}
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border ${
                       isCompleted
-                        ? "bg-emerald-400 text-zinc-950 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.4)] cursor-pointer"
+                        ? "bg-emerald-500 dark:bg-emerald-400 text-white-keep dark:text-zinc-950 border-emerald-500 dark:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)] cursor-pointer"
                         : isActive
-                        ? "bg-zinc-950 text-emerald-400 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)] cursor-default"
-                        : "bg-zinc-950 text-zinc-600 border-zinc-800 cursor-not-allowed"
+                        ? "bg-white dark:bg-zinc-950 text-emerald-600 dark:text-emerald-400 border-emerald-500 dark:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-default"
+                        : "bg-zinc-100 dark:bg-zinc-950 text-zinc-400 dark:text-zinc-650 border-zinc-200 dark:border-zinc-800 cursor-not-allowed"
                     }`}
                     disabled={s.id > step}
                   >
                     {isCompleted ? <Check size={14} className="stroke-[3]" /> : s.id}
                   </button>
                   <span className={`text-[9px] mt-2 font-bold uppercase tracking-wider transition-colors duration-300 ${
-                    isActive ? "text-emerald-400" : isCompleted ? "text-emerald-500" : "text-zinc-600"
+                    isActive ? "text-emerald-600 dark:text-emerald-400" : isCompleted ? "text-emerald-600 dark:text-emerald-500" : "text-zinc-400 dark:text-zinc-500"
                   }`}>
                     {s.label}
                   </span>
@@ -965,16 +965,16 @@ function CardGridSelector<T extends string>({
             onClick={() => onChange(opt.value)}
             className={`text-left p-3 rounded-xl border transition-all duration-200 ${
               isSelected
-                ? "bg-emerald-500/10 border-emerald-400/80 shadow-[0_4px_16px_rgba(52,211,153,0.06)]"
+                ? "bg-emerald-500/10 border-emerald-500 dark:border-emerald-400 shadow-[0_4px_16px_rgba(52,211,153,0.06)]"
                 : "bg-surface border-surface-border hover:border-card-border hover:bg-input"
             }`}
           >
             <div className="flex justify-between items-center gap-2 mb-1">
-              <span className={`text-[11px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-400" : "text-zinc-700 dark:text-zinc-200"}`}>
+              <span className={`text-[11px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-200"}`}>
                 {opt.label}
               </span>
               {isSelected && (
-                <div className="w-3.5 h-3.5 rounded-full bg-emerald-400 flex items-center justify-center text-[9px] text-zinc-950 font-bold shrink-0">
+                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 dark:bg-emerald-400 flex items-center justify-center text-[9px] text-white-keep dark:text-zinc-950 font-bold shrink-0">
                   ✓
                 </div>
               )}

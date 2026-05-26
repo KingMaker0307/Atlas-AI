@@ -74,15 +74,15 @@ export function WelcomeScreen() {
             >
               <div className="space-y-3.5">
                 <Button
-                  className="w-full justify-start py-6 text-sm"
+                  className="w-full justify-start py-6 text-sm text-background"
                   variant="primary"
                   size="lg"
                   onClick={() => setStartupChoice("local")}
                 >
-                  <Sparkles className="mr-3 text-zinc-100 dark:text-zinc-900 shrink-0" size={20} />
+                  <Sparkles className="mr-3 shrink-0" size={20} />
                   <div className="text-left">
-                    <p className="font-bold text-xs sm:text-sm text-zinc-100 dark:text-zinc-900">Start Fresh (Local Mode)</p>
-                    <p className="text-[9px] sm:text-[10px] text-zinc-200/70 dark:text-zinc-500 font-medium">Sandbox local offline mode with browser IndexedDB</p>
+                    <p className="font-bold text-xs sm:text-sm">Start Fresh (Local Mode)</p>
+                    <p className="text-[9px] sm:text-[10px] opacity-75 font-medium">Sandbox local offline mode with browser IndexedDB</p>
                   </div>
                 </Button>
 
