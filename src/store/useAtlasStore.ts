@@ -742,7 +742,13 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       set({ aiProviders: [newProvider], activeProviderId: providerId });
     }
 
-    set({ profile: { ...profile, goal: customGoal ?? profile.goal }, hasOnboarded: true, activeTab: "dashboard" });
+    set({ 
+      profile: { ...profile, goal: customGoal ?? profile.goal }, 
+      weightUnit: profile.weightUnit ?? get().weightUnit,
+      heightUnit: profile.heightUnit ?? get().heightUnit,
+      hasOnboarded: true, 
+      activeTab: "dashboard" 
+    });
     await persistState(get());
   },
   updateProfile: async (patch) => {

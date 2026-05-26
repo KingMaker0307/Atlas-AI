@@ -510,13 +510,9 @@ export function SettingsScreen() {
     const h = draftProfile.height;
     if (!w || !h) return null;
 
-    let bmiValue = 0;
-    if (heightUnit === "in") {
-      bmiValue = (703 * w) / (h * h);
-    } else {
-      const heightInMeters = h / 100;
-      bmiValue = w / (heightInMeters * heightInMeters);
-    }
+    const weightInKg = weightUnit === "lbs" ? w / 2.20462 : w;
+    const heightInMeters = heightUnit === "in" ? (h * 2.54) / 100 : h / 100;
+    const bmiValue = weightInKg / (heightInMeters * heightInMeters);
 
     let classification = "Normal";
     let color = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
@@ -539,7 +535,7 @@ export function SettingsScreen() {
       classification,
       color,
     };
-  }, [draftProfile.weight, draftProfile.height, heightUnit]);
+  }, [draftProfile.weight, draftProfile.height, heightUnit, weightUnit]);
 
   // Expandable Physiological Improvement Advisor
   const bmiAdvice = useMemo(() => {
@@ -547,13 +543,9 @@ export function SettingsScreen() {
     const h = draftProfile.height;
     if (!w || !h) return null;
 
-    let bmiValue = 0;
-    if (heightUnit === "in") {
-      bmiValue = (703 * w) / (h * h);
-    } else {
-      const heightInMeters = h / 100;
-      bmiValue = w / (heightInMeters * heightInMeters);
-    }
+    const weightInKg = weightUnit === "lbs" ? w / 2.20462 : w;
+    const heightInMeters = heightUnit === "in" ? (h * 2.54) / 100 : h / 100;
+    const bmiValue = weightInKg / (heightInMeters * heightInMeters);
 
     if (bmiValue < 18.5) {
       return {
@@ -601,7 +593,7 @@ export function SettingsScreen() {
         color: "border-red-500/20 bg-red-500/5 text-red-400"
       };
     }
-  }, [draftProfile.weight, draftProfile.height, heightUnit]);
+  }, [draftProfile.weight, draftProfile.height, heightUnit, weightUnit]);
 
   const calculatedProtein = useMemo(() => {
     const w = draftProfile.weight;

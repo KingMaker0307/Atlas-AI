@@ -970,7 +970,7 @@ function CardGridSelector<T extends string>({
             }`}
           >
             <div className="flex justify-between items-center gap-2 mb-1">
-              <span className={`text-[11px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-400" : "text-zinc-200"}`}>
+              <span className={`text-[11px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-400" : "text-zinc-700 dark:text-zinc-200"}`}>
                 {opt.label}
               </span>
               {isSelected && (
