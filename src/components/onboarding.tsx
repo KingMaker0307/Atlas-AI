@@ -286,26 +286,17 @@ export function Onboarding() {
   };
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-8 text-foreground flex flex-col items-center justify-center">
+    <main className="min-h-dvh bg-background px-4 py-6 sm:py-12 text-foreground flex flex-col items-center justify-start sm:justify-center overflow-y-auto">
       <div className="w-full max-w-lg">
         {/* App Logo & Header */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 justify-center">
-          <div className="flex items-center gap-4 justify-center sm:justify-start">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 dark:bg-emerald-400 text-white-keep dark:text-zinc-950 shadow-[0_4px_20px_rgba(52,211,153,0.25)]">
-              <Dumbbell size={24} />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Local-first Fitness OS</p>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Atlas AI Coach</h1>
-            </div>
+        <div className="mb-6 flex items-center gap-4 justify-center sm:justify-start select-none">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 dark:bg-emerald-400 text-white-keep dark:text-zinc-950 shadow-[0_4px_20px_rgba(52,211,153,0.25)]">
+            <Dumbbell size={24} />
           </div>
-          <button
-            type="button"
-            onClick={handleSkip}
-            className="text-xs font-bold text-zinc-400 hover:text-emerald-400 border border-zinc-800 hover:border-emerald-400 px-3 py-1.5 rounded-lg transition-all self-center sm:self-auto"
-          >
-            Skip & Set Defaults
-          </button>
+          <div>
+            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Local-first Fitness OS</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Atlas AI Coach</h1>
+          </div>
         </div>
 
         {/* Multi-step progress bar */}

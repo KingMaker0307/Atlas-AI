@@ -49,8 +49,8 @@ export function WelcomeScreen() {
   };
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-4 text-foreground selection:bg-emerald-300 selection:text-zinc-950">
-      <Card className="w-full max-w-xl p-6 relative overflow-hidden">
+    <main className="flex min-h-dvh flex-col items-center justify-start sm:justify-center bg-background p-4 py-8 sm:py-12 overflow-y-auto text-foreground selection:bg-emerald-300 selection:text-zinc-950">
+      <Card className="w-full max-w-xl p-6 relative overflow-hidden shrink-0">
         <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
         
         {/* App Logo & Header */}
