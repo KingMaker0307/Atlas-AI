@@ -57,6 +57,7 @@ interface AtlasState {
   hydrated: boolean;
   activeTab: AtlasTab;
   activeSubScreen: SubScreen;
+  activeSettingsTab: "profile" | "ai" | "system";
   editingWorkoutPlanId: string | null;
   editingRoutineId: string | null;
   profile: UserProfile | null;
@@ -89,6 +90,7 @@ interface AtlasState {
   checkAndAutoStopActiveWorkout: () => Promise<void>;
   setActiveTab: (tab: AtlasTab) => void;
   setActiveSubScreen: (subScreen: SubScreen) => void;
+  setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
   setEditingWorkoutPlanId: (id: string | null) => void;
   setEditingRoutineId: (id: string | null) => void;
   hydrate: () => Promise<void>;
@@ -359,6 +361,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   hydrated: false,
   activeTab: "dashboard",
   activeSubScreen: null,
+  activeSettingsTab: "profile",
   editingWorkoutPlanId: null,
   editingRoutineId: null,
   coachBusy: false,
@@ -368,6 +371,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   blocked: false,
   lastSyncedAt: null,
   setBlocked: (blocked) => set({ blocked }),
+  setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
   getExerciseById: (id: string) => {
     return get().exercises.find((exercise) => exercise.id === id);
   },
@@ -553,6 +557,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       guidedMode: snapshot.guidedMode !== undefined ? snapshot.guidedMode : true,
       hydrated: true,
       activeTab: "dashboard",
+      activeSettingsTab: "profile",
       coachBusy: false,
       providerBusy: false,
     });

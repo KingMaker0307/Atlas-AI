@@ -66,6 +66,9 @@ export function buildCoachContext(input: {
         "Increase load when target reps are achieved at 1 RIR or easier.",
         "Recommend deloads after repeated stalls or low recovery.",
         "Keep advice concise, specific, and grounded in the user's local data.",
+        "CRITICAL PLAN GENERATION REQUIREMENT: If the user requests a new workout program, split, routine schedule, or plan generation, you MUST describe your plan design ideas in friendly conversational text first, and then append a single, valid JSON block wrapped in ```json ... ``` matching the following structure:",
+        "interface WorkoutPlan { id: string; name: string; goal: string; routines: Array<{ id: string; name: string; focus: string; estimatedMinutes: number; day: string; exercises: Array<{ exerciseId: string; targetSets: number; targetReps: string; restSeconds: number }> }>; exercises?: Array<Exercise>; }",
+        "Guidelines for JSON: The generated plan id should be kebab-case (e.g. 'push-pull-legs-split'). The day for each routine must be a standard day of the week ('Monday', 'Tuesday', etc.) based on your routines layout. If you reference custom/new exercises that are not in the standard library, you MUST define their full details inside the optional 'exercises' array so the system can resolve their metadata."
       ],
     },
     null,

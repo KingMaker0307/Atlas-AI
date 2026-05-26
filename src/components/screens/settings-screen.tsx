@@ -227,7 +227,8 @@ export function SettingsScreen() {
   const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
 
   // High-density preferences active tab state (Backups and System are unified)
-  const [activeSettingsTab, setActiveSettingsTab] = useState<"profile" | "ai" | "system">("profile");
+  const activeSettingsTab = useAtlasStore((state) => state.activeSettingsTab);
+  const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
 
   const [draftProfile, setDraftProfile] = useState<Partial<UserProfile>>({});
   const [models, setModels] = useState<string[]>([]);
@@ -677,7 +678,7 @@ export function SettingsScreen() {
       {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}
 
       {/* Mobile horizontal tabs */}
-      <div className="flex md:hidden bg-zinc-950 border border-zinc-800 p-1 rounded-2xl select-none gap-1">
+      <div className="flex md:hidden bg-zinc-950 border border-zinc-800 p-1 rounded-2xl select-none gap-1 keep-dark">
         {[
           { id: "profile", label: "Profile", icon: <User size={14} /> },
           { id: "ai", label: "AI Engine", icon: <Cpu size={14} /> },
@@ -703,7 +704,7 @@ export function SettingsScreen() {
 
       <div className="flex gap-4 md:gap-6 items-start">
         {/* Desktop Sidebar Panel (hidden on mobile) */}
-        <aside className="hidden md:flex w-56 shrink-0 md:sticky md:top-24 flex-col bg-zinc-950 border border-zinc-800 p-1.5 rounded-2xl select-none gap-1.5">
+        <aside className="hidden md:flex w-56 shrink-0 md:sticky md:top-24 flex-col bg-zinc-950 border border-zinc-800 p-1.5 rounded-2xl select-none gap-1.5 keep-dark">
           {[
             { id: "profile", label: "Profile & Goals", icon: <User size={16} /> },
             { id: "ai", label: "AI Engine", icon: <Cpu size={16} /> },
@@ -1497,7 +1498,7 @@ function SegmentedSetting<T extends string>({
   return (
     <div className="space-y-1.5">
       <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-0">{label}</Label>
-      <div className="relative grid gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+      <div className="relative grid gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1 keep-dark" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map((item) => {
           const active = item === value;
           return (

@@ -76,12 +76,16 @@ export function DashboardScreen() {
   const logRecovery = useAtlasStore((state) => state.logRecovery);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
   const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
+  const aiProviders = useAtlasStore((state) => state.aiProviders);
+  const activeProviderId = useAtlasStore((state) => state.activeProviderId);
+  const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
 
   // Modal & Edit States
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [planToActivate, setPlanToActivate] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
 
   // Interactive Metrics Drawer State
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
@@ -278,10 +282,26 @@ export function DashboardScreen() {
   };
 
   const handleGenerateAiPlan = () => {
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const hasKey = activeProvider && (activeProvider.apiKey || activeProvider.type === "ollama" || activeProvider.type === "lmstudio");
+
+    if (!hasKey) {
+      alert("To generate a plan with our AI Coach, please configure your API Key/AI Engine first. Redirecting you to settings...");
+      setActiveSettingsTab("ai");
+      setActiveTab("settings");
+      return;
+    }
+
     if (typeof window !== "undefined") {
       (window as any).coachPrompt = "Help me generate a beginner workout plan based on my biometrics.";
     }
     setActiveTab("coach");
+  };
+
+  const handleCreateManualPlan = () => {
+    setEditingWorkoutPlanId(null);
+    setActiveSubScreen("workout-plan-builder");
+    setActiveTab("workout");
   };
 
   const toggleMetricInsight = (metric: string) => {
@@ -394,10 +414,10 @@ export function DashboardScreen() {
 
       {/* ─── GETTING STARTED CHECKLIST (FOR NEW USERS) ─── */}
       {isNewUser && (
-        <Card className="p-5 border border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-4 keep-dark">
-          <div className="flex items-center gap-2 border-b border-white/5 pb-3 select-none">
+        <Card className="p-5 border border-emerald-500/20 bg-card dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-950/40 shadow-xl space-y-4">
+          <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-3 select-none">
             <Sparkles className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={18} />
-            <h2 className="text-base font-bold text-white tracking-tight">Getting Started Guide</h2>
+            <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">Getting Started Guide</h2>
           </div>
           
           <div className="space-y-4">
@@ -412,31 +432,30 @@ export function DashboardScreen() {
               </div>
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2 select-none">
-                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-500 line-through" : "text-zinc-100"}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-400 dark:text-zinc-500 line-through" : "text-zinc-800 dark:text-zinc-100"}`}>
                     Activate a Workout Plan
                   </h3>
                   {isStep1Done && <span className="text-[10px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
                 </div>
                 {!isStep1Done && (
                   <>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                       To start tracking, you need a plan. Choose an option below to set up your routine instantly:
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
                         onClick={handleLoadSeedPlan}
-                        className="text-xs font-bold text-zinc-950 bg-emerald-450 hover:bg-emerald-400 px-3 py-1.5 rounded-lg transition-all"
+                        className="text-xs font-bold text-white-keep bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all shadow-sm"
                       >
                         Load 3-Day Seed Plan
                       </button>
                       <button
                         type="button"
-                        onClick={handleGenerateAiPlan}
-                        className="text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                        onClick={() => setShowCreatePlanModal(true)}
+                        className="text-xs font-bold text-zinc-850 dark:text-zinc-200 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-850 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-750 px-3 py-1.5 rounded-lg transition-all shadow-sm"
                       >
-                        <Bot size={13} className="text-emerald-450" />
-                        Generate with AI Coach
+                        Create Plan
                       </button>
                     </div>
                   </>
@@ -445,26 +464,26 @@ export function DashboardScreen() {
             </div>
 
             {/* Step 2 */}
-            <div className="flex gap-3 border-t border-white/5 pt-3">
+            <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold font-mono">
                 2
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-white font-bold">Start Training Session</span> to log sets.
+                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-zinc-900 dark:text-white font-bold">Start Training Session</span> to log sets.
                 </p>
               </div>
             </div>
 
             {/* Step 3 */}
-            <div className="flex gap-3 border-t border-white/5 pt-3">
+            <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs font-bold font-mono">
                 3
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                   After completing a workout, visit the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("progress")}>Progress</span> tab to watch your strength and consistency charts update.
                 </p>
               </div>
@@ -1292,6 +1311,92 @@ export function DashboardScreen() {
               }} className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2">
                 Delete Program
               </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {showCreatePlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
+          <Card className="w-full max-w-md p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+              onClick={() => setShowCreatePlanModal(false)}
+            >
+              <X size={20} />
+            </Button>
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">Create Workout Program</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 text-xs leading-relaxed">
+                Select a method to establish your training plan.
+              </p>
+            </div>
+            
+            <div className="space-y-3 pt-2">
+              {/* Option 1: Template Seed Plan */}
+              <button
+                onClick={() => {
+                  void handleLoadSeedPlan();
+                  setShowCreatePlanModal(false);
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group"
+              >
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 shrink-0">
+                  <ClipboardList size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    Load 3-Day Seed Plan
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    Start tracking immediately with a pre-configured, beginner-friendly full-body template split.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Custom Manual Builder */}
+              <button
+                onClick={() => {
+                  handleCreateManualPlan();
+                  setShowCreatePlanModal(false);
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group"
+              >
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-450 shrink-0">
+                  <Plus size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    Create Manual Plan
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 3: AI Coach Planner */}
+              <button
+                onClick={() => {
+                  handleGenerateAiPlan();
+                  setShowCreatePlanModal(false);
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group"
+              >
+                <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-450 shrink-0">
+                  <Bot size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                    Generate with AI Coach
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    Have the AI Coach write a personalized plan for you based on your biometrics, target goals, and training experience.
+                  </p>
+                </div>
+              </button>
             </div>
           </Card>
         </div>

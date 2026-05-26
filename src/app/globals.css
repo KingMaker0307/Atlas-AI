@@ -343,6 +343,18 @@ textarea {
   color: #52525b !important;
 }
 
+.light .keep-dark .text-zinc-800 {
+  color: #27272a !important;
+}
+
+.light .keep-dark .text-zinc-900 {
+  color: #18181b !important;
+}
+
+.light .keep-dark .text-zinc-950 {
+  color: #09090b !important;
+}
+
 .light .keep-dark .text-white {
   color: #ffffff !important;
 }
