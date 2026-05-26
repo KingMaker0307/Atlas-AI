@@ -38,7 +38,7 @@ import type {
 import { CoachChatResponse } from "@/lib/ai/types";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
-export type StartupChoice = "google-drive" | "local" | "backup" | null;
+export type StartupChoice = "google-drive" | "local" | "local-offline" | "backup" | null;
 export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | "active-workout" | null;
 
 interface OnboardingData extends UserProfile {

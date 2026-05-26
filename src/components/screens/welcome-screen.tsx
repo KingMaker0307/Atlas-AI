@@ -74,15 +74,28 @@ export function WelcomeScreen() {
             >
               <div className="space-y-3.5">
                 <Button
-                  className="w-full justify-start py-6 text-sm text-background"
+                  className="w-full justify-start py-6 text-sm text-zinc-950 dark:text-zinc-950 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500"
                   variant="primary"
                   size="lg"
                   onClick={() => setStartupChoice("local")}
                 >
-                  <Sparkles className="mr-3 shrink-0" size={20} />
+                  <Sparkles className="mr-3 shrink-0 text-zinc-950" size={20} />
                   <div className="text-left">
-                    <p className="font-bold text-xs sm:text-sm">Start Fresh (Local Mode)</p>
-                    <p className="text-[9px] sm:text-[10px] opacity-75 font-medium">Sandbox local offline mode with browser IndexedDB</p>
+                    <p className="font-bold text-xs sm:text-sm text-zinc-950">Start Fresh with AI Coach</p>
+                    <p className="text-[9px] sm:text-[10px] opacity-85 font-medium text-zinc-905">Configure profile & setup AI assistant key (Gemini, OpenAI, Claude, etc.)</p>
+                  </div>
+                </Button>
+
+                <Button
+                  className="w-full justify-start py-6 text-sm"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => setStartupChoice("local-offline")}
+                >
+                  <Dumbbell className="mr-3 text-emerald-500 dark:text-emerald-450 shrink-0" size={20} />
+                  <div className="text-left">
+                    <p className="font-bold text-xs sm:text-sm">Start Fresh (Offline Local Mode)</p>
+                    <p className="text-[9px] sm:text-[10px] text-zinc-500 font-medium">Train immediately with local storage. Skip AI configuration.</p>
                   </div>
                 </Button>
 

@@ -638,7 +638,7 @@ export function ProgressScreen() {
             <p className="text-xs text-zinc-400 font-medium">Select a category to view training progression trendlines:</p>
             
             {/* Segmented Controller */}
-            <div className="flex bg-zinc-950 border border-zinc-800 p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
+            <div className="flex flex-nowrap bg-zinc-950 border border-zinc-800 p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
               {[
                 { id: "strength", label: "Strength" },
                 { id: "cardio", label: "Cardio" },
@@ -648,7 +648,7 @@ export function ProgressScreen() {
                 <button
                   key={tab.id}
                   onClick={() => setChartTab(tab.id as any)}
-                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 whitespace-nowrap ${
                     chartTab === tab.id
                       ? "bg-white text-zinc-950 font-bold shadow"
                       : "text-zinc-400 hover:text-white"
@@ -757,30 +757,59 @@ export function ProgressScreen() {
           {/* mass tab */}
           {chartTab === "mass" && (
             <div className="space-y-4">
-              <p className="text-xs text-zinc-400 font-medium">Comparison overlay between weekly strength training volume load and bodyweight mass.</p>
-              <div className="h-56">
-                {bodyweightSeries.length > 1 && volumeSeries.length > 1 ? (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
-                    <AreaChart data={bodyweightSeries}>
-                      <defs>
-                        <linearGradient id="bodyweightGrad" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="5%" stopColor="#c084fc" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="#c084fc" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
-                      <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
-                      <YAxis stroke="#71717a" fontSize={10} domain={["dataMin - 3", "dataMax + 3"]} />
-                      <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
-                      <Area dataKey="weight" stroke="#c084fc" fill="url(#bodyweightGrad)" strokeWidth={2} name="Weight (lbs)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-1">
-                    <Info size={18} />
-                    <span>Record bodyweight entries in the logs shelf below to view mass-volume tracking.</span>
+              <p className="text-xs text-zinc-400 font-medium select-none">Comparison overlay between weekly strength training volume load and bodyweight mass.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Bodyweight Mass Panel */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 select-none">Bodyweight Mass (Trend)</h4>
+                  <div className="h-56">
+                    {bodyweightSeries.length > 1 ? (
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                        <AreaChart data={bodyweightSeries}>
+                          <defs>
+                            <linearGradient id="bodyweightGrad" x1="0" x2="0" y1="0" y2="1">
+                              <stop offset="5%" stopColor="#c084fc" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#c084fc" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                          <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
+                          <YAxis stroke="#71717a" fontSize={10} domain={["dataMin - 3", "dataMax + 3"]} />
+                          <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <Area dataKey="weight" stroke="#c084fc" fill="url(#bodyweightGrad)" strokeWidth={2} name="Weight (lbs)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full border border-dashed border-zinc-800 rounded-xl text-zinc-500 text-xs p-4 text-center select-none gap-2">
+                        <Info size={18} className="text-zinc-500 shrink-0" />
+                        <span>Record at least 2 bodyweight entries in the logs shelf below to view mass history.</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Weekly Training Volume Panel */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 select-none">Weekly Training Volume (lbs)</h4>
+                  <div className="h-56">
+                    {volumeSeries.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                        <BarChart data={volumeSeries}>
+                          <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                          <XAxis dataKey="week" stroke="#71717a" fontSize={10} />
+                          <YAxis stroke="#71717a" fontSize={10} />
+                          <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <Bar dataKey="volume" fill="#10b981" radius={[4, 4, 0, 0]} name="Volume" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full border border-dashed border-zinc-800 rounded-xl text-zinc-500 text-xs p-4 text-center select-none gap-2">
+                        <Info size={18} className="text-zinc-500 shrink-0" />
+                        <span>Complete workouts with weight training sets to populate weekly volume analytics.</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

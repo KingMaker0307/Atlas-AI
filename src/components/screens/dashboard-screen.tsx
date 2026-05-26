@@ -412,6 +412,27 @@ export function DashboardScreen() {
         </div>
       </section>
 
+      {coachBusy && (
+        <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
+            <div className="flex-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Please wait, the AI Coach is designing your clinical-grade routines...</p>
+            </div>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
+            <motion.div
+              className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-400 rounded-full"
+              initial={{ left: "-100%" }}
+              animate={{ left: "100%" }}
+              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+              style={{ position: "absolute", width: "50%" }}
+            />
+          </div>
+        </Card>
+      )}
+
       {/* ─── GETTING STARTED CHECKLIST (FOR NEW USERS) ─── */}
       {isNewUser && (
         <Card className="p-5 border border-emerald-500/20 bg-card dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-950/40 shadow-xl space-y-4">
@@ -446,14 +467,16 @@ export function DashboardScreen() {
                       <button
                         type="button"
                         onClick={handleLoadSeedPlan}
-                        className="text-xs font-bold text-white-keep bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                        disabled={coachBusy}
+                        className="text-xs font-bold text-white-keep bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Load 3-Day Seed Plan
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowCreatePlanModal(true)}
-                        className="text-xs font-bold text-zinc-850 dark:text-zinc-200 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-850 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-750 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                        disabled={coachBusy}
+                        className="text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-850 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Create Plan
                       </button>
@@ -1090,13 +1113,13 @@ export function DashboardScreen() {
                       <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white" onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
                         setEditingWorkoutPlanId(plan.id);
                         setActiveSubScreen("workout-plan-builder");
                       }}>
                         <Pencil size={15} />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400" onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-red-400 disabled:opacity-40" disabled={coachBusy} onClick={() => {
                         setPlanToDelete({ id: plan.id, name: plan.name });
                         setShowDeleteModal(true);
                       }}>

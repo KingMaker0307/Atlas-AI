@@ -247,13 +247,21 @@ export function Onboarding() {
   const selectedWeightUnit = watch("weightUnit");
   const selectedHeightUnit = watch("heightUnit");
   const selectedProvider = watch("providerType");
+  const startupChoice = useAtlasStore((state) => state.startupChoice);
 
-  const steps = [
-    { id: 1, label: "Basics" },
-    { id: 2, label: "Focus & Plan" },
-    { id: 3, label: "Physique" },
-    { id: 4, label: "AI Engine" }
-  ];
+  const [setupAiCoach, setSetupAiCoach] = useState(() => startupChoice !== "local-offline");
+
+  const steps = useMemo(() => {
+    const base = [
+      { id: 1, label: "Basics" },
+      { id: 2, label: "Focus & Plan" },
+      { id: 3, label: "Physique" },
+    ];
+    if (setupAiCoach) {
+      base.push({ id: 4, label: "AI Engine" });
+    }
+    return base;
+  }, [setupAiCoach]);
 
   const nextStep = async () => {
     let fieldsToValidate: Array<keyof OnboardingForm> = [];
@@ -267,7 +275,7 @@ export function Onboarding() {
 
     const isValid = await trigger(fieldsToValidate);
     if (isValid) {
-      setStep((prev) => Math.min(prev + 1, 4));
+      setStep((prev) => Math.min(prev + 1, steps.length));
       setSubmitError(null);
     }
   };
@@ -367,13 +375,13 @@ export function Onboarding() {
                   return;
                 }
                 e.preventDefault();
-                if (step < 4) {
+                if (step < steps.length) {
                   void nextStep();
                 }
               }
             }}
             onSubmit={handleSubmit(async (values) => {
-              if (step < 4) {
+              if (step < steps.length) {
                 void nextStep();
                 return;
               }
@@ -383,11 +391,15 @@ export function Onboarding() {
               }
               setSubmitError(null);
               try {
+                const finalValues = {
+                  ...values,
+                  providerType: !setupAiCoach ? "none" : values.providerType,
+                };
                 await completeOnboarding({
                   id: createId("user"),
                   createdAt: new Date().toISOString(),
-                  goal: values.customGoal,
-                  ...values,
+                  goal: finalValues.customGoal,
+                  ...finalValues,
                 });
               } catch (e: any) {
                 setSubmitError(e.message || "Failed to initialize provider. Please verify your API key or local model server configuration.");
@@ -423,133 +435,196 @@ export function Onboarding() {
                     {errors.name && <p className="mt-1 text-xs text-rose-300">{errors.name.message}</p>}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Height System</Label>
-                      <Controller
-                        name="heightUnit"
-                        control={control}
-                        render={({ field }) => (
-                          <SegmentedSetting<HeightUnit>
-                            value={field.value}
-                            values={["in", "cm"]}
-                            onChange={(newUnit) => {
-                              const currentUnit = watch("heightUnit");
-                              if (currentUnit !== newUnit) {
-                                const currentHeight = Number(watch("height"));
-                                if (currentHeight) {
-                                  const converted = newUnit === "in"
-                                    ? Math.round(currentHeight / 2.54)
-                                    : Math.round(currentHeight * 2.54);
-                                  setValue("height", converted);
-                                }
-                              }
-                              field.onChange(newUnit);
-                            }}
-                          />
-                        )}
-                      />
-                    </div>
-                    <div>
-                      <Label>Weight System</Label>
-                      <Controller
-                        name="weightUnit"
-                        control={control}
-                        render={({ field }) => (
-                          <SegmentedSetting<WeightUnit>
-                            value={field.value}
-                            values={["lbs", "kg"]}
-                            onChange={(newUnit) => {
-                              const currentUnit = watch("weightUnit");
-                              if (currentUnit !== newUnit) {
-                                const currentWeight = Number(watch("weight"));
-                                if (currentWeight) {
-                                  const converted = newUnit === "lbs" 
-                                    ? Math.round(currentWeight * 2.20462 * 10) / 10
-                                    : Math.round((currentWeight / 2.20462) * 10) / 10;
-                                  setValue("weight", converted);
-                                }
-                              }
-                              field.onChange(newUnit);
-                            }}
-                          />
-                        )}
-                      />
+                  {/* Unit System Preferences */}
+                  <div className="bg-zinc-950/20 dark:bg-zinc-950/50 p-4 border border-card-border rounded-2xl space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Unit Preferences</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Weight Unit</Label>
+                        <Controller
+                          name="weightUnit"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-950 p-1">
+                              {["lbs", "kg"].map((unit) => (
+                                <button
+                                  key={unit}
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(unit);
+                                    const currentWeight = Number(watch("weight"));
+                                    if (currentWeight) {
+                                      if (unit === "lbs") {
+                                        setValue("weight", Math.round(currentWeight * 2.20462 * 10) / 10);
+                                      } else {
+                                        setValue("weight", Math.round((currentWeight / 2.20462) * 10) / 10);
+                                      }
+                                    }
+                                  }}
+                                  className={`rounded-lg py-1.5 text-xs font-bold uppercase transition ${
+                                    field.value === unit
+                                      ? "bg-emerald-500 text-white-keep dark:text-zinc-950 shadow-sm"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-450 dark:hover:text-white"
+                                  }`}
+                                >
+                                  {unit}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label>Height Unit</Label>
+                        <Controller
+                          name="heightUnit"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-950 p-1">
+                              {["in", "cm"].map((unit) => (
+                                <button
+                                  key={unit}
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(unit);
+                                    const currentHeight = Number(watch("height"));
+                                    if (currentHeight) {
+                                      if (unit === "in") {
+                                        setValue("height", Math.round(currentHeight / 2.54));
+                                      } else {
+                                        setValue("height", Math.round(currentHeight * 2.54));
+                                      }
+                                    }
+                                  }}
+                                  className={`rounded-lg py-1.5 text-xs font-bold uppercase transition ${
+                                    field.value === unit
+                                      ? "bg-emerald-500 text-white-keep dark:text-zinc-950 shadow-sm"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-450 dark:hover:text-white"
+                                  }`}
+                                >
+                                  {unit === "in" ? "ft & in" : "cm"}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <Label htmlFor="age">Age</Label>
-                        <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" />
+                  {/* Basic Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Age */}
+                    <div>
+                      <Label htmlFor="age">Age</Label>
+                      <div className="mt-1.5">
+                        <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" className="text-xs font-mono font-bold" />
                         {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
                       </div>
-                      <div className="sm:col-span-2">
-                        <Label>Height ({selectedHeightUnit === "in" ? "ft & in" : "cm"})</Label>
+                    </div>
+
+                    {/* Weight */}
+                    <div>
+                      <Label htmlFor="weight">Weight ({selectedWeightUnit})</Label>
+                      <div className="mt-1.5">
+                        <Input
+                          id="weight"
+                          type="number"
+                          min={20}
+                          max={1000}
+                          {...register("weight")}
+                          placeholder={selectedWeightUnit === "lbs" ? "e.g., 170" : "e.g., 78"}
+                          className="text-xs font-mono font-bold"
+                        />
+                        {errors.weight && <p className="mt-1 text-xs text-rose-300">{errors.weight.message}</p>}
+                      </div>
+                    </div>
+
+                    {/* Height */}
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label>Height ({selectedHeightUnit === "in" ? "ft & in" : "cm"})</Label>
+                      <div className="mt-1.5">
                         {selectedHeightUnit === "in" ? (
-                          <div className="grid grid-cols-2 gap-2.5 animate-fadeIn">
+                          <div className="grid grid-cols-2 gap-2 animate-fadeIn">
                             <div>
-                              <Label className="text-[10px] text-zinc-500">Feet</Label>
                               <Input
                                 type="number"
                                 min={2}
                                 max={8}
-                                placeholder="e.g. 5"
+                                placeholder="Feet"
                                 value={watch("height") ? Math.floor(Number(watch("height")) / 12) : ""}
                                 onChange={(e) => {
                                   const feet = Number(e.target.value);
                                   const inches = Number(watch("height")) % 12 || 0;
                                   setValue("height", feet * 12 + inches);
                                 }}
+                                className="text-xs font-mono font-bold"
                               />
                             </div>
                             <div>
-                              <Label className="text-[10px] text-zinc-500">Inches</Label>
                               <Input
                                 type="number"
                                 min={0}
                                 max={11}
-                                placeholder="e.g. 10"
+                                placeholder="Inches"
                                 value={watch("height") ? Math.round(Number(watch("height")) % 12) : ""}
                                 onChange={(e) => {
                                   const inches = Number(e.target.value);
                                   const feet = Math.floor(Number(watch("height")) / 12) || 5;
                                   setValue("height", feet * 12 + inches);
                                 }}
+                                className="text-xs font-mono font-bold"
                               />
                             </div>
                             <input type="hidden" {...register("height")} />
                           </div>
                         ) : (
-                          <div>
-                            <Label className="text-[10px] text-zinc-500">Value (cm)</Label>
-                            <Input
-                              id="height"
-                              type="number"
-                              min={20}
-                              max={300}
-                              {...register("height")}
-                              placeholder="e.g., 178"
-                            />
-                          </div>
+                          <Input
+                            id="height"
+                            type="number"
+                            min={20}
+                            max={300}
+                            {...register("height")}
+                            placeholder="e.g., 178"
+                            className="text-xs font-mono font-bold"
+                          />
                         )}
-                        {errors.height && <p className="mt-1 text-xs text-rose-300">{errors.height.message}</p>}
+                      </div>
+                      {errors.height && <p className="mt-1 text-xs text-rose-300">{errors.height.message}</p>}
+                    </div>
+                  </div>
+
+                  {/* AI Coach Toggle */}
+                  <div className="bg-zinc-950/20 dark:bg-zinc-950/50 p-4 border border-card-border rounded-2xl space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400">AI Coach Assistant</h3>
+                        <p className="text-[11px] text-zinc-500 leading-normal">
+                          Enable AI Coach to design personalized programs, write custom workout summaries, and answer training questions.
+                        </p>
+                      </div>
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setSetupAiCoach(!setupAiCoach)}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            setupAiCoach ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-800"
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out ${
+                              setupAiCoach ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
                       </div>
                     </div>
-
-                    <div>
-                      <Label htmlFor="weight">Weight ({selectedWeightUnit})</Label>
-                      <Input
-                        id="weight"
-                        type="number"
-                        min={20}
-                        max={1000}
-                        {...register("weight")}
-                        placeholder={selectedWeightUnit === "lbs" ? "e.g., 170" : "e.g., 78"}
-                      />
-                      {errors.weight && <p className="mt-1 text-xs text-rose-300">{errors.weight.message}</p>}
-                    </div>
+                    {setupAiCoach && (
+                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium animate-fadeIn">
+                        ✨ A dedicated setup step will be added to the end of your onboarding to connect your AI engine (Gemini, OpenAI, Claude, DeepSeek, or local Ollama/LM Studio).
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-[10px] text-zinc-500 italic mt-2 leading-relaxed">
@@ -872,7 +947,7 @@ export function Onboarding() {
                   Back
                 </Button>
               )}
-              {step < 4 ? (
+              {step < steps.length ? (
                 <Button
                   type="button"
                   variant="primary"

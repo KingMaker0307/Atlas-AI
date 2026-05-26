@@ -26,6 +26,7 @@ import {
   SkipForward,
   Info,
   Sparkles,
+  Bot,
   Target,
   Heart,
   Footprints,
@@ -619,15 +620,37 @@ export function WorkoutScreen() {
           <Button
             size="sm"
             variant="primary"
-            icon={<Plus size={16} />}
+            icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+            disabled={coachBusy}
             onClick={() => {
               setEditingWorkoutPlanId(null);
               setActiveSubScreen("workout-plan-builder");
             }}
           >
-            Create Plan
+            {coachBusy ? "Generating..." : "Create Plan"}
           </Button>
         </section>
+
+        {coachBusy && (
+          <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
+              <div className="flex-1">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Please wait, the AI Coach is designing your clinical-grade routines...</p>
+              </div>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
+              <motion.div
+                className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-400 rounded-full"
+                initial={{ left: "-100%" }}
+                animate={{ left: "100%" }}
+                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                style={{ position: "absolute", width: "50%" }}
+              />
+            </div>
+          </Card>
+        )}
 
         <Surface className="p-3.5 bg-emerald-950/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none">
           <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
