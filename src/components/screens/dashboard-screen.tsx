@@ -373,7 +373,7 @@ export function DashboardScreen() {
 
       {/* ─── GETTING STARTED CHECKLIST (FOR NEW USERS) ─── */}
       {isNewUser && (
-        <Card className="p-5 border border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-4">
+        <Card className="p-5 border border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-4 keep-dark">
           <div className="flex items-center gap-2 border-b border-white/5 pb-3 select-none">
             <Sparkles className="text-emerald-400 animate-pulse" size={18} />
             <h2 className="text-base font-bold text-white tracking-tight">Getting Started Guide</h2>
@@ -584,7 +584,7 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-emerald-950/20 relative shadow-xl overflow-hidden group">
+          <Card className="p-5 border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-emerald-950/20 relative shadow-xl overflow-hidden group keep-dark">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
             
@@ -615,7 +615,7 @@ export function DashboardScreen() {
                 </div>
                 <Button 
                   onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center gap-1.5 px-6 shadow-lg shadow-emerald-500/20 group-hover:scale-[1.02] transition-transform"
+                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
                 >
                   <Dumbbell size={16} />
                   Launch Workout Session
@@ -625,7 +625,7 @@ export function DashboardScreen() {
           </Card>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/20 bg-gradient-to-br from-zinc-900 to-violet-950/20 relative shadow-xl overflow-hidden group">
+          <Card className="p-5 border-violet-500/20 bg-gradient-to-br from-zinc-900 to-violet-950/20 relative shadow-xl overflow-hidden group keep-dark">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
             
@@ -679,7 +679,7 @@ export function DashboardScreen() {
                         setActiveSubScreen("workout-plan-detail");
                       }
                     }}
-                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 dark:bg-violet-600 dark:hover:bg-violet-500 text-white flex items-center justify-center gap-1.5 h-9 text-xs shadow-lg shadow-violet-600/25 transition-all"
+                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 dark:bg-violet-600 dark:hover:bg-violet-500 text-white flex items-center justify-center gap-1.5 h-9 text-xs shadow-[0_4px_14px_rgba(124,58,237,0.3)] transition-all"
                   >
                     <Activity size={14} />
                     Active Recovery
