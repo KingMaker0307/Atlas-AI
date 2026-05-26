@@ -102,11 +102,12 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
             <Input
               type="date"
               min={minDate}
-              className="mt-2"
+              className="mt-2 h-10 text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900/60 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3 focus:outline-none focus:border-emerald-500/70 focus:ring-1 focus:ring-emerald-500/30 transition-all [color-scheme:light] dark:[color-scheme:dark]"
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
             />
           </div>
+
 
           <div className="mb-4">
             <Label>Additional Details for AI</Label>

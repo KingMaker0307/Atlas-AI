@@ -1386,33 +1386,33 @@ export function SettingsScreen() {
                             className="overflow-hidden"
                           >
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs leading-normal select-none pt-2">
-                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
-                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
+                                <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
                               </div>
-                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
-                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                                <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {workouts.reduce((sum, w) => sum + w.exercises.reduce((es, e) => es + e.sets.filter(s => s.completed).length, 0), 0)}
                                 </span>
                               </div>
-                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
-                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
+                                <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
                               </div>
-                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
-                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
+                                <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
                               </div>
-                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
-                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                                <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {useAtlasStore.getState().apiCallCount || 0}
                                 </span>
                               </div>
-                              <div className="bg-zinc-900/50 p-3 rounded-xl border border-white/5">
+                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
-                                <span className="text-base font-black text-white font-mono mt-1.5 block leading-none">
+                                <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {(useAtlasStore.getState().tokenCount || 0).toLocaleString()}
                                 </span>
                               </div>
@@ -1424,16 +1424,16 @@ export function SettingsScreen() {
 
                     <div className="grid gap-3 md:grid-cols-2 pt-1 select-none">
                       {/* Notifications permission */}
-                      <Surface className="flex items-center justify-between gap-4 border border-zinc-800 bg-zinc-950/20 p-3.5 rounded-2xl shadow-xl">
+                      <Surface className="flex items-center justify-between gap-4 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/20 p-3.5 rounded-2xl shadow">
                         <div>
-                          <p className="font-bold text-white text-xs">App Notifications</p>
-                          <p className="text-[10px] text-zinc-500 mt-1 font-medium">State: <span className="font-mono text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
+                          <p className="font-bold text-zinc-900 dark:text-white text-xs">App Notifications</p>
+                          <p className="text-[10px] text-zinc-500 mt-1 font-medium">State: <span className="font-mono text-zinc-600 dark:text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
                         </div>
                         <Button
                           size="icon"
                           variant="secondary"
                           aria-label="Enable notifications"
-                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 bg-zinc-900 border border-zinc-800"
+                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
                           onClick={async () => {
                             if (!("Notification" in window)) {
                               setNotificationStatus("Unsupported");

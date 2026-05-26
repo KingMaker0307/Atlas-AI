@@ -27,6 +27,7 @@ import {
   TrendingUp,
   BrainCircuit,
   Settings,
+  AlertTriangle,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ import {
 } from "@/lib/progression/engine";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { parseAiWorkoutPlan } from "@/lib/ai/parser";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { UserProfile, RecoveryLog } from "@/types/domain";
 import { createId } from "@/lib/id";
@@ -86,6 +87,25 @@ export function DashboardScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
   const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
+  const [showAiErrorModal, setShowAiErrorModal] = useState(false);
+  const [aiErrorMessage, setAiErrorMessage] = useState("");
+
+  // Detect when AI generation finishes with an error
+  const prevCoachBusy = useRef(false);
+  useEffect(() => {
+    if (prevCoachBusy.current && !coachBusy) {
+      // Generation just finished — check if last message is an error
+      const lastMsg = aiMessages.at(-1);
+      if (lastMsg?.role === "assistant" && lastMsg.content.includes("**Error:**")) {
+        // Extract just the error detail after "**Error:**"
+        const parts = lastMsg.content.split("**Error:**");
+        setAiErrorMessage(parts.length > 1 ? parts[1].trim() : lastMsg.content);
+        setShowAiErrorModal(true);
+      }
+    }
+    prevCoachBusy.current = coachBusy;
+  }, [coachBusy, aiMessages]);
+
 
   // Interactive Metrics Drawer State
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
@@ -468,7 +488,7 @@ export function DashboardScreen() {
 
       {/* ─── GETTING STARTED CHECKLIST (FOR NEW USERS) ─── */}
       {isNewUser && (
-        <Card className="p-5 border border-emerald-500/20 bg-card dark:bg-gradient-to-br dark:from-zinc-900 dark:to-zinc-950/40 shadow-xl space-y-4">
+        <Card className="p-5 border border-emerald-500/20 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-3 select-none">
             <Sparkles className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={18} />
             <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">Getting Started Guide</h2>
@@ -1373,7 +1393,77 @@ export function DashboardScreen() {
         </div>
       )}
 
+      {/* \u2500\u2500\u2500 AI PLAN GENERATION ERROR MODAL \u2500\u2500\u2500 */}
+      {showAiErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
+          <Card className="w-full max-w-md p-6 space-y-4 relative border border-rose-500/30 bg-card shadow-2xl">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2.5 right-2.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              onClick={() => setShowAiErrorModal(false)}
+            >
+              <X size={20} />
+            </Button>
+
+            {/* Header */}
+            <div className="flex items-start gap-3.5">
+              <div className="shrink-0 h-11 w-11 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
+                <AlertTriangle className="text-rose-500 dark:text-rose-400" size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
+              </div>
+            </div>
+
+            {/* Error detail */}
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/[0.07] p-3.5 space-y-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
+                {aiErrorMessage || "An unknown error occurred communicating with the AI provider."}
+              </p>
+            </div>
+
+            {/* Tips */}
+            <div className="space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+              <p className="font-semibold text-zinc-700 dark:text-zinc-300">Common causes:</p>
+              <ul className="list-disc list-inside space-y-1 leading-relaxed">
+                <li>Invalid or expired API key</li>
+                <li>No active AI provider configured</li>
+                <li>Network connection issue or provider outage</li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="secondary"
+                onClick={() => setShowAiErrorModal(false)}
+                className="flex-1 text-xs font-bold"
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowAiErrorModal(false);
+                  setActiveTab("settings");
+                  setActiveSettingsTab?.("ai");
+                }}
+                className="flex-1 text-xs font-bold"
+              >
+                <Settings size={14} className="mr-1.5" />
+                Check AI Settings
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {showCreatePlanModal && (
+
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-md p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
             <Button

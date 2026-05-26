@@ -187,11 +187,9 @@ function isValidSnapshot(data: any): data is StoredSnapshot {
 }
 
 function snapshotFromState(state: AtlasState): StoredSnapshot {
-  const providersWithoutApiKey = state.aiProviders.map(p => {
-    const { apiKey, ...rest } = p;
-    return rest;
-  });
-
+  // API keys are already AES-256-GCM encrypted with a device-local secret (localStorage),
+  // so it is safe to persist them in IndexedDB. Persisting them prevents users from having
+  // to re-enter their key after every page reload or new deployment.
   return {
     profile: state.profile,
     workouts: state.workouts,
@@ -199,7 +197,7 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     recoveryLogs: state.recoveryLogs,
     bodyMetrics: state.bodyMetrics,
     aiMessages: state.aiMessages,
-    aiProviders: providersWithoutApiKey, // Use providers without API key
+    aiProviders: state.aiProviders, // Persist encrypted API keys — safe because they are AES-GCM encrypted
     activeProviderId: state.activeProviderId,
     workoutPlans: state.workoutPlans,
     exercises: state.exercises,
