@@ -418,7 +418,7 @@ export function DashboardScreen() {
             <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
             <div className="flex-1">
               <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Please wait, the AI Coach is designing your clinical-grade routines...</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
             </div>
           </div>
           <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
@@ -476,7 +476,7 @@ export function DashboardScreen() {
                         type="button"
                         onClick={() => setShowCreatePlanModal(true)}
                         disabled={coachBusy}
-                        className="text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-850 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs font-bold text-zinc-800 dark:text-zinc-200 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Create Plan
                       </button>
@@ -1134,7 +1134,7 @@ export function DashboardScreen() {
                       <span>Weekly Routines Progress</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-zinc-850 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
                         style={{ width: `${progressPercent}%` }} 
@@ -1364,7 +1364,8 @@ export function DashboardScreen() {
                   void handleLoadSeedPlan();
                   setShowCreatePlanModal(false);
                 }}
-                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group"
+                disabled={coachBusy}
+                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 shrink-0">
                   <ClipboardList size={18} />
@@ -1385,9 +1386,10 @@ export function DashboardScreen() {
                   handleCreateManualPlan();
                   setShowCreatePlanModal(false);
                 }}
-                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group"
+                disabled={coachBusy}
+                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-450 shrink-0">
+                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
                   <Plus size={18} />
                 </div>
                 <div>
@@ -1406,9 +1408,10 @@ export function DashboardScreen() {
                   handleGenerateAiPlan();
                   setShowCreatePlanModal(false);
                 }}
-                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group"
+                disabled={coachBusy}
+                className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-450 shrink-0">
+                <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-455 shrink-0">
                   <Bot size={18} />
                 </div>
                 <div>

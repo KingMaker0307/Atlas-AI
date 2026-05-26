@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   Sparkles,
   Lock,
+  Dumbbell,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -379,15 +380,22 @@ export function SettingsScreen() {
       const injuries = draftProfile.injuries || "";
       const duration = Number(draftProfile.workoutDuration);
 
+      const name = draftProfile.name || "";
+      const daysPerWeek = Number(draftProfile.daysPerWeek);
+      const goal = draftProfile.goal || "";
+
       if (
+        (draftProfile.name !== undefined && (name.trim().length === 0 || name.length > 30)) ||
         isNaN(age) || age < 13 || age > 120 ||
         isNaN(weight) || weight < 20 || weight > 1000 ||
         isNaN(height) || height < 20 || height > 300 ||
         (draftProfile.workoutDuration !== undefined && (isNaN(duration) || duration < 15 || duration > 180)) ||
-        diet.length > 200 || injuries.length > 100
+        (draftProfile.daysPerWeek !== undefined && (isNaN(daysPerWeek) || daysPerWeek < 1 || daysPerWeek > 7)) ||
+        diet.length > 200 || injuries.length > 100 ||
+        goal.length > 200
       ) {
         setSaveIndicator("error");
-        setProfileError("Invalid biometrics values.");
+        setProfileError("Invalid profile values.");
         return;
       }
 
@@ -397,7 +405,7 @@ export function SettingsScreen() {
         setSaveIndicator("saved");
       } catch (err) {
         setSaveIndicator("error");
-        setProfileError("Failed to auto-save biometrics.");
+        setProfileError("Failed to auto-save profile.");
       }
     }, 1000);
 
@@ -787,6 +795,19 @@ export function SettingsScreen() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="sm:col-span-2">
+                        <Field label="Preferred Name">
+                          <Input
+                            type="text"
+                            maxLength={30}
+                            value={draftProfile.name ?? ""}
+                            onChange={(e) => handleProfileChange("name", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                            placeholder="e.g. Jordan"
+                          />
+                        </Field>
+                      </div>
+
                       <Field label="Age">
                         <Input
                           type="number"
@@ -913,6 +934,94 @@ export function SettingsScreen() {
                       </div>
                     </div>
                     {profileError && <p className="text-xs text-rose-400 font-medium font-mono">{profileError}</p>}
+                  </Card>
+
+                  {/* Training Configuration Card */}
+                  <Card className="p-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-5">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <Dumbbell className="text-emerald-400" size={18} />
+                        <h2 className="text-base font-bold text-white tracking-tight">Training Configuration</h2>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Field label="Workout Goal" hint="Custom focus target used by the AI coach to generate and adapt your routine">
+                        <Input
+                          value={draftProfile.goal ?? draftProfile.customGoal ?? ""}
+                          maxLength={120}
+                          onChange={(e) => {
+                            handleProfileChange("goal", e.target.value);
+                            handleProfileChange("customGoal", e.target.value);
+                          }}
+                          placeholder="e.g. Build muscle size, increase bench press, run twice a week"
+                          className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                        />
+                      </Field>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <Field label="Training Methodology">
+                          <Select
+                            value={draftProfile.trainingStyle ?? "general"}
+                            onChange={(e) => handleProfileChange("trainingStyle", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                          >
+                            <option value="general">General Fitness</option>
+                            <option value="strength">Strength Focus</option>
+                            <option value="hypertrophy">Hypertrophy (Size)</option>
+                            <option value="powerbuilding">Powerbuilding</option>
+                            <option value="endurance">Endurance</option>
+                          </Select>
+                        </Field>
+
+                        <Field label="Weekly Frequency (Days/Week)">
+                          <Input
+                            type="number"
+                            min={1}
+                            max={7}
+                            value={draftProfile.daysPerWeek ?? ""}
+                            onChange={(e) => handleProfileChange("daysPerWeek", e.target.value ? Number(e.target.value) : undefined)}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          />
+                        </Field>
+
+                        <Field label="Equipment Available">
+                          <Select
+                            value={draftProfile.equipment ?? "full gym"}
+                            onChange={(e) => handleProfileChange("equipment", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                          >
+                            <option value="full gym">Full Gym</option>
+                            <option value="home gym">Home Gym</option>
+                            <option value="bodyweight">Bodyweight Only</option>
+                          </Select>
+                        </Field>
+
+                        <Field label="Lifting Experience">
+                          <Select
+                            value={draftProfile.experience ?? "intermediate"}
+                            onChange={(e) => handleProfileChange("experience", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                          >
+                            <option value="beginner">Beginner (Under 1 yr)</option>
+                            <option value="intermediate">Intermediate (1-3 yrs)</option>
+                            <option value="advanced">Advanced (3+ yrs)</option>
+                          </Select>
+                        </Field>
+
+                        <Field label="Body Type">
+                          <Select
+                            value={draftProfile.bodyType ?? "mesomorph"}
+                            onChange={(e) => handleProfileChange("bodyType", e.target.value)}
+                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                          >
+                            <option value="ectomorph">Ectomorph (Naturally lean/narrow)</option>
+                            <option value="mesomorph">Mesomorph (Naturally athletic/muscular)</option>
+                            <option value="endomorph">Endomorph (Broad/sturdy frame)</option>
+                          </Select>
+                        </Field>
+                      </div>
+                    </div>
                   </Card>
 
                   {/* Dynamic Health Widgets Panel */}

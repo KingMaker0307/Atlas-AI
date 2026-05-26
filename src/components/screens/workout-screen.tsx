@@ -637,7 +637,7 @@ export function WorkoutScreen() {
               <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
               <div className="flex-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Please wait, the AI Coach is designing your clinical-grade routines...</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
               </div>
             </div>
             <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
@@ -805,7 +805,7 @@ export function WorkoutScreen() {
                         <span>Weekly Routines Progress</span>
                         <span className="font-bold text-emerald-350">{completedCount}/{routinesCount}</span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-zinc-850 overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
                           style={{ width: `${progressPercent}%` }} 
@@ -1990,7 +1990,7 @@ export function WorkoutScreen() {
                                   </div>
                                   <div className="flex flex-wrap gap-1">
                                     {platesList.map((plate, idx) => (
-                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-zinc-850 border border-zinc-700 text-[10px] font-bold text-white font-mono">
+                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-white font-mono">
                                         {plate}
                                       </span>
                                     ))}

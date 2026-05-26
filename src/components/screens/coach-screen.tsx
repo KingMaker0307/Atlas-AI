@@ -23,8 +23,10 @@ export function CoachScreen() {
   
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).coachPrompt) {
-      setDraft((window as any).coachPrompt);
+      const prompt = (window as any).coachPrompt;
       (window as any).coachPrompt = undefined;
+      setDraft("");
+      void sendCoachMessage(prompt);
     }
   }, []);
 
@@ -137,19 +139,24 @@ export function CoachScreen() {
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-300 text-zinc-950">
                   <Bot size={16} />
                 </div>
-                <Surface className="rounded-tl-sm border-emerald-300/20 bg-emerald-300/5 p-3">
-                  <div className="flex gap-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50" />
-                    <span
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
-                      style={{ animationDelay: "150ms" }}
-                    />
-                    <span
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
-                      style={{ animationDelay: "300ms" }}
-                    />
-                  </div>
-                </Surface>
+                <div className="space-y-1.5 max-w-[85%]">
+                  <Surface className="rounded-tl-sm border-emerald-300/20 bg-emerald-300/5 p-3">
+                    <div className="flex gap-1">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50" />
+                      <span
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
+                        style={{ animationDelay: "150ms" }}
+                      />
+                      <span
+                        className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-300/50"
+                        style={{ animationDelay: "300ms" }}
+                      />
+                    </div>
+                  </Surface>
+                  <p className="text-[10px] text-zinc-500 italic px-1 animate-pulse">
+                    Hang tight! Something awesome is cooking from your AI Coach...
+                  </p>
+                </div>
               </div>
             ) : null}
             <div ref={endRef} />
