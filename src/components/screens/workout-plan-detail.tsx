@@ -141,7 +141,7 @@ export function WorkoutPlanDetailScreen() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white leading-tight">{plan.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">{plan.name}</h1>
               <span title="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
                 <Info 
                   size={15} 

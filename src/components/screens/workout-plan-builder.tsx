@@ -649,7 +649,7 @@ export function WorkoutPlanBuilderScreen() {
             <Button variant="ghost" size="icon" onClick={() => setActiveSubScreen(null)}>
               <ArrowLeft size={20} />
             </Button>
-            <h1 className="text-2xl font-semibold tracking-normal text-white">Create Workout Plan</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-normal text-white">Create Workout Plan</h1>
           </section>
 
           <p className="text-sm text-zinc-400 leading-relaxed">

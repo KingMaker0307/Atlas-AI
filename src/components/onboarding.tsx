@@ -260,7 +260,7 @@ export function Onboarding() {
           </div>
           <div>
             <p className="text-xs font-semibold text-emerald-400 uppercase tracking-widest">Local-first Fitness OS</p>
-            <h1 className="text-2xl font-bold tracking-tight">Atlas AI Coach</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Atlas AI Coach</h1>
           </div>
         </div>
 

@@ -284,7 +284,7 @@ function OfflineBlockerScreen() {
           <WifiOff size={32} />
         </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Internet Connection Required</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Internet Connection Required</h1>
           <p className="text-sm text-zinc-500 leading-relaxed">
             Atlas AI Coach is a secure web-based application and requires an active internet connection to synchronize your training profile and function properly.
           </p>
@@ -308,7 +308,7 @@ function BlockedBlockerScreen() {
           <ShieldAlert size={32} />
         </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Access Denied</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Access Denied</h1>
           <p className="text-sm text-zinc-500 leading-relaxed">
             Your profile has been suspended or blocked by the administrator. Please contact support if you believe this is an error.
           </p>

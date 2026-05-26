@@ -35,7 +35,7 @@ export function MetricCard({
         <span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500">{label}</span>
         {icon ? <span className="text-current">{icon}</span> : null}
       </div>
-      <div className="mt-3 text-2xl font-semibold tracking-normal text-white">{value}</div>
+      <div className="mt-3 text-xl sm:text-2xl font-semibold tracking-normal text-white">{value}</div>
       {detail ? <div className="mt-1 text-sm text-zinc-400">{detail}</div> : null}
     </Surface>
   );

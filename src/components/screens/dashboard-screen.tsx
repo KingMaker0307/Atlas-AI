@@ -420,7 +420,7 @@ export function DashboardScreen() {
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   Today's Scheduled Target · {todayRoutine.day}
                 </span>
-                <h2 className="text-2xl font-black text-white">{todayRoutine.name}</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-white">{todayRoutine.name}</h2>
                 <p className="text-xs text-zinc-300 max-w-md leading-relaxed">
                   {todayRoutine.focus}
                 </p>
@@ -461,7 +461,7 @@ export function DashboardScreen() {
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-400 border border-violet-500/20">
                   Rest & Recovery Cycle · {todayDayName}
                 </span>
-                <h2 className="text-2xl font-black text-white">Active Muscle Restoration</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-white">Active Muscle Restoration</h2>
                 <p className="text-xs text-zinc-300 max-w-md leading-relaxed">
                   Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
                 </p>
