@@ -1283,7 +1283,7 @@ export function DashboardScreen() {
                             nonJson = "";
                           }
                           return nonJson ? (
-                            <ReactMarkdown className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-450">
+                            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-400">
                               {nonJson}
                             </ReactMarkdown>
                           ) : null;

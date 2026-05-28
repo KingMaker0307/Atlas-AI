@@ -417,3 +417,201 @@ textarea {
   color: var(--foreground) !important;
 }
 
+/* ─── LIGHT MODE TRANSLUCENT OVERLAYS AND BORDER CORRECTIONS ─── */
+.light .bg-white\/5:not(.keep-dark),
+.light .bg-white\/\[0\.05\]:not(.keep-dark),
+.light .bg-white\/\[0\.04\]:not(.keep-dark),
+.light .bg-white\/\[0\.03\]:not(.keep-dark),
+.light .bg-white\/\[0\.02\]:not(.keep-dark),
+.light .bg-white\/\[0\.01\]:not(.keep-dark),
+.light .bg-white\/\[0\.045\]:not(.keep-dark) {
+  background-color: rgba(9, 9, 11, 0.02) !important;
+}
+
+.light .bg-white\/10:not(.keep-dark),
+.light .bg-white\/\[0\.1\]:not(.keep-dark) {
+  background-color: rgba(9, 9, 11, 0.05) !important;
+}
+
+.light .bg-white\/20:not(.keep-dark),
+.light .bg-white\/\[0\.2\]:not(.keep-dark) {
+  background-color: rgba(9, 9, 11, 0.1) !important;
+}
+
+.light .border-white\/5:not(.keep-dark),
+.light .border-white\/10:not(.keep-dark),
+.light .border-white\/20:not(.keep-dark),
+.light .border-white\/\[0\.05\]:not(.keep-dark),
+.light .border-white\/\[0\.1\]:not(.keep-dark),
+.light .border-white\/\[0\.2\]:not(.keep-dark) {
+  border-color: rgba(9, 9, 11, 0.08) !important;
+}
+
+/* Ensure cards inside dark modal overlays are solid white in light mode to prevent transparency mud */
+.light [class*="bg-black/"] .bg-card,
+.light .fixed.inset-0 .bg-card {
+  background-color: #ffffff !important;
+  border-color: rgba(9, 9, 11, 0.08) !important;
+}
+
+/* Tooltip white background override in light mode */
+.light .bg-zinc-955,
+.light .bg-zinc-950\/95 {
+  background-color: #ffffff !important;
+}
+
+/* ─── TYPO COLOR DEFINITIONS & COMPATIBILITY STYLING ─── */
+.text-zinc-350,
+.text-zinc-355 {
+  color: #a1a1aa; /* zinc-400 */
+}
+.light .text-zinc-350,
+.light .text-zinc-355 {
+  color: #71717a; /* zinc-500 */
+}
+
+.text-zinc-450,
+.text-zinc-455 {
+  color: #94a3b8; /* zinc-400-ish */
+}
+.dark .text-zinc-450,
+.dark .text-zinc-455 {
+  color: #a1a1aa; /* zinc-400 */
+}
+.light .text-zinc-450,
+.light .text-zinc-455 {
+  color: #71717a; /* zinc-500 */
+}
+
+.text-zinc-550 {
+  color: #71717a; /* zinc-500 */
+}
+.light .text-zinc-550 {
+  color: #52525b; /* zinc-600 */
+}
+
+.text-zinc-650 {
+  color: #52525b; /* zinc-600 */
+}
+.light .text-zinc-650 {
+  color: #3f3f46; /* zinc-700 */
+}
+
+.text-zinc-955 {
+  color: #09090b; /* zinc-950 */
+}
+.dark .text-zinc-955 {
+  color: #f4f4f5; /* zinc-100 */
+}
+
+.text-emerald-450 {
+  color: #34d399; /* emerald-400 */
+}
+.light .text-emerald-450 {
+  color: #059669; /* emerald-600 */
+}
+
+.text-violet-455,
+.text-violet-450 {
+  color: #a78bfa; /* violet-400 */
+}
+.light .text-violet-455,
+.light .text-violet-450 {
+  color: #7c3aed; /* violet-600 */
+}
+
+.text-blue-455 {
+  color: #60a5fa; /* blue-400 */
+}
+.light .text-blue-455 {
+  color: #2563eb; /* blue-600 */
+}
+
+.text-amber-455,
+.text-amber-450 {
+  color: #fbbf24; /* amber-400 */
+}
+.light .text-amber-455,
+.light .text-amber-450 {
+  color: #d97706; /* amber-600 */
+}
+
+.bg-emerald-955,
+.bg-emerald-955\/10 {
+  background-color: rgba(6, 78, 59, 0.1);
+}
+.light .bg-emerald-955,
+.light .bg-emerald-955\/10 {
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.bg-zinc-150 {
+  background-color: #f4f4f5; /* zinc-100 */
+}
+.dark .bg-zinc-150 {
+  background-color: #09090b; /* zinc-950 */
+}
+
+.border-zinc-805 {
+  border-color: #27272a; /* zinc-800 */
+}
+.light .border-zinc-805 {
+  border-color: rgba(9, 9, 11, 0.08);
+}
+
+.border-zinc-850 {
+  border-color: #27272a; /* zinc-800 */
+}
+.light .border-zinc-850 {
+  border-color: rgba(9, 9, 11, 0.08);
+}
+
+/* ─── ALERT / BANNER BACKGROUNDS AND TEXT CONTRAST IN LIGHT MODE ─── */
+.light .bg-emerald-950\/10,
+.light .bg-emerald-955\/10,
+.light .bg-emerald-500\/5,
+.light .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+}
+
+.light .bg-rose-500\/10,
+.light .bg-rose-500\/5,
+.light .bg-red-955\/10,
+.light .bg-red-950\/20 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.light .bg-amber-500\/10,
+.light .bg-amber-500\/5 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+}
+
+.light .bg-violet-500\/10,
+.light .bg-violet-500\/5,
+.light .bg-violet-950\/15 {
+  background-color: rgba(139, 92, 246, 0.08) !important;
+}
+
+.light .text-emerald-200,
+.light .text-emerald-300,
+.light .text-emerald-450 {
+  color: #047857 !important; /* emerald-700 */
+}
+
+.light .text-rose-200,
+.light .text-rose-300 {
+  color: #be123c !important; /* rose-700 */
+}
+
+.light .text-amber-200,
+.light .text-amber-300 {
+  color: #b45309 !important; /* amber-700 */
+}
+
+.light .text-violet-200,
+.light .text-violet-300,
+.light .text-violet-455,
+.light .text-violet-450 {
+  color: #6d28d9 !important; /* violet-700 */
+}
+

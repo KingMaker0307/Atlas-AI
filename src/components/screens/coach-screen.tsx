@@ -96,14 +96,14 @@ export function CoachScreen() {
                           }
                           return nonJson ? (
                             <ReactMarkdown
-                              className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-300 max-w-none text-xs"
+                              className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:prose-a:text-emerald-300 max-w-none text-xs"
                             >
                               {nonJson}
                             </ReactMarkdown>
                           ) : null;
                         })()}
                         <div className="border-t border-emerald-300/10 pt-3">
-                          <p className="font-medium text-emerald-200 mb-2">
+                          <p className="font-medium text-emerald-250 dark:text-emerald-200 mb-2">
                             I've generated a new workout plan for you.
                           </p>
                           <Button
@@ -125,7 +125,7 @@ export function CoachScreen() {
                       </div>
                     ) : (
                       <ReactMarkdown
-                        className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-300 prose-pre:bg-black/50 max-w-none"
+                        className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:prose-a:text-emerald-300 prose-pre:bg-zinc-100 dark:prose-pre:bg-black/50 max-w-none"
                       >
                         {message.content}
                       </ReactMarkdown>
