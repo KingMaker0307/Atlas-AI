@@ -238,7 +238,6 @@ export function WelcomeScreen() {
     setSubmitError(null);
 
     try {
-      setStartupChoice("local");
       await completeOnboarding({
         id: createId("user"),
         name: name.trim(),
@@ -260,6 +259,7 @@ export function WelcomeScreen() {
         workoutDuration: 60,
         createdAt: new Date().toISOString(),
       });
+      setStartupChoice("local");
     } catch (e: any) {
       console.error("Onboarding setup failed:", e);
       setSubmitError(e.message || "Failed to finalize profile. Please check API key or server configuration.");

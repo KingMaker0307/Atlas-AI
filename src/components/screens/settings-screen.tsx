@@ -226,6 +226,8 @@ export function SettingsScreen() {
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
   const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
+  const apiCallCount = useAtlasStore((state) => state.apiCallCount);
+  const tokenCount = useAtlasStore((state) => state.tokenCount);
 
   // High-density preferences active tab state (Backups and System are unified)
   const activeSettingsTab = useAtlasStore((state) => state.activeSettingsTab);
@@ -255,6 +257,14 @@ export function SettingsScreen() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [notificationStatus, setNotificationStatus] = useState("Not enabled");
   const [showDbStats, setShowDbStats] = useState(false);
+
+  const [prevDraftId, setPrevDraftId] = useState<string | null>(null);
+  useEffect(() => {
+    if (draft && draft.id !== prevDraftId) {
+      setPrevDraftId(draft.id);
+      setApiKey(draft.apiKey ? "••••••••••••••••" : "");
+    }
+  }, [draft, prevDraftId]);
 
   // Initialize selected type and draft based on active provider
   useEffect(() => {
@@ -420,7 +430,6 @@ export function SettingsScreen() {
     } else {
       setDraft(defaultDraftForType(type));
     }
-    setApiKey("");
     setAiError(null);
   };
 
@@ -474,8 +483,12 @@ export function SettingsScreen() {
       contextLength: 8000,
       streaming: true,
     };
-    await saveProvider(updatedDraft, apiKey);
+    const keyToPass = apiKey === "••••••••••••••••" ? undefined : apiKey;
+    await saveProvider(updatedDraft, keyToPass);
     setDraft(updatedDraft);
+    if (apiKey !== "") {
+      setApiKey("••••••••••••••••");
+    }
   };
 
   const handleTestProvider = async () => {
@@ -505,8 +518,12 @@ export function SettingsScreen() {
       contextLength: 8000,
       streaming: true,
     };
-    await saveProvider(updatedDraft, apiKey);
+    const keyToPass = apiKey === "••••••••••••••••" ? undefined : apiKey;
+    await saveProvider(updatedDraft, keyToPass);
     setDraft(updatedDraft);
+    if (apiKey !== "") {
+      setApiKey("••••••••••••••••");
+    }
     await testProvider(updatedDraft.id);
   };
 
@@ -1407,13 +1424,13 @@ export function SettingsScreen() {
                               <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
-                                  {useAtlasStore.getState().apiCallCount || 0}
+                                  {apiCallCount || 0}
                                 </span>
                               </div>
                               <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
-                                  {(useAtlasStore.getState().tokenCount || 0).toLocaleString()}
+                                  {(tokenCount || 0).toLocaleString()}
                                 </span>
                               </div>
                             </div>

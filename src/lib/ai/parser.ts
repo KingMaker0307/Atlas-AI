@@ -4,8 +4,39 @@ interface AiWorkoutPlan extends WorkoutPlan {
   exercises: Exercise[];
 }
 
-function cleanJsonString(str: string): string {
-  return str
+export function cleanJsonString(str: string): string {
+  let inString = false;
+  let escaped = false;
+  let processedStr = "";
+  
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (!inString) {
+      if (char === '"') {
+        inString = true;
+      }
+      processedStr += char;
+    } else {
+      if (escaped) {
+        escaped = false;
+        processedStr += char;
+      } else if (char === '\\') {
+        escaped = true;
+        processedStr += char;
+      } else if (char === '"') {
+        inString = false;
+        processedStr += char;
+      } else if (char === '\n') {
+        processedStr += '\\n';
+      } else if (char === '\r') {
+        processedStr += '\\r';
+      } else {
+        processedStr += char;
+      }
+    }
+  }
+
+  return processedStr
     // Remove single-line comments only if they are not preceded by ':' (to avoid stripping URLs)
     .replace(/(?<!:)\/\/.*$/gm, "")
     // Remove multi-line comments

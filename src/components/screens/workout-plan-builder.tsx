@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useAtlasStore, assignRoutinesToDays } from "@/store/useAtlasStore";
-import { useState, useMemo, type FC } from "react";
+import { useState, useMemo, useRef, useEffect, type FC } from "react";
 import { AiPromptCard } from "@/components/ai-prompt-card";
 import type { WorkoutPlan } from "@/types/domain";
 import { createId } from "@/lib/id";
@@ -35,6 +35,8 @@ import {
   Sparkles,
   Check,
   ListChecks,
+  AlertTriangle,
+  Settings,
 } from "lucide-react";
 
 // ─── Sub-views ───────────────────────────────────────────────
@@ -299,12 +301,31 @@ export function WorkoutPlanBuilderScreen() {
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
+  const aiMessages = useAtlasStore((state) => state.aiMessages);
+  const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
 
   // ── View state ──
   const [view, setView] = useState<BuilderView>(editingWorkoutPlanId ? "manual-form" : "choose-method");
   const [selectedTemplate, setSelectedTemplate] = useState<PlanTemplate | null>(null);
   const [showAiCard, setShowAiCard] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAiErrorModal, setShowAiErrorModal] = useState(false);
+  const [aiErrorMessage, setAiErrorMessage] = useState("");
+
+  // Detect when AI generation finishes with an error
+  const prevCoachBusy = useRef(false);
+  useEffect(() => {
+    if (prevCoachBusy.current && !coachBusy) {
+      const lastMsg = aiMessages.at(-1);
+      if (lastMsg?.role === "assistant" && lastMsg.content.includes("**Error:**")) {
+        const parts = lastMsg.content.split("**Error:**");
+        setAiErrorMessage(parts.length > 1 ? parts[1].trim() : lastMsg.content);
+        setShowAiErrorModal(true);
+        setShowAiCard(false);
+      }
+    }
+    prevCoachBusy.current = coachBusy;
+  }, [coachBusy, aiMessages]);
 
   // Start Day Selection Popup State
   const [showStartDayModal, setShowStartDayModal] = useState(false);
@@ -557,7 +578,9 @@ export function WorkoutPlanBuilderScreen() {
        - If the goal is NOT realistically achievable within this timeframe (e.g. losing 15kg in 2 weeks, or building 10kg of muscle in a month), or if the target date is less than 7 days in the future, you MUST write a prominent and friendly warning explanation at the very beginning of your message (before the JSON block), warning them about the risks/unrealistic nature of the timeline, and giving clear suggestions to use as feedback to change the target date or give the normal aggressive training state understanding.
        - If the goal is achievable, write a brief, encouraging confirmation.
     
-    2. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
+    2. YOU MUST INCLUDE the complete Exercise profile details inside the \`exercises\` JSON array for EVERY single exerciseId referenced in the \`routines\` array. Under no circumstances should you reference an exercise ID in a routine without including its full biomechanical definition in the \`exercises\` array.
+    
+    3. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
     {
       "id": "generated-plan-id",
       "name": "Plan Name",
@@ -1107,6 +1130,76 @@ export function WorkoutPlanBuilderScreen() {
               </Button>
               <Button variant="primary" onClick={handleConfirmStartDay} className="flex-1">
                 Confirm &amp; Create
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ─── AI PLAN GENERATION ERROR MODAL ─── */}
+      {showAiErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
+          <Card className="w-full max-w-md p-6 space-y-4 relative border border-rose-500/30 bg-card shadow-2xl">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2.5 right-2.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+              onClick={() => setShowAiErrorModal(false)}
+            >
+              <X size={20} />
+            </Button>
+
+            {/* Header */}
+            <div className="flex items-start gap-3.5">
+              <div className="shrink-0 h-11 w-11 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
+                <AlertTriangle className="text-rose-500 dark:text-rose-400" size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
+              </div>
+            </div>
+
+            {/* Error detail */}
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/[0.07] p-3.5 space-y-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
+                {aiErrorMessage || "An unknown error occurred communicating with the AI provider."}
+              </p>
+            </div>
+
+            {/* Tips */}
+            <div className="space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+              <p className="font-semibold text-zinc-700 dark:text-zinc-300">Common causes:</p>
+              <ul className="list-disc list-inside space-y-1 leading-relaxed">
+                <li>Invalid or expired API key</li>
+                <li>No active AI provider configured</li>
+                <li>Network connection issue or provider outage</li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="secondary"
+                onClick={() => setShowAiErrorModal(false)}
+                className="flex-1 text-xs font-bold"
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowAiErrorModal(false);
+                  setActiveSubScreen(null);
+                  setActiveTab("settings");
+                  setActiveSettingsTab?.("ai");
+                }}
+                className="flex-1 text-xs font-bold"
+              >
+                <Settings size={14} className="mr-1.5" />
+                Check AI Settings
               </Button>
             </div>
           </Card>

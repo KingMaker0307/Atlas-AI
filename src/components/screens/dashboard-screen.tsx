@@ -529,7 +529,7 @@ export function DashboardScreen() {
                         type="button"
                         onClick={() => setShowCreatePlanModal(true)}
                         disabled={coachBusy}
-                        className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 border border-emerald-700 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Create Plan
                       </button>

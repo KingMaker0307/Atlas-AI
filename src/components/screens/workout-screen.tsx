@@ -581,7 +581,6 @@ export function WorkoutScreen() {
   };
 
   const handleFinishSessionConfirm = (fatigueRating: number, workoutNotes: string) => {
-    void finishWorkout(fatigueRating, workoutNotes); // Call finishWorkout here
     setFatigue(fatigueRating);
     setNotes(workoutNotes);
     setShowFinishSessionModal(false);
@@ -599,8 +598,12 @@ export function WorkoutScreen() {
     stress: number,
     readiness: number,
   ) => {
-    // logRecovery is handled within the PostWorkoutCheckinModal
-    // finishWorkout is already called in handleFinishSessionConfirm
+    void finishWorkout(fatigue, notes);
+    setShowPostWorkoutModal(false);
+  };
+
+  const handlePostWorkoutClose = () => {
+    void finishWorkout(fatigue, notes);
     setShowPostWorkoutModal(false);
   };
 
@@ -712,6 +715,7 @@ export function WorkoutScreen() {
             <Button
               className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center gap-1.5"
               variant="primary"
+              disabled={coachBusy}
               onClick={() => {
                 setEditingWorkoutPlanId(null);
                 setActiveSubScreen("workout-plan-builder");
@@ -2165,7 +2169,7 @@ export function WorkoutScreen() {
 
       <PostWorkoutCheckinModal
         isOpen={showPostWorkoutModal}
-        onClose={() => setShowPostWorkoutModal(false)}
+        onClose={handlePostWorkoutClose}
         onConfirm={handlePostWorkoutConfirm}
         workoutNotes={notes}
       />
