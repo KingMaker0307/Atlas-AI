@@ -312,22 +312,45 @@ export function SettingsScreen() {
     }
   }, [draft?.type, draft?.baseUrl]);
 
+  // Debounce raw apiKey input so we don't hit the provider API on every keystroke.
+  const [debouncedApiKey, setDebouncedApiKey] = useState(apiKey);
+  useEffect(() => {
+    // Masked placeholder: apply immediately (no need to wait, it won't change)
+    if (apiKey === "••••••••••••••••" || apiKey === "") {
+      setDebouncedApiKey(apiKey);
+      return;
+    }
+    const timer = setTimeout(() => setDebouncedApiKey(apiKey), 600);
+    return () => clearTimeout(timer);
+  }, [apiKey]);
+
+  // Narrow the dependency to only the fields that warrant a new model list fetch.
+  // Excluding lastStatus / lastError / lastTestedAt prevents the
+  // markProviderKeyStatus → providers update → draft update → re-fetch infinite loop.
+  const draftId = draft?.id;
+  const draftType = draft?.type;
+  const draftBaseUrl = draft?.baseUrl;
+  const draftModel = draft?.model;
+
   useEffect(() => {
     async function fetchModels() {
       if (!draft) return;
-      if (!apiKey && draft.type !== "ollama" && draft.type !== "lmstudio") {
+      if (!debouncedApiKey && draftType !== "ollama" && draftType !== "lmstudio") {
         setModelsError("Enter API key to load models");
         setModels([]);
         return;
       }
 
       // Short-circuit: if using the saved (masked) key that we've already confirmed
-      // is invalid, show the cached error without hitting the API again. This prevents
-      // an infinite loop: markProviderKeyStatus → providers update → draft update → re-fetch.
-      if (apiKey === "••••••••••••••••") {
-        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draft.id);
-        if (savedProvider?.lastStatus === "error") {
-          setModelsError(savedProvider.lastError ?? "API key is invalid");
+      // is invalid, show the cached error without hitting the API again.
+      if (debouncedApiKey === "••••••••••••••••") {
+        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draftId);
+        const isKnownBad =
+          draft.lastStatus === "error" || savedProvider?.lastStatus === "error";
+        if (isKnownBad) {
+          setModelsError(
+            draft.lastError ?? savedProvider?.lastError ?? "API key is invalid"
+          );
           setModels([]);
           return;
         }
@@ -337,8 +360,8 @@ export function SettingsScreen() {
       setModelsError(null);
       try {
         const adapter = getProviderAdapter(draft.type);
-        let actualApiKey = apiKey;
-        if (apiKey === "••••••••••••••••" && draft.apiKey) {
+        let actualApiKey = debouncedApiKey;
+        if (debouncedApiKey === "••••••••••••••••" && draft.apiKey) {
           try {
             actualApiKey = await decryptString(draft.apiKey);
           } catch (decErr) {
@@ -349,18 +372,21 @@ export function SettingsScreen() {
         const modelList = await adapter.listModels(draft, actualApiKey);
         setModels(modelList.map((m) => m.id));
         // Key is valid — clear any error status on the saved provider
-        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draft.id);
+        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draftId);
         if (savedProvider && savedProvider.lastStatus === "error") {
           await markProviderKeyStatus(savedProvider.id, "ok");
         }
       } catch (error: any) {
-        console.error("Failed to fetch models:", error);
         setModelsError(error.message || "Failed to load models");
         setModels([]);
-        // Mark the saved provider as invalid if the error looks like an auth failure
-        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draft.id);
-        const isAuthError = error?.status === 401 || error?.status === 403 ||
-          /invalid.*key|incorrect.*key|api key|unauthorized|forbidden/i.test(error?.message ?? "");
+        // Mark the saved provider as invalid only if not already marked
+        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draftId);
+        const isAuthError =
+          error?.status === 401 ||
+          error?.status === 403 ||
+          /invalid.*key|incorrect.*key|api key|unauthorized|forbidden/i.test(
+            error?.message ?? ""
+          );
         if (savedProvider && isAuthError && savedProvider.lastStatus !== "error") {
           await markProviderKeyStatus(savedProvider.id, "error", error.message || "Invalid API key");
         }
@@ -369,7 +395,8 @@ export function SettingsScreen() {
       }
     }
     void fetchModels();
-  }, [draft, apiKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftId, draftType, draftBaseUrl, draftModel, debouncedApiKey]);
 
   const handleWeightUnitChange = async (unit: WeightUnit) => {
     const currentUnit = draftProfile.weightUnit ?? weightUnit;
