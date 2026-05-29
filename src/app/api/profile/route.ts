@@ -176,11 +176,32 @@ async function getDriveFileContent(accessToken: string, fileId: string): Promise
   return res.json();
 }
 
+// Retry a Drive fetch with exponential backoff for transient errors (503, 429, 500)
+async function withDriveRetry<T>(fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
+  const TRANSIENT = new Set([429, 500, 503]);
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      // Only retry on transient status codes
+      const isTransient =
+        TRANSIENT.has(err?.status) ||
+        /transient|temporarily|rate.?limit|service.?unavailable/i.test(err?.message ?? "");
+      if (!isTransient || attempt === maxAttempts - 1) throw err;
+      // Exponential backoff: 1s, 2s, 4s
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    }
+  }
+  throw lastError;
+}
+
 // Create a new file in Google Drive folder
 async function createDriveFile(accessToken: string, userId: string, fileName: string, content: any): Promise<void> {
   const url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true";
   const boundary = "atlas_sync_boundary_" + Date.now();
-  
+
   const metadata = JSON.stringify({
     name: fileName,
     parents: [FOLDER_ID],
@@ -198,37 +219,43 @@ async function createDriveFile(accessToken: string, userId: string, fileName: st
     `--${boundary}--`,
   ].join("\r\n");
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": `multipart/related; boundary=${boundary}`,
-    },
-    body,
+  await withDriveRetry(async () => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      const err = new Error(`Failed to create Drive file: ${errText}`) as any;
+      err.status = res.status;
+      throw err;
+    }
   });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Failed to create Drive file: ${errText}`);
-  }
 }
 
 // Update file in Google Drive folder
 async function updateDriveFile(accessToken: string, fileId: string, content: any): Promise<void> {
   const url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&supportsAllDrives=true`;
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(content, null, 2),
+  await withDriveRetry(async () => {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(content, null, 2),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      const err = new Error(`Failed to update Drive file: ${errText}`) as any;
+      err.status = res.status;
+      throw err;
+    }
   });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Failed to update Drive file: ${errText}`);
-  }
 }
 
 // Rename file in Google Drive
