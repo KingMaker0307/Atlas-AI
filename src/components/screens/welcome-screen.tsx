@@ -294,7 +294,7 @@ export function WelcomeScreen() {
             >
               <div className="text-center space-y-1 mb-4 select-none">
                 <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest flex items-center justify-center gap-1.5">
-                  <Flame size={12} className="text-emerald-400 animate-pulse" />
+                  <Flame size={14} className="text-emerald-400 animate-pulse" />
                   Atlas AI Fitness OS
                 </p>
                 <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">

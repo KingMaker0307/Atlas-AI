@@ -1172,16 +1172,15 @@ export function WorkoutScreen() {
             {/* Hands-Free Voice Logger Button */}
             <Button
               size="icon"
-              variant="ghost"
-              className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg shrink-0 transition-all ${isListening
+              className={`h-8 w-8 sm:h-9 sm:w-9 rounded-lg shrink-0 transition-all ${isListening
                   ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35"
-                  : "bg-transparent text-zinc-550 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white border border-surface-border dark:border-white/5 hover:bg-zinc-100 dark:hover:bg-white/5"
+                  : "bg-transparent text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white border border-surface-border dark:border-white/5 hover:bg-zinc-100 dark:hover:bg-white/5"
                 }`}
               onClick={toggleListening}
               aria-label="Voice command logger"
               title="Voice command logging"
             >
-              {isListening ? <Mic size={14} className="text-rose-500 animate-pulse" /> : <MicOff size={14} />}
+              {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
             </Button>
 
             {/* Active Timer badge */}
@@ -1221,7 +1220,7 @@ export function WorkoutScreen() {
               }}
             >
               <span className="hidden sm:inline">Discard</span>
-              <Trash2 size={13} className="sm:hidden" />
+              <Trash2 size={15} className="sm:hidden" />
             </Button>
 
             {/* Quick Finish Button */}
@@ -1239,7 +1238,7 @@ export function WorkoutScreen() {
         {/* Voice Logger Transcription Feedback Alert Banner */}
         {speechFeedback && (
           <div className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
-            <Sparkles size={12} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+            <Sparkles size={14} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
             <span>{speechFeedback}</span>
           </div>
         )}
@@ -1316,13 +1315,13 @@ export function WorkoutScreen() {
 
                     {workoutExercise.supersetGroup && (
                       <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-sky-500/10 border border-sky-500/25 text-sky-400 font-semibold leading-none">
-                        <Layers3 size={8} />
+                        <Layers3 size={11} />
                         <span>{workoutExercise.supersetGroup}</span>
                       </span>
                     )}
 
                     <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-surface border border-surface-border text-zinc-500 dark:text-zinc-400 leading-none">
-                      <Clock3 size={8} className="text-zinc-400 dark:text-zinc-500" />
+                      <Clock3 size={11} className="text-zinc-400 dark:text-zinc-500" />
                       <span>{exercise.tempo}</span>
                     </span>
                   </div>
@@ -1349,11 +1348,11 @@ export function WorkoutScreen() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-1.5 sm:px-2 text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                    className="h-7 px-1.5 sm:px-2 text-xs font-bold text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                     onClick={() => setSelectedExercise(exercise)}
                     aria-label="View step-by-step instructions"
                   >
-                    <Info size={12} />
+                    <Info size={14} />
                     <span className="hidden sm:inline">Guide</span>
                   </Button>
 
@@ -1362,14 +1361,14 @@ export function WorkoutScreen() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-1.5 sm:px-2 text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                      className="h-7 px-1.5 sm:px-2 text-xs font-bold text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                       onClick={() => {
                         setActiveSwapExercise(workoutExercise);
                         setSwapSearch("");
                       }}
                       aria-label="Swap exercise alternative"
                     >
-                      <Shuffle size={12} />
+                      <Shuffle size={14} />
                       <span className="hidden sm:inline">Swap</span>
                     </Button>
                   )}
@@ -1378,12 +1377,12 @@ export function WorkoutScreen() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className={`h-7 px-1.5 sm:px-2 text-xs font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
+                    className={`h-7 px-1.5 sm:px-2 text-xs font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-955 dark:hover:text-zinc-300"
                       }`}
                     onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                     aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
                   >
-                    <SkipForward size={12} />
+                    <SkipForward size={14} />
                     <span className="hidden sm:inline">{isSkipped ? "Resume" : "Skip"}</span>
                   </Button>
 
@@ -1392,11 +1391,11 @@ export function WorkoutScreen() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-1.5 sm:px-2 text-xs font-bold text-emerald-550 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                      className="h-7 px-1.5 sm:px-2 text-xs font-bold text-emerald-555 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                       onClick={() => void addSet(workoutExercise.id)}
                       aria-label="Add logging set"
                     >
-                      <CirclePlus size={12} />
+                      <CirclePlus size={14} />
                       <span className="hidden sm:inline">Add Set</span>
                     </Button>
                   )}
@@ -1536,7 +1535,7 @@ export function WorkoutScreen() {
                                   variant="ghost"
                                   onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                 >
-                                  <Trash2 size={13} />
+                                  <Trash2 size={15} />
                                 </Button>
 
                                 {/* Complete Set Check Button */}
@@ -1580,14 +1579,14 @@ export function WorkoutScreen() {
                                       variant="ghost"
                                       onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                     >
-                                      <Trash2 size={13} />
+                                      <Trash2 size={15} />
                                     </Button>
 
                                     {/* Tactical Complete Button */}
                                     <Button
                                       aria-label="Complete set"
                                       className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1 ${set.completed
-                                          ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
+                                          ? "bg-emerald-500 text-zinc-955 hover:bg-emerald-400 border-none"
                                           : "bg-surface text-zinc-455 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
                                         }`}
                                       variant="ghost"
@@ -1599,7 +1598,7 @@ export function WorkoutScreen() {
                                     >
                                       {set.completed ? (
                                         <>
-                                          <Check size={12} className="stroke-[3px]" />
+                                          <Check size={14} className="stroke-[3px]" />
                                           Done
                                         </>
                                       ) : (
@@ -1686,8 +1685,8 @@ export function WorkoutScreen() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                              icon={<Timer size={13} />}
+                              className="text-xs text-zinc-600 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
+                              icon={<Timer size={15} />}
                               onClick={() => void startRestTimer(workoutExercise.restSeconds)}
                             >
                               Rest {Math.round(workoutExercise.restSeconds / 60)}m
@@ -1837,14 +1836,14 @@ export function WorkoutScreen() {
                                     variant="ghost"
                                     onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                   >
-                                    <Trash2 size={13} />
+                                    <Trash2 size={15} />
                                   </Button>
 
                                   {/* Tactical Complete Button */}
                                   <Button
                                     aria-label="Complete set"
                                     className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1 ${set.completed
-                                        ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
+                                        ? "bg-emerald-500 text-zinc-955 hover:bg-emerald-400 border-none"
                                         : "bg-surface text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
                                       }`}
                                     variant="ghost"
@@ -1856,7 +1855,7 @@ export function WorkoutScreen() {
                                   >
                                     {set.completed ? (
                                       <>
-                                        <Check size={12} className="stroke-[3px]" />
+                                        <Check size={14} className="stroke-[3px]" />
                                         Done
                                       </>
                                     ) : (
@@ -1940,7 +1939,7 @@ export function WorkoutScreen() {
                             size="sm"
                             variant="ghost"
                             className="text-xs text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                            icon={<Flame size={13} className="text-amber-500" />}
+                            icon={<Flame size={15} className="text-amber-500" />}
                             onClick={() => {
                               const last = workoutExercise.sets.at(-1);
                               if (!last) return;
@@ -1953,7 +1952,7 @@ export function WorkoutScreen() {
                             size="sm"
                             variant="ghost"
                             className="text-xs text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                            icon={<Timer size={13} />}
+                            icon={<Timer size={15} />}
                             onClick={() => void startRestTimer(workoutExercise.restSeconds)}
                           >
                             Rest {Math.round(workoutExercise.restSeconds / 60)}m
@@ -1976,7 +1975,7 @@ export function WorkoutScreen() {
                               {platesList && platesList.length > 0 && (
                                 <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
                                   <div className="flex items-center gap-1.5 text-zinc-400 font-medium">
-                                    <Dumbbell size={13} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+                                    <Dumbbell size={14} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
                                     <span>Barbell Plates per side ({activeWeight} {weightUnit}):</span>
                                   </div>
                                   <div className="flex flex-wrap gap-1">
@@ -1991,7 +1990,7 @@ export function WorkoutScreen() {
 
                               {rirVal !== undefined && (
                                 <div className="flex items-start gap-2">
-                                  <Sparkles size={13} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                                  <Sparkles size={14} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
                                   <div className="space-y-0.5">
                                     <p className="font-semibold text-foreground leading-tight">
                                       Set {workoutExercise.sets.findIndex(s => s.id === lastCompletedSet?.id) + 1} RIR feedback ({rirVal} RIR):

@@ -138,7 +138,7 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
               Cancel
             </Button>
             <Button variant="primary" onClick={handleSubmit} disabled={isBusy}>
-              <Sparkles size={16} className="mr-2" />
+              <Sparkles size={16} />
               {isBusy ? "Generating..." : "Generate Plan"}
             </Button>
           </div>

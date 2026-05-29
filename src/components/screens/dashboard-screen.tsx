@@ -363,7 +363,7 @@ export function DashboardScreen() {
             Welcome back, {profile?.name ?? "Athlete"}
           </h1>
           <p className="text-xs text-zinc-400 flex items-center gap-1.5 pt-0.5">
-            <Calendar size={13} className="text-zinc-500" />
+            <Calendar size={14} className="text-zinc-500" />
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
@@ -424,7 +424,7 @@ export function DashboardScreen() {
                     onClick={() => setShowQuickLog(!showQuickLog)}
                     className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
                   >
-                    <TimerReset size={12} />
+                    <TimerReset size={14} />
                     Quick-Log Daily Recovery
                   </button>
                 </div>
@@ -760,15 +760,15 @@ export function DashboardScreen() {
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-xs font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <Activity size={12} />
+                    <Activity size={14} />
                     Light Mobility Flow
                   </span>
                   <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-xs font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <Moon size={12} />
+                    <Moon size={14} />
                     CNS Sleep Focus
                   </span>
                   <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-xs font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <TimerReset size={12} />
+                    <TimerReset size={14} />
                     Hydration & Nutrition
                   </span>
                 </div>
@@ -1036,7 +1036,7 @@ export function DashboardScreen() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
               >
                 <span className="flex items-center gap-1.5">
-                  <Weight size={13} />
+                  <Weight size={14} />
                   Bodyweight
                 </span>
               </button>
@@ -1045,7 +1045,7 @@ export function DashboardScreen() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
               >
                 <span className="flex items-center gap-1.5">
-                  <TrendingUp size={13} />
+                  <TrendingUp size={14} />
                   Weekly Volume
                 </span>
               </button>
@@ -1305,7 +1305,7 @@ export function DashboardScreen() {
                       onClick={() => setActiveTab("coach")}
                     >
                       Ask Coach Detailed Question
-                      <ArrowUpRight size={13} />
+                      <ArrowUpRight size={15} />
                     </Button>
                   </div>
                 </div>
@@ -1455,7 +1455,7 @@ export function DashboardScreen() {
                 }}
                 className="flex-1 text-xs font-bold"
               >
-                <Settings size={14} className="mr-1.5" />
+                <Settings size={16} />
                 Check AI Settings
               </Button>
             </div>

@@ -59,7 +59,7 @@ const TemplateCard: FC<{
     <Card className="p-0 overflow-hidden relative group transition-all hover:border-violet-500/40 hover:shadow-[0_0_20px_rgba(139,92,246,0.12)]">
       {isRecommended && (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/90 to-orange-500/90 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
-          <Star size={10} fill="currentColor" />
+          <Star size={12} fill="currentColor" />
           Recommended
         </div>
       )}
@@ -80,17 +80,17 @@ const TemplateCard: FC<{
         {/* Quick stats */}
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            <CalendarDays size={10} />
+            <CalendarDays size={12} />
             {template.daysPerWeek.length === 1
                ? `${template.daysPerWeek[0]}×/wk`
                : `${template.daysPerWeek[0]}-${template.daysPerWeek[template.daysPerWeek.length - 1]}×/wk`}
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            <Clock size={10} />
+            <Clock size={12} />
             {template.durationMinutes}m
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-400">
-            <Layers size={10} />
+            <Layers size={12} />
             {template.routines.length} routines
           </span>
         </div>
@@ -122,7 +122,7 @@ const TemplateCard: FC<{
       {/* Hover action hint */}
       <div className="flex items-center justify-end px-4 py-2 border-t border-white/5 bg-white/[0.02]">
         <span className="text-xs text-zinc-500 group-hover:text-violet-400 transition-colors flex items-center gap-1">
-          View details <ChevronRight size={12} />
+          View details <ChevronRight size={14} />
         </span>
       </div>
     </Card>
@@ -227,7 +227,7 @@ const TemplateDetailView: FC<{
               <p className="text-xs text-zinc-500">{routine.focus}</p>
             </div>
             <span className="text-xs text-zinc-555 dark:text-zinc-500 flex items-center gap-1">
-              <Clock size={10} /> {routine.estimatedMinutes}m
+              <Clock size={12} /> {routine.estimatedMinutes}m
             </span>
           </div>
 
@@ -836,7 +836,7 @@ export function WorkoutPlanBuilderScreen() {
                       : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
                   }`}
                 >
-                  <User size={8} className="inline mr-1 mb-px" />
+                  <User size={12} className="inline mr-1" />
                   {exp}
                 </button>
               ))}
@@ -881,7 +881,7 @@ export function WorkoutPlanBuilderScreen() {
                 onClick={() => { setFilterExperience(null); setFilterDays(null); setFilterDuration(null); }}
                 className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1"
               >
-                <X size={10} /> Clear filters
+                <X size={13} /> Clear filters
               </button>
             )}
           </Surface>
@@ -1198,7 +1198,7 @@ export function WorkoutPlanBuilderScreen() {
                 }}
                 className="flex-1 text-xs font-bold"
               >
-                <Settings size={14} className="mr-1.5" />
+                <Settings size={16} />
                 Check AI Settings
               </Button>
             </div>

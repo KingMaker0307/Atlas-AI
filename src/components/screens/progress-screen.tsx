@@ -855,8 +855,8 @@ export function ProgressScreen() {
                 }`}
               >
                 <span className="text-xs font-mono leading-none tracking-tight font-black">{day.label.slice(3)}</span>
-                {isTrained && <Dumbbell size={9} className="self-end" />}
-                {!isTrained && isRecovered && <Moon size={9} className="self-end" />}
+                {isTrained && <Dumbbell size={11} className="self-end" />}
+                {!isTrained && isRecovered && <Moon size={11} className="self-end" />}
               </button>
             );
           })}

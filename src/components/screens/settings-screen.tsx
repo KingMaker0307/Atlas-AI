@@ -1081,7 +1081,7 @@ export function SettingsScreen() {
                                   className="w-full flex items-center justify-between text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
                                 >
                                   <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
-                                  <Info size={12} className="text-zinc-500" />
+                                  <Info size={14} className="text-zinc-500" />
                                 </button>
 
                                 <AnimatePresence>
@@ -1604,7 +1604,7 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
         <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">{label}</Label>
         {hint && (
           <span title={hint} className="cursor-help text-zinc-500 hover:text-zinc-300 transition-colors">
-            <Info size={13} />
+            <Info size={14} />
           </span>
         )}
       </div>

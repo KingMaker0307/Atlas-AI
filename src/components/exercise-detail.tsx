@@ -902,7 +902,7 @@ export function ExerciseDetail({
                         </>
                       ) : (
                         <>
-                          <Play size={8} className="fill-emerald-400" />
+                          <Play size={11} className="fill-emerald-400" />
                           <span className="text-xs font-extrabold uppercase tracking-widest">Paused</span>
                         </>
                       )}
@@ -935,12 +935,12 @@ export function ExerciseDetail({
                 >
                   {viewMode === "photo" ? (
                     <>
-                      <Activity size={10} className="text-emerald-500 dark:text-emerald-400" />
+                      <Activity size={14} className="text-emerald-500 dark:text-emerald-400" />
                       <span>Vector Path</span>
                     </>
                   ) : (
                     <>
-                      <Image size={10} className="text-emerald-500 dark:text-emerald-400" />
+                      <Image size={14} className="text-emerald-500 dark:text-emerald-400" />
                       <span>Photo Guide</span>
                     </>
                   )}
@@ -951,7 +951,7 @@ export function ExerciseDetail({
             {/* Bottom-Right Overlay Label when in biomechanical mode */}
             {viewMode === "biomechanical" && (
               <div className="absolute bottom-2 left-2 flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-emerald-500/60 dark:text-emerald-400/60 bg-emerald-500/5 border border-emerald-500/10 px-1.5 py-0.5 rounded backdrop-blur">
-                <Activity size={8} className="animate-pulse" />
+                <Activity size={12} className="animate-pulse" />
                 <span>Biomechanical Path</span>
               </div>
             )}
@@ -1061,7 +1061,7 @@ export function ExerciseDetail({
               {/* YouTube Video Resources selector card */}
               <div className="pt-2 border-t border-white/5">
                 <div className="text-xs font-extrabold uppercase tracking-widest text-zinc-500 pl-1 mb-2 flex items-center gap-1.5">
-                  <Play size={10} className="text-red-500 fill-red-500 animate-pulse" />
+                  <Play size={14} className="text-red-500 fill-red-500 animate-pulse" />
                   <span>YouTube Form Guides</span>
                 </div>
                 <div className="grid gap-2">
