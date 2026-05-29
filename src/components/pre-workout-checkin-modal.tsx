@@ -64,15 +64,15 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <Card className="w-full max-w-sm p-6 space-y-4 relative">
-        <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose}>
           <X size={20} />
         </Button>
-        <h2 className="text-xl font-semibold text-white">Pre-Workout Check-in</h2>
-        <p className="text-zinc-400 text-sm">How many hours did you sleep last night?</p>
+        <h2 className="text-xl font-semibold text-foreground">Pre-Workout Check-in</h2>
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm">How many hours did you sleep last night?</p>
 
         {/* Workout Limit Notice */}
-        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-zinc-300 space-y-1">
-          <p className="font-semibold text-emerald-400">Workout Duration Notice</p>
+        <div className="p-3 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10 text-xs text-zinc-650 dark:text-zinc-300 space-y-1">
+          <p className="font-semibold text-emerald-700 dark:text-emerald-400">Workout Duration Notice</p>
           <p>Please note: A workout session has a maximum limit of 3 hours. Sessions running longer will be automatically stopped and logged.</p>
         </div>
 
@@ -88,7 +88,7 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
             onChange={(e) => handleChange(e.target.value)}
             placeholder="e.g., 7.5"
           />
-          {error && <p className="mt-1 text-xs text-rose-300">{error}</p>}
+          {error && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
         </div>
 
         <div className="flex gap-2">

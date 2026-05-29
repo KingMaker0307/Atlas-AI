@@ -625,7 +625,9 @@ export function SettingsScreen() {
           "Sleep & Recovery: Prioritize 8-9 hours of consistent, quality sleep to optimize natural hormone levels and deep tissue cell repair."
         ],
         badge: "Underweight Insight",
-        color: "border-yellow-500/20 bg-yellow-500/5 text-yellow-400"
+        color: "border-amber-500/15 dark:border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20",
+        titleColor: "text-amber-800 dark:text-amber-300",
+        badgeColor: "bg-amber-500/10 dark:bg-white/10 text-amber-850 dark:text-zinc-300"
       };
     } else if (bmiValue < 25) {
       return {
@@ -636,7 +638,9 @@ export function SettingsScreen() {
           "Active Rest Modalities: Include brief mobility flows, stretching, or light Zone 1/2 cardio on rest days to enhance circulation and lower cumulative fatigue."
         ],
         badge: "Optimal Range",
-        color: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400"
+        color: "border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20",
+        titleColor: "text-emerald-800 dark:text-emerald-350",
+        badgeColor: "bg-emerald-500/10 dark:bg-white/10 text-emerald-850 dark:text-zinc-300"
       };
     } else if (bmiValue < 30) {
       return {
@@ -647,7 +651,9 @@ export function SettingsScreen() {
           "Joint Integrity Protection: Target moderate lifting loads with clean, controlled tempos, minimizing heavy spinal axial loading if experiencing joint friction."
         ],
         badge: "Recomposition Guide",
-        color: "border-orange-500/20 bg-orange-500/5 text-orange-400"
+        color: "border-orange-500/15 dark:border-orange-500/20 bg-orange-500/5 dark:bg-orange-950/20",
+        titleColor: "text-orange-800 dark:text-orange-350",
+        badgeColor: "bg-orange-500/10 dark:bg-white/10 text-orange-850 dark:text-zinc-300"
       };
     } else {
       return {
@@ -658,7 +664,9 @@ export function SettingsScreen() {
           "Consistent Hydration & CNS Rest: Drink 3L+ of water daily and ensure at least 48 hours of spacing between heavy training sessions to promote recovery."
         ],
         badge: "Joint Safety Protocol",
-        color: "border-red-500/20 bg-red-500/5 text-red-400"
+        color: "border-rose-500/15 dark:border-rose-500/20 bg-rose-500/5 dark:bg-rose-950/20",
+        titleColor: "text-rose-800 dark:text-rose-350",
+        badgeColor: "bg-rose-500/10 dark:bg-white/10 text-rose-850 dark:text-zinc-300"
       };
     }
   }, [draftProfile.weight, draftProfile.height, draftProfile.heightUnit, draftProfile.weightUnit, heightUnit, weightUnit]);
@@ -695,7 +703,7 @@ export function SettingsScreen() {
       {/* ─── HEADER TITLE PANEL ─── */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3 select-none">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Settings</h1>
           <p className="text-[11px] sm:text-xs text-zinc-400 font-medium">Profile, AI engine, storage &amp; preferences</p>
         </div>
       </section>
@@ -703,7 +711,7 @@ export function SettingsScreen() {
       {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}
 
       {/* Mobile horizontal tabs */}
-      <div className="flex md:hidden bg-zinc-950 border border-zinc-800 p-1 rounded-2xl select-none gap-1 keep-dark">
+      <div className="flex md:hidden bg-surface border border-surface-border p-1 rounded-2xl select-none gap-1">
         {[
           { id: "profile", label: "Profile", icon: <User size={14} /> },
           { id: "ai", label: "AI Engine", icon: <Cpu size={14} /> },
@@ -716,8 +724,8 @@ export function SettingsScreen() {
               onClick={() => setActiveSettingsTab(tab.id as any)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${
                 active
-                  ? "bg-white text-zinc-950 font-bold shadow-lg"
-                  : "text-zinc-400 hover:text-white"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               }`}
             >
               {tab.icon}
@@ -729,7 +737,7 @@ export function SettingsScreen() {
 
       <div className="flex gap-4 md:gap-6 items-start">
         {/* Desktop Sidebar Panel (hidden on mobile) */}
-        <aside className="hidden md:flex w-56 shrink-0 md:sticky md:top-24 flex-col bg-zinc-950 border border-zinc-800 p-1.5 rounded-2xl select-none gap-1.5 keep-dark">
+        <aside className="hidden md:flex w-56 shrink-0 md:sticky md:top-24 flex-col bg-surface border border-surface-border p-1.5 rounded-2xl select-none gap-1.5">
           {[
             { id: "profile", label: "Profile & Goals", icon: <User size={16} /> },
             { id: "ai", label: "AI Engine", icon: <Cpu size={16} /> },
@@ -742,8 +750,8 @@ export function SettingsScreen() {
                 onClick={() => setActiveSettingsTab(tab.id as any)}
                 className={`flex flex-row items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all w-full justify-start whitespace-nowrap ${
                   active
-                    ? "bg-white text-zinc-950 font-bold shadow-lg"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
+                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                 }`}
               >
                 {tab.icon}
@@ -954,10 +962,10 @@ export function SettingsScreen() {
 
                   {/* Training Configuration Card */}
                   <Card className="p-5 space-y-5">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                    <div className="flex items-center justify-between border-b border-card-border pb-3">
                       <div className="flex items-center gap-2.5">
-                        <Dumbbell className="text-emerald-400" size={18} />
-                        <h2 className="text-base font-bold text-white tracking-tight">Training Configuration</h2>
+                        <Dumbbell className="text-emerald-500 dark:text-emerald-400" size={18} />
+                        <h2 className="text-base font-bold text-foreground tracking-tight">Training Configuration</h2>
                       </div>
                     </div>
 
@@ -1044,8 +1052,8 @@ export function SettingsScreen() {
                   {(calculatedBmi || calculatedProtein) && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 px-1">
-                        <Sparkles size={14} className="text-emerald-400" />
-                        <h3 className="text-xs font-bold text-white uppercase tracking-wider">Physique Metrics</h3>
+                        <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Physique Metrics</h3>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {calculatedBmi && (
@@ -1088,12 +1096,12 @@ export function SettingsScreen() {
                                   >
                                     <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-[10px] leading-relaxed space-y-1.5`}>
                                       <div className="flex justify-between items-center select-none mb-1">
-                                        <span className="font-extrabold uppercase tracking-wide text-white">{bmiAdvice.title}</span>
-                                        <span className="text-[8px] font-bold bg-white/10 px-1.5 py-0.5 rounded uppercase font-mono text-zinc-300">
+                                        <span className={`font-extrabold uppercase tracking-wide ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
+                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
                                           {bmiAdvice.badge}
                                         </span>
                                       </div>
-                                      <ul className="list-disc pl-3.5 space-y-1 text-zinc-300 font-medium">
+                                      <ul className="list-disc pl-3.5 space-y-1 text-zinc-700 dark:text-zinc-300 font-medium">
                                         {bmiAdvice.tips.map((tip, idx) => (
                                           <li key={idx} className="leading-snug">{tip}</li>
                                         ))}
@@ -1120,7 +1128,7 @@ export function SettingsScreen() {
                           </div>
 
                           <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
-                            Calculated at <span className="text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
+                            Calculated at <span className="text-zinc-900 dark:text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-zinc-900 dark:text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
                           </p>
                         </div>
                       )}
@@ -1134,10 +1142,10 @@ export function SettingsScreen() {
               {activeSettingsTab === "ai" && (
                 <div className="space-y-5">
                   <Card className="p-5 space-y-5">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                    <div className="flex items-center justify-between border-b border-card-border pb-3">
                       <div className="flex items-center gap-2.5">
-                        <Cpu className="text-purple-400" size={18} />
-                        <h2 className="text-base font-bold text-white tracking-tight">AI Adapter Cloud Grid</h2>
+                        <Cpu className="text-purple-600 dark:text-purple-400" size={18} />
+                        <h2 className="text-base font-bold text-foreground tracking-tight">AI Adapter Cloud Grid</h2>
                       </div>
                     </div>
 
@@ -1153,8 +1161,8 @@ export function SettingsScreen() {
                             type="button"
                             className={`relative flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 hover:scale-[1.02] ${
                               active
-                                ? `bg-gradient-to-br ${config.gradient} text-white shadow-lg`
-                                : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                                ? `bg-gradient-to-br ${config.gradient} shadow-lg`
+                                : "border-surface-border bg-surface text-zinc-650 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-100"
                             }`}
                             key={type}
                             onClick={() => handleSelectType(type)}
@@ -1162,7 +1170,7 @@ export function SettingsScreen() {
                             {isDefaultActive && (
                               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc] animate-pulse" />
                             )}
-                            <div className={`text-xs font-black tracking-tight leading-none ${active ? config.text : "text-zinc-300"}`}>
+                            <div className={`text-xs font-black tracking-tight leading-none ${active ? config.text : "text-zinc-700 dark:text-zinc-300"}`}>
                               {config.label}
                             </div>
                             <div className="text-[8px] text-zinc-500 mt-1.5 uppercase tracking-wider font-mono leading-none">
@@ -1180,16 +1188,16 @@ export function SettingsScreen() {
                           const helper = getProviderInstructions(draft.type);
                           if (!helper) return null;
                           return (
-                            <Surface className="p-3.5 bg-purple-950/10 border border-purple-500/10 text-zinc-300 rounded-2xl space-y-2">
+                            <Surface className="p-3.5 bg-purple-500/5 dark:bg-purple-950/10 border border-purple-500/10 dark:border-purple-500/20 text-zinc-700 dark:text-zinc-300 rounded-2xl space-y-2">
                               <div className="flex items-center gap-2">
-                                <div className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/15 text-purple-400">
+                                <div className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/10 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400">
                                   <Sparkles size={11} className="stroke-[2.5]" />
                                 </div>
-                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-400 font-mono">
+                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-700 dark:text-purple-400 font-mono">
                                   {helper.title} Steps
                                 </span>
                               </div>
-                              <ol className="list-decimal pl-4 text-[11px] text-zinc-400 space-y-1 font-medium">
+                              <ol className="list-decimal pl-4 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1 font-medium">
                                 {helper.steps.map((st, i) => (
                                   <li key={i} className="leading-relaxed">{st}</li>
                                 ))}
@@ -1199,7 +1207,7 @@ export function SettingsScreen() {
                                   href={helper.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-block text-[10px] font-bold text-purple-400 hover:text-purple-300 underline underline-offset-2 transition"
+                                  className="inline-block text-[10px] font-bold text-purple-655 hover:text-purple-750 dark:text-purple-400 dark:hover:text-purple-300 underline underline-offset-2 transition"
                                 >
                                   Go to Console Website →
                                 </a>
@@ -1357,10 +1365,10 @@ export function SettingsScreen() {
                 <div className="space-y-5">
                   {/* Preferences and Database Statistics */}
                   <Card className="p-5 space-y-5">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                    <div className="flex items-center justify-between border-b border-card-border pb-3">
                       <div className="flex items-center gap-2.5">
-                        <Server className="text-orange-400" size={18} />
-                        <h2 className="text-base font-bold text-white tracking-tight">App Preferences &amp; Storage Telemetry</h2>
+                        <Server className="text-orange-500 dark:text-orange-400" size={18} />
+                        <h2 className="text-base font-bold text-foreground tracking-tight">App Preferences &amp; Storage Telemetry</h2>
                       </div>
                     </div>
 
@@ -1491,10 +1499,10 @@ export function SettingsScreen() {
 
                   {/* Backup Vault Panel */}
                   <Card className="p-5 space-y-5">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-3 select-none">
+                    <div className="flex items-center justify-between border-b border-card-border pb-3 select-none">
                       <div className="flex items-center gap-2.5">
-                        <Shield className="text-blue-400" size={18} />
-                        <h2 className="text-base font-bold text-white tracking-tight">Encrypted Profile Backups</h2>
+                        <Shield className="text-blue-500 dark:text-blue-400" size={18} />
+                        <h2 className="text-base font-bold text-foreground tracking-tight">Encrypted Profile Backups</h2>
                       </div>
                     </div>
 
@@ -1623,14 +1631,14 @@ function SegmentedSetting<T extends string>({
   return (
     <div className="space-y-1.5">
       <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-0">{label}</Label>
-      <div className="relative grid gap-1 rounded-xl border border-zinc-800 bg-zinc-950 p-1 keep-dark" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+      <div className="relative grid gap-1 rounded-xl border border-surface-border bg-surface p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map((item) => {
           const active = item === value;
           return (
             <button
               type="button"
               className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 ${
-                active ? "text-zinc-950" : "text-zinc-400 hover:text-zinc-200"
+                active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
               }`}
               key={item}
               onClick={() => onChange(item)}
@@ -1638,7 +1646,7 @@ function SegmentedSetting<T extends string>({
               {active && (
                 <motion.span
                   layoutId={`active-segmented-${label}`}
-                  className="absolute inset-0 rounded-lg bg-emerald-300"
+                  className="absolute inset-0 rounded-lg bg-emerald-500"
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}

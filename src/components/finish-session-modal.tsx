@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/input";
-import { Clock3, Trash2, X } from "lucide-react"; // Added X for close button
+import { Clock3, Trash2, X } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface FinishSessionModalProps {
   isOpen: boolean;
@@ -77,10 +78,10 @@ export function FinishSessionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="relative w-full max-w-md rounded-lg border bg-zinc-950 p-6 shadow-lg"> {/* Mimics DialogContent */}
-        <div className="flex flex-col space-y-1.5 text-center sm:text-left"> {/* Mimics DialogHeader */}
-          <h2 className="text-lg font-semibold leading-none tracking-tight text-white">Finish Session</h2> {/* Mimics DialogTitle */}
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4" onClick={onClose}>
+      <Card className="w-full max-w-md p-6 relative">
+        <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+          <h2 className="text-lg font-semibold leading-none tracking-tight text-foreground">Finish Session</h2>
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose}>
             <X size={20} />
           </Button>
         </div>
@@ -113,9 +114,9 @@ export function FinishSessionModal({
           </div>
         </div>
 
-        {error && <p className="text-xs text-rose-300 mb-2">{error}</p>}
+        {error && <p className="text-xs text-rose-600 dark:text-rose-400 mb-2">{error}</p>}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-4"> {/* Mimics DialogFooter */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-4">
           <Button variant="danger" icon={<Trash2 size={16} />} onClick={handleDiscard}>
             Discard
           </Button>
@@ -123,7 +124,7 @@ export function FinishSessionModal({
             Finish
           </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

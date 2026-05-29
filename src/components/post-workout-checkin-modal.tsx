@@ -91,11 +91,11 @@ export function PostWorkoutCheckinModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <Card className="w-full max-w-md p-6 space-y-4 relative">
-        <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose}>
           <X size={20} />
         </Button>
-        <h2 className="text-xl font-semibold text-white">Post-Workout Check-in</h2>
-        <p className="text-zinc-400 text-sm">Log your recovery for this session.</p>
+        <h2 className="text-xl font-semibold text-foreground">Post-Workout Check-in</h2>
+        <p className="text-zinc-500 dark:text-zinc-400 text-sm">Log your recovery for this session.</p>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -144,7 +144,7 @@ export function PostWorkoutCheckinModal({
           />
         </div>
 
-        {error && <p className="text-xs text-rose-300">{error}</p>}
+        {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
 
         <Button variant="primary" onClick={handleSave} disabled={!!error} className="w-full">
           Log Recovery

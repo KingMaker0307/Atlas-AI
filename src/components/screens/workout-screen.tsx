@@ -617,8 +617,8 @@ export function WorkoutScreen() {
       >
         <section className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-zinc-400">Manage and track your plans</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-white">Plans</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Manage and track your plans</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">Plans</h1>
           </div>
           <Button
             size="sm"
@@ -655,10 +655,10 @@ export function WorkoutScreen() {
           </Card>
         )}
 
-        <Surface className="p-3.5 bg-emerald-950/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none">
-          <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+        <Surface className="p-3.5 bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10 text-zinc-750 dark:text-zinc-300 rounded-xl flex gap-3 items-start select-none">
+          <Info size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <p className="text-xs leading-normal">
-            This screen holds your workout routines. Tap <span className="text-white font-bold">Start Training Session</span> to begin tracking sets, or tap <span className="text-white font-bold">Create Plan</span> to design a new routine.
+            This screen holds your workout routines. Tap <span className="text-zinc-900 dark:text-white font-bold">Start Training Session</span> to begin tracking sets, or tap <span className="text-zinc-900 dark:text-white font-bold">Create Plan</span> to design a new routine.
           </p>
         </Surface>
 
@@ -667,12 +667,12 @@ export function WorkoutScreen() {
           const lastCompletedWorkout = workouts.filter(w => w.completedAt).at(-1);
           if (lastCompletedWorkout?.notes?.includes("Force stopped")) {
             return (
-              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-sm space-y-1">
+              <div className="p-4 rounded-xl bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/15 dark:border-rose-500/20 text-rose-700 dark:text-rose-200 text-sm space-y-1">
                 <div className="flex items-center gap-2 font-semibold">
-                  <AlertTriangle size={18} className="text-rose-400 shrink-0" />
+                  <AlertTriangle size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />
                   <span>Last Workout Force Stopped</span>
                 </div>
-                <p className="text-zinc-300 leading-relaxed text-xs">
+                <p className="text-zinc-650 dark:text-zinc-300 leading-relaxed text-xs">
                   Your last session ("{lastCompletedWorkout.name}") was automatically stopped because it exceeded the maximum 3-hour limit.
                 </p>
               </div>
@@ -706,14 +706,14 @@ export function WorkoutScreen() {
         )}
 
         {workoutPlans.length === 0 ? (
-          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border bg-white/[0.01] shadow-md">
-            <ClipboardList className="h-12 w-12 text-emerald-400/80 mb-4 animate-bounce" />
-            <h2 className="text-xl font-bold text-white">No workout programs found</h2>
-            <p className="text-xs text-zinc-400 mt-2 max-w-sm leading-relaxed">
+          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border bg-zinc-50/20 dark:bg-white/[0.01] shadow-md">
+            <ClipboardList className="h-12 w-12 text-emerald-500/80 dark:text-emerald-400/80 mb-4" />
+            <h2 className="text-xl font-bold text-foreground">No workout programs found</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
               Create a custom training program manually, start with a templates preset, or let our AI coach formulate a plan for you.
             </p>
             <Button
-              className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center gap-1.5"
+              className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center gap-1.5"
               variant="primary"
               disabled={coachBusy}
               onClick={() => {
@@ -758,20 +758,20 @@ export function WorkoutScreen() {
                     <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-bold text-white leading-tight">{plan.name}</h2>
+                          <h2 className="text-xl font-bold text-foreground leading-tight">{plan.name}</h2>
                           {isActive && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-450 border border-emerald-500/20">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
                               Active
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-xs leading-normal text-zinc-400">{plan.goal}</p>
+                        <p className="mt-1 text-xs leading-normal text-zinc-500 dark:text-zinc-400">{plan.goal}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
                           onClick={() => {
                             setEditingWorkoutPlanId(plan.id);
                             setActiveSubScreen("workout-plan-builder");
@@ -848,14 +848,14 @@ export function WorkoutScreen() {
         <Card className="p-5 border border-card-border bg-card shadow-lg">
           <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
             <div>
-              <h2 className="text-lg font-bold text-white leading-tight">Exercise Database</h2>
-              <p className="text-xs text-zinc-400">
+              <h2 className="text-lg font-bold text-foreground leading-tight">Exercise Database</h2>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400">
                 {filteredExercises.length} exercises · Clinical cues, setup guides, and progressive overload tips
               </p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider hidden sm:inline">Explore</span>
-              <Layers3 className="text-emerald-450" size={18} />
+              <Layers3 className="text-emerald-600 dark:text-emerald-450" size={18} />
             </div>
           </div>
 
@@ -945,7 +945,7 @@ export function WorkoutScreen() {
                         <CategoryIcon size={18} className={c.icon} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-white leading-tight">{cat.label}</p>
+                        <p className="text-sm font-bold text-foreground leading-tight">{cat.label}</p>
                         <p className="text-[10px] text-zinc-500 mt-0.5 leading-tight">{cat.description}</p>
                       </div>
                     </div>
@@ -973,35 +973,35 @@ export function WorkoutScreen() {
                       <div className="grid gap-2 sm:grid-cols-2">
                         {categoryExercises.map((exercise) => {
                           const diffColors = {
-                            beginner: "bg-emerald-500/10 text-emerald-400 border-emerald-500/15",
-                            intermediate: "bg-amber-500/10 text-amber-400 border-amber-500/15",
-                            advanced: "bg-rose-500/10 text-rose-400 border-rose-500/15",
+                            beginner: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/15",
+                            intermediate: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/15",
+                            advanced: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/15",
                           };
                           const diffText = exercise.difficulty || "beginner";
 
                           return (
                             <button
-                              className="rounded-lg border border-white/[0.04] bg-white/[0.015] p-3 text-left transition hover:border-white/10 hover:bg-white/[0.03] flex flex-col justify-between gap-2.5 group"
+                              className="rounded-lg border border-zinc-200 dark:border-white/[0.04] bg-zinc-50/50 dark:bg-white/[0.015] p-3 text-left transition hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-100/50 dark:hover:bg-white/[0.03] flex flex-col justify-between gap-2.5 group"
                               key={exercise.id}
                               onClick={() => setSelectedExercise(exercise)}
                             >
                               <div className="flex items-start justify-between w-full gap-2">
                                 <div className="min-w-0">
-                                  <p className="text-[13px] font-bold text-white group-hover:text-emerald-350 transition-colors leading-snug truncate">
+                                  <p className="text-[13px] font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-snug truncate">
                                     {exercise.name}
                                   </p>
                                   <p className="mt-0.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wide">
                                     {exercise.muscles.slice(0, 3).join(" · ")}
                                   </p>
                                 </div>
-                                <ChevronRight size={14} className="text-zinc-600 group-hover:text-white shrink-0 transition-colors self-center" />
+                                <ChevronRight size={14} className="text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-600 dark:group-hover:text-white shrink-0 transition-colors self-center" />
                               </div>
                               <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider flex-wrap">
                                 <span className={`px-1.5 py-0.5 rounded border ${diffColors[diffText]}`}>
                                   {diffText}
                                 </span>
                                 {exercise.equipment.slice(0, 2).map((eq) => (
-                                  <span key={eq} className="px-1.5 py-0.5 rounded border border-white/5 bg-white/[0.03] text-zinc-400">
+                                  <span key={eq} className="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-white/5 bg-zinc-100 dark:bg-white/[0.03] text-zinc-600 dark:text-zinc-400">
                                     {eq}
                                   </span>
                                 ))}
@@ -1022,15 +1022,15 @@ export function WorkoutScreen() {
             <div className="mt-5 p-4 rounded-xl bg-surface border border-surface-border text-center space-y-3">
               <Sparkles className="h-8 w-8 text-emerald-450 mx-auto animate-pulse" />
               <div>
-                <h3 className="text-sm font-bold text-white leading-tight">Can&apos;t find &quot;{query}&quot;?</h3>
-                <p className="text-[11px] text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
+                <h3 className="text-sm font-bold text-foreground leading-tight">Can&apos;t find &quot;{query}&quot;?</h3>
+                <p className="text-[11px] text-zinc-550 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
                   Our biomechanics engine can dynamically generate a full clinical-grade exercise profile covering correct setup cues, execution, breathing, mistakes, and safety advice.
                 </p>
               </div>
               <Button
                 size="sm"
                 variant="primary"
-                className="text-xs bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold"
+                className="text-xs bg-emerald-500 hover:bg-emerald-400 text-white font-bold"
                 disabled={coachBusy}
                 onClick={async () => {
                   try {
@@ -1061,13 +1061,13 @@ export function WorkoutScreen() {
         {showSwitchModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <Card className="w-full max-w-sm p-6 space-y-4 relative">
-              <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+              <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
                 setShowSwitchModal(false);
                 setPlanToActivate(null);
               }}>
                 <X size={20} />
               </Button>
-              <h2 className="text-xl font-semibold text-white">Switch Active Plan</h2>
+              <h2 className="text-xl font-semibold text-foreground">Switch Active Plan</h2>
               <p className="text-zinc-300 text-sm leading-relaxed">
                 {activeWorkout 
                   ? "Switching Active Plan: You have a workout session in progress. Switching plans will discard your current active workout and reset active tracking. Do you want to continue?"
@@ -1097,13 +1097,13 @@ export function WorkoutScreen() {
         {showDeleteModal && planToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <Card className="w-full max-w-sm p-6 space-y-4 relative">
-              <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+              <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
                 setShowDeleteModal(false);
                 setPlanToDelete(null);
               }}>
                 <X size={20} />
               </Button>
-              <h2 className="text-xl font-semibold text-white">Delete Workout Plan</h2>
+              <h2 className="text-xl font-semibold text-foreground">Delete Workout Plan</h2>
               <p className="text-zinc-300 text-sm leading-relaxed">
                 {activeWorkout && activeWorkout.planId === planToDelete.id
                   ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently remove the plan and discard your current active workout.`
@@ -1177,7 +1177,7 @@ export function WorkoutScreen() {
               className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg shrink-0 transition-all ${
                 isListening
                   ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35"
-                  : "bg-transparent text-zinc-400 hover:text-white border border-white/5"
+                  : "bg-transparent text-zinc-550 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white border border-surface-border dark:border-white/5 hover:bg-zinc-100 dark:hover:bg-white/5"
               }`}
               onClick={toggleListening}
               aria-label="Voice command logger"
@@ -1436,11 +1436,11 @@ export function WorkoutScreen() {
                             <div className="flex items-center gap-2 min-w-0">
                               <Upload size={14} className="text-purple-400 shrink-0" />
                               <div className="text-left min-w-0">
-                                <p className="text-[10px] sm:text-[11px] font-bold text-white leading-tight truncate">GPX Sync</p>
-                                <p className="text-[8px] sm:text-[9px] text-zinc-400 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance, and calories from a .GPX file.</p>
+                                <p className="text-[10px] sm:text-[11px] font-bold text-foreground leading-tight truncate">GPX Sync</p>
+                                <p className="text-[8px] sm:text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance, and calories from a .GPX file.</p>
                               </div>
                             </div>
-                            <label className="h-6 px-2 sm:px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white flex items-center justify-center transition-all select-none shrink-0">
+                            <label className="h-6 px-2 sm:px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all select-none shrink-0">
                               Upload
                               <input 
                                 type="file" 
@@ -1570,7 +1570,7 @@ export function WorkoutScreen() {
                                 className={`flex flex-col gap-2.5 p-3 rounded-2xl border transition-all duration-300 sm:hidden ${
                                   set.completed
                                     ? "bg-emerald-500/5 border-emerald-500/20"
-                                    : "bg-zinc-950/25 border-zinc-800/40 focus-within:border-card-border"
+                                    : "bg-input border-input-border focus-within:border-card-border"
                                 }`}
                               >
                                 {/* Card Header Row */}
@@ -1695,7 +1695,7 @@ export function WorkoutScreen() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs text-zinc-400 hover:text-white hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
+                              className="text-xs text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
                               icon={<Timer size={13} />}
                               onClick={() => void startRestTimer(workoutExercise.restSeconds)}
                             >
@@ -1824,7 +1824,7 @@ export function WorkoutScreen() {
                             className={`flex flex-col gap-2.5 p-3 rounded-2xl border transition-all duration-300 sm:hidden ${
                               set.completed
                                 ? "bg-emerald-500/5 border-emerald-500/20"
-                                : "bg-zinc-950/25 border-zinc-800/40 focus-within:border-card-border"
+                                : "bg-input border-input-border focus-within:border-card-border"
                             }`}
                           >
                             {/* Card Header Row */}
@@ -1952,8 +1952,8 @@ export function WorkoutScreen() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-xs text-zinc-400 hover:text-white hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                            icon={<Flame size={13} className="text-amber-400" />}
+                            className="text-xs text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
+                            icon={<Flame size={13} className="text-amber-500" />}
                             onClick={() => {
                               const last = workoutExercise.sets.at(-1);
                               if (!last) return;
@@ -1965,7 +1965,7 @@ export function WorkoutScreen() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-xs text-zinc-400 hover:text-white hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
+                            className="text-xs text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
                             icon={<Timer size={13} />}
                             onClick={() => void startRestTimer(workoutExercise.restSeconds)}
                           >
@@ -1994,7 +1994,7 @@ export function WorkoutScreen() {
                                   </div>
                                   <div className="flex flex-wrap gap-1">
                                     {platesList.map((plate, idx) => (
-                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-white font-mono">
+                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-zinc-100 border border-zinc-200 text-[10px] font-bold text-zinc-800 font-mono dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">
                                         {plate}
                                       </span>
                                     ))}
@@ -2004,12 +2004,12 @@ export function WorkoutScreen() {
                               
                               {rirVal !== undefined && (
                                 <div className="flex items-start gap-2">
-                                  <Sparkles size={13} className="text-amber-400 mt-0.5 shrink-0" />
+                                  <Sparkles size={13} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
                                   <div className="space-y-0.5">
-                                    <p className="font-semibold text-white leading-tight">
+                                    <p className="font-semibold text-foreground leading-tight">
                                       Set {workoutExercise.sets.findIndex(s => s.id === lastCompletedSet?.id) + 1} RIR feedback ({rirVal} RIR):
                                     </p>
-                                    <p className="text-zinc-400 text-[11px] leading-relaxed">
+                                    <p className="text-zinc-550 dark:text-zinc-400 text-[11px] leading-relaxed">
                                       {rirVal <= 1 
                                         ? "Optimal hypertrophy threshold reached! Maintain weight or increase by +2.5% next session."
                                         : rirVal >= 4 
@@ -2028,18 +2028,18 @@ export function WorkoutScreen() {
                 </div>
               ) : (
                 /* Interactive skipped warn card box */
-                <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs">
+                <div className="mt-3 p-3 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/15 dark:border-amber-500/20 text-amber-700 dark:text-amber-200 text-xs">
                   <div className="flex items-center gap-1.5 font-bold mb-1">
-                    <AlertTriangle size={14} className="text-amber-400" />
+                    <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400" />
                     <span>Progress Warning: Exercise Skipped</span>
                   </div>
-                  <p className="text-zinc-400 leading-relaxed text-[11px]">
-                    No machine or suitable alternative is available. Note: Skipping this movement reduces your target weekly workout volume by <span className="font-semibold text-white">{workoutExercise.targetSets} sets</span>. This directly decreases total protein synthesis stimulation for your <span className="font-semibold text-white capitalize">{exercise.muscles[0]}</span>, slowing muscle adaptation and progress.
+                  <p className="text-zinc-550 dark:text-zinc-400 leading-relaxed text-[11px]">
+                    No machine or suitable alternative is available. Note: Skipping this movement reduces your target weekly workout volume by <span className="font-semibold text-zinc-900 dark:text-white">{workoutExercise.targetSets} sets</span>. This directly decreases total protein synthesis stimulation for your <span className="font-semibold text-zinc-900 dark:text-white capitalize">{exercise.muscles[0]}</span>, slowing muscle adaptation and progress.
                   </p>
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="mt-2 text-xs w-full py-1 h-7 border-amber-500/25 bg-amber-500/5 text-amber-200 hover:bg-amber-500/15"
+                    className="mt-2 text-xs w-full py-1 h-7 border-amber-500/25 dark:border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-200 hover:bg-amber-500/10 dark:hover:bg-amber-500/15"
                     onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                   >
                     Resume Exercise
@@ -2117,7 +2117,7 @@ export function WorkoutScreen() {
                         {g.list.map((alt) => (
                           <button
                             key={alt.id}
-                            className="w-full text-left p-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.07] hover:border-white/10 transition-all flex items-center justify-between group"
+                            className="w-full text-left p-2.5 rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02] hover:bg-zinc-100 dark:hover:bg-white/[0.07] hover:border-zinc-300 dark:hover:border-white/10 transition-all flex items-center justify-between group"
                             onClick={async () => {
                               await swapWorkoutExercise(activeSwapExercise.id, alt.id);
                               setActiveSwapExercise(null);
@@ -2125,14 +2125,14 @@ export function WorkoutScreen() {
                             }}
                           >
                             <div>
-                              <p className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">
+                              <p className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                 {alt.name}
                               </p>
-                              <p className="text-[9px] text-zinc-400 capitalize mt-0.5">
+                              <p className="text-[9px] text-zinc-500 dark:text-zinc-400 capitalize mt-0.5">
                                 {alt.muscles.slice(0, 3).join(", ")} · {alt.equipment.join(", ")}
                               </p>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10 group-hover:bg-emerald-500/15 transition-all">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-450 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20 dark:border-emerald-500/10 group-hover:bg-emerald-500/15 transition-all">
                               Swap
                             </span>
                           </button>

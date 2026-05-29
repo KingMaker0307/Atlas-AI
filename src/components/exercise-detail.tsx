@@ -871,14 +871,14 @@ export function ExerciseDetail({
                   <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5">
                     <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border transition-all duration-300 backdrop-blur ${
                       activePhotoIndex === 0 
-                        ? "bg-emerald-500/20 border-emerald-500/35 text-emerald-300"
+                        ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300"
                         : "bg-surface border-surface-border text-zinc-500 dark:text-zinc-400"
                     }`}>
                       1. Start
                     </span>
                     <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border transition-all duration-300 backdrop-blur ${
                       activePhotoIndex === 1 
-                        ? "bg-emerald-500/20 border-emerald-500/35 text-emerald-300"
+                        ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300"
                         : "bg-surface border-surface-border text-zinc-500 dark:text-zinc-400"
                     }`}>
                       2. Finish
@@ -1094,10 +1094,10 @@ export function ExerciseDetail({
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">
+                          <p className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
                             {video.title}
                           </p>
-                          <p className="text-[10px] text-zinc-400 mt-0.5 leading-normal">
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
                             {video.desc}
                           </p>
                         </div>
@@ -1117,28 +1117,28 @@ export function ExerciseDetail({
               {isCardio && (
                 <div className="p-3.5 rounded-2xl bg-violet-500/5 border border-violet-500/10">
                   <div className="flex items-center gap-2 mb-2 border-b border-violet-500/10 pb-2">
-                    <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                    <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                       <Activity size={14} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider leading-none">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                         Cardiovascular Physiology
                       </h4>
-                      <p className="text-[10px] text-zinc-500 leading-none mt-1">
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-none mt-1">
                         Aerobic zone & metabolic metrics
                       </p>
                     </div>
                   </div>
-                  <div className="space-y-2 text-[11px] text-zinc-400">
-                    <div className="flex justify-between items-center bg-white/[0.01] p-1.5 rounded border border-white/5">
-                      <span className="font-bold text-zinc-300">Target Intensity Zone</span>
-                      <span className="text-violet-300 font-extrabold font-mono">
+                  <div className="space-y-2 text-[11px] text-zinc-500 dark:text-zinc-450">
+                    <div className="flex justify-between items-center bg-surface p-1.5 rounded border border-surface-border">
+                      <span className="font-bold text-zinc-700 dark:text-zinc-300">Target Intensity Zone</span>
+                      <span className="text-violet-600 dark:text-violet-300 font-extrabold font-mono">
                         {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "Zone 4 (80-90% HRmax)" : "Zone 2 (60-70% HRmax)"}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center bg-white/[0.01] p-1.5 rounded border border-white/5">
-                      <span className="font-bold text-zinc-300">Est. Energy Expenditure</span>
-                      <span className="text-emerald-400 font-extrabold font-mono">
+                    <div className="flex justify-between items-center bg-surface p-1.5 rounded border border-surface-border">
+                      <span className="font-bold text-zinc-700 dark:text-zinc-300">Est. Energy Expenditure</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold font-mono">
                         {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "12-16 kcal/min" : "7-10 kcal/min"}
                       </span>
                     </div>
@@ -1150,13 +1150,13 @@ export function ExerciseDetail({
               )}
 
               {/* Tempo Cue card */}
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+              <div className="p-3.5 rounded-2xl bg-surface/50 border border-surface-border">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                     <Clock3 size={15} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider leading-none">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                       Cadence & Tempo
                     </h4>
                     <p className="text-[10px] text-zinc-500 leading-none mt-1">
@@ -1170,13 +1170,13 @@ export function ExerciseDetail({
               </div>
 
               {/* Breathing Cue card */}
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+              <div className="p-3.5 rounded-2xl bg-surface/50 border border-surface-border">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  <div className="p-1.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
                     <Heart size={14} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider leading-none">
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                       Intrathoracic Breathing Cues
                     </h4>
                     <p className="text-[10px] text-zinc-500 leading-none mt-1">
@@ -1191,13 +1191,13 @@ export function ExerciseDetail({
 
               {/* Progression Formula guidelines */}
               {exercise.progressionTips && exercise.progressionTips.length > 0 && (
-                <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
-                  <div className="flex items-center gap-2 mb-2 border-b border-white/5 pb-2">
-                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <div className="p-3.5 rounded-2xl bg-surface/50 border border-surface-border">
+                  <div className="flex items-center gap-2 mb-2 border-b border-surface-border pb-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       <Flame size={14} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider leading-none">
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                         Progression Blueprint
                       </h4>
                       <p className="text-[10px] text-zinc-500 leading-none mt-1">
@@ -1225,8 +1225,8 @@ export function ExerciseDetail({
               {/* Common Mistakes box block */}
               {exercise.commonMistakes && exercise.commonMistakes.length > 0 && (
                 <div className="p-3.5 rounded-2xl bg-rose-500/5 border border-rose-500/10">
-                  <div className="flex items-center gap-1.5 mb-2 text-rose-300">
-                    <AlertTriangle size={14} className="text-rose-400" />
+                  <div className="flex items-center gap-1.5 mb-2 text-rose-600 dark:text-rose-400">
+                    <AlertTriangle size={14} className="text-rose-500 dark:text-rose-400" />
                     <h4 className="text-xs font-extrabold uppercase tracking-wider">
                       Critical Form Pitfalls
                     </h4>
@@ -1245,8 +1245,8 @@ export function ExerciseDetail({
               {/* Safety Regulations guide */}
               {exercise.safetyTips && exercise.safetyTips.length > 0 && (
                 <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
-                  <div className="flex items-center gap-1.5 mb-2 text-emerald-300">
-                    <CheckCircle2 size={14} className="text-emerald-400" />
+                  <div className="flex items-center gap-1.5 mb-2 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
                     <h4 className="text-xs font-extrabold uppercase tracking-wider">
                       Injury Prevention Protocols
                     </h4>

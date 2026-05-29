@@ -396,7 +396,7 @@ export function ProgressScreen() {
       {/* ─── HEADER PANEL ─── */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3 no-print">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Training Intelligence</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Training Intelligence</h1>
           <p className="text-[11px] sm:text-xs text-zinc-400 font-medium">Progressive overload charts & recovery analytics</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -439,7 +439,7 @@ export function ProgressScreen() {
               <span className="text-[9px] font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/25">
                 Biological readiness
               </span>
-              <h3 className="text-lg font-bold text-white mt-2 leading-none">System Recovery</h3>
+              <h3 className="text-lg font-bold text-foreground mt-2 leading-none">System Recovery</h3>
             </div>
             
             {/* Visual SVG Score Ring */}
@@ -467,7 +467,7 @@ export function ProgressScreen() {
                 />
               </svg>
               <div className="text-center">
-                <span className="text-base font-black text-white leading-none font-mono">{recoveryScore}</span>
+                <span className="text-base font-black text-zinc-900 dark:text-white leading-none font-mono">{recoveryScore}</span>
                 <span className="block text-[8px] font-semibold text-zinc-500 leading-none">Score</span>
               </div>
             </div>
@@ -489,7 +489,7 @@ export function ProgressScreen() {
                   <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
                     Active Program
                   </span>
-                  <h3 className="text-xl font-bold text-white mt-1.5 leading-none">{activePlan.name}</h3>
+                  <h3 className="text-xl font-bold text-foreground mt-1.5 leading-none">{activePlan.name}</h3>
                   <p className="text-zinc-400 text-[11px] font-medium truncate mt-1 max-w-[280px]">{activePlan.goal}</p>
                 </div>
                 {activePlan.targetDate && (
@@ -502,26 +502,26 @@ export function ProgressScreen() {
 
               {/* Stats & Progress */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="bg-zinc-950/40 p-2.5 rounded-xl border border-white/5 flex flex-col justify-between">
-                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Active Streak</span>
+                <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between">
+                  <span className="text-[9px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">Active Streak</span>
                   <div className="mt-1 flex items-baseline gap-1">
-                    <span className="text-xl font-black text-white font-mono">{getCurrentStreak(allWorkouts, activeWorkoutPlanId)}</span>
-                    <span className="text-[9px] font-bold text-amber-400">days</span>
+                    <span className="text-xl font-black text-foreground font-mono">{getCurrentStreak(allWorkouts, activeWorkoutPlanId)}</span>
+                    <span className="text-[9px] font-bold text-amber-550 dark:text-amber-400">days</span>
                   </div>
                 </div>
 
-                <div className="bg-zinc-950/40 p-2.5 rounded-xl border border-white/5 flex flex-col justify-between">
-                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Consistency</span>
+                <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between">
+                  <span className="text-[9px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">Consistency</span>
                   <div className="mt-1 flex items-baseline gap-1">
-                    <span className="text-xl font-black text-white font-mono">{getTrainingConsistency(allWorkouts, profile?.daysPerWeek ?? 3, activeWorkoutPlanId)}</span>
-                    <span className="text-[9px] font-bold text-emerald-400">%</span>
+                    <span className="text-xl font-black text-foreground font-mono">{getTrainingConsistency(allWorkouts, profile?.daysPerWeek ?? 3, activeWorkoutPlanId)}</span>
+                    <span className="text-[9px] font-bold text-emerald-550 dark:text-emerald-400">%</span>
                   </div>
                 </div>
 
-                <div className="bg-zinc-950/40 p-2.5 rounded-xl border border-white/5 flex flex-col justify-between col-span-2 sm:col-span-1">
-                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">CNS Status</span>
+                <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between col-span-2 sm:col-span-1">
+                  <span className="text-[9px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">CNS Status</span>
                   <div className="mt-1 flex items-baseline gap-1">
-                    <span className="text-lg font-black text-white">Optimal</span>
+                    <span className="text-lg font-black text-foreground">Optimal</span>
                   </div>
                 </div>
               </div>
@@ -557,7 +557,7 @@ export function ProgressScreen() {
                       <span className="text-zinc-400 font-bold">Weekly Progress ({completedCount}/{routinesCount} routines)</span>
                       <span className="font-extrabold text-emerald-400">{progressPercent}%</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-zinc-900 border border-white/5 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 border border-surface-border dark:border-white/5 overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" 
                         style={{ width: `${progressPercent}%` }} 
@@ -571,7 +571,7 @@ export function ProgressScreen() {
             <div className="py-8 text-center flex flex-col items-center justify-center h-full space-y-3">
               <Info className="text-zinc-500" size={28} />
               <div>
-                <h4 className="text-sm font-bold text-white">No Program Designated</h4>
+                <h4 className="text-sm font-bold text-foreground">No Program Designated</h4>
                 <p className="text-[11px] text-zinc-500 mt-0.5 max-w-[280px]">Designate a training routine on the plan builder screen to track Streaks and CNS stats.</p>
               </div>
             </div>
@@ -581,46 +581,46 @@ export function ProgressScreen() {
 
       {/* ─── UNIFIED PORTAL STATS BAR ─── */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-        <div className="p-3 bg-zinc-900/50 border border-white/5 rounded-2xl flex items-center gap-2.5 select-none shadow">
-          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
+          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <Dumbbell size={16} />
           </div>
           <div>
             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Completed Sessions</p>
-            <p className="text-lg font-black text-white leading-none mt-1">{totalWorkoutsInYear}</p>
+            <p className="text-lg font-black text-foreground leading-none mt-1">{totalWorkoutsInYear}</p>
           </div>
         </div>
-        <div className="p-3 bg-zinc-900/50 border border-white/5 rounded-2xl flex items-center gap-2.5 select-none shadow">
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
           <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
             <Clock3 size={16} />
           </div>
           <div>
             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Duration Logged</p>
-            <p className="text-lg font-black text-white leading-none mt-1">{totalWorkoutDurationInYear} <span className="text-xs font-semibold text-zinc-400">min</span></p>
+            <p className="text-lg font-black text-foreground leading-none mt-1">{totalWorkoutDurationInYear} <span className="text-xs font-semibold text-zinc-500">min</span></p>
           </div>
         </div>
-        <div className="p-3 bg-zinc-900/50 border border-white/5 rounded-2xl flex items-center gap-2.5 select-none shadow">
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
           <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
             <Moon size={16} />
           </div>
           <div>
             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Avg Sleep Efficiency</p>
-            <p className="text-lg font-black text-white leading-none mt-1">{averageSleepHours} <span className="text-xs font-semibold text-zinc-400">hours</span></p>
+            <p className="text-lg font-black text-foreground leading-none mt-1">{averageSleepHours} <span className="text-xs font-semibold text-zinc-500">hours</span></p>
           </div>
         </div>
-        <div className="p-3 bg-zinc-900/50 border border-white/5 rounded-2xl flex items-center gap-2.5 select-none shadow">
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
           <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
             <Weight size={16} />
           </div>
           <div>
             <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Latest Bodyweight</p>
-            <p className="text-lg font-black text-white leading-none mt-1">{latestBodyweight} <span className="text-xs font-semibold text-zinc-400">lbs</span></p>
+            <p className="text-lg font-black text-foreground leading-none mt-1">{latestBodyweight} <span className="text-xs font-semibold text-zinc-500">lbs</span></p>
           </div>
         </div>
       </section>
 
       {/* ─── UNIFIED CHARTS DECK CONSOLE ─── */}
-      <Card className="p-4 mt-4 shadow-xl border border-zinc-800 relative overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-950/40 page-break-before">
+      <Card className="p-4 mt-4 shadow-xl relative overflow-hidden page-break-before">
         <button
           type="button"
           onClick={() => setShowCharts(!showCharts)}
@@ -628,7 +628,7 @@ export function ProgressScreen() {
         >
           <div className="flex items-center gap-2">
             <LineChartIcon className="text-violet-400 animate-pulse" size={18} />
-            <h3 className="text-base font-bold text-white">Training Analytics &amp; Charts</h3>
+            <h3 className="text-base font-bold text-foreground">Training Analytics &amp; Charts</h3>
           </div>
           <span className="text-xs text-zinc-500 font-bold">{showCharts ? "Hide Charts" : "Show Charts"}</span>
         </button>
@@ -638,7 +638,7 @@ export function ProgressScreen() {
             <p className="text-xs text-zinc-400 font-medium">Select a category to view training progression trendlines:</p>
             
             {/* Segmented Controller */}
-            <div className="flex flex-nowrap bg-zinc-950 border border-zinc-800 p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
+            <div className="flex flex-nowrap bg-input border border-input-border p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
               {[
                 { id: "strength", label: "Strength" },
                 { id: "cardio", label: "Cardio" },
@@ -650,8 +650,8 @@ export function ProgressScreen() {
                   onClick={() => setChartTab(tab.id as any)}
                   className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 whitespace-nowrap ${
                     chartTab === tab.id
-                      ? "bg-white text-zinc-950 font-bold shadow"
-                      : "text-zinc-400 hover:text-white"
+                      ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                   }`}
                 >
                   {tab.label}
@@ -822,7 +822,7 @@ export function ProgressScreen() {
         <div className="mb-2 flex items-center justify-between border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
             <Calendar className="text-emerald-400" size={16} />
-            <h3 className="text-sm font-bold text-white">Active Recovery Heatmap</h3>
+            <h3 className="text-sm font-bold text-foreground">Active Recovery Heatmap</h3>
           </div>
           <div className="flex items-center gap-2 text-[9px] font-extrabold uppercase font-mono tracking-wider text-zinc-500">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/80" /> Trained</span>
@@ -848,10 +848,10 @@ export function ProgressScreen() {
                 }}
                 className={`aspect-square rounded-lg border flex flex-col justify-between p-1 transition-all duration-300 ${
                   isTrained
-                    ? "bg-emerald-500/80 border-emerald-400/35 text-zinc-950 shadow"
+                    ? "bg-emerald-500/80 border-emerald-400/35 text-zinc-950 dark:text-zinc-950 shadow"
                     : isRecovered
-                    ? "bg-violet-600/60 border-violet-500/35 text-white shadow"
-                    : "bg-white/[0.04] border-white/5 text-zinc-500 hover:bg-white/10"
+                    ? "bg-violet-600/60 border-violet-500/35 text-white-keep shadow"
+                    : "bg-surface border-surface-border text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"
                 }`}
               >
                 <span className="text-[8px] font-mono leading-none tracking-tight font-black">{day.label.slice(3)}</span>
@@ -868,7 +868,7 @@ export function ProgressScreen() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="text-zinc-400" size={16} />
-            <h3 className="text-sm font-bold text-white">Historical Training Logs</h3>
+            <h3 className="text-sm font-bold text-foreground">Historical Training Logs</h3>
           </div>
           
           <div className="flex items-center gap-2 shrink-0 select-none">
@@ -894,7 +894,7 @@ export function ProgressScreen() {
           <Input
             type="text"
             placeholder="Search by routine name, date (e.g. Jan 10) or exercise name..."
-            className="pl-9 text-xs h-8 bg-zinc-900 border-zinc-800 text-foreground w-full rounded-xl focus:border-violet-500/50"
+            className="pl-9 text-xs h-8 bg-input border-input-border text-foreground w-full rounded-xl focus:border-violet-500/50"
             value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)}
           />
@@ -921,16 +921,16 @@ export function ProgressScreen() {
             return (
               <div 
                 key={key} 
-                className="border border-white/5 rounded-2xl bg-zinc-900/10 overflow-hidden"
+                className="border border-surface-border rounded-2xl bg-surface/20 dark:bg-zinc-900/10 overflow-hidden"
               >
                 {/* Folder Header */}
                 <button
                   type="button"
                   onClick={() => setExpandedFolders(prev => ({ ...prev, [key]: !prev[key] }))}
-                  className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-white/[0.01] transition-all select-none"
+                  className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-zinc-150/40 dark:hover:bg-white/[0.01] transition-all select-none"
                 >
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-bold text-white truncate capitalize leading-snug">{displayDate}</h4>
+                    <h4 className="text-sm font-bold text-foreground truncate capitalize leading-snug">{displayDate}</h4>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[9px] font-bold font-mono text-zinc-500">
                       {totalWorkouts > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10 text-emerald-400">
@@ -955,19 +955,18 @@ export function ProgressScreen() {
                   </div>
                 </button>
 
-                {/* Collapsible content */}
                 {isFolderExpanded && (
-                  <div className="p-4 border-t border-white/5 bg-zinc-900/20 space-y-4 transition-all">
+                  <div className="p-4 border-t border-surface-border bg-surface/30 space-y-4 transition-all">
                     
                     {/* Recovery summary inside the folder */}
-                    <div className="p-3 bg-zinc-950/40 border border-white/5 rounded-xl">
+                    <div className="p-3 bg-card border border-card-border rounded-xl">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider font-mono">CNS & Body Metrics</span>
+                        <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-mono">CNS & Body Metrics</span>
                         <div className="flex gap-1.5">
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-2 text-[9px] font-semibold text-zinc-400 hover:text-white bg-white/5 rounded-lg"
+                            className="h-6 px-2 text-[9px] font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
                             onClick={() => {
                               setModalSelectedDate(key);
                               setShowRecoveryModal(true);
@@ -978,7 +977,7 @@ export function ProgressScreen() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-2 text-[9px] font-semibold text-zinc-400 hover:text-white bg-white/5 rounded-lg"
+                            className="h-6 px-2 text-[9px] font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
                             onClick={() => {
                               setModalSelectedDate(key);
                               setShowBodyMetricModal(true);
@@ -1044,10 +1043,10 @@ export function ProgressScreen() {
                             const wSets = workout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => s.completed).length, 0);
 
                             return (
-                              <div key={workout.id} className="p-3.5 bg-zinc-950/20 border border-white/5 rounded-xl">
-                                <div className="flex justify-between items-start gap-4 pb-2.5 border-b border-white/5">
+                              <div key={workout.id} className="p-3.5 bg-card border border-card-border rounded-xl">
+                                <div className="flex justify-between items-start gap-4 pb-2.5 border-b border-surface-border">
                                   <div>
-                                    <h5 className="text-white text-xs font-bold leading-none">{workout.name}</h5>
+                                    <h5 className="text-foreground text-xs font-bold leading-none">{workout.name}</h5>
                                     <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1 font-semibold">
                                       <span>{format(parseISO(workout.startedAt), "HH:mm")}</span>
                                       <span>•</span>
@@ -1078,7 +1077,7 @@ export function ProgressScreen() {
 
                                     return (
                                       <div key={we.id} className="p-2 bg-white/[0.01] border border-white/5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px]">
-                                        <span className="font-bold text-zinc-300">{exerciseName}</span>
+                                        <span className="font-bold text-zinc-800 dark:text-zinc-300">{exerciseName}</span>
                                         <div className="flex items-center gap-2">
                                           {completedSets.length > 0 && (
                                             <span className="text-[10px] text-zinc-400 font-mono">
@@ -1094,7 +1093,7 @@ export function ProgressScreen() {
                                               )}
                                             </span>
                                           )}
-                                          <span className="text-[9px] font-mono font-bold bg-zinc-900/60 border border-white/5 px-1.5 py-0.5 rounded leading-none text-zinc-500 shrink-0">
+                                          <span className="text-[9px] font-mono font-bold bg-surface border border-surface-border px-1.5 py-0.5 rounded leading-none text-zinc-500 dark:text-zinc-400 shrink-0">
                                             {completedSets.length}/{we.sets.length} sets
                                           </span>
                                         </div>

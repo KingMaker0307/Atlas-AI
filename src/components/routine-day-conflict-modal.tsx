@@ -108,7 +108,7 @@ export function RoutineDayConflictModal({
           <Button
             variant="primary"
             onClick={onReorganize}
-            className="w-full font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 flex items-center justify-center gap-1.5"
+            className="w-full font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center gap-1.5"
           >
             Reorganize & Start
           </Button>

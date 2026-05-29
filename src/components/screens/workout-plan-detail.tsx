@@ -140,12 +140,12 @@ export function WorkoutPlanDetailScreen() {
       {/* ─── DETAIL HEADER ─── */}
       <section className="flex items-center justify-between p-4 rounded-2xl border border-card-border bg-card shadow-sm">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800" onClick={() => setActiveSubScreen(null)}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => setActiveSubScreen(null)}>
             <ArrowLeft size={20} />
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">{plan.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-black text-foreground leading-tight">{plan.name}</h1>
               <span title="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
                 <Info 
                   size={15} 
@@ -215,9 +215,9 @@ export function WorkoutPlanDetailScreen() {
                 <div>
                   <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
                     <div>
-                      <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
-                      <h2 className="mt-2 text-xl font-bold text-white group-hover:text-emerald-400 transition-colors leading-tight">{routine.name}</h2>
-                      <p className="mt-1 text-xs text-zinc-400 leading-normal">{routine.focus}</p>
+                      <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
+                      <h2 className="mt-2 text-xl font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">{routine.name}</h2>
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">{routine.focus}</p>
 
                       {/* Rescheduling Dropdown */}
                       <div className="flex items-center gap-2 mt-3.5">
@@ -241,7 +241,7 @@ export function WorkoutPlanDetailScreen() {
                             const updatedRoutine = { ...routine, day: newDay };
                             await useAtlasStore.getState().saveRoutine(plan.id, updatedRoutine);
                           }}
-                          className="rounded-lg border border-white/5 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-semibold text-zinc-300 focus:outline-none cursor-pointer hover:bg-zinc-800 transition-colors"
+                          className="rounded-lg border border-input-border bg-input px-2.5 py-1 text-[11px] font-semibold text-foreground focus:outline-none cursor-pointer hover:bg-input-focus-bg transition-colors"
                         >
                           {DAYS_OF_WEEK.map(d => (
                             <option key={d} value={d}>{d}</option>
@@ -252,13 +252,13 @@ export function WorkoutPlanDetailScreen() {
 
                     {!isReadOnly && (
                       <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white" onClick={() => {
+                         <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white" onClick={() => {
                           setEditingRoutineId(routine.id);
                           setActiveSubScreen("routine-builder");
                         }}>
                           <Pencil size={15} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-red-400" onClick={() => {
+                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 dark:text-zinc-400 hover:text-rose-500" onClick={() => {
                           setRoutineToDelete({ id: routine.id, name: routine.name });
                           setShowDeleteModal(true);
                         }}>
@@ -282,7 +282,7 @@ export function WorkoutPlanDetailScreen() {
                             key={item.exerciseId}
                           >
                             <div className="space-y-0.5 max-w-[12rem] sm:max-w-[14rem]">
-                              <p className="font-bold text-white truncate leading-snug">
+                              <p className="font-bold text-foreground truncate leading-snug">
                                 {exDetails?.name}
                               </p>
                               <div className="flex items-center gap-1">
@@ -292,7 +292,7 @@ export function WorkoutPlanDetailScreen() {
                               </div>
                             </div>
                             
-                            <span className="px-2 py-0.5 rounded bg-zinc-800 text-[10px] font-bold text-emerald-300 border border-white/5 shrink-0">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                               {item.targetSets}s x {item.targetReps}
                             </span>
                           </div>
@@ -322,19 +322,19 @@ export function WorkoutPlanDetailScreen() {
           } else {
             // Rest Day block
             return (
-              <Card className="p-5 border border-dashed border-violet-500/10 bg-gradient-to-br from-zinc-900/40 to-violet-950/5 flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
-                <div className="p-3 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/15 mb-2.5 animate-pulse">
+              <Card className="p-5 border border-dashed border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/20 to-violet-100/10 dark:from-zinc-900/40 dark:to-violet-950/5 flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
+                <div className="p-3 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mb-2.5">
                   <Moon size={24} />
                 </div>
-                <span className="text-[9px] text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
-                <p className="text-sm font-bold text-white mt-1">Rest & CNS Restoration</p>
-                <p className="text-[11px] text-zinc-400 max-w-[220px] mt-0.5 leading-normal">
+                <span className="text-[9px] text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
+                <p className="text-sm font-bold text-foreground mt-1">Rest & CNS Restoration</p>
+                <p className="text-[11px] text-zinc-550 dark:text-zinc-400 max-w-[220px] mt-0.5 leading-normal">
                   Muscle hypertrophy and neural system recovery occur on rest cycles. Focus on targeted hydration and sleep.
                 </p>
 
                 {/* Quick Active Recovery cardio launchers */}
                 <div className="mt-4 w-full flex flex-col gap-1.5 border-t border-violet-500/10 pt-4">
-                  <p className="text-[10px] text-violet-300 font-bold uppercase tracking-wider text-left">Quick Active Recovery</p>
+                  <p className="text-[10px] text-violet-600 dark:text-violet-300 font-bold uppercase tracking-wider text-left">Quick Active Recovery</p>
                   <div className="grid grid-cols-2 gap-1.5 mt-1">
                     {[
                       { name: "Incline Hike", id: "treadmill-walk-incline", icon: "🏔️" },
@@ -345,7 +345,7 @@ export function WorkoutPlanDetailScreen() {
                       <Button
                         key={item.id}
                         variant="ghost"
-                        className="h-10 sm:h-8 text-xs sm:text-[10px] text-zinc-300 hover:text-white bg-violet-500/5 hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2.5 sm:px-2 font-semibold transition-all disabled:opacity-50"
+                        className="h-10 sm:h-8 text-xs sm:text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white bg-violet-500/5 hover:bg-violet-500/10 dark:hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2.5 sm:px-2 font-semibold transition-all disabled:opacity-50"
                         disabled={isLimitReached}
                         onClick={() => {
                           const quickRoutine: Routine = {
@@ -392,10 +392,10 @@ export function WorkoutPlanDetailScreen() {
               setActiveSubScreen("routine-builder");
             }}
           >
-            <div className="p-3 rounded-full bg-emerald-500/5 text-emerald-500 border border-emerald-500/10 mb-2.5 group-hover:scale-105 transition-transform duration-300">
+             <div className="p-3 rounded-full bg-emerald-500/5 text-emerald-500 border border-emerald-500/10 mb-2.5 group-hover:scale-105 transition-transform duration-300">
               <Plus size={28} />
             </div>
-            <p className="text-white font-bold group-hover:text-emerald-400 transition-colors">Add Scheduled Routine</p>
+            <p className="text-zinc-900 dark:text-white font-bold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Add Scheduled Routine</p>
             <p className="text-[11px] text-zinc-500 text-center mt-0.5 max-w-[200px] leading-normal">Configure a new training routine day for this workout plan.</p>
           </Card>
         )}
@@ -421,14 +421,14 @@ export function WorkoutPlanDetailScreen() {
       {showDeleteModal && routineToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <Card className="w-full max-w-sm p-6 space-y-4 relative">
-            <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white" onClick={() => {
               setShowDeleteModal(false);
               setRoutineToDelete(null);
             }}>
               <X size={20} />
             </Button>
-            <h2 className="text-xl font-semibold text-white">Delete Routine</h2>
-            <p className="text-zinc-300 text-sm leading-relaxed">
+            <h2 className="text-xl font-semibold text-foreground">Delete Routine</h2>
+            <p className="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed">
               {activeWorkout && activeWorkout.name === routineToDelete.name && activeWorkout.planId === plan.id
                 ? `Are you sure you want to delete the routine "${routineToDelete.name}"? You have a workout session in progress for this routine. Deleting it will discard the active session and remove the routine from the plan.`
                 : `Are you sure you want to delete the routine "${routineToDelete.name}"? This action cannot be undone and the routine will be removed from your plan.`}

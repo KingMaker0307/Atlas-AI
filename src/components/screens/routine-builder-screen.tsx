@@ -191,7 +191,7 @@ export function RoutineBuilderScreen() {
           <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-normal text-white">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">
             {editingRoutineId ? "Edit Routine" : "Create Routine"}
           </h1>
         </div>
@@ -239,7 +239,7 @@ export function RoutineBuilderScreen() {
 
 
       <Card className="p-4">
-        <h2 className="text-lg font-semibold text-white">Exercises</h2>
+        <h2 className="text-lg font-semibold text-foreground">Exercises</h2>
         {routine.exercises.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-400">No exercises added yet.</p>
         ) : (
@@ -249,7 +249,7 @@ export function RoutineBuilderScreen() {
             return (
               <Surface key={ex.exerciseId} className="p-3 my-2">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="font-medium text-white">{exercise.name}</p>
+                  <p className="font-medium text-foreground">{exercise.name}</p>
                   <Button variant="ghost" size="sm" onClick={() => removeExerciseFromRoutine(ex.exerciseId)}>
                     Remove
                   </Button>
@@ -291,7 +291,7 @@ export function RoutineBuilderScreen() {
       </Card>
 
       <Card className="p-4">
-        <h2 className="text-lg font-semibold text-white">Search Exercises</h2>
+        <h2 className="text-lg font-semibold text-foreground">Search Exercises</h2>
         <Input
           className="mt-3"
           placeholder="Search for exercises..."
@@ -299,10 +299,10 @@ export function RoutineBuilderScreen() {
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         {searchTerm.trim().length > 2 && (
-          <div className="mt-3 flex items-center justify-between p-3 rounded-2xl border border-purple-500/10 bg-purple-950/10 select-none">
+          <div className="mt-3 flex items-center justify-between p-3 rounded-2xl border border-purple-500/15 dark:border-purple-500/20 bg-purple-500/5 dark:bg-purple-950/10 select-none">
             <div className="min-w-0 pr-2">
-              <p className="text-xs font-bold text-white leading-none">Can't find "{searchTerm}"?</p>
-              <p className="text-[10px] text-zinc-400 mt-1 leading-normal">Our AI Coach can generate its biomechanical profile instantly!</p>
+              <p className="text-xs font-bold text-purple-900 dark:text-white leading-none">Can't find "{searchTerm}"?</p>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 leading-normal">Our AI Coach can generate its biomechanical profile instantly!</p>
             </div>
             <Button
               size="sm"
@@ -327,8 +327,8 @@ export function RoutineBuilderScreen() {
         )}
         <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
           {filteredExercises.map((exercise, index) => (
-            <div key={`${exercise.id}-${index}`} className="flex items-center justify-between rounded-lg bg-zinc-800 p-3">
-              <p className="font-medium text-white">{exercise.name}</p>
+            <div key={`${exercise.id}-${index}`} className="flex items-center justify-between rounded-xl bg-surface border border-surface-border p-3">
+              <p className="font-medium text-foreground">{exercise.name}</p>
               <Button size="sm" variant="secondary" onClick={() => addExerciseToRoutine(exercise)} disabled={routine.exercises.some(ex => ex.exerciseId === exercise.id)}>
                 {routine.exercises.some(ex => ex.exerciseId === exercise.id) ? "Added" : "Add"}
               </Button>

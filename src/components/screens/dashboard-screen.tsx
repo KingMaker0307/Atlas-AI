@@ -332,9 +332,9 @@ export function DashboardScreen() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded-xl border border-card-border bg-zinc-950/95 p-3 shadow-xl backdrop-blur-md">
+        <div className="rounded-xl border border-card-border bg-card p-3 shadow-xl backdrop-blur-md">
           <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
-          <p className="mt-1 text-sm font-semibold text-white">
+          <p className="mt-1 text-sm font-semibold text-foreground">
             {payload[0].name === "weight" ? `${payload[0].value} lbs` : `${payload[0].value.toLocaleString()} lbs volume`}
           </p>
         </div>
@@ -686,12 +686,12 @@ export function DashboardScreen() {
       {/* ─── TODAY'S TARGET HERO SECTION ─── */}
       <section className="relative overflow-hidden">
         {workoutPlans.length === 0 ? (
-          <Card className="p-6 border-dashed border-2 border-card-border bg-white/[0.01]">
+          <Card className="p-6 border-dashed border-2 border-card-border bg-surface/10 dark:bg-white/[0.01]">
             <div className="text-center space-y-4">
-              <ClipboardList className="mx-auto h-12 w-12 text-emerald-450" />
+              <ClipboardList className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
               <div>
-                <h2 className="text-xl font-bold text-white">No Active Plan Established</h2>
-                <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
+                <h2 className="text-xl font-bold text-foreground">No Active Plan Established</h2>
+                <p className="text-xs text-zinc-550 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
                   To begin logging metrics, progressive overload cycles, and streaks, create a customized program or let our AI coach build one.
                 </p>
               </div>
@@ -703,24 +703,24 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-emerald-950/20 relative shadow-xl overflow-hidden group keep-dark">
+          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 dark:from-zinc-900 dark:to-emerald-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
             
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
               <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   Today's Scheduled Target · {todayRoutine.day}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-white">{todayRoutine.name}</h2>
-                <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">{todayRoutine.name}</h2>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
                   {todayRoutine.focus}
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1.5">
                   {todayRoutine.exercises.map((item: any) => (
                     <span 
                       key={item.exerciseId}
-                      className="px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.03] text-[10px] font-medium text-zinc-300"
+                      className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-white/5 bg-white/75 dark:bg-white/[0.03] text-[10px] font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       {item.exerciseId.split("-").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
                     </span>
@@ -729,12 +729,12 @@ export function DashboardScreen() {
               </div>
 
               <div className="sm:text-right shrink-0 flex flex-col justify-between sm:h-28">
-                <div className="text-zinc-400 text-xs font-medium">
-                  <span className="font-bold text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
+                <div className="text-zinc-550 dark:text-zinc-400 text-xs font-medium">
+                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
                 </div>
                 <Button 
                   onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-zinc-950 flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
+                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-white flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
                 >
                   <Dumbbell size={16} />
                   Launch Workout Session
@@ -744,29 +744,29 @@ export function DashboardScreen() {
           </Card>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/20 bg-gradient-to-br from-zinc-900 to-violet-950/20 relative shadow-xl overflow-hidden group keep-dark">
+          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/50 to-violet-100/30 dark:from-zinc-900 dark:to-violet-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
             
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
               <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                   Rest & Recovery Cycle · {todayDayName}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-white">Active Muscle Restoration</h2>
-                <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">Active Muscle Restoration</h2>
+                <p className="text-xs text-zinc-650 dark:text-zinc-400 max-w-md leading-relaxed">
                   Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/10 bg-violet-500/5 text-[10px] font-semibold text-violet-300 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                     <Activity size={12} />
                     Light Mobility Flow
                   </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/10 bg-violet-500/5 text-[10px] font-semibold text-violet-300 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                     <Moon size={12} />
                     CNS Sleep Focus
                   </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/10 bg-violet-500/5 text-[10px] font-semibold text-violet-300 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                     <TimerReset size={12} />
                     Hydration & Nutrition
                   </span>

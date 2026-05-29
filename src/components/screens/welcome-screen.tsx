@@ -303,24 +303,37 @@ export function WelcomeScreen() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* 1. Custom Setup */}
                 <button
                   type="button"
-                  onClick={() => setView("setup")}
-                  className="flex items-start text-left p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  onClick={() => {
+                    setName("");
+                    setAge(28);
+                    setWeight(165);
+                    setHeight(70);
+                    setExperience("beginner");
+                    setBodyType("mesomorph");
+                    setTargetPhysique("athletic");
+                    setGoal("Build strength and muscle size");
+                    setDaysPerWeek(3);
+                    setWeightUnit("lbs");
+                    setHeightUnit("in");
+                    setSetupAiCoach(true);
+                    setView("setup");
+                  }}
+                  className="flex items-start text-left p-5 rounded-2xl border border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-500/5 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 hover:border-emerald-500/30 dark:hover:border-emerald-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
+                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-500/20 transition-all" />
                   
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
                     <Sparkles size={20} className="stroke-[2.5]" />
                   </div>
                   
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
                       Start Fresh / Custom Setup
-                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
+                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
                       Set up your name, units, training goals, frequency, and customize your AI key directly for a personalized start.
                     </p>
                   </div>
@@ -330,20 +343,20 @@ export function WelcomeScreen() {
                 <button
                   type="button"
                   onClick={() => setView("backup")}
-                  className="flex items-start text-left p-5 rounded-2xl border border-zinc-800 bg-zinc-950/20 hover:bg-zinc-950/40 hover:border-zinc-700 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  className="flex items-start text-left p-5 rounded-2xl border border-blue-500/15 dark:border-blue-500/20 bg-blue-50/40 dark:bg-blue-500/5 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 hover:border-blue-500/30 dark:hover:bg-blue-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-blue-500/5 blur-xl pointer-events-none group-hover:bg-blue-500/10 transition-all" />
+                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl pointer-events-none group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-all" />
                   
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 shrink-0 mr-4 shadow-sm border border-blue-500/20">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mr-4 shadow-sm border border-blue-500/20">
                     <FileUp size={20} className="stroke-[2.5]" />
                   </div>
                   
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
                       Load from Backup File
-                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
+                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-blue-600 dark:group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
                       Restore workouts, history, routines, and custom settings from an encrypted backup JSON file.
                     </p>
                   </div>
@@ -482,8 +495,8 @@ export function WelcomeScreen() {
             >
               <div className="space-y-1.5 border-b border-card-border pb-3 mb-2 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Sparkles className="text-emerald-450" size={20} />
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Sparkles className="text-emerald-500 dark:text-emerald-400" size={20} />
                     Profile & AI Coach Setup
                   </h2>
                   <p className="text-[11px] text-zinc-400 leading-normal">
@@ -495,8 +508,8 @@ export function WelcomeScreen() {
               <form onSubmit={handleSetupSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Left Column: Biometrics */}
-                  <div className="space-y-4 bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 border-b border-white/5 pb-1 mb-2">
+                  <div className="space-y-4 bg-card p-5 border border-card-border rounded-2xl shadow-sm">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-surface-border pb-2.5 mb-2.5">
                       1. Biometrics & Preferences
                     </h3>
                     
@@ -641,8 +654,8 @@ export function WelcomeScreen() {
                   </div>
 
                   {/* Right Column: Training Targets */}
-                  <div className="space-y-4 bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 border-b border-white/5 pb-1 mb-2">
+                  <div className="space-y-4 bg-card p-5 border border-card-border rounded-2xl shadow-sm">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-surface-border pb-2.5 mb-2.5">
                       2. Training Program Options
                     </h3>
                     
@@ -737,14 +750,14 @@ export function WelcomeScreen() {
                 </div>
 
                 {/* AI Configuration Section */}
-                <div className="bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl space-y-4">
+                <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-4">
                   <div className="flex items-start justify-between gap-3 select-none">
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-455 flex items-center gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                         <Bot size={15} />
                         AI Coach Assistant
                       </h3>
-                      <p className="text-[10px] text-zinc-400 leading-normal">
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
                         Enable personalized AI feedback, automatic workout summaries, and plan generation right away.
                       </p>
                     </div>
