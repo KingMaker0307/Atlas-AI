@@ -321,6 +321,103 @@ function hasCredentials(): boolean {
   );
 }
 
+// Check if error is a connection network exception or timeout
+function isNetworkOrTimeoutError(error: any): boolean {
+  if (!error) return false;
+  const errMsg = String(error.message || error).toLowerCase();
+  
+  if (
+    errMsg.includes("fetch failed") || 
+    errMsg.includes("timeout") || 
+    errMsg.includes("timedout") || 
+    errMsg.includes("etimedout") || 
+    errMsg.includes("enotfound") || 
+    errMsg.includes("econnrefused") ||
+    errMsg.includes("network") ||
+    errMsg.includes("connect")
+  ) {
+    return true;
+  }
+  
+  const code = error.code || (error.cause && (error.cause as any).code);
+  if (code) {
+    const networkCodes = ["ETIMEDOUT", "ENOTFOUND", "ECONNREFUSED", "EHOSTUNREACH", "EPIPE", "ECONNRESET", "EAI_AGAIN"];
+    if (networkCodes.includes(String(code).toUpperCase())) {
+      return true;
+    }
+  }
+
+  if (error.cause && Array.isArray((error.cause as any).errors)) {
+    for (const subErr of (error.cause as any).errors) {
+      if (isNetworkOrTimeoutError(subErr)) return true;
+    }
+  }
+  
+  return false;
+}
+
+// Fallback Mock operations
+function handleMockGet(userId: string, email: string | null, fetchContent: boolean, request: NextRequest) {
+  const filePath = findMockFilePath(userId, email || undefined);
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      const isBlocked = fileData.blocked === true || fileData.status === "blocked";
+      return NextResponse.json({ 
+        blocked: isBlocked, 
+        mode: "mock", 
+        snapshot: fetchContent ? fileData : undefined 
+      }, { headers: corsHeaders(request) });
+    } catch {
+      return NextResponse.json({ blocked: false, mode: "mock" }, { headers: corsHeaders(request) });
+    }
+  }
+  return NextResponse.json({ blocked: false, mode: "mock" }, { headers: corsHeaders(request) });
+}
+
+function handleMockPost(userId: string, emailToUse: string | null | undefined, snapshot: any, request: NextRequest) {
+  const existingPath = findMockFilePath(userId, emailToUse || undefined);
+  let isBlocked = false;
+
+  if (existingPath && fs.existsSync(existingPath)) {
+    try {
+      const existingData = JSON.parse(fs.readFileSync(existingPath, "utf-8"));
+      isBlocked = existingData.blocked === true || existingData.status === "blocked";
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+
+  if (isBlocked) {
+    return NextResponse.json({ blocked: true, mode: "mock" }, { headers: corsHeaders(request) });
+  }
+
+  const targetName = emailToUse
+    ? `profile_email_${emailToUse.toLowerCase().trim()}.json`
+    : getSanitizedFileName(userId, snapshot?.profile?.name);
+  const newPath = path.join(MOCK_DIR, targetName);
+
+  // Delete the old file if it has a different name (e.g. user renamed or set email)
+  if (existingPath && existingPath !== newPath && fs.existsSync(existingPath)) {
+    try {
+      fs.unlinkSync(existingPath);
+    } catch (e) {
+      console.error("Failed to delete old mock file:", e);
+    }
+  }
+
+  // Write mock file
+  const newContent = {
+    blocked: false,
+    lastSyncedAt: new Date().toISOString(),
+    ...snapshot,
+  };
+  fs.writeFileSync(newPath, JSON.stringify(newContent, null, 2), "utf-8");
+  
+  console.log(`[Cloud Sync Mock] Silently saved profile for user ${userId} to ${newPath}`);
+  return NextResponse.json({ success: true, blocked: false, mode: "mock" }, { headers: corsHeaders(request) });
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -332,41 +429,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing userId or email" }, { status: 400, headers: corsHeaders(request) });
     }
 
-    // Fallback Mock Mode
+    // Fallback Mock Mode if credentials are not configured
     if (!hasCredentials()) {
-      const filePath = findMockFilePath(userId || "", email || undefined);
-      if (filePath && fs.existsSync(filePath)) {
-        try {
-          const fileData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-          const isBlocked = fileData.blocked === true || fileData.status === "blocked";
-          return NextResponse.json({ 
-            blocked: isBlocked, 
-            mode: "mock", 
-            snapshot: fetchContent ? fileData : undefined 
-          }, { headers: corsHeaders(request) });
-        } catch {
-          return NextResponse.json({ blocked: false, mode: "mock" }, { headers: corsHeaders(request) });
-        }
-      }
-      return NextResponse.json({ blocked: false, mode: "mock" }, { headers: corsHeaders(request) });
+      return handleMockGet(userId || "", email, fetchContent, request);
     }
 
     // Real Google Drive Mode
-    const accessToken = await getAccessToken();
-    const fileInfo = await findDriveFile(accessToken, userId || "", email || undefined);
-    const fileId = fileInfo ? fileInfo.id : null;
+    try {
+      const accessToken = await getAccessToken();
+      const fileInfo = await findDriveFile(accessToken, userId || "", email || undefined);
+      const fileId = fileInfo ? fileInfo.id : null;
 
-    if (fileId) {
-      const fileData = await getDriveFileContent(accessToken, fileId);
-      const isBlocked = fileData.blocked === true || fileData.status === "blocked" || fileData.profile?.blocked === true;
-      return NextResponse.json({ 
-        blocked: isBlocked, 
-        mode: "drive", 
-        snapshot: fetchContent ? fileData : undefined 
-      }, { headers: corsHeaders(request) });
+      if (fileId) {
+        const fileData = await getDriveFileContent(accessToken, fileId);
+        const isBlocked = fileData.blocked === true || fileData.status === "blocked" || fileData.profile?.blocked === true;
+        return NextResponse.json({ 
+          blocked: isBlocked, 
+          mode: "drive", 
+          snapshot: fetchContent ? fileData : undefined 
+        }, { headers: corsHeaders(request) });
+      }
+
+      return NextResponse.json({ blocked: false, mode: "drive" }, { headers: corsHeaders(request) });
+    } catch (driveError: any) {
+      // Fallback silently if there is any network timeout/connection error
+      if (isNetworkOrTimeoutError(driveError)) {
+        console.warn("[Cloud Sync] Google Drive connection timeout or offline. Gracefully falling back to local Mock Sync:", driveError.message || driveError);
+        return handleMockGet(userId || "", email, fetchContent, request);
+      }
+      throw driveError;
     }
-
-    return NextResponse.json({ blocked: false, mode: "drive" }, { headers: corsHeaders(request) });
   } catch (error: any) {
     console.error("GET /api/profile error:", error);
     return NextResponse.json(
@@ -387,98 +479,68 @@ export async function POST(request: NextRequest) {
 
     const emailToUse = email || snapshot?.profile?.email;
 
-    // Fallback Mock Mode
+    // Fallback Mock Mode if credentials are not configured
     if (!hasCredentials()) {
-      const existingPath = findMockFilePath(userId, emailToUse);
-      let isBlocked = false;
+      return handleMockPost(userId, emailToUse, snapshot, request);
+    }
 
-      if (existingPath && fs.existsSync(existingPath)) {
-        try {
-          const existingData = JSON.parse(fs.readFileSync(existingPath, "utf-8"));
-          isBlocked = existingData.blocked === true || existingData.status === "blocked";
-        } catch (e) {
-          // Ignore parse errors
-        }
+    // Real Google Drive Mode
+    try {
+      const accessToken = await getAccessToken();
+      const fileInfo = await findDriveFile(accessToken, userId, emailToUse);
+      const fileId = fileInfo ? fileInfo.id : null;
+
+      let isBlocked = false;
+      let existingContent: any = null;
+
+      if (fileId) {
+        existingContent = await getDriveFileContent(accessToken, fileId);
+        isBlocked =
+          existingContent.blocked === true ||
+          existingContent.status === "blocked" ||
+          existingContent.profile?.blocked === true;
       }
 
       if (isBlocked) {
-        return NextResponse.json({ blocked: true, mode: "mock" }, { headers: corsHeaders(request) });
+        return NextResponse.json({ blocked: true, mode: "drive" }, { headers: corsHeaders(request) });
       }
 
-      const targetName = emailToUse
-        ? `profile_email_${emailToUse.toLowerCase().trim()}.json`
-        : getSanitizedFileName(userId, snapshot?.profile?.name);
-      const newPath = path.join(MOCK_DIR, targetName);
-
-      // Delete the old file if it has a different name (e.g. user renamed or set email)
-      if (existingPath && existingPath !== newPath && fs.existsSync(existingPath)) {
-        try {
-          fs.unlinkSync(existingPath);
-        } catch (e) {
-          console.error("Failed to delete old mock file:", e);
-        }
-      }
-
-      // Write mock file
-      const newContent = {
+      const payload = {
         blocked: false,
         lastSyncedAt: new Date().toISOString(),
         ...snapshot,
       };
-      fs.writeFileSync(newPath, JSON.stringify(newContent, null, 2), "utf-8");
-      
-      console.log(`[Cloud Sync Mock] Silently saved profile for user ${userId} to ${newPath}`);
-      return NextResponse.json({ success: true, blocked: false, mode: "mock" }, { headers: corsHeaders(request) });
-    }
 
-    // Real Google Drive Mode
-    const accessToken = await getAccessToken();
-    const fileInfo = await findDriveFile(accessToken, userId, emailToUse);
-    const fileId = fileInfo ? fileInfo.id : null;
+      const targetFileName = emailToUse
+        ? `profile_email_${emailToUse.toLowerCase().trim()}.json`
+        : getSanitizedFileName(userId, snapshot?.profile?.name);
 
-    let isBlocked = false;
-    let existingContent: any = null;
-
-    if (fileId) {
-      existingContent = await getDriveFileContent(accessToken, fileId);
-      isBlocked =
-        existingContent.blocked === true ||
-        existingContent.status === "blocked" ||
-        existingContent.profile?.blocked === true;
-    }
-
-    if (isBlocked) {
-      return NextResponse.json({ blocked: true, mode: "drive" }, { headers: corsHeaders(request) });
-    }
-
-    const payload = {
-      blocked: false,
-      lastSyncedAt: new Date().toISOString(),
-      ...snapshot,
-    };
-
-    const targetFileName = emailToUse
-      ? `profile_email_${emailToUse.toLowerCase().trim()}.json`
-      : getSanitizedFileName(userId, snapshot?.profile?.name);
-
-    if (fileId) {
-      // Check if filename has changed
-      if (fileInfo && fileInfo.name !== targetFileName) {
-        try {
-          await renameDriveFile(accessToken, fileId, targetFileName);
-          console.log(`[Google Drive API] Renamed file ${fileId} to ${targetFileName}`);
-        } catch (e) {
-          console.error("Failed to rename Google Drive file:", e);
+      if (fileId) {
+        // Check if filename has changed
+        if (fileInfo && fileInfo.name !== targetFileName) {
+          try {
+            await renameDriveFile(accessToken, fileId, targetFileName);
+            console.log(`[Google Drive API] Renamed file ${fileId} to ${targetFileName}`);
+          } catch (e) {
+            console.error("Failed to rename Google Drive file:", e);
+          }
         }
+        await updateDriveFile(accessToken, fileId, payload);
+        console.log(`[Google Drive API] Silently updated ${targetFileName} in Google Drive`);
+      } else {
+        await createDriveFile(accessToken, userId, targetFileName, payload);
+        console.log(`[Google Drive API] Silently created ${targetFileName} in Google Drive`);
       }
-      await updateDriveFile(accessToken, fileId, payload);
-      console.log(`[Google Drive API] Silently updated ${targetFileName} in Google Drive`);
-    } else {
-      await createDriveFile(accessToken, userId, targetFileName, payload);
-      console.log(`[Google Drive API] Silently created ${targetFileName} in Google Drive`);
-    }
 
-    return NextResponse.json({ success: true, blocked: false, mode: "drive" }, { headers: corsHeaders(request) });
+      return NextResponse.json({ success: true, blocked: false, mode: "drive" }, { headers: corsHeaders(request) });
+    } catch (driveError: any) {
+      // Fallback silently if there is any network timeout/connection error
+      if (isNetworkOrTimeoutError(driveError)) {
+        console.warn("[Cloud Sync] Google Drive connection timeout or offline. Gracefully falling back to local Mock Sync:", driveError.message || driveError);
+        return handleMockPost(userId, emailToUse, snapshot, request);
+      }
+      throw driveError;
+    }
   } catch (error: any) {
     console.error("POST /api/profile error:", error);
     return NextResponse.json(

@@ -371,18 +371,24 @@ textarea {
   background-color: rgba(9, 9, 11, 0.015) !important;
 }
 
-/* 5. Hardcoded dark container gradients conversion */
-.light .bg-gradient-to-br:not(.from-green-500\/10):not(.from-orange-500\/10):not(.from-blue-500\/10):not(.from-zinc-500\/10):not(.from-cyan-500\/10):not(.from-purple-500\/10):not(.from-teal-500\/10):not(.from-indigo-500\/10):not(.from-yellow-500\/10):not(.from-purple-950\/10):not(.from-emerald-950\/20),
-.light .bg-gradient-to-tr:not(.from-emerald-400),
-.light .bg-gradient-to-r:not(.from-emerald-500) {
+/* 5. Hardcoded dark container gradients conversion — skip keep-dark elements */
+.light .bg-gradient-to-br:not(.keep-dark):not(.from-green-500\/10):not(.from-orange-500\/10):not(.from-blue-500\/10):not(.from-zinc-500\/10):not(.from-cyan-500\/10):not(.from-purple-500\/10):not(.from-teal-500\/10):not(.from-indigo-500\/10):not(.from-yellow-500\/10):not(.from-purple-950\/10):not(.from-emerald-950\/20):not(.from-emerald-50\/40):not(.from-violet-50\/40):not(.from-emerald-50):not(.from-violet-50),
+.light .bg-gradient-to-tr:not(.keep-dark):not(.from-emerald-400),
+.light .bg-gradient-to-r:not(.keep-dark):not(.from-emerald-500):not(.from-violet-500):not(.from-emerald-400) {
   background-image: none !important;
   background-color: var(--card-bg) !important;
 }
 
-/* 6. Retro Terminal dark preservation */
+/* 6. Keep-dark: preserves intentional dark gradient containers in light mode */
 .light .keep-dark {
-  background-color: #0c0c0e !important;
+  background-color: transparent !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Ensure keep-dark elements keep their gradient visible in light mode */
+.light .keep-dark.bg-gradient-to-br,
+.light .keep-dark .bg-gradient-to-br {
+  background-color: transparent !important;
 }
 
 .light .keep-dark .text-zinc-300 {
@@ -748,4 +754,57 @@ textarea {
 .dark input[type="month"]::-webkit-calendar-picker-indicator,
 .dark input[type="week"]::-webkit-calendar-picker-indicator {
   filter: invert(1) !important;
+}
+
+/* ─── HYDRATION / WATER TEXT LEGIBILITY ─── */
+/* Darken faded sky-blue hydration text in trend panels for both modes */
+.light .text-sky-400 {
+  color: #0369a1 !important; /* sky-700 — high contrast on white */
+}
+.light .text-sky-600 {
+  color: #0369a1 !important; /* sky-700 */
+}
+.dark .text-sky-400 {
+  color: #7dd3fc !important; /* sky-300 — readable on dark */
+}
+
+/* ─── GRADIENT BUTTON SHADOWS — ensure they render in both modes ─── */
+/* Emerald-to-Teal gradient button (Guided mode) shadow */
+.light [class*="shadow-emerald-500"] {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+}
+/* Violet-to-Fuchsia gradient button (Advanced mode) shadow */
+.light [class*="shadow-violet-500"] {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* ─── MODAL BACKDROP CONTRAST ─── */
+/* Ensure modal backdrop bg-background/80 is truly opaque in both modes */
+.light .bg-background\/80 {
+  background-color: rgba(246, 247, 249, 0.92) !important;
+}
+
+/* ─── ZINC-300 TEXT IN LIGHT INSIGHT BLOCKS ─── */
+/* The Physiological Guidance block uses text-zinc-300 inside insight.color wrapper */
+/* Ensure it's legible in light mode  */
+.light .text-zinc-300:not(.keep-dark *):not(.keep-dark) {
+  color: #3f3f46 !important; /* zinc-700 — readable on light backgrounds */
+}
+
+/* ─── MODAL BODY TEXT CONTRAST ─── */
+/* text-zinc-300 inside modals (switch/delete text) should be dark in light mode */
+.light .fixed .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+
+/* ─── INSIGHT COLOR BLOCK BACKGROUNDS ─── */
+/* Ensure the insight guidance block backgrounds work properly in light mode */
+.light .bg-emerald-500\/10.border-emerald-500\/20 {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+}
+.light .bg-amber-500\/10.border-amber-500\/20 {
+  background-color: rgba(245, 158, 11, 0.06) !important;
+}
+.light .bg-rose-500\/10.border-rose-500\/20 {
+  background-color: rgba(239, 68, 68, 0.06) !important;
 }

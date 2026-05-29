@@ -952,7 +952,7 @@ export function NutritionTracker() {
       </div>
 
       {/* ─── Condensed Sub-Tab Navigation Bar (Overview, Trends/Targets, Micros) ─── */}
-      <div className="flex gap-1 p-1 bg-input border border-input-border rounded-2xl select-none" role="tablist" aria-label="Nutrition navigation">
+      <div className="flex overflow-x-auto scrollbar-none gap-1 p-1 bg-input border border-input-border rounded-2xl select-none" role="tablist" aria-label="Nutrition navigation">
         {subTabs.map((tab) => {
           const Icon = tab.icon;
           const active = nutritionTab === tab.id;
@@ -993,7 +993,7 @@ export function NutritionTracker() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch divide-y md:divide-y-0 md:divide-x divide-card-border">
                   {/* Calorie Progress Section */}
                   <div className="flex flex-col justify-between pb-6 md:pb-0 md:pr-8 space-y-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
                       {/* Radial Progress */}
                       <div className="relative shrink-0 select-none">
                         <RingProgress
@@ -1048,7 +1048,7 @@ export function NutritionTracker() {
 
                   {/* Hydration Tracker Section */}
                   <div className="flex flex-col justify-between pt-6 md:pt-0 md:pl-8 space-y-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
                       {/* Animated Water bottle visualizer */}
                       <div className="relative h-20 w-10 bg-sky-100/40 dark:bg-sky-950/20 border-2 border-sky-300/40 dark:border-sky-900/60 rounded-2xl overflow-hidden flex flex-col justify-end shadow-inner shrink-0 select-none">
                         <motion.div
@@ -1601,7 +1601,7 @@ export function NutritionTracker() {
                       <div className="flex justify-between font-mono"><span>P:</span><span>{trendsData.last7Days.avgProtein}g</span></div>
                       <div className="flex justify-between font-mono"><span>C:</span><span>{trendsData.last7Days.avgCarbs}g</span></div>
                       <div className="flex justify-between font-mono"><span>F:</span><span>{trendsData.last7Days.avgFat}g</span></div>
-                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-600 dark:text-sky-400">
+                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-700 dark:text-sky-300">
                         <span>Water:</span><span>{trendsData.last7Days.avgWater}ml</span>
                       </div>
                     </div>
@@ -1617,7 +1617,7 @@ export function NutritionTracker() {
                       <div className="flex justify-between font-mono"><span>P:</span><span>{trendsData.last30Days.avgProtein}g</span></div>
                       <div className="flex justify-between font-mono"><span>C:</span><span>{trendsData.last30Days.avgCarbs}g</span></div>
                       <div className="flex justify-between font-mono"><span>F:</span><span>{trendsData.last30Days.avgFat}g</span></div>
-                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-600 dark:text-sky-400">
+                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-700 dark:text-sky-300">
                         <span>Water:</span><span>{trendsData.last30Days.avgWater}ml</span>
                       </div>
                     </div>
@@ -1633,7 +1633,7 @@ export function NutritionTracker() {
                       <div className="flex justify-between font-mono"><span>P:</span><span>{trendsData.last12Months.avgProtein}g</span></div>
                       <div className="flex justify-between font-mono"><span>C:</span><span>{trendsData.last12Months.avgCarbs}g</span></div>
                       <div className="flex justify-between font-mono"><span>F:</span><span>{trendsData.last12Months.avgFat}g</span></div>
-                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-600 dark:text-sky-400">
+                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-700 dark:text-sky-300">
                         <span>Water:</span><span>{trendsData.last12Months.avgWater}ml</span>
                       </div>
                     </div>

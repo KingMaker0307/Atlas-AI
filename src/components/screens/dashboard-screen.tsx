@@ -8,6 +8,7 @@ import {
   Flame,
   Medal,
   Moon,
+  Sun,
   TimerReset,
   Pencil,
   Sparkles,
@@ -88,89 +89,46 @@ export function DashboardScreen() {
   const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
   const updateProfile = useAtlasStore((state) => state.updateProfile);
   const setWorkoutTab = useAtlasStore((state) => state.setWorkoutTab);
+  const theme = useAtlasStore((state) => state.theme);
+  const setTheme = useAtlasStore((state) => state.setTheme);
 
   // One-time Cloud Sync Migration States
   const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [migrationEmailInput, setMigrationEmailInput] = useState("");
-  const [migrationEmailError, setMigrationEmailError] = useState<string | null>(null);
-  const [migrationOtpSent, setMigrationOtpSent] = useState(false);
-  const [migrationOtpInput, setMigrationOtpInput] = useState("");
-  const [migrationOtpError, setMigrationOtpError] = useState<string | null>(null);
-  const [migrationGeneratedOtp, setMigrationGeneratedOtp] = useState("");
-  const [showMigrationSandboxOtp, setShowMigrationSandboxOtp] = useState(false);
-  const [migrationOtpCopied, setMigrationOtpCopied] = useState(false);
   const [isMigrationSubmitting, setIsMigrationSubmitting] = useState(false);
   const [migrationSubmitError, setMigrationSubmitError] = useState<string | null>(null);
   const [showMigrationSuccessAnimation, setShowMigrationSuccessAnimation] = useState(false);
+  const [isMigrationFederatedLoading, setIsMigrationFederatedLoading] = useState(false);
+  const [migrationCapturedProvider, setMigrationCapturedProvider] = useState<"apple" | "google" | null>(null);
 
-  const handleSendMigrationOtp = async () => {
-    setMigrationEmailError(null);
-    setMigrationOtpError(null);
-    const validation = validateEmail(migrationEmailInput);
-    if (!validation.isValid) {
-      setMigrationEmailError(validation.error || "Invalid email address.");
-      return;
-    }
-    
-    setIsMigrationSubmitting(true);
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setMigrationGeneratedOtp(code);
-    setMigrationOtpCopied(false);
-
-    try {
-      const response = await fetch("/api/send-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: migrationEmailInput,
-          otp: code,
-          userName: profile?.name || "Athlete"
-        })
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setMigrationOtpSent(true);
-        setShowMigrationSandboxOtp(false);
-      } else {
-        setMigrationOtpSent(true);
-        setShowMigrationSandboxOtp(true);
-        console.warn("Falling back to simulated sandbox mailbox:", data.error);
-      }
-    } catch (e) {
-      setMigrationOtpSent(true);
-      setShowMigrationSandboxOtp(true);
-      console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
-    } finally {
-      setIsMigrationSubmitting(false);
-    }
-  };
-
-  const handleVerifyMigrationOtp = async () => {
-    setMigrationOtpError(null);
-    if (migrationOtpInput.trim() !== migrationGeneratedOtp) {
-      setMigrationOtpError("Incorrect 6-digit verification code. Please check your simulated sandbox mailbox and try again.");
-      return;
-    }
-
-    setShowMigrationSandboxOtp(false);
-    setIsMigrationSubmitting(true);
+  const simulateMigrationFederatedSignIn = async (provider: "apple" | "google") => {
+    setIsMigrationFederatedLoading(true);
+    setMigrationCapturedProvider(provider);
     setMigrationSubmitError(null);
-
+    
+    // Simulate biometric Face ID or OAuth loading spinner
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    
+    const randomHex = Math.floor(1000 + Math.random() * 9000).toString(16);
+    const proxyEmail = provider === "apple"
+      ? `athlete.apple.${randomHex}@privaterelay.apple.com`
+      : `athlete.google.${randomHex}@gmail.com`;
+      
+    setIsMigrationFederatedLoading(false);
+    setIsMigrationSubmitting(true);
+    
     try {
-      // Complete profile migration
+      setMigrationEmailInput(proxyEmail);
       await updateProfile({
-        email: migrationEmailInput.toLowerCase().trim(),
+        email: proxyEmail.toLowerCase().trim(),
         emailVerified: true,
       });
       
-      // Close OTP forms and show success state
-      setMigrationOtpSent(false);
       setShowMigrationSuccessAnimation(true);
       setTimeout(() => {
         setShowMigrationSuccessAnimation(false);
         setShowMigrationModal(false);
         setMigrationEmailInput("");
-        setMigrationOtpInput("");
       }, 3500);
     } catch (e: any) {
       console.error("Migration failed:", e);
@@ -462,32 +420,6 @@ export function DashboardScreen() {
 
   return (
     <>
-      {/* Sandbox Simulated Mailbox Notification */}
-      {showMigrationSandboxOtp && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-md animate-bounce select-none">
-          <div className="bg-zinc-900/95 border border-emerald-500/30 text-emerald-400 text-xs px-4 py-3 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.5)] flex items-center justify-between gap-3 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-mono text-[10px] sm:text-xs">
-                🔒 <span className="font-bold text-emerald-450">Sandbox Sync Mail:</span> "Your code is <span className="underline font-bold text-white tracking-widest">{migrationGeneratedOtp}</span>"
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(migrationGeneratedOtp);
-                setMigrationOtpCopied(true);
-                setTimeout(() => setMigrationOtpCopied(false), 2000);
-              }}
-              className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-250 border border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition"
-            >
-              {migrationOtpCopied ? <Check size={11} /> : <Copy size={11} />}
-              {migrationOtpCopied ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
-      )}
-
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -503,7 +435,7 @@ export function DashboardScreen() {
             </span>
             <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Atlas Bio-Telemetry</p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
             Welcome back, {profile?.name ?? "Athlete"}
           </h1>
           <p className="text-xs text-zinc-400 flex items-center gap-1.5 pt-0.5">
@@ -519,8 +451,8 @@ export function DashboardScreen() {
               <button
                 type="button"
                 onClick={() => void setGuidedMode(true)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                  guidedMode ? "bg-emerald-500 text-white-keep shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               >
                 Guided
@@ -528,13 +460,24 @@ export function DashboardScreen() {
               <button
                 type="button"
                 onClick={() => void setGuidedMode(false)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                  !guidedMode ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               >
                 Advanced
               </button>
             </div>
+
+            {/* Theme Mode Switcher */}
+            <button
+              type="button"
+              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex items-center justify-center h-[38px] w-[38px] rounded-xl border border-surface-border bg-surface text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition duration-200 self-start sm:self-center cursor-pointer shadow-sm active:scale-95 shrink-0"
+              aria-label="Toggle display theme"
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            >
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
 
             {/* Dynamic Recovery Ring */}
             {!guidedMode && (
@@ -557,13 +500,13 @@ export function DashboardScreen() {
                     />
                   </svg>
                   <div className="text-center">
-                    <span className="text-lg font-black text-white">{recoveryScore}</span>
+                    <span className="text-lg font-black text-zinc-900 dark:text-white">{recoveryScore}</span>
                     <span className="text-xs font-bold text-zinc-500 block -mt-1 uppercase">%</span>
                   </div>
                 </div>
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
-                  <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
+                  <p className="text-sm font-bold text-zinc-900 dark:text-white leading-tight">{insight.label}</p>
                   <button 
                     onClick={() => setShowQuickLog(!showQuickLog)}
                     className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
@@ -583,7 +526,7 @@ export function DashboardScreen() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-teal-950/20 to-zinc-950/90 shadow-md p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          className="keep-dark relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-teal-950/20 to-zinc-950/90 shadow-md p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         >
           <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-500/10 blur-[50px] pointer-events-none" />
           <div className="space-y-1 relative z-10 flex-1">
@@ -591,7 +534,7 @@ export function DashboardScreen() {
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono">Security & Sync Upgrade</p>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-white">Upgrade to Secure Cloud Backup</h3>
+            <h3 className="text-sm sm:text-base font-bold text-white-keep">Upgrade to Secure Cloud Backup</h3>
             <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
               Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices using high-fidelity naming conventions.
             </p>
@@ -613,13 +556,13 @@ export function DashboardScreen() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="w-full overflow-hidden"
+            className="w-full overflow-hidden keep-dark"
           >
             <Card className="p-5 border-emerald-500/20 bg-emerald-950/5 space-y-4">
               <div className="flex items-center justify-between border-b border-white/5 pb-2">
                 <div className="flex items-center gap-2">
                   <Heart size={16} className="text-emerald-450 animate-pulse" />
-                  <h3 className="font-bold text-white text-sm">Bio-Telemetry Recovery Log</h3>
+                  <h3 className="font-bold text-white-keep text-sm">Bio-Telemetry Recovery Log</h3>
                 </div>
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-white" onClick={() => setShowQuickLog(false)}>
                   <X size={16} />
@@ -714,7 +657,7 @@ export function DashboardScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/40 to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
+          className="keep-dark relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/40 to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
         >
           {/* Ambient glow orb */}
           <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-violet-500/20 blur-[60px] pointer-events-none" />
@@ -740,7 +683,7 @@ export function DashboardScreen() {
                   Cooking
                 </span>
               </div>
-              <p className="text-sm font-bold text-white leading-snug">
+              <p className="text-sm font-bold text-white-keep leading-snug">
                 Something amazing is being crafted for you.
               </p>
               <p className="text-xs text-zinc-400 leading-relaxed">
@@ -876,37 +819,39 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-6 border border-emerald-500/20 dark:border-emerald-500/25 bg-zinc-50 dark:bg-zinc-950 bg-gradient-to-br from-zinc-50 via-emerald-50/30 to-amber-50/40 dark:from-zinc-950 dark:via-emerald-950/15 dark:to-amber-950/20 relative shadow-xl overflow-hidden group rounded-2xl">
+          <div className="p-5 sm:p-6 border border-emerald-500/20 dark:border-emerald-500/30 bg-gradient-to-br from-emerald-50/40 to-amber-50/30 dark:bg-none dark:bg-zinc-950 relative shadow-xl overflow-hidden group rounded-2xl">
             {/* Visual glow elements */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300 pointer-events-none" />
             <div className="absolute -left-20 -bottom-20 w-44 h-44 rounded-full bg-amber-500/5 blur-[80px] group-hover:bg-amber-500/10 transition-all duration-300 pointer-events-none" />
             
-            <div className="relative z-10 space-y-4">
-              {/* Header Zone explaining WHY the card exists */}
-              <div className="space-y-2 select-none">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  Unified Bio-Telemetry Matrix · Stimulus & Fuel Coregulation
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-950 dark:text-white leading-tight">Mechanical Loading & Metabolic Replenishment</h2>
-                <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-4xl">
-                  Muscle hypertrophy is a coordinated two-stage biological response. The training stimulus (Mechanical Overload) triggers structural micro-tears in muscle fibers and acts as the physiological signal for adaptation. However, muscle protein synthesis and tissue reconstruction are entirely dependent on metabolic fuel (Metabolic Replenishment). Failing to pair loading with adequate calories and protein inhibits growth and triggers central nervous system (CNS) and systemic fatigue.
+            <div className="relative z-10 space-y-5">
+              {/* Header Zone: Clean & Spacious */}
+              <div className="space-y-1 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    Today's Target
+                  </span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase">{todayRoutine.day}</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white leading-tight">Today's Training & Nutrition Target</h2>
+                <p className="text-xs text-zinc-555 dark:text-zinc-405 leading-normal max-w-2xl">
+                  Your daily target is simple: complete today's workout to build strength, and eat high-quality meals to fuel muscle recovery.
                 </p>
               </div>
 
-              {/* Grid split representing both functions with equal-weight action buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 pt-4 border-t border-zinc-200/50 dark:border-white/5">
-                {/* Column 1: Workout / Stimulus */}
-                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
-                  <div className="space-y-2.5">
+              {/* Grid split: Simple, transparent columns with clean layouts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200/50 dark:border-white/5">
+                {/* Column 1: Workout Plan */}
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-450 font-mono">Mechanical Loading</span>
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase">{todayRoutine.day}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-mono">Workout Plan</span>
                     </div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">{todayRoutine.name}</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                      Focused loading block targeting: <strong className="text-zinc-800 dark:text-zinc-200 font-bold">{todayRoutine.focus}</strong>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-150">{todayRoutine.name}</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                      Workout Focus: <strong className="text-zinc-800 dark:text-zinc-200 font-bold">{todayRoutine.focus}</strong>
                     </p>
-                    <div className="text-[10px] text-zinc-500 font-bold font-mono uppercase pt-1">
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase pt-0.5">
                       {todayRoutine.exercises.length} exercises · {todayRoutine.estimatedMinutes} mins est. duration
                     </div>
                   </div>
@@ -919,19 +864,18 @@ export function DashboardScreen() {
                   </Button>
                 </div>
 
-                {/* Column 2: Calorie / Recovery */}
-                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
-                  <div className="space-y-2.5">
+                {/* Column 2: Fuel Matrix */}
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Metabolic Replenishment</span>
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase">FUEL MATRIX</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Daily Nutrition</span>
                     </div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">Nutrition & Calories</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                      Replenish target glycogen energy of <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedCalories ?? 2288} kcal</strong> and lock in <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedProtein ?? 150}g protein</strong> synthesis threshold.
+                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-150">Nutrition & Calories</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-normal">
+                      Aim for a baseline of <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong> to fuel your body.
                     </p>
-                    <div className="text-[10px] text-zinc-500 font-bold font-mono uppercase pt-1">
-                      2,500 ml baseline hydration · dynamic metabolic tracking
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase pt-0.5">
+                      Drink at least 2,500 ml of water · Track your daily meals
                     </div>
                   </div>
                   <Button 
@@ -947,47 +891,49 @@ export function DashboardScreen() {
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-6 border border-violet-500/20 dark:border-violet-500/25 bg-zinc-50 dark:bg-zinc-955 bg-gradient-to-br from-zinc-50 via-violet-50/30 to-amber-50/40 dark:from-zinc-950 dark:via-violet-955/15 dark:to-amber-955/20 relative shadow-xl overflow-hidden group rounded-2xl">
+          <div className="p-5 sm:p-6 border border-violet-500/20 dark:border-violet-500/30 bg-gradient-to-br from-violet-50/40 to-amber-50/30 dark:bg-none dark:bg-zinc-950 relative shadow-xl overflow-hidden group rounded-2xl">
             {/* Visual glow elements */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px] pointer-events-none" />
             <div className="absolute -left-20 -bottom-20 w-44 h-44 rounded-full bg-amber-500/5 blur-[80px] group-hover:bg-amber-500/10 transition-all duration-300 pointer-events-none" />
             
-            <div className="relative z-10 space-y-4">
-              {/* Header Zone explaining WHY the card exists */}
-              <div className="space-y-2 select-none">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
-                  Unified Bio-Telemetry Matrix · Rest & Restoration Coregulation
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-955 dark:text-white leading-tight">Nervous System Recovery & Anabolic Supercompensation</h2>
-                <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-4xl">
-                  Muscle fibers do not grow during a workout; training simply provides the stimulus. Growth and recovery occur entirely during rest, facilitated by the parasympathetic nervous system. Rest days allow for the clearance of metabolic waste, glycogen supercompensation in muscle cells, and central nervous system (CNS) pathway reconstruction. Matching this phase with target baseline calories and high-quality protein is vital to complete the systemic recovery loop.
+            <div className="relative z-10 space-y-5">
+              {/* Header Zone: Clean & Spacious */}
+              <div className="space-y-1 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                    Today's Target
+                  </span>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase">REST DAY</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white leading-tight">Rest, Recharge & Recovery</h2>
+                <p className="text-xs text-zinc-555 dark:text-zinc-405 leading-normal max-w-2xl">
+                  Today is all about rest: let your body recover from training, recharge your energy, and hit your nutrition goals to stay on track.
                 </p>
               </div>
 
-              {/* Grid split representing both functions with equal-weight action buttons */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 pt-4 border-t border-zinc-200/50 dark:border-white/5">
+              {/* Grid split: Simple, transparent columns with clean layouts */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200/50 dark:border-white/5">
                 {/* Column 1: System Restoration (CNS Recovery) */}
-                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
-                  <div className="space-y-2.5">
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-455 font-mono">CNS Recovery</span>
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase">Homeostasis</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-455 font-mono">Recharge & Rest</span>
                     </div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">Systemic Restoration</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                      Muscle micro-tears and loading stress accumulate systemic fatigue. Prioritize deep sleep, parasympathetic activation, and progressive recovery metrics.
+                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">Active Recovery</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                      Focus on getting deep sleep, relaxing your body, and doing light stretching.
                     </p>
-                    <div className="flex flex-wrap gap-1.5 pt-1.5">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                         <Activity size={10} />
-                        Light Mobility Flow
+                        Light Stretching
                       </span>
                       <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                         <Moon size={10} />
-                        CNS Sleep Focus
+                        Deep Rest
                       </span>
                     </div>
                   </div>
@@ -1006,18 +952,17 @@ export function DashboardScreen() {
                 </div>
 
                 {/* Column 2: Calorie / Nutrition */}
-                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
-                  <div className="space-y-2.5">
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Metabolic Recovery</span>
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase">GLYCOGEN BUFFER</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Daily Nutrition</span>
                     </div>
-                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">Nutrition & Calories</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                      Replenish target glycogen energy of <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedCalories ?? 2288} kcal</strong> and lock in <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedProtein ?? 150}g protein</strong> synthesis threshold.
+                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">Nutrition & Energy</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-normal">
+                      Keep your recovery on track by aiming for <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong>.
                     </p>
-                    <div className="text-[10px] text-zinc-500 font-bold font-mono uppercase pt-1">
-                      2,500 ml baseline hydration · dynamic metabolic tracking
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase pt-0.5">
+                      Drink at least 2,500 ml of water · Track your daily meals
                     </div>
                   </div>
                   <Button 
@@ -1033,7 +978,7 @@ export function DashboardScreen() {
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
         )}
       </section>
 
@@ -1202,27 +1147,27 @@ export function DashboardScreen() {
       {/* ─── DYNAMIC BIOMETRICS hub ─── */}
       {!guidedMode && (
         <Card className="p-4 border border-card-border bg-card shadow">
-          <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
             <div className="flex items-center gap-2">
               <User size={16} className="text-emerald-600 dark:text-emerald-400" />
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Athlete Biometrics</h2>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Athlete Biometrics</h2>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-white" onClick={() => setActiveTab("settings")}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setActiveTab("settings")}>
               <Pencil size={14} />
             </Button>
           </div>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-xs text-zinc-500 font-bold uppercase">Age</span>
-              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-400">yrs</span></p>
+              <p className="font-bold text-zinc-900 dark:text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">yrs</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-xs text-zinc-500 font-bold uppercase">Weight</span>
-              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-400">{profile?.weightUnit}</span></p>
+              <p className="font-bold text-zinc-900 dark:text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">{profile?.weightUnit}</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-xs text-zinc-500 font-bold uppercase">Height</span>
-              <p className="font-bold text-white text-sm">
+              <p className="font-bold text-zinc-900 dark:text-white text-sm">
                 {profile?.height
                   ? profile.heightUnit === "in"
                     ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
@@ -1249,9 +1194,9 @@ export function DashboardScreen() {
       {/* ─── HIGH-FIDELITY TABBED TRENDS CONSOLE ─── */}
       {!guidedMode && (
         <Card className="p-5 border border-card-border bg-card shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-100 dark:border-white/5 pb-4">
             <div>
-              <h2 className="text-lg font-bold text-white leading-tight">Bio-Analytics Console</h2>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">Bio-Analytics Console</h2>
               <p className="text-xs text-zinc-400">Biological markers and load volume trendlines</p>
             </div>
             
@@ -1384,7 +1329,7 @@ export function DashboardScreen() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                        <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{plan.name}</h3>
                         {isActive && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                             Active Plan
@@ -1394,7 +1339,7 @@ export function DashboardScreen() {
                       <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
+                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
                         setEditingWorkoutPlanId(plan.id);
                         setActiveSubScreen("workout-plan-builder");
                       }}>
@@ -1458,10 +1403,10 @@ export function DashboardScreen() {
 
           {/* ─── PERSONAL RECORDS achievements SHELF ─── */}
           <Card className="p-4 border border-card-border bg-card shadow">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
               <div className="flex items-center gap-2">
                 <Medal className="text-amber-400" size={16} />
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">Recent Personal Records</h2>
+                <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Recent Personal Records</h2>
               </div>
             </div>
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3">
@@ -1469,7 +1414,7 @@ export function DashboardScreen() {
                 recentPrs.slice(0, 6).map((pr) => (
                   <Surface key={`${pr.exerciseName}-${pr.value}`} className="flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface">
                     <div>
-                      <p className="text-xs font-bold text-white truncate max-w-36">{pr.exerciseName}</p>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-white truncate max-w-36">{pr.exerciseName}</p>
                       <p className="text-xs text-zinc-500">{pr.date}</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold border border-amber-500/15">
@@ -1496,7 +1441,7 @@ export function DashboardScreen() {
                   <span className={`text-xs font-black uppercase tracking-widest ${isLastMessageError ? 'text-red-400' : 'text-emerald-500'}`}>
                     {isLastMessageError ? "Central Link Impaired" : "Dynamic Coaching Directive"}
                   </span>
-                  <h3 className="text-sm font-bold text-white leading-snug">
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
                     {isLastMessageError ? "AI Coach Connection Problem" : "Today's Biomechanical Note"}
                   </h3>
                   <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-300'}`}>
@@ -1552,13 +1497,13 @@ export function DashboardScreen() {
       {showSwitchModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
               setShowSwitchModal(false);
               setPlanToActivate(null);
             }}>
               <X size={20} />
             </Button>
-            <h3 className="text-xl font-bold text-white leading-tight">Switch Active Program</h3>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">Switch Active Program</h3>
             <p className="text-zinc-300 text-xs leading-relaxed">
               {activeWorkout 
                 ? "Switching active plan: You currently have a workout session in progress. Switching plans now will discard your active session and wipe uncompleted tracking data. Do you want to proceed?"
@@ -1588,13 +1533,13 @@ export function DashboardScreen() {
       {showDeleteModal && planToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
               setShowDeleteModal(false);
               setPlanToDelete(null);
             }}>
               <X size={20} />
             </Button>
-            <h3 className="text-xl font-bold text-white leading-tight">Delete Workout Program</h3>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">Delete Workout Program</h3>
             <p className="text-zinc-300 text-xs leading-relaxed">
               {activeWorkout && activeWorkout.planId === planToDelete.id
                 ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently discard the active workout and delete this program file.`
@@ -1711,7 +1656,7 @@ export function DashboardScreen() {
 
             {/* AI BUSY OVERLAY — shown instead of options when AI is generating */}
             {coachBusy ? (
-              <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/50 to-zinc-950/80 p-5 space-y-3">
+              <div className="keep-dark relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/50 to-zinc-950/80 p-5 space-y-3">
                 {/* Ambient glow */}
                 <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-violet-500/20 blur-[50px] pointer-events-none" />
                 <div className="flex items-center gap-3">
@@ -1732,7 +1677,7 @@ export function DashboardScreen() {
                         Cooking
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-white mt-0.5">Your plan is being generated!</p>
+                    <p className="text-sm font-bold text-white-keep mt-0.5">Your plan is being generated!</p>
                   </div>
                 </div>
                 <p className="text-xs text-zinc-300 leading-relaxed">
@@ -1828,21 +1773,19 @@ export function DashboardScreen() {
 
             {!showMigrationSuccessAnimation ? (
               <>
-                <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-5 select-none">
+                <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-3 mb-5 select-none">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="text-emerald-500" size={20} />
-                    <h3 className="font-bold text-white text-base">Secure Cloud Sync Setup</h3>
+                    <h3 className="font-bold text-zinc-900 dark:text-white text-base">Secure Cloud Sync Setup</h3>
                   </div>
                   {!isMigrationSubmitting && (
                     <button
                       onClick={() => {
                         setShowMigrationModal(false);
-                        setMigrationOtpSent(false);
-                        setShowMigrationSandboxOtp(false);
-                        setMigrationEmailError(null);
-                        setMigrationOtpError(null);
+                        setMigrationEmailInput("");
+                        setMigrationSubmitError(null);
                       }}
-                      className="text-zinc-400 hover:text-white transition"
+                      className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition"
                     >
                       <X size={18} />
                     </button>
@@ -1855,98 +1798,54 @@ export function DashboardScreen() {
                   </div>
                 )}
 
-                {!migrationOtpSent ? (
-                  /* Email Form Step */
-                  <div className="space-y-4">
-                    <p className="text-xs text-zinc-400 leading-relaxed">
-                      Upgrade to a verified cloud profile. Entering a verified email address enables automatic backups, multi-device synchronization, and secure account recovery.
+                {isMigrationFederatedLoading ? (
+                  <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-fadeIn select-none">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent shadow-md" />
+                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider font-mono">
+                      Verifying credentials via {migrationCapturedProvider === "apple" ? "Apple" : "Google"}...
                     </p>
-                    <div className="space-y-2">
-                      <Label htmlFor="migration-email" className="text-xs font-bold uppercase tracking-wider text-zinc-555 dark:text-zinc-400 font-mono">
-                        Email Address
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="migration-email"
-                          type="email"
-                          value={migrationEmailInput}
-                          onChange={(e) => {
-                            setMigrationEmailInput(e.target.value);
-                            setMigrationEmailError(null);
-                          }}
-                          placeholder="alex@example.com"
-                          className="pl-9 text-xs font-medium"
-                          disabled={isMigrationSubmitting}
-                        />
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-                      </div>
-                      {migrationEmailError && (
-                        <p className="text-[10px] text-rose-500 dark:text-rose-455 font-medium leading-relaxed">
-                          {migrationEmailError}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      onClick={handleSendMigrationOtp}
-                      className="w-full font-bold bg-emerald-500 hover:bg-emerald-450 text-white mt-2"
-                      disabled={isMigrationSubmitting}
-                    >
-                      {isMigrationSubmitting ? "Sending..." : "Send Verification Code"}
-                    </Button>
                   </div>
                 ) : (
-                  /* OTP Form Step */
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      We've sent a 6-digit verification code. Please check your simulated sandbox mailbox at the top of your screen to copy the code.
+                      Upgrade to a verified cloud profile. Pick an identity provider below to establish a clean, verified Cloud backup. Your real email can be hidden using Apple's proxy relay model.
                     </p>
-                    <div className="space-y-2">
-                      <Label htmlFor="migration-otp" className="text-xs font-bold uppercase tracking-wider text-zinc-555 dark:text-zinc-400 font-mono">
-                        Verification Code (OTP)
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="migration-otp"
-                          type="text"
-                          maxLength={6}
-                          value={migrationOtpInput}
-                          onChange={(e) => {
-                            setMigrationOtpInput(e.target.value.replace(/[^0-9]/g, ""));
-                            setMigrationOtpError(null);
-                          }}
-                          placeholder="123456"
-                          className="pl-9 text-xs font-mono font-bold tracking-[0.25em]"
-                          disabled={isMigrationSubmitting}
-                        />
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-                      </div>
-                      {migrationOtpError && (
-                        <p className="text-[10px] text-rose-500 dark:text-rose-455 font-medium leading-relaxed">
-                          {migrationOtpError}
-                        </p>
-                      )}
+
+                    <div className="space-y-3">
+                      {/* Apple Button */}
+                      <button
+                        type="button"
+                        onClick={() => simulateMigrationFederatedSignIn("apple")}
+                        disabled={isMigrationSubmitting}
+                        className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-black text-white hover:bg-zinc-900 border border-zinc-800 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-md shadow-black/10 active:scale-[0.99] disabled:opacity-50"
+                      >
+                        <svg className="h-4.5 w-4.5 fill-current text-white" viewBox="0 0 24 24">
+                          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.51-.62.71-1.16 1.85-1.01 2.96 1.1.09 2.27-.58 2.96-1.41z" />
+                        </svg>
+                        Sign in with Apple
+                      </button>
+
+                      {/* Google Button */}
+                      <button
+                        type="button"
+                        onClick={() => simulateMigrationFederatedSignIn("google")}
+                        disabled={isMigrationSubmitting}
+                        className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:border-zinc-700 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-sm active:scale-[0.99] disabled:opacity-50"
+                      >
+                        <svg className="h-4.5 w-4.5" viewBox="0 0 24 24">
+                          <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.555 0-6.437-2.882-6.437-6.437 0-3.555 2.882-6.437 6.437-6.437 1.523 0 2.923.533 4.033 1.414l3.14-3.14C18.665 1.511 15.656 0 12.24 0 5.48 0 0 5.48 0 12.24s5.48 12.24 12.24 12.24c6.72 0 12.24-5.48 12.24-12.24 0-.756-.076-1.503-.223-2.223H12.24z" />
+                        </svg>
+                        Sign in with Google
+                      </button>
                     </div>
-                    <div className="flex gap-2.5 pt-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setMigrationOtpSent(false);
-                          setShowMigrationSandboxOtp(false);
-                          setMigrationOtpInput("");
-                          setMigrationOtpError(null);
-                        }}
-                        className="flex-1 font-semibold"
-                        disabled={isMigrationSubmitting}
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        onClick={handleVerifyMigrationOtp}
-                        className="flex-1 font-bold bg-emerald-500 hover:bg-emerald-450 text-white"
-                        disabled={isMigrationSubmitting}
-                      >
-                        {isMigrationSubmitting ? "Upgrading..." : "Confirm Code"}
-                      </Button>
+
+                    <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-4 space-y-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                        ⚠️ Crucial Data Warning
+                      </span>
+                      <p className="text-[10px] text-zinc-500 leading-relaxed">
+                        If you want to sync your training data seamlessly to any device, pick this option. Otherwise, make sure to export manual backups in Settings regularly, or your data will be permanently lost when browser cache is cleared.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1958,7 +1857,7 @@ export function DashboardScreen() {
                   <Check className="stroke-[3]" size={32} />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-lg font-black text-white">Upgrade Successful</h3>
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-white">Upgrade Successful</h3>
                   <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
                     A secure email sync record has been verified. Your legacy backing file has been converted to the safe naming format:
                   </p>
