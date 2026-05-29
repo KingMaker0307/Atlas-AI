@@ -341,7 +341,7 @@ export function Onboarding() {
                         ? "bg-emerald-500 dark:bg-emerald-400 text-white-keep dark:text-zinc-950 border-emerald-500 dark:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)] cursor-pointer"
                         : isActive
                         ? "bg-white dark:bg-zinc-950 text-emerald-600 dark:text-emerald-400 border-emerald-500 dark:border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-default"
-                        : "bg-zinc-100 dark:bg-zinc-950 text-zinc-400 dark:text-zinc-650 border-zinc-200 dark:border-zinc-800 cursor-not-allowed"
+                        : "bg-zinc-100 dark:bg-zinc-950 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-800 cursor-not-allowed"
                     }`}
                     disabled={s.id > step}
                   >
@@ -408,7 +408,7 @@ export function Onboarding() {
                   className="space-y-4"
                 >
                   <div className="pb-1">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                       <Sparkles className="text-emerald-400" size={18} />
                       Welcome! Let's get to know you
                     </h2>
@@ -427,8 +427,8 @@ export function Onboarding() {
                   </div>
 
                   {/* Unit System Preferences */}
-                  <div className="bg-zinc-950/20 dark:bg-zinc-950/50 p-4 border border-card-border rounded-2xl space-y-3">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Unit Preferences</h3>
+                  <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-3">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Unit Preferences</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label>Weight Unit</Label>
@@ -436,7 +436,7 @@ export function Onboarding() {
                           name="weightUnit"
                           control={control}
                           render={({ field }) => (
-                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-950 p-1">
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-surface-border bg-surface p-1">
                               {["lbs", "kg"].map((unit) => (
                                 <button
                                   key={unit}
@@ -455,7 +455,7 @@ export function Onboarding() {
                                   className={`rounded-lg py-1.5 text-xs font-bold uppercase transition ${
                                     field.value === unit
                                       ? "bg-emerald-500 text-white-keep dark:text-zinc-950 shadow-sm"
-                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-450 dark:hover:text-white"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                                   }`}
                                 >
                                   {unit}
@@ -472,7 +472,7 @@ export function Onboarding() {
                           name="heightUnit"
                           control={control}
                           render={({ field }) => (
-                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-950 p-1">
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-surface-border bg-surface p-1">
                               {["in", "cm"].map((unit) => (
                                 <button
                                   key={unit}
@@ -491,7 +491,7 @@ export function Onboarding() {
                                   className={`rounded-lg py-1.5 text-xs font-bold uppercase transition ${
                                     field.value === unit
                                       ? "bg-emerald-500 text-white-keep dark:text-zinc-950 shadow-sm"
-                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-450 dark:hover:text-white"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                                   }`}
                                 >
                                   {unit === "in" ? "ft & in" : "cm"}
@@ -587,10 +587,10 @@ export function Onboarding() {
                   </div>
 
                   {/* AI Coach Toggle */}
-                  <div className="bg-zinc-950/20 dark:bg-zinc-950/50 p-4 border border-card-border rounded-2xl space-y-3">
+                  <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400">AI Coach Assistant</h3>
+                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">AI Coach Assistant</h3>
                         <p className="text-[11px] text-zinc-500 leading-normal">
                           Enable AI Coach to design personalized programs, write custom workout summaries, and answer training questions.
                         </p>
@@ -634,7 +634,7 @@ export function Onboarding() {
                   className="space-y-4"
                 >
                   <div className="pb-1">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                       <Sparkles className="text-emerald-400" size={18} />
                       Define Your Plan Focus
                     </h2>
@@ -735,7 +735,7 @@ export function Onboarding() {
                   className="space-y-4"
                 >
                   <div className="pb-1">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                       <Sparkles className="text-emerald-400" size={18} />
                       Biometrics & Training Experience
                     </h2>
@@ -825,7 +825,7 @@ export function Onboarding() {
                   className="space-y-4"
                 >
                   <div className="pb-1">
-                    <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
                       <Sparkles className="text-emerald-400" size={18} />
                       AI Coach Configuration (Optional)
                     </h2>

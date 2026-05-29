@@ -100,9 +100,18 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
           <div className="mb-4">
             <Label>Target Date</Label>
             <Input
-              type="date"
+              type={targetDate ? "date" : "text"}
+              placeholder="Pick Date"
+              onFocus={(e) => {
+                e.target.type = "date";
+              }}
+              onBlur={(e) => {
+                if (!e.target.value) {
+                  e.target.type = "text";
+                }
+              }}
               min={minDate}
-              className="mt-2 h-10 text-zinc-900 dark:text-zinc-100 bg-white dark:bg-zinc-900/60 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3 focus:outline-none focus:border-emerald-500/70 focus:ring-1 focus:ring-emerald-500/30 transition-all [color-scheme:light] dark:[color-scheme:dark]"
+              className="mt-2 h-10 text-zinc-955 dark:text-white"
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
             />

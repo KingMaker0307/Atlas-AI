@@ -237,4 +237,5 @@ export interface AtlasSnapshot {
   updatedAt: string;
   apiCallCount: number; // Added to AtlasSnapshot
   tokenCount: number; // Added to AtlasSnapshot
+  deviceSecret?: string;
 }

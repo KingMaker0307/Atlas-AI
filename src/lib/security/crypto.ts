@@ -39,6 +39,16 @@ function getDeviceSecret(): string {
   return next;
 }
 
+export function getDeviceSecretValue(): string {
+  return getDeviceSecret();
+}
+
+export function setDeviceSecretValue(secret: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(DEVICE_SECRET_KEY, secret);
+  }
+}
+
 async function deriveKey(secret: string, salt: string): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",

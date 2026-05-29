@@ -10,11 +10,11 @@ import {
   sampleRecoveryLogs,
   sampleWorkouts,
 } from "@/data/seed";
-import { parseAiWorkoutPlan } from "@/lib/ai/parser";
+import { parseAiWorkoutPlan, cleanJsonString } from "@/lib/ai/parser";
 import { buildCoachContext } from "@/lib/coach/context";
 import { createId, minutesBetween } from "@/lib/id";
 import { getProgressionRecommendations } from "@/lib/progression/engine";
-import { decryptExport, decryptString, encryptForExport, encryptString } from "@/lib/security/crypto";
+import { decryptExport, decryptString, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
 import { loadSnapshot, saveSnapshot } from "@/lib/storage/db";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
 import { checkBlockedStatus, syncProfile } from "@/lib/sync";
@@ -172,6 +172,7 @@ function freshSnapshot(): StoredSnapshot {
     activeWorkoutPlanId: null,
     blocked: false,
     lastSyncedAt: null,
+    deviceSecret: getDeviceSecretValue(),
   };
 }
 
@@ -217,6 +218,7 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     activeWorkoutPlanId: state.activeWorkoutPlanId,
     blocked: state.blocked,
     lastSyncedAt: state.lastSyncedAt,
+    deviceSecret: getDeviceSecretValue(),
   };
 }
 
@@ -378,14 +380,15 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     if (!activeProvider) {
       throw new Error("No active AI provider found. Please configure one in Settings to unlock global exercise database search.");
     }
-    if (!activeProvider.apiKey) {
+    const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+    if (!isLocal && !activeProvider.apiKey) {
       throw new Error("API key is missing. Please set your key in Settings to search the global exercise database.");
     }
 
     set({ coachBusy: true, apiCallCount: get().apiCallCount + 1 });
 
     try {
-      const apiKey = await decryptString(activeProvider.apiKey);
+      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
       const adapter = getProviderAdapter(activeProvider.type);
 
       const systemContext = `You are Atlas Biomechanics Coach, a clinical-grade sports physiotherapist and strength coach.
@@ -496,6 +499,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const localData = await loadSnapshot();
     const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
     
+    // Restore device secret to localStorage if it's found in IndexedDB
+    if (snapshot.deviceSecret && typeof window !== "undefined") {
+      setDeviceSecretValue(snapshot.deviceSecret);
+    }
+
     // Migrate workout plans to ensure they have creatorType, startDay, and standard week day names
     const migratedPlans = (snapshot.workoutPlans || []).map(plan => {
       const creatorType = plan.creatorType || "manual";
@@ -1117,8 +1125,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     if (!provider) return;
     set({ providerBusy: true });
     try {
-      if (!provider.apiKey) throw new Error("API key is missing.");
-      const apiKey = await decryptString(provider.apiKey);
+      const isLocal = provider.type === "ollama" || provider.type === "lmstudio";
+      if (!isLocal && !provider.apiKey) throw new Error("API key is missing.");
+      const apiKey = isLocal ? "" : await decryptString(provider.apiKey!);
       const adapter = getProviderAdapter(provider.type);
       await adapter.validate(provider, apiKey);
       set({
@@ -1174,8 +1183,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const activeProvider = get().aiProviders.find((provider) => provider.id === get().activeProviderId);
     try {
       if (!activeProvider) throw new Error("No active AI provider found.");
-      if (!activeProvider.apiKey) throw new Error("API key is missing or invalid.");
-      const apiKey = await decryptString(activeProvider.apiKey);
+      const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+      if (!isLocal && !activeProvider.apiKey) throw new Error("API key is missing or invalid.");
+      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
       const adapter = getProviderAdapter(activeProvider.type);
       const { content: responseContent, tokenCount: responseTokenCount } = await adapter.chat({
         provider: activeProvider,
@@ -1185,13 +1195,40 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         messages: get().aiMessages.filter((m) => m.id !== assistantId && m.content.trim() !== ""),
         systemContext: context,
       });
+      const plan = parseAiWorkoutPlan(responseContent);
+      let hasMissing = false;
+      let missingExerciseIds: string[] = [];
+
+      if (plan) {
+        const referencedExerciseIds = new Set<string>();
+        const parsedRoutines = plan.routines || [];
+        parsedRoutines.forEach((r) => {
+          if (Array.isArray(r.exercises)) {
+            r.exercises.forEach((ex) => {
+              if (ex.exerciseId) {
+                referencedExerciseIds.add(ex.exerciseId);
+              }
+            });
+          }
+        });
+
+        const planExercises = plan.exercises || [];
+        missingExerciseIds = Array.from(referencedExerciseIds).filter((id) => {
+          const inStatic = staticExercises.some((e) => e.id === id);
+          const inStore = get().exercises.some((e) => e.id === id);
+          const inPlan = planExercises.some((e) => e.id === id);
+          return !inStatic && !inStore && !inPlan;
+        });
+        hasMissing = missingExerciseIds.length > 0;
+      }
+
       const finalMessage = { ...assistantMessage, content: responseContent };
       set({
         aiMessages: get().aiMessages.map((m) => (m.id === assistantId ? finalMessage : m)),
-        coachBusy: false,
+        coachBusy: hasMissing,
         tokenCount: get().tokenCount + (responseTokenCount ?? 0), // Accumulate token count
       });
-      const plan = parseAiWorkoutPlan(responseContent);
+
       if (plan) {
         const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
         // Correctly populate existingExercises with full Exercise objects from plan.exercises
@@ -1245,6 +1282,70 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         }
 
         set(storeUpdate);
+
+        if (hasMissing) {
+          setTimeout(async () => {
+            const gapMessageContent = responseContent + `\n\n**System Note:** The generated plan contains routines that reference exercise IDs (\`${missingExerciseIds.join(", ")}\`) that do not exist in the database.\nI am automatically executing a follow-up background call to fetch the complete biomechanical profiles for these exercises...`;
+            
+            set({
+              aiMessages: get().aiMessages.map((m) =>
+                m.id === assistantId ? { ...m, content: gapMessageContent } : m
+              ),
+            });
+
+            try {
+              const followUpSystemContext = `You are Atlas Biomechanics Coach.\nThe user has generated a plan, but some exercise profiles are missing from the configuration.\nProvide the complete biomechanical definitions for these specific exercise IDs: ${missingExerciseIds.join(", ")}.\nYour response MUST be a single, valid JSON array of Exercise objects matching this TypeScript interface exactly:\ninterface Exercise {\n  id: string; // must match the exact id requested (e.g. 'lat-pulldown')\n  name: string; // The capitalization and clean name (e.g., 'Lat Pulldown')\n  category: "compound" | "isolation" | "cardio" | "steady-state" | "mobility";\n  muscles: ("chest" | "back" | "shoulders" | "biceps" | "triceps" | "quads" | "hamstrings" | "glutes" | "calves" | "core" | "full body")[];\n  equipment: ("barbell" | "dumbbell" | "machine" | "cable" | "bodyweight" | "kettlebell" | "band" | "cardio" | "treadmill" | "elliptical" | "stationary-bike" | "stairclimber" | "other")[];\n  difficulty: "beginner" | "intermediate" | "advanced";\n  setup: string[]; // 2-4 detailed setup cues\n  instructions: string[]; // 2-4 primary cues\n  execution: string[]; // 2-4 precise drive/locking cues\n  breathing: string; // exactly how to breathe\n  tempo: string; // tempo description (e.g., 3-0-1-0)\n  commonMistakes: string[]; // 2-4 standard biomechanical errors\n  safetyTips: string[]; // 2-4 safety check-offs\n  progressionTips: string[]; // 2-4 progressive overload cues\n}\n\nDo NOT wrap the response in any markdown code block or include any explanatory text. Return ONLY the raw JSON array.`;
+          
+              const followUpUserPrompt = `Generate the Exercise profile details for the following IDs: ${missingExerciseIds.map(id => `"${id}"`).join(", ")}`;
+              
+              const { content: followUpResponseContent } = await adapter.chat({
+                provider: activeProvider,
+                apiKey,
+                messages: [{ id: createId("user"), role: "user", content: followUpUserPrompt, createdAt: new Date().toISOString() }],
+                systemContext: followUpSystemContext,
+              });
+
+              let cleanFollowUp = followUpResponseContent.trim();
+              if (cleanFollowUp.startsWith("```json")) {
+                cleanFollowUp = cleanFollowUp.replace(/^```json/, "").replace(/```$/, "").trim();
+              } else if (cleanFollowUp.startsWith("```")) {
+                cleanFollowUp = cleanFollowUp.replace(/^```/, "").replace(/```$/, "").trim();
+              }
+
+              const parsedFollowUp = JSON.parse(cleanJsonString(cleanFollowUp));
+              if (Array.isArray(parsedFollowUp)) {
+                const latestExercises = new Map(get().exercises.map(e => [e.id, e]));
+                parsedFollowUp.forEach((e: any) => {
+                  if (e && typeof e === "object" && typeof e.id === "string") {
+                    latestExercises.set(e.id, e);
+                  }
+                });
+                
+                const successMessageContent = gapMessageContent + `\n\n**System Update:** Successfully fetched biomechanical profiles for: \`${missingExerciseIds.join(", ")}\`. The workout plan has been successfully finalized!`;
+                
+                set({
+                  exercises: Array.from(latestExercises.values()),
+                  aiMessages: get().aiMessages.map((m) =>
+                    m.id === assistantId ? { ...m, content: successMessageContent } : m
+                  ),
+                  coachBusy: false,
+                });
+              } else {
+                throw new Error("Invalid response format from follow-up query.");
+              }
+            } catch (followUpErr) {
+              console.error("Follow-up correction failed:", followUpErr);
+              const failMessageContent = gapMessageContent + `\n\n**System Warning:** Failed to fetch the missing exercise profiles in the background. You can manually edit the plan or check your connection.`;
+              set({
+                aiMessages: get().aiMessages.map((m) =>
+                  m.id === assistantId ? { ...m, content: failMessageContent } : m
+                ),
+                coachBusy: false,
+              });
+            }
+            await persistState(get());
+          }, 50);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -1268,7 +1369,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   importEncryptedProfile: async (fileText, passphrase) => {
     const snapshot = await decryptExport<any>(fileText, passphrase);
     if (isValidSnapshot(snapshot)) {
+      if (snapshot.deviceSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(snapshot.deviceSecret);
+      }
       set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+      await persistState(get());
     }
   },
   resetLocalData: async () => {

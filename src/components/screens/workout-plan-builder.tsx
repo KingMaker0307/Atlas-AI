@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { useAtlasStore, assignRoutinesToDays } from "@/store/useAtlasStore";
-import { useState, useMemo, type FC } from "react";
+import { useState, useMemo, useRef, useEffect, type FC } from "react";
 import { AiPromptCard } from "@/components/ai-prompt-card";
 import type { WorkoutPlan } from "@/types/domain";
 import { createId } from "@/lib/id";
@@ -35,6 +35,8 @@ import {
   Sparkles,
   Check,
   ListChecks,
+  AlertTriangle,
+  Settings,
 } from "lucide-react";
 
 // ─── Sub-views ───────────────────────────────────────────────
@@ -67,8 +69,8 @@ const TemplateCard: FC<{
 
       <div className="p-4 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-white leading-tight">{template.name}</h3>
-          <p className="text-xs text-zinc-500 mt-0.5">by {template.origin}</p>
+          <h3 className="text-sm font-semibold text-foreground leading-tight">{template.name}</h3>
+          <p className="text-xs text-zinc-550 dark:text-zinc-500 mt-0.5">by {template.origin}</p>
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
@@ -77,13 +79,13 @@ const TemplateCard: FC<{
 
         {/* Quick stats */}
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
             <CalendarDays size={10} />
             {template.daysPerWeek.length === 1
-              ? `${template.daysPerWeek[0]}×/wk`
-              : `${template.daysPerWeek[0]}-${template.daysPerWeek[template.daysPerWeek.length - 1]}×/wk`}
+               ? `${template.daysPerWeek[0]}×/wk`
+               : `${template.daysPerWeek[0]}-${template.daysPerWeek[template.daysPerWeek.length - 1]}×/wk`}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
             <Clock size={10} />
             {template.durationMinutes}m
           </span>
@@ -152,7 +154,7 @@ const TemplateDetailView: FC<{
           <ChevronLeft size={20} />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold tracking-normal text-white">{template.name}</h1>
+          <h1 className="text-xl font-semibold tracking-normal text-foreground">{template.name}</h1>
           <p className="text-xs text-zinc-500">by {template.origin}</p>
         </div>
       </div>
@@ -164,14 +166,14 @@ const TemplateDetailView: FC<{
 
     {/* Description */}
     <Card className="p-4">
-      <p className="text-sm text-zinc-300 leading-relaxed">{template.description}</p>
+      <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{template.description}</p>
     </Card>
 
     {/* Stats grid */}
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <Surface className="flex flex-col items-center gap-1 py-3">
-        <CalendarDays size={16} className="text-violet-400" />
-        <span className="text-lg font-bold text-white">
+        <CalendarDays size={16} className="text-violet-600 dark:text-violet-400" />
+        <span className="text-lg font-bold text-foreground">
           {template.daysPerWeek.length === 1
             ? template.daysPerWeek[0]
             : `${template.daysPerWeek[0]}-${template.daysPerWeek[template.daysPerWeek.length - 1]}`}
@@ -179,18 +181,18 @@ const TemplateDetailView: FC<{
         <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Days / Week</span>
       </Surface>
       <Surface className="flex flex-col items-center gap-1 py-3">
-        <Clock size={16} className="text-fuchsia-400" />
-        <span className="text-lg font-bold text-white">{template.durationMinutes}m</span>
+        <Clock size={16} className="text-fuchsia-600 dark:text-fuchsia-400" />
+        <span className="text-lg font-bold text-foreground">{template.durationMinutes}m</span>
         <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Session</span>
       </Surface>
       <Surface className="flex flex-col items-center gap-1 py-3">
-        <Layers size={16} className="text-emerald-400" />
-        <span className="text-lg font-bold text-white">{template.routines.length}</span>
+        <Layers size={16} className="text-emerald-600 dark:text-emerald-400" />
+        <span className="text-lg font-bold text-foreground">{template.routines.length}</span>
         <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Routines</span>
       </Surface>
       <Surface className="flex flex-col items-center gap-1 py-3">
-        <Dumbbell size={16} className="text-amber-400" />
-        <span className="text-lg font-bold text-white">
+        <Dumbbell size={16} className="text-amber-600 dark:text-amber-400" />
+        <span className="text-lg font-bold text-foreground">
           {new Set(template.routines.flatMap((r) => r.exercises.map((e) => e.exerciseId))).size}
         </span>
         <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Exercises</span>
@@ -200,17 +202,17 @@ const TemplateDetailView: FC<{
     {/* Info chips */}
     <div className="flex flex-wrap gap-2">
       {template.trainingStyles.map((s) => (
-        <span key={s} className="rounded-full bg-violet-500/10 border border-violet-500/20 px-3 py-1 text-xs font-medium text-violet-400 capitalize">{s}</span>
+        <span key={s} className="rounded-full bg-violet-500/10 border border-violet-500/20 px-3 py-1 text-xs font-medium text-violet-600 dark:text-violet-400 capitalize">{s}</span>
       ))}
       {template.experience.map((e) => (
         <span key={e} className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${
-          e === "beginner" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
-          e === "intermediate" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
-          "bg-red-500/10 border-red-500/20 text-red-400"
+          e === "beginner" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" :
+          e === "intermediate" ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400" :
+          "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400"
         }`}>{e}</span>
       ))}
       {template.targetPhysiques.map((p) => (
-        <span key={p} className="rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 px-3 py-1 text-xs font-medium text-fuchsia-400 capitalize">{p}</span>
+        <span key={p} className="rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 px-3 py-1 text-xs font-medium text-fuchsia-600 dark:text-fuchsia-400 capitalize">{p}</span>
       ))}
     </div>
 
@@ -221,10 +223,10 @@ const TemplateDetailView: FC<{
         <Card key={idx} className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-white">{routine.name}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{routine.name}</h3>
               <p className="text-xs text-zinc-500">{routine.focus}</p>
             </div>
-            <span className="text-xs text-zinc-500 flex items-center gap-1">
+            <span className="text-xs text-zinc-555 dark:text-zinc-500 flex items-center gap-1">
               <Clock size={10} /> {routine.estimatedMinutes}m
             </span>
           </div>
@@ -299,12 +301,31 @@ export function WorkoutPlanBuilderScreen() {
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
+  const aiMessages = useAtlasStore((state) => state.aiMessages);
+  const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
 
   // ── View state ──
   const [view, setView] = useState<BuilderView>(editingWorkoutPlanId ? "manual-form" : "choose-method");
   const [selectedTemplate, setSelectedTemplate] = useState<PlanTemplate | null>(null);
   const [showAiCard, setShowAiCard] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAiErrorModal, setShowAiErrorModal] = useState(false);
+  const [aiErrorMessage, setAiErrorMessage] = useState("");
+
+  // Detect when AI generation finishes with an error
+  const prevCoachBusy = useRef(false);
+  useEffect(() => {
+    if (prevCoachBusy.current && !coachBusy) {
+      const lastMsg = aiMessages.at(-1);
+      if (lastMsg?.role === "assistant" && lastMsg.content.includes("**Error:**")) {
+        const parts = lastMsg.content.split("**Error:**");
+        setAiErrorMessage(parts.length > 1 ? parts[1].trim() : lastMsg.content);
+        setShowAiErrorModal(true);
+        setShowAiCard(false);
+      }
+    }
+    prevCoachBusy.current = coachBusy;
+  }, [coachBusy, aiMessages]);
 
   // Start Day Selection Popup State
   const [showStartDayModal, setShowStartDayModal] = useState(false);
@@ -557,7 +578,9 @@ export function WorkoutPlanBuilderScreen() {
        - If the goal is NOT realistically achievable within this timeframe (e.g. losing 15kg in 2 weeks, or building 10kg of muscle in a month), or if the target date is less than 7 days in the future, you MUST write a prominent and friendly warning explanation at the very beginning of your message (before the JSON block), warning them about the risks/unrealistic nature of the timeline, and giving clear suggestions to use as feedback to change the target date or give the normal aggressive training state understanding.
        - If the goal is achievable, write a brief, encouraging confirmation.
     
-    2. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
+    2. YOU MUST INCLUDE the complete Exercise profile details inside the \`exercises\` JSON array for EVERY single exerciseId referenced in the \`routines\` array. Under no circumstances should you reference an exercise ID in a routine without including its full biomechanical definition in the \`exercises\` array.
+    
+    3. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
     {
       "id": "generated-plan-id",
       "name": "Plan Name",
@@ -659,10 +682,10 @@ export function WorkoutPlanBuilderScreen() {
             <Button variant="ghost" size="icon" onClick={() => setActiveSubScreen(null)}>
               <ArrowLeft size={20} />
             </Button>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-normal text-white">Create Workout Plan</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-normal text-foreground">Create Workout Plan</h1>
           </section>
 
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
             Choose how you want to build your plan.
           </p>
 
@@ -682,16 +705,16 @@ export function WorkoutPlanBuilderScreen() {
             >
               <div className="h-1 w-full bg-gradient-to-r from-purple-500 via-violet-500 to-indigo-500 opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="p-5 flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/20 shrink-0">
-                  <Sparkles size={24} className="text-purple-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 shrink-0">
+                  <Sparkles size={24} className="text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="space-y-1 flex-1">
-                  <h3 className="text-base font-semibold text-white">Generate with AI</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <h3 className="text-base font-semibold text-foreground">Generate with AI</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                     Let the AI Coach design a customized training program tailored exactly to your body type, goals, equipment, and schedule.
                   </p>
                 </div>
-                <ChevronRight size={20} className="text-zinc-600 group-hover:text-purple-400 transition-colors mt-1 shrink-0" />
+                <ChevronRight size={20} className="text-zinc-500 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors mt-1 shrink-0" />
               </div>
             </Card>
           </motion.div>
@@ -704,21 +727,21 @@ export function WorkoutPlanBuilderScreen() {
             >
               <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="p-5 flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-violet-500/20 shrink-0">
-                  <ListChecks size={24} className="text-violet-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 border border-violet-500/20 shrink-0">
+                  <ListChecks size={24} className="text-violet-600 dark:text-violet-400" />
                 </div>
                 <div className="space-y-1 flex-1">
-                  <h3 className="text-base font-semibold text-white">Use a Template</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <h3 className="text-base font-semibold text-foreground">Use a Template</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                     Choose from {planTemplates.length}+ world-class programs like 5/3/1, PPL, PHUL, StrongLifts, and more.
                     Auto-matched to your profile.
                   </p>
                 </div>
-                <ChevronRight size={20} className="text-zinc-600 group-hover:text-violet-400 transition-colors mt-1 shrink-0" />
+                <ChevronRight size={20} className="text-zinc-500 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors mt-1 shrink-0" />
               </div>
               <div className="flex flex-wrap gap-1.5 px-5 pb-4">
                 {["Strength", "Hypertrophy", "Bodyweight", "Home Gym", "HIIT"].map(tag => (
-                  <span key={tag} className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-500">{tag}</span>
+                  <span key={tag} className="rounded-full bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">{tag}</span>
                 ))}
               </div>
             </Card>
@@ -732,16 +755,16 @@ export function WorkoutPlanBuilderScreen() {
             >
               <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="p-5 flex items-start gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/20 shrink-0">
-                  <Dumbbell size={24} className="text-emerald-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0">
+                  <Dumbbell size={24} className="text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="space-y-1 flex-1">
-                  <h3 className="text-base font-semibold text-white">Build From Scratch</h3>
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <h3 className="text-base font-semibold text-foreground">Build From Scratch</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                     Create a fully custom plan with your own routines and exercises. Total control over every detail.
                   </p>
                 </div>
-                <ChevronRight size={20} className="text-zinc-600 group-hover:text-emerald-400 transition-colors mt-1 shrink-0" />
+                <ChevronRight size={20} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors mt-1 shrink-0" />
               </div>
             </Card>
           </motion.div>
@@ -763,7 +786,7 @@ export function WorkoutPlanBuilderScreen() {
               <ChevronLeft size={20} />
             </Button>
             <div className="flex-1">
-              <h1 className="text-xl font-semibold tracking-normal text-white">Program Library</h1>
+              <h1 className="text-xl font-semibold tracking-normal text-foreground">Program Library</h1>
               <p className="text-xs text-zinc-500">{filteredTemplates.length} programs available</p>
             </div>
           </section>
@@ -777,10 +800,10 @@ export function WorkoutPlanBuilderScreen() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               maxLength={60}
-              className="w-full rounded-lg border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-zinc-600 outline-none focus:border-violet-500/40 focus:ring-1 focus:ring-violet-500/20 transition-colors"
+              className="w-full rounded-xl border border-input-border bg-input py-2.5 pl-9 pr-8 text-sm text-foreground placeholder:text-zinc-500 outline-none transition focus:border-violet-500/50"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
+              <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-950 dark:hover:text-white">
                 <X size={14} />
               </button>
             )}
@@ -927,7 +950,7 @@ export function WorkoutPlanBuilderScreen() {
               <Button variant="ghost" size="icon" onClick={() => editingWorkoutPlanId ? setActiveSubScreen(null) : setView("choose-method")}>
                 <ArrowLeft size={20} />
               </Button>
-              <h1 className="text-xl font-semibold tracking-normal text-white">
+              <h1 className="text-xl font-semibold tracking-normal text-foreground">
                 {editingWorkoutPlanId ? "Edit Plan" : "New Plan"}
               </h1>
             </div>
@@ -938,16 +961,16 @@ export function WorkoutPlanBuilderScreen() {
           </section>
 
           {plan.routines.length > 0 && (
-            <Card className="p-3 flex items-center gap-2 border-emerald-500/20 bg-emerald-900/10">
-              <Sparkles size={14} className="text-emerald-400 shrink-0" />
-              <p className="text-xs text-emerald-400">
+            <Card className="p-3 flex items-center gap-2 border border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20">
+              <Sparkles size={14} className="text-emerald-700 dark:text-emerald-400 shrink-0" />
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
                 Pre-populated from template with {plan.routines.length} routines &amp; {plan.routines.reduce((sum, r) => sum + r.exercises.length, 0)} exercises.
               </p>
             </Card>
           )}
 
           {error && (
-            <Card className="p-4 border-red-500/50 bg-red-900/20 text-red-400 text-sm font-medium">
+            <Card className="p-4 border border-rose-500/15 dark:border-rose-500/20 bg-rose-500/5 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 text-sm font-medium">
               {error}
             </Card>
           )}
@@ -987,8 +1010,8 @@ export function WorkoutPlanBuilderScreen() {
           {/* Seeding Split Templates Card */}
           <Card className="p-4 space-y-3">
             <div>
-              <Label className="text-sm font-bold text-white flex items-center gap-1.5">
-                <Sparkles size={14} className="text-violet-400" />
+              <Label className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <Sparkles size={14} className="text-violet-600 dark:text-violet-400" />
                 <span>Seed Split Templates</span>
               </Label>
               <p className="text-[11px] text-zinc-500 mt-1 leading-normal">
@@ -1044,7 +1067,7 @@ export function WorkoutPlanBuilderScreen() {
                         {idx + 1}
                       </span>
                       <div>
-                        <h3 className="text-sm font-semibold text-white">{routine.name}</h3>
+                        <h3 className="text-sm font-semibold text-foreground">{routine.name}</h3>
                         <p className="text-[10px] text-zinc-500">{routine.focus} · {routine.day}</p>
                       </div>
                     </div>
@@ -1055,9 +1078,9 @@ export function WorkoutPlanBuilderScreen() {
                     {routine.exercises.map((ex, exIdx) => {
                       const data = getExerciseById(ex.exerciseId);
                       return (
-                        <div key={exIdx} className="flex items-center justify-between px-2 py-1 rounded bg-white/[0.02]">
-                          <span className="text-xs text-zinc-400">{data?.name ?? ex.exerciseId}</span>
-                          <span className="text-[10px] text-zinc-600 tabular-nums">{ex.targetSets}×{ex.targetReps}</span>
+                        <div key={exIdx} className="flex items-center justify-between px-2 py-1 rounded bg-zinc-50 dark:bg-white/[0.02]">
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400">{data?.name ?? ex.exerciseId}</span>
+                          <span className="text-[10px] text-zinc-650 dark:text-zinc-600 tabular-nums">{ex.targetSets}×{ex.targetReps}</span>
                         </div>
                       );
                     })}
@@ -1071,8 +1094,8 @@ export function WorkoutPlanBuilderScreen() {
 
       {showStartDayModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-            <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-zinc-400 hover:text-white" onClick={() => {
+          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
               setShowStartDayModal(false);
               setPendingTemplate(null);
               setPendingAiData(null);
@@ -1080,8 +1103,8 @@ export function WorkoutPlanBuilderScreen() {
             }}>
               <X size={20} />
             </Button>
-            <h2 className="text-xl font-semibold text-white">Select Start Day</h2>
-            <p className="text-zinc-300 text-sm leading-relaxed">
+            <h2 className="text-xl font-semibold text-foreground">Select Start Day</h2>
+            <p className="text-zinc-650 dark:text-zinc-300 text-sm leading-relaxed">
               Choose the start day of the week for your new plan. Your routines will be scheduled starting from this day.
             </p>
             <div className="space-y-2">
@@ -1107,6 +1130,76 @@ export function WorkoutPlanBuilderScreen() {
               </Button>
               <Button variant="primary" onClick={handleConfirmStartDay} className="flex-1">
                 Confirm &amp; Create
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ─── AI PLAN GENERATION ERROR MODAL ─── */}
+      {showAiErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
+          <Card className="w-full max-w-md p-6 space-y-4 relative border border-rose-500/30 bg-card shadow-2xl">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
+              onClick={() => setShowAiErrorModal(false)}
+            >
+              <X size={20} />
+            </Button>
+
+            {/* Header */}
+            <div className="flex items-start gap-3.5">
+              <div className="shrink-0 h-11 w-11 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
+                <AlertTriangle className="text-rose-500 dark:text-rose-400" size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
+              </div>
+            </div>
+
+            {/* Error detail */}
+            <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/[0.07] p-3.5 space-y-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
+                {aiErrorMessage || "An unknown error occurred communicating with the AI provider."}
+              </p>
+            </div>
+
+            {/* Tips */}
+            <div className="space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+              <p className="font-semibold text-zinc-700 dark:text-zinc-300">Common causes:</p>
+              <ul className="list-disc list-inside space-y-1 leading-relaxed">
+                <li>Invalid or expired API key</li>
+                <li>No active AI provider configured</li>
+                <li>Network connection issue or provider outage</li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="secondary"
+                onClick={() => setShowAiErrorModal(false)}
+                className="flex-1 text-xs font-bold"
+              >
+                Dismiss
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowAiErrorModal(false);
+                  setActiveSubScreen(null);
+                  setActiveTab("settings");
+                  setActiveSettingsTab?.("ai");
+                }}
+                className="flex-1 text-xs font-bold"
+              >
+                <Settings size={14} className="mr-1.5" />
+                Check AI Settings
               </Button>
             </div>
           </Card>

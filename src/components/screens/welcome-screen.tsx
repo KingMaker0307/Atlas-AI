@@ -238,7 +238,6 @@ export function WelcomeScreen() {
     setSubmitError(null);
 
     try {
-      setStartupChoice("local");
       await completeOnboarding({
         id: createId("user"),
         name: name.trim(),
@@ -260,6 +259,7 @@ export function WelcomeScreen() {
         workoutDuration: 60,
         createdAt: new Date().toISOString(),
       });
+      setStartupChoice("local");
     } catch (e: any) {
       console.error("Onboarding setup failed:", e);
       setSubmitError(e.message || "Failed to finalize profile. Please check API key or server configuration.");
@@ -303,24 +303,37 @@ export function WelcomeScreen() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* 1. Custom Setup */}
                 <button
                   type="button"
-                  onClick={() => setView("setup")}
-                  className="flex items-start text-left p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  onClick={() => {
+                    setName("");
+                    setAge(28);
+                    setWeight(165);
+                    setHeight(70);
+                    setExperience("beginner");
+                    setBodyType("mesomorph");
+                    setTargetPhysique("athletic");
+                    setGoal("Build strength and muscle size");
+                    setDaysPerWeek(3);
+                    setWeightUnit("lbs");
+                    setHeightUnit("in");
+                    setSetupAiCoach(true);
+                    setView("setup");
+                  }}
+                  className="flex items-start text-left p-5 rounded-2xl border border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-500/5 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 hover:border-emerald-500/30 dark:hover:border-emerald-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
+                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-500/20 transition-all" />
                   
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
                     <Sparkles size={20} className="stroke-[2.5]" />
                   </div>
                   
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
                       Start Fresh / Custom Setup
-                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
+                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
                       Set up your name, units, training goals, frequency, and customize your AI key directly for a personalized start.
                     </p>
                   </div>
@@ -330,20 +343,20 @@ export function WelcomeScreen() {
                 <button
                   type="button"
                   onClick={() => setView("backup")}
-                  className="flex items-start text-left p-5 rounded-2xl border border-zinc-800 bg-zinc-950/20 hover:bg-zinc-950/40 hover:border-zinc-700 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  className="flex items-start text-left p-5 rounded-2xl border border-blue-500/15 dark:border-blue-500/20 bg-blue-50/40 dark:bg-blue-500/5 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 hover:border-blue-500/30 dark:hover:bg-blue-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-blue-500/5 blur-xl pointer-events-none group-hover:bg-blue-500/10 transition-all" />
+                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl pointer-events-none group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-all" />
                   
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 shrink-0 mr-4 shadow-sm border border-blue-500/20">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mr-4 shadow-sm border border-blue-500/20">
                     <FileUp size={20} className="stroke-[2.5]" />
                   </div>
                   
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
                       Load from Backup File
-                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
+                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-blue-600 dark:group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
                       Restore workouts, history, routines, and custom settings from an encrypted backup JSON file.
                     </p>
                   </div>
@@ -482,8 +495,8 @@ export function WelcomeScreen() {
             >
               <div className="space-y-1.5 border-b border-card-border pb-3 mb-2 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Sparkles className="text-emerald-450" size={20} />
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Sparkles className="text-emerald-500 dark:text-emerald-400" size={20} />
                     Profile & AI Coach Setup
                   </h2>
                   <p className="text-[11px] text-zinc-400 leading-normal">
@@ -495,8 +508,8 @@ export function WelcomeScreen() {
               <form onSubmit={handleSetupSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {/* Left Column: Biometrics */}
-                  <div className="space-y-4 bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 border-b border-white/5 pb-1 mb-2">
+                  <div className="space-y-4 bg-card p-5 border border-card-border rounded-2xl shadow-sm">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-surface-border pb-2.5 mb-2.5">
                       1. Biometrics & Preferences
                     </h3>
                     
@@ -508,7 +521,7 @@ export function WelcomeScreen() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Jordan"
-                        className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-medium"
+                        className="mt-1 text-xs font-medium"
                       />
                     </div>
 
@@ -523,7 +536,7 @@ export function WelcomeScreen() {
                           value={age || ""}
                           onChange={(e) => setAge(Number(e.target.value))}
                           placeholder="e.g. 28"
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          className="mt-1 text-xs font-mono font-bold"
                         />
                       </div>
                       <div>
@@ -532,7 +545,7 @@ export function WelcomeScreen() {
                           id="setup-physique"
                           value={targetPhysique}
                           onChange={(e: any) => setTargetPhysique(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="lean">Lean</option>
                           <option value="athletic">Athletic</option>
@@ -555,9 +568,9 @@ export function WelcomeScreen() {
                           value={weight || ""}
                           onChange={(e) => setWeight(Number(e.target.value))}
                           placeholder="Weight"
-                          className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold flex-1"
+                          className="text-xs font-mono font-bold flex-1"
                         />
-                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-805 bg-zinc-950 p-1 shrink-0 w-28 select-none">
+                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-surface-border bg-surface p-1 shrink-0 w-28 select-none">
                           {(["lbs", "kg"] as const).map((unit) => (
                             <button
                               key={unit}
@@ -565,8 +578,8 @@ export function WelcomeScreen() {
                               onClick={() => handleWeightUnitChange(unit)}
                               className={`rounded-lg py-1 text-[10px] font-bold uppercase transition ${
                                 weightUnit === unit
-                                  ? "bg-emerald-300 text-zinc-955"
-                                  : "text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-emerald-500 text-white-keep shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                               }`}
                             >
                               {unit}
@@ -593,7 +606,7 @@ export function WelcomeScreen() {
                                 const inches = height % 12 || 0;
                                 setHeight(feet * 12 + inches);
                               }}
-                              className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold text-center"
+                              className="text-xs font-mono font-bold text-center"
                             />
                             <Input
                               type="number"
@@ -606,7 +619,7 @@ export function WelcomeScreen() {
                                 const feet = Math.floor(height / 12) || 5;
                                 setHeight(feet * 12 + inches);
                               }}
-                              className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold text-center"
+                              className="text-xs font-mono font-bold text-center"
                             />
                           </div>
                         ) : (
@@ -617,10 +630,10 @@ export function WelcomeScreen() {
                             value={height || ""}
                             onChange={(e) => setHeight(Number(e.target.value))}
                             placeholder="e.g. 178"
-                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold flex-1"
+                            className="text-xs font-mono font-bold flex-1"
                           />
                         )}
-                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-805 bg-zinc-950 p-1 shrink-0 w-28 select-none">
+                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-surface-border bg-surface p-1 shrink-0 w-28 select-none">
                           {(["in", "cm"] as const).map((unit) => (
                             <button
                               key={unit}
@@ -628,8 +641,8 @@ export function WelcomeScreen() {
                               onClick={() => handleHeightUnitChange(unit)}
                               className={`rounded-lg py-1 text-[10px] font-bold uppercase transition ${
                                 heightUnit === unit
-                                  ? "bg-emerald-300 text-zinc-955"
-                                  : "text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-emerald-500 text-white-keep shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                               }`}
                             >
                               {unit === "in" ? "ft" : "cm"}
@@ -641,8 +654,8 @@ export function WelcomeScreen() {
                   </div>
 
                   {/* Right Column: Training Targets */}
-                  <div className="space-y-4 bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 border-b border-white/5 pb-1 mb-2">
+                  <div className="space-y-4 bg-card p-5 border border-card-border rounded-2xl shadow-sm">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-b border-surface-border pb-2.5 mb-2.5">
                       2. Training Program Options
                     </h3>
                     
@@ -654,7 +667,7 @@ export function WelcomeScreen() {
                         value={goal}
                         onChange={(e) => setGoal(e.target.value)}
                         placeholder="e.g., Build strength and muscle size"
-                        className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-medium h-16 min-h-[4rem]"
+                        className="mt-1 text-xs font-medium h-16 min-h-[4rem]"
                       />
                     </div>
 
@@ -669,7 +682,7 @@ export function WelcomeScreen() {
                           value={daysPerWeek || ""}
                           onChange={(e) => setDaysPerWeek(Number(e.target.value))}
                           placeholder="e.g. 3"
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          className="mt-1 text-xs font-mono font-bold"
                         />
                       </div>
 
@@ -679,7 +692,7 @@ export function WelcomeScreen() {
                           id="setup-style"
                           value={trainingStyle}
                           onChange={(e: any) => setTrainingStyle(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="general">General Fitness</option>
                           <option value="strength">Strength Focus</option>
@@ -697,7 +710,7 @@ export function WelcomeScreen() {
                           id="setup-equipment"
                           value={equipment}
                           onChange={(e: any) => setEquipment(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="full gym">Full Gym</option>
                           <option value="home gym">Home Gym</option>
@@ -711,7 +724,7 @@ export function WelcomeScreen() {
                           id="setup-experience"
                           value={experience}
                           onChange={(e: any) => setExperience(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="beginner">Beginner (&lt; 1 yr)</option>
                           <option value="intermediate">Intermediate (1-3 yrs)</option>
@@ -726,7 +739,7 @@ export function WelcomeScreen() {
                         id="setup-bodytype"
                         value={bodyType}
                         onChange={(e: any) => setBodyType(e.target.value)}
-                        className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                        className="mt-1 text-xs font-bold"
                       >
                         <option value="mesomorph">Mesomorph (Athletic build)</option>
                         <option value="ectomorph">Ectomorph (Lean/faster metabolism)</option>
@@ -737,14 +750,14 @@ export function WelcomeScreen() {
                 </div>
 
                 {/* AI Configuration Section */}
-                <div className="bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl space-y-4">
+                <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-4">
                   <div className="flex items-start justify-between gap-3 select-none">
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-450 flex items-center gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                         <Bot size={15} />
                         AI Coach Assistant
                       </h3>
-                      <p className="text-[10px] text-zinc-400 leading-normal">
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
                         Enable personalized AI feedback, automatic workout summaries, and plan generation right away.
                       </p>
                     </div>
@@ -779,7 +792,7 @@ export function WelcomeScreen() {
                             id="setup-provider"
                             value={providerType}
                             onChange={(e: any) => setProviderType(e.target.value)}
-                            className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                            className="mt-1 text-xs font-bold"
                           >
                             <option value="gemini">Google Gemini</option>
                             <option value="openai">OpenAI (GPT-4o)</option>
@@ -807,13 +820,13 @@ export function WelcomeScreen() {
                                   ? "Not required for local servers"
                                   : "Paste secret API key"
                               }
-                              className="bg-zinc-950 border-zinc-800 pr-10 text-xs font-mono font-bold"
+                              className="pr-10 text-xs font-mono font-bold"
                             />
                             {providerType !== "ollama" && providerType !== "lmstudio" && (
                               <button
                                 type="button"
                                 onClick={() => setShowApiKey(!showApiKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                               >
                                 {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
                               </button>

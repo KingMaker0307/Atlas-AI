@@ -332,9 +332,9 @@ export function DashboardScreen() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded-xl border border-card-border bg-zinc-950/95 p-3 shadow-xl backdrop-blur-md">
+        <div className="rounded-xl border border-card-border bg-card p-3 shadow-xl backdrop-blur-md">
           <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
-          <p className="mt-1 text-sm font-semibold text-white">
+          <p className="mt-1 text-sm font-semibold text-foreground">
             {payload[0].name === "weight" ? `${payload[0].value} lbs` : `${payload[0].value.toLocaleString()} lbs volume`}
           </p>
         </div>
@@ -384,7 +384,7 @@ export function DashboardScreen() {
               type="button"
               onClick={() => void setGuidedMode(false)}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                !guidedMode ? "bg-zinc-900 text-white dark:bg-zinc-800 dark:text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                !guidedMode ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               Advanced
@@ -529,7 +529,7 @@ export function DashboardScreen() {
                         type="button"
                         onClick={() => setShowCreatePlanModal(true)}
                         disabled={coachBusy}
-                        className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 border border-zinc-300 dark:border-zinc-600 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 border border-emerald-700 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Create Plan
                       </button>
@@ -541,7 +541,7 @@ export function DashboardScreen() {
 
             {/* Step 2 */}
             <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface border border-surface-border text-foreground text-xs font-bold font-mono">
                 2
               </div>
               <div className="space-y-1">
@@ -554,7 +554,7 @@ export function DashboardScreen() {
 
             {/* Step 3 */}
             <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface border border-surface-border text-foreground text-xs font-bold font-mono">
                 3
               </div>
               <div className="space-y-1">
@@ -603,7 +603,7 @@ export function DashboardScreen() {
                     step="0.5"
                     value={logSleep}
                     onChange={(e) => setLogSleep(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -620,7 +620,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logSoreness}
                     onChange={(e) => setLogSoreness(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -637,7 +637,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logStress}
                     onChange={(e) => setLogStress(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -654,7 +654,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logEnergy}
                     onChange={(e) => setLogEnergy(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
               </div>
@@ -686,12 +686,12 @@ export function DashboardScreen() {
       {/* ─── TODAY'S TARGET HERO SECTION ─── */}
       <section className="relative overflow-hidden">
         {workoutPlans.length === 0 ? (
-          <Card className="p-6 border-dashed border-2 border-card-border bg-white/[0.01]">
+          <Card className="p-6 border-dashed border-2 border-card-border bg-surface/10 dark:bg-white/[0.01]">
             <div className="text-center space-y-4">
-              <ClipboardList className="mx-auto h-12 w-12 text-emerald-450" />
+              <ClipboardList className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
               <div>
-                <h2 className="text-xl font-bold text-white">No Active Plan Established</h2>
-                <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
+                <h2 className="text-xl font-bold text-foreground">No Active Plan Established</h2>
+                <p className="text-xs text-zinc-550 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
                   To begin logging metrics, progressive overload cycles, and streaks, create a customized program or let our AI coach build one.
                 </p>
               </div>
@@ -703,24 +703,24 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/20 bg-gradient-to-br from-zinc-900 to-emerald-950/20 relative shadow-xl overflow-hidden group keep-dark">
+          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 dark:from-zinc-900 dark:to-emerald-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
             
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
               <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   Today's Scheduled Target · {todayRoutine.day}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-white">{todayRoutine.name}</h2>
-                <p className="text-xs text-zinc-350 max-w-md leading-relaxed">
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">{todayRoutine.name}</h2>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
                   {todayRoutine.focus}
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1.5">
                   {todayRoutine.exercises.map((item: any) => (
                     <span 
                       key={item.exerciseId}
-                      className="px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.03] text-[10px] font-medium text-zinc-300"
+                      className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-white/5 bg-white/75 dark:bg-white/[0.03] text-[10px] font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       {item.exerciseId.split("-").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
                     </span>
@@ -729,12 +729,12 @@ export function DashboardScreen() {
               </div>
 
               <div className="sm:text-right shrink-0 flex flex-col justify-between sm:h-28">
-                <div className="text-zinc-400 text-xs font-medium">
-                  <span className="font-bold text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
+                <div className="text-zinc-550 dark:text-zinc-400 text-xs font-medium">
+                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
                 </div>
                 <Button 
                   onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-zinc-950 flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
+                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-white flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
                 >
                   <Dumbbell size={16} />
                   Launch Workout Session
@@ -744,29 +744,29 @@ export function DashboardScreen() {
           </Card>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/20 bg-gradient-to-br from-zinc-900 to-violet-950/20 relative shadow-xl overflow-hidden group keep-dark">
+          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/50 to-violet-100/30 dark:from-zinc-900 dark:to-violet-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
             
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
               <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                   Rest & Recovery Cycle · {todayDayName}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-white">Active Muscle Restoration</h2>
-                <p className="text-xs text-zinc-350 max-w-md leading-relaxed">
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">Active Muscle Restoration</h2>
+                <p className="text-xs text-zinc-650 dark:text-zinc-400 max-w-md leading-relaxed">
                   Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/10 bg-violet-500/5 text-[10px] font-semibold text-violet-300 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                     <Activity size={12} />
                     Light Mobility Flow
                   </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/10 bg-violet-500/5 text-[10px] font-semibold text-violet-300 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                     <Moon size={12} />
                     CNS Sleep Focus
                   </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/10 bg-violet-500/5 text-[10px] font-semibold text-violet-300 flex items-center gap-1">
+                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
                     <TimerReset size={12} />
                     Hydration & Nutrition
                   </span>
@@ -786,7 +786,7 @@ export function DashboardScreen() {
                       }
                     }}
                     variant="secondary"
-                    className="w-full font-semibold border-btn-secondary-border bg-zinc-800 hover:bg-zinc-700 dark:bg-white/5 dark:hover:bg-white/10 text-white flex items-center justify-center gap-1.5 h-9 text-xs"
+                    className="w-full font-semibold flex items-center justify-center gap-1.5 h-9 text-xs"
                   >
                     <ClipboardList size={14} />
                     Weekly Schedule
@@ -987,11 +987,11 @@ export function DashboardScreen() {
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Age</span>
-              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-450">yrs</span></p>
+              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-400">yrs</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Weight</span>
-              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-450">{profile?.weightUnit}</span></p>
+              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-400">{profile?.weightUnit}</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Height</span>
@@ -1032,7 +1032,7 @@ export function DashboardScreen() {
             <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
               <button
                 onClick={() => setActiveChartTab("weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
               >
                 <span className="flex items-center gap-1.5">
                   <Weight size={13} />
@@ -1041,7 +1041,7 @@ export function DashboardScreen() {
               </button>
               <button
                 onClick={() => setActiveChartTab("volume")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
               >
                 <span className="flex items-center gap-1.5">
                   <TrendingUp size={13} />
@@ -1077,7 +1077,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
                       Requires at least two bodyweight logs to generate analytical trendlines.
                     </div>
                   )}
@@ -1106,7 +1106,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
                       Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
                     </div>
                   )}
@@ -1188,7 +1188,7 @@ export function DashboardScreen() {
                       <span>Weekly Routines Progress</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-surface border border-surface-border/50 overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
                         style={{ width: `${progressPercent}%` }} 
@@ -1223,7 +1223,7 @@ export function DashboardScreen() {
             {coachBusy && (
               <Card className="p-4 border border-card-border bg-card shadow flex items-center justify-center gap-3">
                 <Bot className="h-5 w-5 text-emerald-400 animate-pulse" />
-                <span className="text-xs text-zinc-450 font-bold uppercase tracking-wider">Coach is designing new program...</span>
+                <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Coach is designing new program...</span>
               </Card>
             )}
           </section>
@@ -1283,7 +1283,7 @@ export function DashboardScreen() {
                             nonJson = "";
                           }
                           return nonJson ? (
-                            <ReactMarkdown className="prose prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-450">
+                            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-400">
                               {nonJson}
                             </ReactMarkdown>
                           ) : null;
@@ -1530,7 +1530,7 @@ export function DashboardScreen() {
                     void handleLoadSeedPlan();
                     setShowCreatePlanModal(false);
                   }}
-                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
                 >
                   <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 shrink-0">
                     <ClipboardList size={18} />
@@ -1539,7 +1539,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                       Load 3-Day Seed Plan
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Start tracking immediately with a pre-configured, beginner-friendly full-body template split.
                     </p>
                   </div>
@@ -1551,7 +1551,7 @@ export function DashboardScreen() {
                     handleCreateManualPlan();
                     setShowCreatePlanModal(false);
                   }}
-                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
                 >
                   <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
                     <Plus size={18} />
@@ -1560,7 +1560,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       Create Manual Plan
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
                     </p>
                   </div>
@@ -1572,7 +1572,7 @@ export function DashboardScreen() {
                     handleGenerateAiPlan();
                     setShowCreatePlanModal(false);
                   }}
-                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
                 >
                   <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-455 shrink-0">
                     <Bot size={18} />
@@ -1581,7 +1581,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                       Generate with AI Coach
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Have the AI Coach write a personalized plan for you based on your biometrics, target goals, and training experience.
                     </p>
                   </div>
