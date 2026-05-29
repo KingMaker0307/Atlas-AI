@@ -248,7 +248,6 @@ export function SettingsScreen() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [showExportPassphrase, setShowExportPassphrase] = useState(false);
   const [showImportPassphrase, setShowImportPassphrase] = useState(false);
-  const [showBmiGuidance, setShowBmiGuidance] = useState(false);
 
   const [initialized, setInitialized] = useState(false);
   const [selectedType, setSelectedType] = useState<AiProviderSettings["type"]>("openai");
@@ -634,132 +633,7 @@ export function SettingsScreen() {
     return draft ? activeProviderId === draft.id : false;
   }, [activeProviderId, draft]);
 
-  // Dynamic Anthropometrics Computations
-  const calculatedBmi = useMemo(() => {
-    const w = draftProfile.weight;
-    const h = draftProfile.height;
-    if (!w || !h) return null;
 
-    const unit = draftProfile.weightUnit ?? weightUnit;
-    const hUnit = draftProfile.heightUnit ?? heightUnit;
-
-    const weightInKg = unit === "lbs" ? w / 2.20462 : w;
-    const heightInMeters = hUnit === "in" ? (h * 2.54) / 100 : h / 100;
-    const bmiValue = weightInKg / (heightInMeters * heightInMeters);
-
-    let classification = "Normal";
-    let color = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
-    if (bmiValue < 18.5) {
-      classification = "Underweight";
-      color = "text-yellow-400 border-yellow-500/20 bg-yellow-500/5";
-    } else if (bmiValue < 25) {
-      classification = "Normal Range";
-      color = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
-    } else if (bmiValue < 30) {
-      classification = "Overweight";
-      color = "text-orange-400 border-orange-500/20 bg-orange-500/5";
-    } else {
-      classification = "Obese Range";
-      color = "text-red-400 border-red-500/20 bg-red-500/5";
-    }
-
-    return {
-      value: bmiValue.toFixed(1),
-      classification,
-      color,
-    };
-  }, [draftProfile.weight, draftProfile.height, draftProfile.heightUnit, draftProfile.weightUnit, heightUnit, weightUnit]);
-
-  // Expandable Physiological Improvement Advisor
-  const bmiAdvice = useMemo(() => {
-    const w = draftProfile.weight;
-    const h = draftProfile.height;
-    if (!w || !h) return null;
-
-    const unit = draftProfile.weightUnit ?? weightUnit;
-    const hUnit = draftProfile.heightUnit ?? heightUnit;
-
-    const weightInKg = unit === "lbs" ? w / 2.20462 : w;
-    const heightInMeters = hUnit === "in" ? (h * 2.54) / 100 : h / 100;
-    const bmiValue = weightInKg / (heightInMeters * heightInMeters);
-
-    if (bmiValue < 18.5) {
-      return {
-        title: "Anabolic Recovery Strategy",
-        tips: [
-          "Caloric Hypertrophy: Maintain a structured daily caloric surplus (+300 to +500 kcal/day) focusing on high-quality nutrient-dense foods (avocados, eggs, nuts, whole grains, and lean meats).",
-          "Progressive Overload: Focus on fundamental compound strength movements (squats, chest press, deadlifts) with longer rest intervals (2-3 mins) to stimulate myofibrillar growth.",
-          "Restrict Excess Cardio: Limit high-intensity conditioning or long cardio blocks to minimize unnecessary metabolic burn and preserve energy for muscle synthesis.",
-          "Sleep & Recovery: Prioritize 8-9 hours of consistent, quality sleep to optimize natural hormone levels and deep tissue cell repair."
-        ],
-        badge: "Underweight Insight",
-        color: "border-amber-500/15 dark:border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20",
-        titleColor: "text-amber-800 dark:text-amber-300",
-        badgeColor: "bg-amber-500/10 dark:bg-white/10 text-amber-700 dark:text-zinc-300"
-      };
-    } else if (bmiValue < 25) {
-      return {
-        title: "Composition Preservation Strategy",
-        tips: [
-          "Sustain Progressive Loading: Your cellular composition is optimal. Continue gradual progressive overload (intensity/volume) to advance muscle density.",
-          "Optimal Protein Target: Fuel active cell repair with 0.8g to 1.2g of protein per lb of bodyweight to maintain and build lean body mass.",
-          "Active Rest Modalities: Include brief mobility flows, stretching, or light Zone 1/2 cardio on rest days to enhance circulation and lower cumulative fatigue."
-        ],
-        badge: "Optimal Range",
-        color: "border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20",
-        titleColor: "text-emerald-800 dark:text-emerald-400",
-        badgeColor: "bg-emerald-500/10 dark:bg-white/10 text-emerald-700 dark:text-zinc-300"
-      };
-    } else if (bmiValue < 30) {
-      return {
-        title: "Body Recomposition & LISS Strategy",
-        tips: [
-          "Targeted Caloric Deficit: Maintain a moderate, sustainable caloric deficit (-250 to -400 kcal/day) while keeping protein intake elevated to safeguard active lean tissues.",
-          "Aerobic Conditioning: Incorporate 3 weekly LISS blocks (walking, stationary cycling, elliptical) in Zone 2 (60-70% max HR) to maximize fat oxidation.",
-          "Joint Integrity Protection: Target moderate lifting loads with clean, controlled tempos, minimizing heavy spinal axial loading if experiencing joint friction."
-        ],
-        badge: "Recomposition Guide",
-        color: "border-orange-500/15 dark:border-orange-500/20 bg-orange-500/5 dark:bg-orange-950/20",
-        titleColor: "text-orange-800 dark:text-orange-400",
-        badgeColor: "bg-orange-500/10 dark:bg-white/10 text-orange-700 dark:text-zinc-300"
-      };
-    } else {
-      return {
-        title: "CNS Load & Joint Preservation Strategy",
-        tips: [
-          "Guided Load Isolation: Prioritize machine-based compound exercises and seated lifts to isolate muscle groups while avoiding excessive spinal or joint pressure.",
-          "Non-Impact Cardio: Utilize swimming, rowing, or low-resistance stationary cycling to build aerobic capacity with zero lower-body joint impact.",
-          "Consistent Hydration & CNS Rest: Drink 3L+ of water daily and ensure at least 48 hours of spacing between heavy training sessions to promote recovery."
-        ],
-        badge: "Joint Safety Protocol",
-        color: "border-rose-500/15 dark:border-rose-500/20 bg-rose-500/5 dark:bg-rose-950/20",
-        titleColor: "text-rose-800 dark:text-rose-400",
-        badgeColor: "bg-rose-500/10 dark:bg-white/10 text-rose-700 dark:text-zinc-300"
-      };
-    }
-  }, [draftProfile.weight, draftProfile.height, draftProfile.heightUnit, draftProfile.weightUnit, heightUnit, weightUnit]);
-
-  const calculatedProtein = useMemo(() => {
-    const w = draftProfile.weight;
-    if (!w) return null;
-
-    const unit = draftProfile.weightUnit ?? weightUnit;
-    const weightInLbs = unit === "lbs" ? w : w * 2.20462;
-    const physique = draftProfile.targetPhysique || "athletic";
-
-    let multiplier = 1.0;
-    if (physique === "shredded") multiplier = 1.2;
-    else if (physique === "lean") multiplier = 1.1;
-    else if (physique === "athletic") multiplier = 1.0;
-    else if (physique === "toned") multiplier = 0.9;
-    else if (physique === "bulky") multiplier = 1.0;
-
-    const proteinTarget = weightInLbs * multiplier;
-    return {
-      value: Math.round(proteinTarget),
-      multiplier: multiplier.toFixed(1),
-    };
-  }, [draftProfile.weight, draftProfile.targetPhysique, draftProfile.weightUnit, weightUnit]);
 
   return (
     <motion.div
@@ -1114,93 +988,7 @@ export function SettingsScreen() {
                     </div>
                   </Card>
 
-                  {/* Dynamic Health Widgets Panel */}
-                  {(calculatedBmi || calculatedProtein) && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 px-1">
-                        <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400" />
-                        <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Physique Metrics</h3>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {calculatedBmi && (
-                          <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
-                            <div>
-                              <span className="text-xs font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
-                              <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
-                            </div>
 
-                            <div className="py-2 flex items-baseline gap-2">
-                              <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedBmi.value}</span>
-                              <span className={`text-xs font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
-                                {calculatedBmi.classification}
-                              </span>
-                            </div>
-
-                            <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                              Estimated tissue mass calculations. Values between 18.5 and 24.9 reflect standard health ranges.
-                            </p>
-
-                            {/* BMI Improvement Action Guide Toggle Button */}
-                            {bmiAdvice && (
-                              <div className="pt-1.5 border-t border-white/5 mt-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                                  className="w-full flex items-center justify-between text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
-                                >
-                                  <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
-                                  <Info size={14} className="text-zinc-500" />
-                                </button>
-
-                                <AnimatePresence>
-                                  {showBmiGuidance && (
-                                    <motion.div
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: "auto" }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      className="overflow-hidden pt-2"
-                                    >
-                                      <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-xs leading-relaxed space-y-1.5`}>
-                                        <div className="flex justify-between items-center select-none mb-1">
-                                          <span className={`font-extrabold uppercase tracking-wide ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
-                                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
-                                            {bmiAdvice.badge}
-                                          </span>
-                                        </div>
-                                        <ul className="list-disc pl-3.5 space-y-1 text-zinc-700 dark:text-zinc-300 font-medium">
-                                          {bmiAdvice.tips.map((tip, idx) => (
-                                            <li key={idx} className="leading-snug">{tip}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {calculatedProtein && (
-                          <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
-                            <div>
-                              <span className="text-xs font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
-                              <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Daily Protein Target</h4>
-                            </div>
-
-                            <div className="py-2.5 flex items-baseline gap-1.5">
-                              <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedProtein.value}</span>
-                              <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 font-mono">g / day</span>
-                            </div>
-
-                            <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                              Calculated at <span className="text-zinc-900 dark:text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-zinc-900 dark:text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1710,3 +1498,4 @@ function SegmentedSetting<T extends string>({
     </div>
   );
 }
+// Force hot reload re-evaluation

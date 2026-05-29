@@ -43,6 +43,8 @@ import { ExerciseDetail } from "@/components/exercise-detail";
 import { exercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise, Routine } from "@/types/domain";
+import { cn } from "@/lib/cn";
+import { NutritionTracker } from "@/components/nutrition-tracker";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 import { PostWorkoutCheckinModal } from "@/components/post-workout-checkin-modal";
 import { FinishSessionModal } from "@/components/finish-session-modal";
@@ -384,6 +386,7 @@ export function WorkoutScreen() {
 
   const [isListening, setIsListening] = useState(false);
   const [speechFeedback, setSpeechFeedback] = useState<string | null>(null);
+  const [planTab, setPlanTab] = useState<"plans" | "nutrition">("plans");
 
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -625,24 +628,58 @@ export function WorkoutScreen() {
         exit={{ opacity: 0, y: -8 }}
         className="space-y-4 pb-28"
       >
+        {/* ─── Header ─── */}
         <section className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Manage and track your plans</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {planTab === "plans" ? "Manage and track your plans" : "Track calories, macros & nutrients"}
+            </p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">Plans</h1>
           </div>
-          <Button
-            size="sm"
-            variant="primary"
-            icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
-            disabled={coachBusy}
-            onClick={() => {
-              setEditingWorkoutPlanId(null);
-              setActiveSubScreen("workout-plan-builder");
-            }}
-          >
-            {coachBusy ? "Generating..." : "Create Plan"}
-          </Button>
+          {planTab === "plans" && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+              disabled={coachBusy}
+              onClick={() => {
+                setEditingWorkoutPlanId(null);
+                setActiveSubScreen("workout-plan-builder");
+              }}
+            >
+              {coachBusy ? "Generating..." : "Create Plan"}
+            </Button>
+          )}
         </section>
+
+        {/* ─── Tab Bar ─── */}
+        <div className="flex gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900/70 rounded-2xl border border-zinc-200/60 dark:border-zinc-800/60">
+          {([
+            { id: "plans" as const, label: "Workout Plans", emoji: "🏋️" },
+            { id: "nutrition" as const, label: "Nutrition", emoji: "🥗" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              id={`plan-tab-${tab.id}`}
+              onClick={() => setPlanTab(tab.id)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-bold transition-all duration-200",
+                planTab === tab.id
+                  ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm shadow-black/10 dark:shadow-black/40"
+                  : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+              )}
+            >
+              <span>{tab.emoji}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── Nutrition Tab ─── */}
+        {planTab === "nutrition" && <NutritionTracker />}
+
+        {/* ─── Plans Tab content (hidden when on nutrition) ─── */}
+        {planTab === "plans" && (<>
 
         {coachBusy && (
           <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
@@ -1063,6 +1100,9 @@ export function WorkoutScreen() {
         </Card>
 
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
+
+        {/* End of Plans tab content */}
+        </>)}
 
         <PreWorkoutCheckinModal
           isOpen={showPreWorkoutModal}
