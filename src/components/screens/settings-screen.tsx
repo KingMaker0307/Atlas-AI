@@ -704,7 +704,7 @@ export function SettingsScreen() {
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3 select-none">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Settings</h1>
-          <p className="text-[11px] sm:text-xs text-zinc-400 font-medium">Profile, AI engine, storage &amp; preferences</p>
+          <p className="text-xs sm:text-xs text-zinc-400 font-medium">Profile, AI engine, storage &amp; preferences</p>
         </div>
       </section>
 
@@ -722,7 +722,7 @@ export function SettingsScreen() {
             <button
               key={tab.id}
               onClick={() => setActiveSettingsTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${active
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${active
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                 }`}
@@ -797,18 +797,18 @@ export function SettingsScreen() {
                       </div>
                       <div className="flex items-center gap-1.5 select-none">
                         {saveIndicator === "saving" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-amber-600 dark:text-amber-300 border border-amber-500/20">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-extrabold uppercase font-mono text-amber-600 dark:text-amber-300 border border-amber-500/20">
                             <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse" />
                             Pending Save
                           </span>
                         )}
                         {saveIndicator === "saved" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 animate-fade-in">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 animate-fade-in">
                             Saved
                           </span>
                         )}
                         {saveIndicator === "error" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-rose-600 dark:text-rose-300 border border-rose-500/20">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-extrabold uppercase font-mono text-rose-600 dark:text-rose-300 border border-rose-500/20">
                             <span className="h-1.5 w-1.5 rounded-full bg-rose-500 dark:bg-rose-400" />
                             Error
                           </span>
@@ -873,7 +873,7 @@ export function SettingsScreen() {
                         {heightUnit === "in" ? (
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Feet</Label>
+                              <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Feet</Label>
                               <Input
                                 type="number"
                                 min={2}
@@ -888,7 +888,7 @@ export function SettingsScreen() {
                               />
                             </div>
                             <div>
-                              <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Inches</Label>
+                              <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Inches</Label>
                               <Input
                                 type="number"
                                 min={0}
@@ -1057,18 +1057,18 @@ export function SettingsScreen() {
                         {calculatedBmi && (
                           <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
                             <div>
-                              <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
+                              <span className="text-xs font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
                               <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
                             </div>
 
                             <div className="py-2 flex items-baseline gap-2">
                               <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedBmi.value}</span>
-                              <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
+                              <span className={`text-xs font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
                                 {calculatedBmi.classification}
                               </span>
                             </div>
 
-                            <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                            <p className="text-xs text-zinc-400 leading-relaxed font-medium">
                               Estimated tissue mass calculations. Values between 18.5 and 24.9 reflect standard health ranges.
                             </p>
 
@@ -1078,7 +1078,7 @@ export function SettingsScreen() {
                                 <button
                                   type="button"
                                   onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                                  className="w-full flex items-center justify-between text-[10px] font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
+                                  className="w-full flex items-center justify-between text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
                                 >
                                   <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
                                   <Info size={12} className="text-zinc-500" />
@@ -1092,10 +1092,10 @@ export function SettingsScreen() {
                                       exit={{ opacity: 0, height: 0 }}
                                       className="overflow-hidden pt-2"
                                     >
-                                      <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-[10px] leading-relaxed space-y-1.5`}>
+                                      <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-xs leading-relaxed space-y-1.5`}>
                                         <div className="flex justify-between items-center select-none mb-1">
                                           <span className={`font-extrabold uppercase tracking-wide ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
-                                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
+                                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
                                             {bmiAdvice.badge}
                                           </span>
                                         </div>
@@ -1116,7 +1116,7 @@ export function SettingsScreen() {
                         {calculatedProtein && (
                           <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
                             <div>
-                              <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
+                              <span className="text-xs font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
                               <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Daily Protein Target</h4>
                             </div>
 
@@ -1125,7 +1125,7 @@ export function SettingsScreen() {
                               <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 font-mono">g / day</span>
                             </div>
 
-                            <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                            <p className="text-xs text-zinc-400 leading-relaxed font-medium">
                               Calculated at <span className="text-zinc-900 dark:text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-zinc-900 dark:text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
                             </p>
                           </div>
@@ -1170,7 +1170,7 @@ export function SettingsScreen() {
                             <div className={`text-xs font-black tracking-tight leading-none ${active ? config.text : "text-zinc-700 dark:text-zinc-300"}`}>
                               {config.label}
                             </div>
-                            <div className="text-[8px] text-zinc-500 mt-1.5 uppercase tracking-wider font-mono leading-none">
+                            <div className="text-xs text-zinc-500 mt-1.5 uppercase tracking-wider font-mono leading-none">
                               {type}
                             </div>
                           </button>
@@ -1190,11 +1190,11 @@ export function SettingsScreen() {
                                 <div className="flex h-5 w-5 items-center justify-center rounded bg-purple-500/10 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400">
                                   <Sparkles size={11} className="stroke-[2.5]" />
                                 </div>
-                                <span className="text-[9px] font-extrabold uppercase tracking-widest text-purple-700 dark:text-purple-400 font-mono">
+                                <span className="text-xs font-extrabold uppercase tracking-widest text-purple-700 dark:text-purple-400 font-mono">
                                   {helper.title} Steps
                                 </span>
                               </div>
-                              <ol className="list-decimal pl-4 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1 font-medium">
+                              <ol className="list-decimal pl-4 text-xs text-zinc-600 dark:text-zinc-400 space-y-1 font-medium">
                                 {helper.steps.map((st, i) => (
                                   <li key={i} className="leading-relaxed">{st}</li>
                                 ))}
@@ -1204,7 +1204,7 @@ export function SettingsScreen() {
                                   href={helper.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-block text-[10px] font-bold text-purple-655 hover:text-purple-750 dark:text-purple-400 dark:hover:text-purple-300 underline underline-offset-2 transition"
+                                  className="inline-block text-xs font-bold text-purple-655 hover:text-purple-750 dark:text-purple-400 dark:hover:text-purple-300 underline underline-offset-2 transition"
                                 >
                                   Go to Console Website →
                                 </a>
@@ -1272,16 +1272,16 @@ export function SettingsScreen() {
 
                         {/* Terminals Console Log */}
                         {draft.lastStatus ? (
-                          <div className="rounded-2xl border border-zinc-800 bg-black/50 p-4 font-mono text-[11px] shadow-inner relative overflow-hidden backdrop-blur-md keep-dark">
+                          <div className="rounded-2xl border border-zinc-800 bg-black/50 p-4 font-mono text-xs shadow-inner relative overflow-hidden backdrop-blur-md keep-dark">
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
                             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2 select-none">
                               <div className="flex items-center gap-1.5">
                                 <span className={`h-2 w-2 rounded-full ${draft.lastStatus === "ok" ? "bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
                                   }`} />
-                                <span className="text-zinc-500 uppercase font-black text-[8px] tracking-widest font-mono">system.adapter.diagnostics</span>
+                                <span className="text-zinc-500 uppercase font-black text-xs tracking-widest font-mono">system.adapter.diagnostics</span>
                               </div>
-                              <span className="text-zinc-600 text-[8px] font-bold">
+                              <span className="text-zinc-600 text-xs font-bold">
                                 {draft.lastTestedAt ? new Date(draft.lastTestedAt).toLocaleTimeString() : ""}
                               </span>
                             </div>
@@ -1301,15 +1301,15 @@ export function SettingsScreen() {
                               {draft.lastError ? (
                                 <div className="pl-3.5 mt-1 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
                                   <p className="text-rose-400 font-bold leading-normal">[ERROR] Connection Failure</p>
-                                  <p className="text-zinc-400 text-[10px] mt-0.5 leading-relaxed">{draft.lastError}</p>
+                                  <p className="text-zinc-400 text-xs mt-0.5 leading-relaxed">{draft.lastError}</p>
                                 </div>
                               ) : (
                                 <div className="pl-3.5 space-y-0.5">
                                   <p className="text-emerald-400 font-bold">[SUCCESS] Adapter channel online.</p>
-                                  <p className="text-zinc-400 text-[10px]">
+                                  <p className="text-zinc-400 text-xs">
                                     &gt; Model target: <span className="text-zinc-200 font-bold">{draft.model}</span>
                                   </p>
-                                  <p className="text-zinc-400 text-[10px]">
+                                  <p className="text-zinc-400 text-xs">
                                     &gt; Handshake validation verified successfully.
                                   </p>
                                 </div>
@@ -1327,7 +1327,7 @@ export function SettingsScreen() {
                               onClick={() => void setActiveProvider(draft.id)}
                               title={providerHints.active}
                               disabled={isActive}
-                              className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase"
+                              className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
                             >
                               {isActive ? "Active Engine" : "Activate"}
                             </Button>
@@ -1336,7 +1336,7 @@ export function SettingsScreen() {
                             icon={<Save size={15} />}
                             onClick={handleSaveProvider}
                             title={providerHints.save}
-                            className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase"
+                            className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
                           >
                             {isSaved ? "Update Provider" : "Save Credentials"}
                           </Button>
@@ -1345,7 +1345,7 @@ export function SettingsScreen() {
                             disabled={providerBusy}
                             onClick={handleTestProvider}
                             title={providerHints.test}
-                            className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase"
+                            className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
                           >
                             Test Connection
                           </Button>
@@ -1392,7 +1392,7 @@ export function SettingsScreen() {
                       >
                         <div className="flex items-center gap-2">
                           <Database className="text-orange-400" size={15} />
-                          <span className="text-[10px] font-black uppercase tracking-widest font-mono text-zinc-400">System &amp; Database Diagnostic Logs</span>
+                          <span className="text-xs font-black uppercase tracking-widest font-mono text-zinc-400">System &amp; Database Diagnostic Logs</span>
                         </div>
                         <span className="text-xs text-zinc-500 font-bold">{showDbStats ? "Hide" : "Show"}</span>
                       </button>
@@ -1407,31 +1407,31 @@ export function SettingsScreen() {
                           >
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs leading-normal select-none pt-2">
                               <div className="bg-surface p-3 rounded-xl border border-surface-border">
-                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
+                                <span className="block text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
                               </div>
                               <div className="bg-surface p-3 rounded-xl border border-surface-border">
-                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
+                                <span className="block text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {workouts.reduce((sum, w) => sum + w.exercises.reduce((es, e) => es + e.sets.filter(s => s.completed).length, 0), 0)}
                                 </span>
                               </div>
                               <div className="bg-surface p-3 rounded-xl border border-surface-border">
-                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
+                                <span className="block text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
                               </div>
                               <div className="bg-surface p-3 rounded-xl border border-surface-border">
-                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
+                                <span className="block text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
                               </div>
                               <div className="bg-surface p-3 rounded-xl border border-surface-border">
-                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
+                                <span className="block text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {apiCallCount || 0}
                                 </span>
                               </div>
                               <div className="bg-surface p-3 rounded-xl border border-surface-border">
-                                <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
+                                <span className="block text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {(tokenCount || 0).toLocaleString()}
                                 </span>
@@ -1447,7 +1447,7 @@ export function SettingsScreen() {
                       <Surface className="flex items-center justify-between gap-4 p-3.5 shadow">
                         <div>
                           <p className="font-bold text-zinc-900 dark:text-white text-xs">App Notifications</p>
-                          <p className="text-[10px] text-zinc-500 mt-1 font-medium">State: <span className="font-mono text-zinc-600 dark:text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
+                          <p className="text-xs text-zinc-500 mt-1 font-medium">State: <span className="font-mono text-zinc-600 dark:text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
                         </div>
                         <Button
                           size="icon"
@@ -1471,7 +1471,7 @@ export function SettingsScreen() {
                       <Surface className="flex items-center justify-between gap-4 border border-rose-500/20 bg-rose-500/5 p-3.5 rounded-2xl shadow-xl">
                         <div>
                           <p className="font-bold text-rose-400 text-xs">Hard Factory Reset</p>
-                          <p className="text-[10px] text-rose-500/70 mt-1 font-semibold">Irreversible local database loss</p>
+                          <p className="text-xs text-rose-500/70 mt-1 font-semibold">Irreversible local database loss</p>
                         </div>
                         <Button
                           size="icon"
@@ -1506,7 +1506,7 @@ export function SettingsScreen() {
                       {/* Export Box */}
                       <Surface className="flex flex-col justify-between p-4 rounded-2xl select-none">
                         <div className="space-y-3">
-                          <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans">Export training database</Label>
+                          <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-sans">Export training database</Label>
                           <div className="relative">
                             <Input
                               type={showExportPassphrase ? "text" : "password"}
@@ -1539,7 +1539,7 @@ export function SettingsScreen() {
                       {/* Import Box */}
                       <Surface className="flex flex-col justify-between p-4 rounded-2xl">
                         <div className="space-y-3">
-                          <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest select-none font-sans">Import Backup File</Label>
+                          <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest select-none font-sans">Import Backup File</Label>
                           <div className="relative">
                             <input
                               type="file"
@@ -1550,7 +1550,7 @@ export function SettingsScreen() {
                             />
                             <label
                               htmlFor="import-file-uploader"
-                              className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-input-border hover:border-emerald-500/50 hover:bg-input-focus-bg rounded-xl bg-input py-3.5 px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition duration-205 cursor-pointer w-full text-center font-sans"
+                              className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-input-border hover:border-emerald-500/50 hover:bg-input-focus-bg rounded-xl bg-input py-3.5 px-3 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition duration-205 cursor-pointer w-full text-center font-sans"
                             >
                               <Upload size={18} className="text-blue-400" />
                               <span className="truncate max-w-[180px] normal-case font-sans">{importFile ? importFile.name : "Select backup.json"}</span>
@@ -1601,7 +1601,7 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1.5 select-none">
-        <Label className="mb-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</Label>
+        <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">{label}</Label>
         {hint && (
           <span title={hint} className="cursor-help text-zinc-500 hover:text-zinc-300 transition-colors">
             <Info size={13} />
@@ -1626,7 +1626,7 @@ function SegmentedSetting<T extends string>({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-0">{label}</Label>
+      <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-0">{label}</Label>
       <div className="relative grid gap-1 rounded-xl border border-surface-border bg-surface p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
         {values.map((item) => {
           const active = item === value;

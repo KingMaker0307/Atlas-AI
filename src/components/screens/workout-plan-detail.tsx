@@ -164,7 +164,7 @@ export function WorkoutPlanDetailScreen() {
         if (lastCompletedWorkout?.notes?.includes("Force stopped")) {
           return (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs space-y-1">
-              <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+              <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-xs">
                 <AlertTriangle size={16} className="text-rose-400 shrink-0" />
                 <span>Last Workout Session Force Stopped</span>
               </div>
@@ -179,7 +179,7 @@ export function WorkoutPlanDetailScreen() {
 
       {isLimitReached && !activeWorkout && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1">
-          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-xs">
             <AlertTriangle size={16} className="text-amber-400 shrink-0" />
             <span>Daily Workout Limit Reached (3/3)</span>
           </div>
@@ -191,7 +191,7 @@ export function WorkoutPlanDetailScreen() {
 
       {plan.notes && (
         <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs space-y-1.5">
-          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px] text-purple-300">
+          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-xs text-purple-300">
             <Sparkles size={16} className="text-purple-400 shrink-0 animate-pulse" />
             <span>AI Coach Periodization & Timeline Directive</span>
           </div>
@@ -215,13 +215,13 @@ export function WorkoutPlanDetailScreen() {
                 <div>
                   <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
                     <div>
-                      <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
                       <h2 className="mt-2 text-xl font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-tight">{routine.name}</h2>
                       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">{routine.focus}</p>
 
                       {/* Rescheduling Dropdown */}
                       <div className="flex items-center gap-2 mt-3.5">
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Schedule:</span>
+                        <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Schedule:</span>
                         <select
                           value={routine.day}
                           onChange={async (e) => {
@@ -241,7 +241,7 @@ export function WorkoutPlanDetailScreen() {
                             const updatedRoutine = { ...routine, day: newDay };
                             await useAtlasStore.getState().saveRoutine(plan.id, updatedRoutine);
                           }}
-                          className="rounded-lg border border-input-border bg-input px-2.5 py-1 text-[11px] font-semibold text-foreground focus:outline-none cursor-pointer hover:bg-input-focus-bg transition-colors"
+                          className="rounded-lg border border-input-border bg-input px-2.5 py-1 text-xs font-semibold text-foreground focus:outline-none cursor-pointer hover:bg-input-focus-bg transition-colors"
                         >
                           {DAYS_OF_WEEK.map(d => (
                             <option key={d} value={d}>{d}</option>
@@ -270,7 +270,7 @@ export function WorkoutPlanDetailScreen() {
 
                   {/* Exercises badges grid */}
                   <div className="mt-4 space-y-2">
-                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Target Exercises</span>
+                    <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider block">Target Exercises</span>
                     <div className="grid gap-2">
                       {routine.exercises.map((item) => {
                         const exDetails = getExerciseById(item.exerciseId);
@@ -286,13 +286,13 @@ export function WorkoutPlanDetailScreen() {
                                 {exDetails?.name}
                               </p>
                               <div className="flex items-center gap-1">
-                                <span className="text-[9px] text-zinc-500 font-bold uppercase">
+                                <span className="text-xs text-zinc-500 font-bold uppercase">
                                   {equipmentName}
                                 </span>
                               </div>
                             </div>
                             
-                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                               {item.targetSets}s x {item.targetReps}
                             </span>
                           </div>
@@ -322,19 +322,19 @@ export function WorkoutPlanDetailScreen() {
           } else {
             // Rest Day block
             return (
-              <Card className="p-5 border border-dashed border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/20 to-violet-100/10 dark:from-zinc-900/40 dark:to-violet-950/5 flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
+              <Card className="p-5 border border-dashed border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/20 to-violet-100/10 dark:from-zinc-955/40 dark:to-violet-950/5 flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
                 <div className="p-3 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mb-2.5">
                   <Moon size={24} />
                 </div>
-                <span className="text-[9px] text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
+                <span className="text-xs text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
                 <p className="text-sm font-bold text-foreground mt-1">Rest & CNS Restoration</p>
-                <p className="text-[11px] text-zinc-550 dark:text-zinc-400 max-w-[220px] mt-0.5 leading-normal">
+                <p className="text-xs text-zinc-550 dark:text-zinc-400 max-w-[220px] mt-0.5 leading-normal">
                   Muscle hypertrophy and neural system recovery occur on rest cycles. Focus on targeted hydration and sleep.
                 </p>
 
                 {/* Quick Active Recovery cardio launchers */}
                 <div className="mt-4 w-full flex flex-col gap-1.5 border-t border-violet-500/10 pt-4">
-                  <p className="text-[10px] text-violet-600 dark:text-violet-300 font-bold uppercase tracking-wider text-left">Quick Active Recovery</p>
+                  <p className="text-xs text-violet-600 dark:text-violet-300 font-bold uppercase tracking-wider text-left">Quick Active Recovery</p>
                   <div className="grid grid-cols-2 gap-1.5 mt-1">
                     {[
                       { name: "Incline Hike", id: "treadmill-walk-incline", icon: "🏔️" },
@@ -345,7 +345,7 @@ export function WorkoutPlanDetailScreen() {
                       <Button
                         key={item.id}
                         variant="ghost"
-                        className="h-10 sm:h-8 text-xs sm:text-[10px] text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white bg-violet-500/5 hover:bg-violet-500/10 dark:hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2.5 sm:px-2 font-semibold transition-all disabled:opacity-50"
+                        className="h-10 sm:h-8 text-xs sm:text-xs text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white bg-violet-500/5 hover:bg-violet-500/10 dark:hover:bg-violet-500/15 border border-violet-500/10 rounded-lg flex items-center justify-start gap-1.5 px-2.5 sm:px-2 font-semibold transition-all disabled:opacity-50"
                         disabled={isLimitReached}
                         onClick={() => {
                           const quickRoutine: Routine = {
@@ -374,7 +374,7 @@ export function WorkoutPlanDetailScreen() {
                     ))}
                   </div>
                   {isLimitReached && (
-                    <span className="text-[9px] text-amber-500 font-bold mt-1 select-none">
+                    <span className="text-xs text-amber-500 font-bold mt-1 select-none">
                       Daily Limit Reached (3/3 sessions completed)
                     </span>
                   )}
@@ -396,7 +396,7 @@ export function WorkoutPlanDetailScreen() {
               <Plus size={28} />
             </div>
             <p className="text-zinc-900 dark:text-white font-bold group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Add Scheduled Routine</p>
-            <p className="text-[11px] text-zinc-500 text-center mt-0.5 max-w-[200px] leading-normal">Configure a new training routine day for this workout plan.</p>
+            <p className="text-xs text-zinc-500 text-center mt-0.5 max-w-[200px] leading-normal">Configure a new training routine day for this workout plan.</p>
           </Card>
         )}
       </div>

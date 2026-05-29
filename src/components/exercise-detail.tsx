@@ -811,7 +811,7 @@ export function ExerciseDetail({
         {/* Header container */}
         <div className="flex items-start justify-between gap-3 border-b border-card-border p-4">
           <div>
-            <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
+            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
               <span>{exercise.category}</span>
               <span>•</span>
               <span>{exercise.difficulty}</span>
@@ -869,14 +869,14 @@ export function ExerciseDetail({
                   
                   {/* Phase labels overlay */}
                   <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5">
-                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border transition-all duration-300 backdrop-blur ${
+                    <span className={`text-xs font-extrabold uppercase px-1.5 py-0.5 rounded border transition-all duration-300 backdrop-blur ${
                       activePhotoIndex === 0 
                         ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300"
                         : "bg-surface border-surface-border text-zinc-500 dark:text-zinc-400"
                     }`}>
                       1. Start
                     </span>
-                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border transition-all duration-300 backdrop-blur ${
+                    <span className={`text-xs font-extrabold uppercase px-1.5 py-0.5 rounded border transition-all duration-300 backdrop-blur ${
                       activePhotoIndex === 1 
                         ? "bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/20 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300"
                         : "bg-surface border-surface-border text-zinc-500 dark:text-zinc-400"
@@ -889,7 +889,7 @@ export function ExerciseDetail({
                   <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 bg-black/70 border border-white/10 px-2 py-0.5 rounded-lg backdrop-blur">
                     <button
                       onClick={() => setIsAnimating(!isAnimating)}
-                      className="text-[9px] font-bold text-emerald-400 hover:text-white flex items-center gap-1 transition-colors"
+                      className="text-xs font-bold text-emerald-400 hover:text-white flex items-center gap-1 transition-colors"
                       title={isAnimating ? "Pause loop animation" : "Play loop animation"}
                     >
                       {isAnimating ? (
@@ -898,12 +898,12 @@ export function ExerciseDetail({
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                           </span>
-                          <span className="text-[8px] font-extrabold uppercase tracking-widest font-mono">Loop</span>
+                          <span className="text-xs font-extrabold uppercase tracking-widest font-mono">Loop</span>
                         </>
                       ) : (
                         <>
                           <Play size={8} className="fill-emerald-400" />
-                          <span className="text-[8px] font-extrabold uppercase tracking-widest">Paused</span>
+                          <span className="text-xs font-extrabold uppercase tracking-widest">Paused</span>
                         </>
                       )}
                     </button>
@@ -913,7 +913,7 @@ export function ExerciseDetail({
                         setIsAnimating(false);
                         setActivePhotoIndex(activePhotoIndex === 0 ? 1 : 0);
                       }}
-                      className="text-[8px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+                      className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
                     >
                       Step
                     </button>
@@ -931,7 +931,7 @@ export function ExerciseDetail({
               <div className="absolute top-2 right-2 z-20">
                 <button
                   onClick={() => setViewMode(viewMode === "photo" ? "biomechanical" : "photo")}
-                  className="flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider text-foreground hover:text-emerald-500 bg-surface border border-surface-border px-2 py-1 rounded-xl shadow-lg transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  className="flex items-center gap-1 text-xs font-extrabold uppercase tracking-wider text-foreground hover:text-emerald-500 bg-surface border border-surface-border px-2 py-1 rounded-xl shadow-lg transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   {viewMode === "photo" ? (
                     <>
@@ -950,7 +950,7 @@ export function ExerciseDetail({
             
             {/* Bottom-Right Overlay Label when in biomechanical mode */}
             {viewMode === "biomechanical" && (
-              <div className="absolute bottom-2 left-2 flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest text-emerald-500/60 dark:text-emerald-400/60 bg-emerald-500/5 border border-emerald-500/10 px-1.5 py-0.5 rounded backdrop-blur">
+              <div className="absolute bottom-2 left-2 flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-emerald-500/60 dark:text-emerald-400/60 bg-emerald-500/5 border border-emerald-500/10 px-1.5 py-0.5 rounded backdrop-blur">
                 <Activity size={8} className="animate-pulse" />
                 <span>Biomechanical Path</span>
               </div>
@@ -989,7 +989,7 @@ export function ExerciseDetail({
             <div className="space-y-4">
               {combinedSteps.length > 0 ? (
                 <div className="space-y-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 pl-1">
+                  <div className="text-xs font-bold uppercase tracking-widest text-zinc-500 pl-1">
                     Step-by-Step Cues
                   </div>
 
@@ -997,10 +997,10 @@ export function ExerciseDetail({
                   <div className="p-4 rounded-2xl bg-surface border border-surface-border min-h-[100px] flex flex-col justify-between transition-all duration-300">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-mono">
+                        <span className="text-xs font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-mono">
                           Phase {guideStep + 1}
                         </span>
-                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                           {combinedSteps[guideStep].type}
                         </span>
                       </div>
@@ -1011,7 +1011,7 @@ export function ExerciseDetail({
 
                     {/* Step deck buttons */}
                     <div className="flex items-center justify-between border-t border-surface-border pt-3.5 mt-4 select-none">
-                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 font-mono">
+                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 font-mono">
                         Step {guideStep + 1} of {combinedSteps.length}
                       </span>
                       <div className="flex items-center gap-1">
@@ -1060,7 +1060,7 @@ export function ExerciseDetail({
 
               {/* YouTube Video Resources selector card */}
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-500 pl-1 mb-2 flex items-center gap-1.5">
+                <div className="text-xs font-extrabold uppercase tracking-widest text-zinc-500 pl-1 mb-2 flex items-center gap-1.5">
                   <Play size={10} className="text-red-500 fill-red-500 animate-pulse" />
                   <span>YouTube Form Guides</span>
                 </div>
@@ -1097,7 +1097,7 @@ export function ExerciseDetail({
                           <p className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
                             {video.title}
                           </p>
-                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
                             {video.desc}
                           </p>
                         </div>
@@ -1124,12 +1124,12 @@ export function ExerciseDetail({
                       <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                         Cardiovascular Physiology
                       </h4>
-                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-none mt-1">
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none mt-1">
                         Aerobic zone & metabolic metrics
                       </p>
                     </div>
                   </div>
-                  <div className="space-y-2 text-[11px] text-zinc-500 dark:text-zinc-450">
+                  <div className="space-y-2 text-xs text-zinc-500 dark:text-zinc-450">
                     <div className="flex justify-between items-center bg-surface p-1.5 rounded border border-surface-border">
                       <span className="font-bold text-zinc-700 dark:text-zinc-300">Target Intensity Zone</span>
                       <span className="text-violet-600 dark:text-violet-300 font-extrabold font-mono">
@@ -1142,7 +1142,7 @@ export function ExerciseDetail({
                         {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "12-16 kcal/min" : "7-10 kcal/min"}
                       </span>
                     </div>
-                    <p className="text-[10px] text-zinc-500 leading-relaxed italic mt-1.5">
+                    <p className="text-xs text-zinc-500 leading-relaxed italic mt-1.5">
                       Adaptations: Promotes capillary density, increases left ventricular stroke volume, and enhances fat oxidation thresholds.
                     </p>
                   </div>
@@ -1159,7 +1159,7 @@ export function ExerciseDetail({
                     <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                       Cadence & Tempo
                     </h4>
-                    <p className="text-[10px] text-zinc-500 leading-none mt-1">
+                    <p className="text-xs text-zinc-500 leading-none mt-1">
                       Biomechanical speed intervals
                     </p>
                   </div>
@@ -1179,7 +1179,7 @@ export function ExerciseDetail({
                     <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                       Intrathoracic Breathing Cues
                     </h4>
-                    <p className="text-[10px] text-zinc-500 leading-none mt-1">
+                    <p className="text-xs text-zinc-500 leading-none mt-1">
                       Oxygenation and core stabilization brace
                     </p>
                   </div>
@@ -1200,12 +1200,12 @@ export function ExerciseDetail({
                       <h4 className="text-xs font-bold text-foreground uppercase tracking-wider leading-none">
                         Progression Blueprint
                       </h4>
-                      <p className="text-[10px] text-zinc-500 leading-none mt-1">
+                      <p className="text-xs text-zinc-500 leading-none mt-1">
                         How to scale load parameters safely
                       </p>
                     </div>
                   </div>
-                  <ul className="space-y-1.5 text-[11px] text-zinc-400">
+                  <ul className="space-y-1.5 text-xs text-zinc-400">
                     {exercise.progressionTips.map((tip, idx) => (
                       <li key={idx} className="flex gap-2 leading-relaxed">
                         <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
@@ -1231,7 +1231,7 @@ export function ExerciseDetail({
                       Critical Form Pitfalls
                     </h4>
                   </div>
-                  <ul className="space-y-1.5 text-[11px] text-zinc-400 font-semibold">
+                  <ul className="space-y-1.5 text-xs text-zinc-400 font-semibold">
                     {exercise.commonMistakes.map((mistake, idx) => (
                       <li key={idx} className="flex gap-2 items-start leading-relaxed">
                         <span className="mt-1 text-rose-500">•</span>
@@ -1251,7 +1251,7 @@ export function ExerciseDetail({
                       Injury Prevention Protocols
                     </h4>
                   </div>
-                  <ul className="space-y-1.5 text-[11px] text-zinc-400 font-semibold">
+                  <ul className="space-y-1.5 text-xs text-zinc-400 font-semibold">
                     {exercise.safetyTips.map((tip, idx) => (
                       <li key={idx} className="flex gap-2 items-start leading-relaxed">
                         <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />

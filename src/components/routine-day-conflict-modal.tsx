@@ -46,7 +46,7 @@ export function RoutineDayConflictModal({
             <AlertTriangle size={24} />
           </div>
           <div>
-            <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest leading-none">
+            <span className="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest leading-none">
               Schedule Conflict Warning
             </span>
             <h2 className="text-xl font-bold text-foreground mt-0.5 leading-snug">

@@ -640,7 +640,7 @@ export function WorkoutScreen() {
               <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
               <div className="flex-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
-                <p className="text-[11px] text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
+                <p className="text-xs text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
               </div>
             </div>
             <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
@@ -760,7 +760,7 @@ export function WorkoutScreen() {
                         <div className="flex items-center gap-2">
                           <h2 className="text-xl font-bold text-foreground leading-tight">{plan.name}</h2>
                           {isActive && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
                               Active
                             </span>
                           )}
@@ -792,7 +792,7 @@ export function WorkoutScreen() {
                         </Button>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
+                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
                       <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-300">
                         {plan.routines.length} {plan.routines.length === 1 ? "Routine" : "Routines"}
                       </span>
@@ -805,7 +805,7 @@ export function WorkoutScreen() {
 
                     {/* Progress Bar */}
                     <div className="mt-4 space-y-1.5 border-t border-white/5 pt-3">
-                      <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
+                      <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                         <span>Weekly Routines Progress</span>
                         <span className="font-bold text-emerald-500 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                       </div>
@@ -854,7 +854,7 @@ export function WorkoutScreen() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider hidden sm:inline">Explore</span>
+              <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider hidden sm:inline">Explore</span>
               <Layers3 className="text-emerald-600 dark:text-emerald-450" size={18} />
             </div>
           </div>
@@ -946,11 +946,11 @@ export function WorkoutScreen() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-foreground leading-tight">{cat.label}</p>
-                        <p className="text-[10px] text-zinc-500 mt-0.5 leading-tight">{cat.description}</p>
+                        <p className="text-xs text-zinc-500 mt-0.5 leading-tight">{cat.description}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${c.badge}`}>
+                      <span className={`px-2 py-0.5 rounded-md border text-xs font-black ${c.badge}`}>
                         {categoryExercises.length}
                       </span>
                       <ChevronDown
@@ -989,13 +989,13 @@ export function WorkoutScreen() {
                                   <p className="text-[13px] font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-snug truncate">
                                     {exercise.name}
                                   </p>
-                                  <p className="mt-0.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wide">
+                                  <p className="mt-0.5 text-xs font-bold text-zinc-500 uppercase tracking-wide">
                                     {exercise.muscles.slice(0, 3).join(" · ")}
                                   </p>
                                 </div>
                                 <ChevronRight size={14} className="text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-600 dark:group-hover:text-white shrink-0 transition-colors self-center" />
                               </div>
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider flex-wrap">
+                              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider flex-wrap">
                                 <span className={`px-1.5 py-0.5 rounded border ${diffColors[diffText]}`}>
                                   {diffText}
                                 </span>
@@ -1022,7 +1022,7 @@ export function WorkoutScreen() {
               <Sparkles className="h-8 w-8 text-emerald-450 mx-auto animate-pulse" />
               <div>
                 <h3 className="text-sm font-bold text-foreground leading-tight">Can&apos;t find &quot;{query}&quot;?</h3>
-                <p className="text-[11px] text-zinc-550 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
+                <p className="text-xs text-zinc-550 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
                   Our biomechanics engine can dynamically generate a full clinical-grade exercise profile covering correct setup cues, execution, breathing, mistakes, and safety advice.
                 </p>
               </div>
@@ -1162,7 +1162,7 @@ export function WorkoutScreen() {
               <h1 className="text-sm font-bold text-foreground truncate max-w-[100px] sm:max-w-[240px] leading-tight capitalize">
                 {activeWorkout.name}
               </h1>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-none mt-0.5 font-medium">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none mt-0.5 font-medium">
                 {completedSets}/{totalSets} sets done
               </p>
             </div>
@@ -1189,7 +1189,7 @@ export function WorkoutScreen() {
               <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono leading-none">
                 {formatDuration(elapsedWorkoutTime)}
               </p>
-              <p className="text-[8px] uppercase tracking-widest text-zinc-500 leading-none mt-0.5">
+              <p className="text-xs uppercase tracking-widest text-zinc-500 leading-none mt-0.5">
                 Active
               </p>
             </div>
@@ -1201,10 +1201,10 @@ export function WorkoutScreen() {
                   : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-300"
                 }`}
             >
-              <p className="text-[11px] sm:text-xs font-mono font-bold leading-none">
+              <p className="text-xs sm:text-xs font-mono font-bold leading-none">
                 {remaining > 0 ? formatTimer(remaining) : "Ready"}
               </p>
-              <p className="text-[7px] sm:text-[8px] uppercase tracking-wider text-zinc-400 mt-0.5 leading-none">
+              <p className="text-[7px] sm:text-xs uppercase tracking-wider text-zinc-400 mt-0.5 leading-none">
                 Rest
               </p>
             </div>
@@ -1213,7 +1213,7 @@ export function WorkoutScreen() {
             <Button
               size="sm"
               variant="secondary"
-              className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold shrink-0 bg-transparent text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 border border-rose-500/20"
+              className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-xs font-semibold shrink-0 bg-transparent text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 border border-rose-500/20"
               onClick={() => {
                 if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
                   void discardWorkout();
@@ -1228,7 +1228,7 @@ export function WorkoutScreen() {
             <Button
               size="sm"
               variant="primary"
-              className="h-7 sm:h-8 px-2.5 sm:px-3 text-[10px] sm:text-xs font-bold shrink-0 bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
+              className="h-7 sm:h-8 px-2.5 sm:px-3 text-xs sm:text-xs font-bold shrink-0 bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
               onClick={handleFinishSessionClick}
             >
               Finish
@@ -1238,7 +1238,7 @@ export function WorkoutScreen() {
 
         {/* Voice Logger Transcription Feedback Alert Banner */}
         {speechFeedback && (
-          <div className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
+          <div className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
             <Sparkles size={12} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
             <span>{speechFeedback}</span>
           </div>
@@ -1247,31 +1247,31 @@ export function WorkoutScreen() {
         {/* Floating rest-timer action controllers */}
         {restTimerEndsAt && remaining > 0 && (
           <div className="mt-2 pt-2 border-t border-card-border flex items-center justify-between gap-2 max-w-5xl mx-auto">
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Adjust Rest:</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Adjust Rest:</span>
             <div className="flex items-center gap-1.5">
               <Button
-                className="h-6 px-2 text-[9px] font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-6 px-2 text-xs font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(-15)}
               >
                 -15s
               </Button>
               <Button
-                className="h-6 px-2 text-[9px] font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-6 px-2 text-xs font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(15)}
               >
                 +15s
               </Button>
               <Button
-                className="h-6 px-2 text-[9px] font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-6 px-2 text-xs font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(60)}
               >
                 +60s
               </Button>
               <Button
-                className="h-6 px-2 text-[9px] font-bold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20"
+                className="h-6 px-2 text-xs font-bold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20"
                 variant="secondary"
                 onClick={() => void stopRestTimer()}
               >
@@ -1309,7 +1309,7 @@ export function WorkoutScreen() {
 
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[10px]">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1 text-xs">
                     <span className="font-semibold text-emerald-400 uppercase tracking-wider font-mono">
                       {workoutExercise.targetSets} sets x {workoutExercise.targetReps}
                     </span>
@@ -1336,7 +1336,7 @@ export function WorkoutScreen() {
                     {exercise.muscles.map((muscle) => (
                       <span
                         key={muscle}
-                        className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-surface text-zinc-600 dark:text-zinc-300 border border-surface-border capitalize leading-none"
+                        className="px-1.5 py-0.5 rounded-full text-xs font-bold bg-surface text-zinc-600 dark:text-zinc-300 border border-surface-border capitalize leading-none"
                       >
                         {muscle}
                       </span>
@@ -1349,7 +1349,7 @@ export function WorkoutScreen() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                    className="h-7 px-1.5 sm:px-2 text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                     onClick={() => setSelectedExercise(exercise)}
                     aria-label="View step-by-step instructions"
                   >
@@ -1362,7 +1362,7 @@ export function WorkoutScreen() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                      className="h-7 px-1.5 sm:px-2 text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                       onClick={() => {
                         setActiveSwapExercise(workoutExercise);
                         setSwapSearch("");
@@ -1378,7 +1378,7 @@ export function WorkoutScreen() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className={`h-7 px-1.5 sm:px-2 text-[10px] font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
+                    className={`h-7 px-1.5 sm:px-2 text-xs font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
                       }`}
                     onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                     aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
@@ -1392,7 +1392,7 @@ export function WorkoutScreen() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-emerald-550 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                      className="h-7 px-1.5 sm:px-2 text-xs font-bold text-emerald-550 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
                       onClick={() => void addSet(workoutExercise.id)}
                       aria-label="Add logging set"
                     >
@@ -1405,7 +1405,7 @@ export function WorkoutScreen() {
 
               {/* Personal Record & Last Lift Stats indicators */}
               {!isSkipped && stats && (
-                <div className="mt-3 px-2 py-1.5 bg-surface/50 rounded-xl border border-surface-border flex items-center justify-between text-[10px] text-zinc-600 dark:text-zinc-400 select-none">
+                <div className="mt-3 px-2 py-1.5 bg-surface/50 rounded-xl border border-surface-border flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 select-none">
                   <span className="truncate max-w-[70%] leading-none">
                     <span className="text-zinc-400 dark:text-zinc-500 font-bold">Last logged:</span> {stats.last}
                   </span>
@@ -1431,11 +1431,11 @@ export function WorkoutScreen() {
                             <div className="flex items-center gap-2 min-w-0">
                               <Upload size={14} className="text-purple-400 shrink-0" />
                               <div className="text-left min-w-0">
-                                <p className="text-[10px] sm:text-[11px] font-bold text-foreground leading-tight truncate">GPX Sync</p>
-                                <p className="text-[8px] sm:text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance, and calories from a .GPX file.</p>
+                                <p className="text-xs sm:text-xs font-bold text-foreground leading-tight truncate">GPX Sync</p>
+                                <p className="text-xs sm:text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance, and calories from a .GPX file.</p>
                               </div>
                             </div>
-                            <label className="h-6 px-2 sm:px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all select-none shrink-0">
+                            <label className="h-6 px-2 sm:px-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all select-none shrink-0">
                               Upload
                               <input
                                 type="file"
@@ -1446,7 +1446,7 @@ export function WorkoutScreen() {
                             </label>
                           </div>
 
-                          <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
+                          <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] gap-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
                             <span className="text-left">#</span>
                             <span>Min</span>
                             <span>Dist (mi)</span>
@@ -1586,7 +1586,7 @@ export function WorkoutScreen() {
                                     {/* Tactical Complete Button */}
                                     <Button
                                       aria-label="Complete set"
-                                      className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${set.completed
+                                      className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1 ${set.completed
                                           ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
                                           : "bg-surface text-zinc-455 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
                                         }`}
@@ -1612,7 +1612,7 @@ export function WorkoutScreen() {
                                 {/* Form Inputs Grid (4 columns, touch-friendly pads) */}
                                 <div className="grid grid-cols-4 gap-2 text-left">
                                   <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Min</label>
+                                    <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1">Min</label>
                                     <Input
                                       inputMode="decimal"
                                       type="number"
@@ -1629,7 +1629,7 @@ export function WorkoutScreen() {
                                   </div>
 
                                   <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Dist (mi)</label>
+                                    <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1">Dist (mi)</label>
                                     <Input
                                       inputMode="decimal"
                                       type="number"
@@ -1646,7 +1646,7 @@ export function WorkoutScreen() {
                                   </div>
 
                                   <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1 truncate">{cardioLabel}</label>
+                                    <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1 truncate">{cardioLabel}</label>
                                     <Input
                                       inputMode="decimal"
                                       type="number"
@@ -1663,7 +1663,7 @@ export function WorkoutScreen() {
                                   </div>
 
                                   <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">kcal</label>
+                                    <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1">kcal</label>
                                     <Input
                                       inputMode="numeric"
                                       type="number"
@@ -1699,7 +1699,7 @@ export function WorkoutScreen() {
 
                     return (
                       <>
-                        <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
+                        <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] gap-2 px-1 text-xs font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
                           <span className="text-left">#</span>
                           <span>Reps</span>
                           <span>Load ({weightUnit})</span>
@@ -1822,7 +1822,7 @@ export function WorkoutScreen() {
                                     SET #{setIndex + 1}
                                   </span>
                                   {set.isDropSet && (
-                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[8px] font-black uppercase tracking-wider text-amber-400">
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-xs font-black uppercase tracking-wider text-amber-400">
                                       Dropset
                                     </span>
                                   )}
@@ -1843,7 +1843,7 @@ export function WorkoutScreen() {
                                   {/* Tactical Complete Button */}
                                   <Button
                                     aria-label="Complete set"
-                                    className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${set.completed
+                                    className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1 ${set.completed
                                         ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
                                         : "bg-surface text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
                                       }`}
@@ -1869,7 +1869,7 @@ export function WorkoutScreen() {
                               {/* Form Inputs Grid (3 columns, touch-friendly pads) */}
                               <div className="grid grid-cols-3 gap-2.5 text-left">
                                 <div>
-                                  <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Reps</label>
+                                  <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1">Reps</label>
                                   <Input
                                     inputMode="numeric"
                                     type="number"
@@ -1885,7 +1885,7 @@ export function WorkoutScreen() {
                                 </div>
 
                                 <div>
-                                  <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Load ({weightUnit})</label>
+                                  <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1">Load ({weightUnit})</label>
                                   <Input
                                     inputMode="decimal"
                                     type="number"
@@ -1901,7 +1901,7 @@ export function WorkoutScreen() {
                                 </div>
 
                                 <div>
-                                  <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">RIR</label>
+                                  <label className="block text-xs font-black uppercase text-zinc-500 tracking-wider mb-1">RIR</label>
                                   {guidedMode ? (
                                     <Select
                                       value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
@@ -1981,7 +1981,7 @@ export function WorkoutScreen() {
                                   </div>
                                   <div className="flex flex-wrap gap-1">
                                     {platesList.map((plate, idx) => (
-                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-[10px] font-bold text-foreground font-mono">
+                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-xs font-bold text-foreground font-mono">
                                         {plate}
                                       </span>
                                     ))}
@@ -1996,7 +1996,7 @@ export function WorkoutScreen() {
                                     <p className="font-semibold text-foreground leading-tight">
                                       Set {workoutExercise.sets.findIndex(s => s.id === lastCompletedSet?.id) + 1} RIR feedback ({rirVal} RIR):
                                     </p>
-                                    <p className="text-zinc-550 dark:text-zinc-400 text-[11px] leading-relaxed">
+                                    <p className="text-zinc-550 dark:text-zinc-400 text-xs leading-relaxed">
                                       {rirVal <= 1
                                         ? "Optimal hypertrophy threshold reached! Maintain weight or increase by +2.5% next session."
                                         : rirVal >= 4
@@ -2020,7 +2020,7 @@ export function WorkoutScreen() {
                     <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400" />
                     <span>Progress Warning: Exercise Skipped</span>
                   </div>
-                  <p className="text-zinc-550 dark:text-zinc-400 leading-relaxed text-[11px]">
+                  <p className="text-zinc-550 dark:text-zinc-400 leading-relaxed text-xs">
                     No machine or suitable alternative is available. Note: Skipping this movement reduces your target weekly workout volume by <span className="font-semibold text-zinc-900 dark:text-white">{workoutExercise.targetSets} sets</span>. This directly decreases total protein synthesis stimulation for your <span className="font-semibold text-zinc-900 dark:text-white capitalize">{exercise.muscles[0]}</span>, slowing muscle adaptation and progress.
                   </p>
                   <Button
@@ -2056,7 +2056,7 @@ export function WorkoutScreen() {
             </Button>
 
             <div>
-              <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest leading-none">
+              <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest leading-none">
                 Alternative Selector
               </span>
               <h2 className="text-xl font-bold text-foreground mt-1 leading-snug">
@@ -2097,7 +2097,7 @@ export function WorkoutScreen() {
 
                   return groups.map((g) => (
                     <div key={g.title} className="space-y-1.5">
-                      <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 select-none pl-1">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-500 select-none pl-1">
                         {g.title}
                       </h3>
                       <div className="grid gap-1.5">
@@ -2115,11 +2115,11 @@ export function WorkoutScreen() {
                               <p className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                 {alt.name}
                               </p>
-                              <p className="text-[9px] text-zinc-500 dark:text-zinc-400 capitalize mt-0.5">
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 capitalize mt-0.5">
                                 {alt.muscles.slice(0, 3).join(", ")} · {alt.equipment.join(", ")}
                               </p>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-450 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20 dark:border-emerald-500/10 group-hover:bg-emerald-500/15 transition-all">
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-450 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20 dark:border-emerald-500/10 group-hover:bg-emerald-500/15 transition-all">
                               Swap
                             </span>
                           </button>

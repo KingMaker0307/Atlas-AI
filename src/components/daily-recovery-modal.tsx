@@ -89,28 +89,28 @@ export function DailyRecoveryModal({
             <div>
               <Label htmlFor="sleepHours">Sleep (hours)</Label>
               <Input type="number" step="0.1" min={0} max={24} {...form.register("sleepHours", { valueAsNumber: true })} />
-              {form.formState.errors.sleepHours && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.sleepHours.message}</p>}
+              {form.formState.errors.sleepHours && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.sleepHours.message}</p>}
             </div>
             <div>
               <Label htmlFor="energy">Energy (1-10)</Label>
               <Input type="number" min={1} max={10} {...form.register("energy", { valueAsNumber: true })} />
-              {form.formState.errors.energy && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.energy.message}</p>}
+              {form.formState.errors.energy && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.energy.message}</p>}
             </div>
             <div>
               <Label htmlFor="soreness">Soreness (1-10)</Label>
               <Input type="number" min={1} max={10} {...form.register("soreness", { valueAsNumber: true })} />
-              {form.formState.errors.soreness && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.soreness.message}</p>}
+              {form.formState.errors.soreness && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.soreness.message}</p>}
             </div>
             <div>
               <Label htmlFor="stress">Stress (1-10)</Label>
               <Input type="number" min={1} max={10} {...form.register("stress", { valueAsNumber: true })} />
-              {form.formState.errors.stress && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.stress.message}</p>}
+              {form.formState.errors.stress && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.stress.message}</p>}
             </div>
           </div>
           <div>
             <Label htmlFor="note">Note</Label>
             <Textarea maxLength={250} {...form.register("note")} />
-            {form.formState.errors.note && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.note.message}</p>}
+            {form.formState.errors.note && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.note.message}</p>}
           </div>
           <Button type="submit" variant="primary" icon={<Save size={16} />} className="w-full">
             {dailyRecoveryLog ? "Update Log" : "Save Log"}

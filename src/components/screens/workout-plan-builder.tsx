@@ -58,7 +58,7 @@ const TemplateCard: FC<{
   >
     <Card className="p-0 overflow-hidden relative group transition-all hover:border-violet-500/40 hover:shadow-[0_0_20px_rgba(139,92,246,0.12)]">
       {isRecommended && (
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/90 to-orange-500/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/90 to-orange-500/90 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-lg">
           <Star size={10} fill="currentColor" />
           Recommended
         </div>
@@ -79,17 +79,17 @@ const TemplateCard: FC<{
 
         {/* Quick stats */}
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
+          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
             <CalendarDays size={10} />
             {template.daysPerWeek.length === 1
                ? `${template.daysPerWeek[0]}×/wk`
                : `${template.daysPerWeek[0]}-${template.daysPerWeek[template.daysPerWeek.length - 1]}×/wk`}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
+          <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
             <Clock size={10} />
             {template.durationMinutes}m
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+          <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-400">
             <Layers size={10} />
             {template.routines.length} routines
           </span>
@@ -100,7 +100,7 @@ const TemplateCard: FC<{
           {template.experience.map((exp) => (
             <span
               key={exp}
-              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 exp === "beginner"
                   ? "bg-emerald-500/15 text-emerald-400"
                   : exp === "intermediate"
@@ -112,7 +112,7 @@ const TemplateCard: FC<{
             </span>
           ))}
           {template.equipment.map((eq) => (
-            <span key={eq} className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-400">
+            <span key={eq} className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-400">
               {eq}
             </span>
           ))}
@@ -121,7 +121,7 @@ const TemplateCard: FC<{
 
       {/* Hover action hint */}
       <div className="flex items-center justify-end px-4 py-2 border-t border-white/5 bg-white/[0.02]">
-        <span className="text-[10px] text-zinc-500 group-hover:text-violet-400 transition-colors flex items-center gap-1">
+        <span className="text-xs text-zinc-500 group-hover:text-violet-400 transition-colors flex items-center gap-1">
           View details <ChevronRight size={12} />
         </span>
       </div>
@@ -178,24 +178,24 @@ const TemplateDetailView: FC<{
             ? template.daysPerWeek[0]
             : `${template.daysPerWeek[0]}-${template.daysPerWeek[template.daysPerWeek.length - 1]}`}
         </span>
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Days / Week</span>
+        <span className="text-xs text-zinc-500 uppercase tracking-wider">Days / Week</span>
       </Surface>
       <Surface className="flex flex-col items-center gap-1 py-3">
         <Clock size={16} className="text-fuchsia-600 dark:text-fuchsia-400" />
         <span className="text-lg font-bold text-foreground">{template.durationMinutes}m</span>
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Session</span>
+        <span className="text-xs text-zinc-500 uppercase tracking-wider">Session</span>
       </Surface>
       <Surface className="flex flex-col items-center gap-1 py-3">
         <Layers size={16} className="text-emerald-600 dark:text-emerald-400" />
         <span className="text-lg font-bold text-foreground">{template.routines.length}</span>
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Routines</span>
+        <span className="text-xs text-zinc-500 uppercase tracking-wider">Routines</span>
       </Surface>
       <Surface className="flex flex-col items-center gap-1 py-3">
         <Dumbbell size={16} className="text-amber-600 dark:text-amber-400" />
         <span className="text-lg font-bold text-foreground">
           {new Set(template.routines.flatMap((r) => r.exercises.map((e) => e.exerciseId))).size}
         </span>
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Exercises</span>
+        <span className="text-xs text-zinc-500 uppercase tracking-wider">Exercises</span>
       </Surface>
     </div>
 
@@ -237,14 +237,14 @@ const TemplateDetailView: FC<{
               return (
                 <div key={exIdx} className="flex items-center justify-between rounded-md bg-white/[0.03] px-3 py-2">
                   <div className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-500/20 text-[9px] font-bold text-violet-400">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-500/20 text-xs font-bold text-violet-400">
                       {exIdx + 1}
                     </span>
                     <span className="text-xs text-zinc-300">
                       {exerciseData?.name ?? ex.exerciseId}
                     </span>
                   </div>
-                  <span className="text-[10px] text-zinc-500 tabular-nums">
+                  <span className="text-xs text-zinc-500 tabular-nums">
                     {ex.targetSets} × {ex.targetReps} &middot; {ex.restSeconds}s rest
                   </span>
                 </div>
@@ -741,7 +741,7 @@ export function WorkoutPlanBuilderScreen() {
               </div>
               <div className="flex flex-wrap gap-1.5 px-5 pb-4">
                 {["Strength", "Hypertrophy", "Bodyweight", "Home Gym", "HIIT"].map(tag => (
-                  <span key={tag} className="rounded-full bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:text-zinc-400">{tag}</span>
+                  <span key={tag} className="rounded-full bg-zinc-100 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">{tag}</span>
                 ))}
               </div>
             </Card>
@@ -823,14 +823,14 @@ export function WorkoutPlanBuilderScreen() {
 
           {/* Advanced filters */}
           <Surface className="space-y-3 p-3">
-            <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Refine Results</p>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Refine Results</p>
             <div className="flex flex-wrap gap-2">
               {/* Experience filter */}
               {(["beginner", "intermediate", "advanced"] as const).map((exp) => (
                 <button
                   key={exp}
                   onClick={() => setFilterExperience(filterExperience === exp ? null : exp)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-all capitalize ${
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all capitalize ${
                     filterExperience === exp
                       ? "border-violet-500/50 bg-violet-500/20 text-violet-300"
                       : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
@@ -848,7 +848,7 @@ export function WorkoutPlanBuilderScreen() {
                 <button
                   key={d}
                   onClick={() => setFilterDays(filterDays === d ? null : d)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-all ${
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
                     filterDays === d
                       ? "border-violet-500/50 bg-violet-500/20 text-violet-300"
                       : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
@@ -865,7 +865,7 @@ export function WorkoutPlanBuilderScreen() {
                 <button
                   key={m}
                   onClick={() => setFilterDuration(filterDuration === m ? null : m)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-all ${
+                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
                     filterDuration === m
                       ? "border-violet-500/50 bg-violet-500/20 text-violet-300"
                       : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
@@ -879,7 +879,7 @@ export function WorkoutPlanBuilderScreen() {
             {(filterExperience || filterDays || filterDuration) && (
               <button
                 onClick={() => { setFilterExperience(null); setFilterDays(null); setFilterDuration(null); }}
-                className="text-[10px] text-violet-400 hover:text-violet-300 flex items-center gap-1"
+                className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1"
               >
                 <X size={10} /> Clear filters
               </button>
@@ -1014,7 +1014,7 @@ export function WorkoutPlanBuilderScreen() {
                 <Sparkles size={14} className="text-violet-600 dark:text-violet-400" />
                 <span>Seed Split Templates</span>
               </Label>
-              <p className="text-[11px] text-zinc-500 mt-1 leading-normal">
+              <p className="text-xs text-zinc-500 mt-1 leading-normal">
                 Instantly populate your routines and exercises with pre-configured split programs. Perfect for speeding up manual planning.
               </p>
             </div>
@@ -1028,7 +1028,7 @@ export function WorkoutPlanBuilderScreen() {
                 onClick={() => handleSeedSplit("ppl")}
               >
                 <span className="font-bold">Push / Pull / Legs</span>
-                <span className="text-[9px] text-zinc-500 font-medium">3-Day Classic Split</span>
+                <span className="text-xs text-zinc-500 font-medium">3-Day Classic Split</span>
               </Button>
               <Button
                 type="button"
@@ -1038,7 +1038,7 @@ export function WorkoutPlanBuilderScreen() {
                 onClick={() => handleSeedSplit("upper-lower")}
               >
                 <span className="font-bold">Upper / Lower</span>
-                <span className="text-[9px] text-zinc-500 font-medium">4-Day Muscle Split</span>
+                <span className="text-xs text-zinc-500 font-medium">4-Day Muscle Split</span>
               </Button>
               <Button
                 type="button"
@@ -1048,7 +1048,7 @@ export function WorkoutPlanBuilderScreen() {
                 onClick={() => handleSeedSplit("full-body")}
               >
                 <span className="font-bold">Full Body</span>
-                <span className="text-[9px] text-zinc-500 font-medium">3-Day Alternating Plan</span>
+                <span className="text-xs text-zinc-500 font-medium">3-Day Alternating Plan</span>
               </Button>
             </div>
           </Card>
@@ -1068,10 +1068,10 @@ export function WorkoutPlanBuilderScreen() {
                       </span>
                       <div>
                         <h3 className="text-sm font-semibold text-foreground">{routine.name}</h3>
-                        <p className="text-[10px] text-zinc-500">{routine.focus} · {routine.day}</p>
+                        <p className="text-xs text-zinc-500">{routine.focus} · {routine.day}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] text-zinc-500">{routine.exercises.length} exercises</span>
+                    <span className="text-xs text-zinc-500">{routine.exercises.length} exercises</span>
                   </div>
 
                   <div className="space-y-1">
@@ -1080,7 +1080,7 @@ export function WorkoutPlanBuilderScreen() {
                       return (
                         <div key={exIdx} className="flex items-center justify-between px-2 py-1 rounded bg-zinc-50 dark:bg-white/[0.02]">
                           <span className="text-xs text-zinc-600 dark:text-zinc-400">{data?.name ?? ex.exerciseId}</span>
-                          <span className="text-[10px] text-zinc-650 dark:text-zinc-600 tabular-nums">{ex.targetSets}×{ex.targetReps}</span>
+                          <span className="text-xs text-zinc-650 dark:text-zinc-600 tabular-nums">{ex.targetSets}×{ex.targetReps}</span>
                         </div>
                       );
                     })}
@@ -1155,7 +1155,7 @@ export function WorkoutPlanBuilderScreen() {
                 <AlertTriangle className="text-rose-500 dark:text-rose-400" size={22} />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
+                <p className="text-xs font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
               </div>
@@ -1163,14 +1163,14 @@ export function WorkoutPlanBuilderScreen() {
 
             {/* Error detail */}
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/[0.07] p-3.5 space-y-1">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
               <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
                 {aiErrorMessage || "An unknown error occurred communicating with the AI provider."}
               </p>
             </div>
 
             {/* Tips */}
-            <div className="space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+            <div className="space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
               <p className="font-semibold text-zinc-700 dark:text-zinc-300">Common causes:</p>
               <ul className="list-disc list-inside space-y-1 leading-relaxed">
                 <li>Invalid or expired API key</li>

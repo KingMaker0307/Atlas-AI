@@ -92,17 +92,17 @@ export function DailyBodyMetricModal({
             <div>
               <Label htmlFor="bodyweight">Weight</Label>
               <Input type="number" step="0.1" min={20} max={1000} {...form.register("bodyweight", { valueAsNumber: true })} />
-              {form.formState.errors.bodyweight && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.bodyweight.message}</p>}
+              {form.formState.errors.bodyweight && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.bodyweight.message}</p>}
             </div>
             <div>
               <Label htmlFor="waist">Waist</Label>
               <Input type="number" step="0.1" min={5} max={200} {...form.register("waist", { valueAsNumber: true })} />
-              {form.formState.errors.waist && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.waist.message}</p>}
+              {form.formState.errors.waist && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.waist.message}</p>}
             </div>
             <div>
               <Label htmlFor="bodyFat">Body fat</Label>
               <Input type="number" step="0.1" min={1} max={70} {...form.register("bodyFat", { valueAsNumber: true })} />
-              {form.formState.errors.bodyFat && <p className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.bodyFat.message}</p>}
+              {form.formState.errors.bodyFat && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.bodyFat.message}</p>}
             </div>
           </div>
 
@@ -136,7 +136,7 @@ export function DailyBodyMetricModal({
                 </div>
                 <div className="mt-2.5">
                   <p className="text-xs font-semibold text-foreground">Upload a progress photo</p>
-                  <p className="mt-0.5 text-[10px] text-zinc-500">Supports PNG, JPG, or WEBP</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">Supports PNG, JPG, or WEBP</p>
                 </div>
                 <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
               </label>

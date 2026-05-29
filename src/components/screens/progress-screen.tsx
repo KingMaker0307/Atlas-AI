@@ -303,11 +303,11 @@ export function ProgressScreen() {
       <div className="hidden print:flex items-center justify-between border-b-2 border-zinc-950 pb-3 mb-6">
         <div>
           <h1 className="text-xl font-black uppercase tracking-tight text-zinc-950">ATLAS AI CLINICAL REPORT</h1>
-          <p className="text-[10px] text-zinc-500 font-bold font-mono">Telemetry Data & Biological Analytics • Generated: {format(new Date(), "PPP")}</p>
+          <p className="text-xs text-zinc-500 font-bold font-mono">Telemetry Data & Biological Analytics • Generated: {format(new Date(), "PPP")}</p>
         </div>
         <div className="text-right">
           <p className="text-sm font-extrabold text-zinc-955">{profile?.name || "Client Summary"}</p>
-          <p className="text-[9px] text-zinc-500 font-bold font-mono">Goal: {profile?.goal || "General Health"}</p>
+          <p className="text-xs text-zinc-500 font-bold font-mono">Goal: {profile?.goal || "General Health"}</p>
         </div>
       </div>
 
@@ -397,10 +397,10 @@ export function ProgressScreen() {
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3 no-print">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Training Intelligence</h1>
-          <p className="text-[11px] sm:text-xs text-zinc-400 font-medium">Progressive overload charts & recovery analytics</p>
+          <p className="text-xs sm:text-xs text-zinc-400 font-medium">Progressive overload charts & recovery analytics</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono select-year-label">Select Year:</span>
+          <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono select-year-label">Select Year:</span>
           <Select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -436,7 +436,7 @@ export function ProgressScreen() {
           
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/25">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/25">
                 Biological readiness
               </span>
               <h3 className="text-lg font-bold text-foreground mt-2 leading-none">System Recovery</h3>
@@ -468,13 +468,13 @@ export function ProgressScreen() {
               </svg>
               <div className="text-center">
                 <span className="text-base font-black text-zinc-900 dark:text-white leading-none font-mono">{recoveryScore}</span>
-                <span className="block text-[8px] font-semibold text-zinc-500 leading-none">Score</span>
+                <span className="block text-xs font-semibold text-zinc-500 leading-none">Score</span>
               </div>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-white/5 space-y-1.5">
-            <p className="text-[11px] leading-relaxed text-zinc-300 font-medium">{recoveryMessage}</p>
+            <p className="text-xs leading-relaxed text-zinc-300 font-medium">{recoveryMessage}</p>
           </div>
         </Card>
 
@@ -486,15 +486,15 @@ export function ProgressScreen() {
             <div className="flex flex-col justify-between h-full space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                  <span className="text-xs font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
                     Active Program
                   </span>
                   <h3 className="text-xl font-bold text-foreground mt-1.5 leading-none">{activePlan.name}</h3>
-                  <p className="text-zinc-400 text-[11px] font-medium truncate mt-1 max-w-[280px]">{activePlan.goal}</p>
+                  <p className="text-zinc-400 text-xs font-medium truncate mt-1 max-w-[280px]">{activePlan.goal}</p>
                 </div>
                 {activePlan.targetDate && (
                   <div className="shrink-0 bg-white/[0.02] px-2.5 py-1 rounded-xl border border-white/5 text-left sm:text-right">
-                    <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Target Date</p>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider font-mono">Target Date</p>
                     <p className="text-xs font-extrabold text-zinc-300 mt-0.5">{activePlan.targetDate}</p>
                   </div>
                 )}
@@ -503,23 +503,23 @@ export function ProgressScreen() {
               {/* Stats & Progress */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between">
-                  <span className="text-[9px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">Active Streak</span>
+                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">Active Streak</span>
                   <div className="mt-1 flex items-baseline gap-1">
                     <span className="text-xl font-black text-foreground font-mono">{getCurrentStreak(allWorkouts, activeWorkoutPlanId)}</span>
-                    <span className="text-[9px] font-bold text-amber-550 dark:text-amber-400">days</span>
+                    <span className="text-xs font-bold text-amber-550 dark:text-amber-400">days</span>
                   </div>
                 </div>
 
                 <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between">
-                  <span className="text-[9px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">Consistency</span>
+                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">Consistency</span>
                   <div className="mt-1 flex items-baseline gap-1">
                     <span className="text-xl font-black text-foreground font-mono">{getTrainingConsistency(allWorkouts, profile?.daysPerWeek ?? 3, activeWorkoutPlanId)}</span>
-                    <span className="text-[9px] font-bold text-emerald-550 dark:text-emerald-400">%</span>
+                    <span className="text-xs font-bold text-emerald-550 dark:text-emerald-400">%</span>
                   </div>
                 </div>
 
                 <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between col-span-2 sm:col-span-1">
-                  <span className="text-[9px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">CNS Status</span>
+                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">CNS Status</span>
                   <div className="mt-1 flex items-baseline gap-1">
                     <span className="text-lg font-black text-foreground">Optimal</span>
                   </div>
@@ -553,7 +553,7 @@ export function ProgressScreen() {
 
                 return (
                   <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-[10px]">
+                    <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-400 font-bold">Weekly Progress ({completedCount}/{routinesCount} routines)</span>
                       <span className="font-extrabold text-emerald-400">{progressPercent}%</span>
                     </div>
@@ -572,7 +572,7 @@ export function ProgressScreen() {
               <Info className="text-zinc-500" size={28} />
               <div>
                 <h4 className="text-sm font-bold text-foreground">No Program Designated</h4>
-                <p className="text-[11px] text-zinc-500 mt-0.5 max-w-[280px]">Designate a training routine on the plan builder screen to track Streaks and CNS stats.</p>
+                <p className="text-xs text-zinc-500 mt-0.5 max-w-[280px]">Designate a training routine on the plan builder screen to track Streaks and CNS stats.</p>
               </div>
             </div>
           )}
@@ -586,7 +586,7 @@ export function ProgressScreen() {
             <Dumbbell size={16} />
           </div>
           <div>
-            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Completed Sessions</p>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Completed Sessions</p>
             <p className="text-lg font-black text-foreground leading-none mt-1">{totalWorkoutsInYear}</p>
           </div>
         </div>
@@ -595,7 +595,7 @@ export function ProgressScreen() {
             <Clock3 size={16} />
           </div>
           <div>
-            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Duration Logged</p>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Duration Logged</p>
             <p className="text-lg font-black text-foreground leading-none mt-1">{totalWorkoutDurationInYear} <span className="text-xs font-semibold text-zinc-500">min</span></p>
           </div>
         </div>
@@ -604,7 +604,7 @@ export function ProgressScreen() {
             <Moon size={16} />
           </div>
           <div>
-            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Avg Sleep Efficiency</p>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Avg Sleep Efficiency</p>
             <p className="text-lg font-black text-foreground leading-none mt-1">{averageSleepHours} <span className="text-xs font-semibold text-zinc-500">hours</span></p>
           </div>
         </div>
@@ -613,7 +613,7 @@ export function ProgressScreen() {
             <Weight size={16} />
           </div>
           <div>
-            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Latest Bodyweight</p>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Latest Bodyweight</p>
             <p className="text-lg font-black text-foreground leading-none mt-1">{latestBodyweight} <span className="text-xs font-semibold text-zinc-500">lbs</span></p>
           </div>
         </div>
@@ -648,7 +648,7 @@ export function ProgressScreen() {
                 <button
                   key={tab.id}
                   onClick={() => setChartTab(tab.id as any)}
-                  className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 whitespace-nowrap ${
+                  className={`px-3 py-1 text-xs font-black uppercase tracking-wider rounded-lg transition-all shrink-0 whitespace-nowrap ${
                     chartTab === tab.id
                       ? "bg-white dark:bg-white/10 text-zinc-950 dark:text-white font-bold shadow-sm"
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -761,7 +761,7 @@ export function ProgressScreen() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Bodyweight Mass Panel */}
                 <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">Bodyweight Mass (Trend)</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">Bodyweight Mass (Trend)</h4>
                   <div className="h-56">
                     {bodyweightSeries.length > 1 ? (
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
@@ -790,7 +790,7 @@ export function ProgressScreen() {
 
                 {/* Weekly Training Volume Panel */}
                 <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">Weekly Training Volume (lbs)</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">Weekly Training Volume (lbs)</h4>
                   <div className="h-56">
                     {volumeSeries.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
@@ -824,14 +824,14 @@ export function ProgressScreen() {
             <Calendar className="text-emerald-400" size={16} />
             <h3 className="text-sm font-bold text-foreground">Active Recovery Heatmap</h3>
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-extrabold uppercase font-mono tracking-wider text-zinc-500">
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase font-mono tracking-wider text-zinc-500">
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/80" /> Trained</span>
             <span>•</span>
             <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-violet-600/60" /> Recovery</span>
           </div>
         </div>
         
-        <p className="text-[11px] text-zinc-400 mt-1 mb-3">28-day training heatmap. Click any cell to log daily recovery or body weight metrics directly.</p>
+        <p className="text-xs text-zinc-400 mt-1 mb-3">28-day training heatmap. Click any cell to log daily recovery or body weight metrics directly.</p>
 
         <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
           {activeRecoveryHeatmap.map((day) => {
@@ -854,7 +854,7 @@ export function ProgressScreen() {
                     : "bg-surface border-surface-border text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"
                 }`}
               >
-                <span className="text-[8px] font-mono leading-none tracking-tight font-black">{day.label.slice(3)}</span>
+                <span className="text-xs font-mono leading-none tracking-tight font-black">{day.label.slice(3)}</span>
                 {isTrained && <Dumbbell size={9} className="self-end" />}
                 {!isTrained && isRecovered && <Moon size={9} className="self-end" />}
               </button>
@@ -878,7 +878,7 @@ export function ProgressScreen() {
                 size="sm"
                 variant={selectedHistoryView === view ? "primary" : "secondary"}
                 onClick={() => setSelectedHistoryView(view as HistoryView)}
-                className="h-7 text-[10px] uppercase font-bold"
+                className="h-7 text-xs uppercase font-bold"
               >
                 {view}
               </Button>
@@ -931,7 +931,7 @@ export function ProgressScreen() {
                 >
                   <div className="min-w-0 flex-1">
                     <h4 className="text-sm font-bold text-foreground truncate capitalize leading-snug">{displayDate}</h4>
-                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[9px] font-bold font-mono text-zinc-500">
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs font-bold font-mono text-zinc-500">
                       {totalWorkouts > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10 text-emerald-400">
                           {totalWorkouts} {totalWorkouts === 1 ? "workout" : "workouts"}
@@ -961,12 +961,12 @@ export function ProgressScreen() {
                     {/* Recovery summary inside the folder */}
                     <div className="p-3 bg-card border border-card-border rounded-xl">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-mono">CNS & Body Metrics</span>
+                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-mono">CNS & Body Metrics</span>
                         <div className="flex gap-1.5">
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-2 text-[9px] font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
+                            className="h-6 px-2 text-xs font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
                             onClick={() => {
                               setModalSelectedDate(key);
                               setShowRecoveryModal(true);
@@ -977,7 +977,7 @@ export function ProgressScreen() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-6 px-2 text-[9px] font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
+                            className="h-6 px-2 text-xs font-semibold text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
                             onClick={() => {
                               setModalSelectedDate(key);
                               setShowBodyMetricModal(true);
@@ -989,53 +989,53 @@ export function ProgressScreen() {
                       </div>
 
                       {hasRecoveryData || currentDayBodyMetric ? (
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2 pt-2 border-t border-white/5 text-[10px] text-zinc-400">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2 pt-2 border-t border-white/5 text-xs text-zinc-400">
                           {currentDayRecoveryLog?.sleepHours && (
                             <div>
-                              <span className="block text-[8px] text-zinc-600 font-bold uppercase tracking-wider">Sleep</span>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider">Sleep</span>
                               <span className="font-extrabold text-blue-400 font-mono">{currentDayRecoveryLog.sleepHours}h</span>
                             </div>
                           )}
                           {currentDayRecoveryLog?.energy && (
                             <div>
-                              <span className="block text-[8px] text-zinc-600 font-bold uppercase tracking-wider">Energy</span>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider">Energy</span>
                               <span className="font-extrabold text-yellow-400 font-mono">{currentDayRecoveryLog.energy}/10</span>
                             </div>
                           )}
                           {currentDayRecoveryLog?.soreness && (
                             <div>
-                              <span className="block text-[8px] text-zinc-600 font-bold uppercase tracking-wider">Soreness</span>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider">Soreness</span>
                               <span className="font-extrabold text-red-400 font-mono">{currentDayRecoveryLog.soreness}/10</span>
                             </div>
                           )}
                           {currentDayRecoveryLog?.readiness && (
                             <div>
-                              <span className="block text-[8px] text-zinc-600 font-bold uppercase tracking-wider">Readiness</span>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider">Readiness</span>
                               <span className="font-extrabold text-emerald-400 font-mono">{currentDayRecoveryLog.readiness}/10</span>
                             </div>
                           )}
                           {currentDayRecoveryLog?.stress && (
                             <div>
-                              <span className="block text-[8px] text-zinc-600 font-bold uppercase tracking-wider">Stress</span>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider">Stress</span>
                               <span className="font-extrabold text-purple-400 font-mono">{currentDayRecoveryLog.stress}/10</span>
                             </div>
                           )}
                           {currentDayBodyMetric?.bodyweight && (
                             <div>
-                              <span className="block text-[8px] text-zinc-600 font-bold uppercase tracking-wider">Mass</span>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider">Mass</span>
                               <span className="font-extrabold text-sky-400 font-mono">{currentDayBodyMetric.bodyweight} lbs</span>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <p className="text-[10px] text-zinc-500 italic mt-1.5 pl-0.5">No biological recovery metrics logged for this date.</p>
+                        <p className="text-xs text-zinc-500 italic mt-1.5 pl-0.5">No biological recovery metrics logged for this date.</p>
                       )}
                     </div>
 
                     {/* Logged Routines inside the folder */}
                     {hasWorkoutData ? (
                       <div className="space-y-3">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider font-mono">Logged Routines</span>
+                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider font-mono">Logged Routines</span>
                         <div className="space-y-3">
                           {workoutsInGroup.map((workout) => {
                             const wDuration = workout.durationMinutes || 0;
@@ -1047,7 +1047,7 @@ export function ProgressScreen() {
                                 <div className="flex justify-between items-start gap-4 pb-2.5 border-b border-surface-border">
                                   <div>
                                     <h5 className="text-foreground text-xs font-bold leading-none">{workout.name}</h5>
-                                    <p className="text-[10px] text-zinc-500 mt-1 flex items-center gap-1 font-semibold">
+                                    <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1 font-semibold">
                                       <span>{format(parseISO(workout.startedAt), "HH:mm")}</span>
                                       <span>•</span>
                                       <span>{wDuration} min</span>
@@ -1062,7 +1062,7 @@ export function ProgressScreen() {
                                     </p>
                                   </div>
                                   {workout.fatigueRating && (
-                                    <span className="text-[9px] font-bold text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded-full border border-white/5">
+                                    <span className="text-xs font-bold text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded-full border border-white/5">
                                       Fatigue: {workout.fatigueRating}/10
                                     </span>
                                   )}
@@ -1076,11 +1076,11 @@ export function ProgressScreen() {
                                     const completedSets = we.sets.filter(s => s.completed);
 
                                     return (
-                                      <div key={we.id} className="p-2 bg-white/[0.01] border border-white/5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px]">
+                                      <div key={we.id} className="p-2 bg-white/[0.01] border border-white/5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
                                         <span className="font-bold text-zinc-800 dark:text-zinc-300">{exerciseName}</span>
                                         <div className="flex items-center gap-2">
                                           {completedSets.length > 0 && (
-                                            <span className="text-[10px] text-zinc-400 font-mono">
+                                            <span className="text-xs text-zinc-400 font-mono">
                                               {isCardio ? (
                                                 completedSets.map((s) => {
                                                   const min = s.durationSeconds ? (s.durationSeconds / 60).toFixed(1) : "0";
@@ -1093,7 +1093,7 @@ export function ProgressScreen() {
                                               )}
                                             </span>
                                           )}
-                                          <span className="text-[9px] font-mono font-bold bg-surface border border-surface-border px-1.5 py-0.5 rounded leading-none text-zinc-500 dark:text-zinc-400 shrink-0">
+                                          <span className="text-xs font-mono font-bold bg-surface border border-surface-border px-1.5 py-0.5 rounded leading-none text-zinc-500 dark:text-zinc-400 shrink-0">
                                             {completedSets.length}/{we.sets.length} sets
                                           </span>
                                         </div>
@@ -1107,7 +1107,7 @@ export function ProgressScreen() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-zinc-500 italic mt-1 pl-0.5">No logged strength or recovery workouts in this period.</p>
+                      <p className="text-xs text-zinc-500 italic mt-1 pl-0.5">No logged strength or recovery workouts in this period.</p>
                     )}
                   </div>
                 )}
