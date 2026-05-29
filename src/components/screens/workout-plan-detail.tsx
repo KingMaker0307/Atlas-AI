@@ -322,7 +322,7 @@ export function WorkoutPlanDetailScreen() {
           } else {
             // Rest Day block
             return (
-              <Card className="p-5 border border-dashed border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/20 to-violet-100/10 dark:from-zinc-955/40 dark:to-violet-950/5 flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
+              <Card className="p-5 border border-dashed border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-black to-violet-950/20 flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
                 <div className="p-3 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mb-2.5">
                   <Moon size={24} />
                 </div>

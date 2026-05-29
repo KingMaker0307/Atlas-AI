@@ -704,7 +704,7 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-black dark:to-emerald-950/20 relative shadow-xl overflow-hidden group">
+          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-black to-emerald-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
             
@@ -745,7 +745,7 @@ export function DashboardScreen() {
           </Card>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/50 to-violet-100/30 dark:from-black dark:to-violet-950/20 relative shadow-xl overflow-hidden group">
+          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-black to-violet-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
             
