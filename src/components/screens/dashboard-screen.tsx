@@ -721,7 +721,7 @@ export function DashboardScreen() {
                   {todayRoutine.exercises.map((item: any) => (
                     <span 
                       key={item.exerciseId}
-                      className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-white/5 bg-white/75 dark:bg-white/[0.03] text-xs font-medium text-zinc-700 dark:text-zinc-300"
+                      className="px-2.5 py-1 rounded-lg border border-emerald-500/20 dark:border-emerald-500/15 bg-emerald-500/10 dark:bg-emerald-500/10 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                     >
                       {item.exerciseId.split("-").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
                     </span>
