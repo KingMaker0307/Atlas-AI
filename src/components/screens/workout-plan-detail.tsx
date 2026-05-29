@@ -149,11 +149,11 @@ export function WorkoutPlanDetailScreen() {
               <span title="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
                 <Info 
                   size={15} 
-                  className="text-zinc-500 hover:text-emerald-450 transition-colors cursor-help" 
+                  className="text-zinc-500 hover:text-emerald-500 transition-colors cursor-help" 
                 />
               </span>
             </div>
-            <p className="text-xs text-zinc-455 pt-0.5">{plan.goal}</p>
+            <p className="text-xs text-zinc-400 pt-0.5">{plan.goal}</p>
           </div>
         </div>
       </section>
@@ -183,7 +183,7 @@ export function WorkoutPlanDetailScreen() {
             <AlertTriangle size={16} className="text-amber-400 shrink-0" />
             <span>Daily Workout Limit Reached (3/3)</span>
           </div>
-          <p className="text-zinc-350 leading-normal">
+          <p className="text-zinc-400 leading-normal">
             You have logged 3 workouts today. Doing more than 3 sessions a day can trigger overtraining syndrome—causing elevated cortisol, severe muscle strain, and decreased performance. Protect your muscles; your body grows during rest!
           </p>
         </div>
@@ -195,7 +195,7 @@ export function WorkoutPlanDetailScreen() {
             <Sparkles size={16} className="text-purple-400 shrink-0 animate-pulse" />
             <span>AI Coach Periodization & Timeline Directive</span>
           </div>
-          <p className="text-zinc-350 leading-relaxed whitespace-pre-line text-xs">
+          <p className="text-zinc-400 leading-relaxed whitespace-pre-line text-xs">
             {plan.notes}
           </p>
         </div>
@@ -215,13 +215,13 @@ export function WorkoutPlanDetailScreen() {
                 <div>
                   <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
                     <div>
-                      <span className="text-[9px] text-emerald-450 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
-                      <h2 className="mt-2 text-xl font-bold text-white group-hover:text-emerald-350 transition-colors leading-tight">{routine.name}</h2>
+                      <span className="text-[9px] text-emerald-500 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
+                      <h2 className="mt-2 text-xl font-bold text-white group-hover:text-emerald-400 transition-colors leading-tight">{routine.name}</h2>
                       <p className="mt-1 text-xs text-zinc-400 leading-normal">{routine.focus}</p>
 
                       {/* Rescheduling Dropdown */}
                       <div className="flex items-center gap-2 mt-3.5">
-                        <span className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider">Schedule:</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Schedule:</span>
                         <select
                           value={routine.day}
                           onChange={async (e) => {
@@ -258,7 +258,7 @@ export function WorkoutPlanDetailScreen() {
                         }}>
                           <Pencil size={15} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400" onClick={() => {
+                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-red-400" onClick={() => {
                           setRoutineToDelete({ id: routine.id, name: routine.name });
                           setShowDeleteModal(true);
                         }}>
@@ -270,7 +270,7 @@ export function WorkoutPlanDetailScreen() {
 
                   {/* Exercises badges grid */}
                   <div className="mt-4 space-y-2">
-                    <span className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider block">Target Exercises</span>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block">Target Exercises</span>
                     <div className="grid gap-2">
                       {routine.exercises.map((item) => {
                         const exDetails = getExerciseById(item.exerciseId);
@@ -328,7 +328,7 @@ export function WorkoutPlanDetailScreen() {
                 </div>
                 <span className="text-[9px] text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
                 <p className="text-sm font-bold text-white mt-1">Rest & CNS Restoration</p>
-                <p className="text-[11px] text-zinc-450 max-w-[220px] mt-0.5 leading-normal">
+                <p className="text-[11px] text-zinc-400 max-w-[220px] mt-0.5 leading-normal">
                   Muscle hypertrophy and neural system recovery occur on rest cycles. Focus on targeted hydration and sleep.
                 </p>
 
@@ -392,11 +392,11 @@ export function WorkoutPlanDetailScreen() {
               setActiveSubScreen("routine-builder");
             }}
           >
-            <div className="p-3 rounded-full bg-emerald-500/5 text-emerald-450 border border-emerald-500/10 mb-2.5 group-hover:scale-105 transition-transform duration-300">
+            <div className="p-3 rounded-full bg-emerald-500/5 text-emerald-500 border border-emerald-500/10 mb-2.5 group-hover:scale-105 transition-transform duration-300">
               <Plus size={28} />
             </div>
-            <p className="text-white font-bold group-hover:text-emerald-350 transition-colors">Add Scheduled Routine</p>
-            <p className="text-[11px] text-zinc-550 text-center mt-0.5 max-w-[200px] leading-normal">Configure a new training routine day for this workout plan.</p>
+            <p className="text-white font-bold group-hover:text-emerald-400 transition-colors">Add Scheduled Routine</p>
+            <p className="text-[11px] text-zinc-500 text-center mt-0.5 max-w-[200px] leading-normal">Configure a new training routine day for this workout plan.</p>
           </Card>
         )}
       </div>

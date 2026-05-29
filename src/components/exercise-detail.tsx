@@ -811,7 +811,7 @@ export function ExerciseDetail({
         {/* Header container */}
         <div className="flex items-start justify-between gap-3 border-b border-card-border p-4">
           <div>
-            <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-450 dark:text-emerald-400">
+            <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
               <span>{exercise.category}</span>
               <span>•</span>
               <span>{exercise.difficulty}</span>
@@ -822,7 +822,7 @@ export function ExerciseDetail({
             <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-1 capitalize font-medium">
               <span>{exercise.equipment.join(", ")}</span>
               <span>•</span>
-              <span className="text-zinc-450 dark:text-zinc-500 font-bold">{exercise.muscles.slice(0, 3).join(", ")}</span>
+              <span className="text-zinc-500 dark:text-zinc-400 font-bold">{exercise.muscles.slice(0, 3).join(", ")}</span>
             </p>
           </div>
           <Button
@@ -997,10 +997,10 @@ export function ExerciseDetail({
                   <div className="p-4 rounded-2xl bg-surface border border-surface-border min-h-[100px] flex flex-col justify-between transition-all duration-300">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-550/10 border border-emerald-550/20 text-emerald-500 dark:text-emerald-400 font-mono">
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-mono">
                           Phase {guideStep + 1}
                         </span>
-                        <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">
+                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                           {combinedSteps[guideStep].type}
                         </span>
                       </div>
@@ -1011,7 +1011,7 @@ export function ExerciseDetail({
 
                     {/* Step deck buttons */}
                     <div className="flex items-center justify-between border-t border-surface-border pt-3.5 mt-4 select-none">
-                      <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 font-mono">
+                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 font-mono">
                         Step {guideStep + 1} of {combinedSteps.length}
                       </span>
                       <div className="flex items-center gap-1">
@@ -1053,7 +1053,7 @@ export function ExerciseDetail({
                   </div>
                 </div>
               ) : (
-                <div className="text-zinc-500 text-xs p-4 text-center border border-dashed border-zinc-850 rounded-2xl">
+                <div className="text-zinc-500 text-xs p-4 text-center border border-dashed border-zinc-800 dark:border-zinc-700 rounded-2xl">
                   No execution guides provided.
                 </div>
               )}

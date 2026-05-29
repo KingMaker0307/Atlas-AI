@@ -55,7 +55,7 @@ export function RoutineDayConflictModal({
           </div>
         </div>
 
-        <div className="space-y-3 pt-1 text-sm leading-relaxed text-zinc-650 dark:text-zinc-300">
+        <div className="space-y-3 pt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
           <p>
             You are starting <span className="font-bold text-foreground">"{routineName}"</span>, which is scheduled for <span className="font-bold text-emerald-600 dark:text-emerald-400">{scheduledDay}</span>. 
             However, today is <span className="font-bold text-amber-600 dark:text-amber-400">{currentDay}</span>.
@@ -64,13 +64,13 @@ export function RoutineDayConflictModal({
           {hasConflictWithRoutine ? (
             <div className="p-3.5 rounded-xl bg-surface border border-surface-border text-xs space-y-2">
               <div className="flex items-center gap-1.5 font-bold text-foreground">
-                <CalendarRange size={14} className="text-zinc-550 dark:text-zinc-400" />
+                <CalendarRange size={14} className="text-zinc-500 dark:text-zinc-400" />
                 <span>Automated Reorganization Plan:</span>
               </div>
               <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
                 To keep your training plan organized, selecting **Reorganize & Start** will automatically swap these routines:
               </p>
-              <ul className="list-disc pl-4 space-y-1 text-zinc-600 dark:text-zinc-350">
+              <ul className="list-disc pl-4 space-y-1 text-zinc-600 dark:text-zinc-400">
                 <li>
                   <span className="font-semibold text-foreground">"{routineName}"</span> will move to <span className="font-semibold text-foreground">{currentDay}</span> (Today).
                 </li>
@@ -82,13 +82,13 @@ export function RoutineDayConflictModal({
           ) : (
             <div className="p-3.5 rounded-xl bg-surface border border-surface-border text-xs space-y-2">
               <div className="flex items-center gap-1.5 font-bold text-foreground">
-                <CalendarRange size={14} className="text-zinc-550 dark:text-zinc-400" />
+                <CalendarRange size={14} className="text-zinc-500 dark:text-zinc-400" />
                 <span>Training Schedule Move:</span>
               </div>
               <p className="text-zinc-500 dark:text-zinc-400 leading-normal">
                 Today is a **Rest Day**. Choosing **Reorganize & Start** will update your weekly calendar:
               </p>
-              <ul className="list-disc pl-4 space-y-1 text-zinc-600 dark:text-zinc-350">
+              <ul className="list-disc pl-4 space-y-1 text-zinc-600 dark:text-zinc-400">
                 <li>
                   <span className="font-semibold text-foreground">"{routineName}"</span> will move to <span className="font-semibold text-foreground">{currentDay}</span> (Today).
                 </li>

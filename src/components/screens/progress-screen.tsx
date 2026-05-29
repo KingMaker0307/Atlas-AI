@@ -303,11 +303,11 @@ export function ProgressScreen() {
       <div className="hidden print:flex items-center justify-between border-b-2 border-zinc-950 pb-3 mb-6">
         <div>
           <h1 className="text-xl font-black uppercase tracking-tight text-zinc-950">ATLAS AI CLINICAL REPORT</h1>
-          <p className="text-[10px] text-zinc-550 font-bold font-mono">Telemetry Data & Biological Analytics • Generated: {format(new Date(), "PPP")}</p>
+          <p className="text-[10px] text-zinc-500 font-bold font-mono">Telemetry Data & Biological Analytics • Generated: {format(new Date(), "PPP")}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-extrabold text-zinc-950">{profile?.name || "Client Summary"}</p>
-          <p className="text-[9px] text-zinc-550 font-bold font-mono">Goal: {profile?.goal || "General Health"}</p>
+          <p className="text-sm font-extrabold text-zinc-955">{profile?.name || "Client Summary"}</p>
+          <p className="text-[9px] text-zinc-500 font-bold font-mono">Goal: {profile?.goal || "General Health"}</p>
         </div>
       </div>
 
@@ -355,14 +355,14 @@ export function ProgressScreen() {
           h1, h2, h3, h4, h5, h6, p, span, div {
             color: #09090b !important;
           }
-          .text-zinc-400, .text-zinc-550, .text-zinc-500, .text-zinc-650 {
+          .text-zinc-400, .text-zinc-500, .text-zinc-600 {
             color: #71717a !important;
           }
-          .text-emerald-400, .text-emerald-450, .text-emerald-350, .text-emerald-300 {
+          .text-emerald-400, .text-emerald-500, .text-emerald-300 {
             color: #047857 !important;
             font-weight: bold !important;
           }
-          .text-violet-400, .text-violet-450 {
+          .text-violet-400, .text-violet-500 {
             color: #6d28d9 !important;
             font-weight: bold !important;
           }
@@ -761,7 +761,7 @@ export function ProgressScreen() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Bodyweight Mass Panel */}
                 <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 select-none">Bodyweight Mass (Trend)</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">Bodyweight Mass (Trend)</h4>
                   <div className="h-56">
                     {bodyweightSeries.length > 1 ? (
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
@@ -790,7 +790,7 @@ export function ProgressScreen() {
 
                 {/* Weekly Training Volume Panel */}
                 <div className="space-y-2">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 select-none">Weekly Training Volume (lbs)</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 select-none">Weekly Training Volume (lbs)</h4>
                   <div className="h-56">
                     {volumeSeries.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>

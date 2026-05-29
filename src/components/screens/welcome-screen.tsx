@@ -508,7 +508,7 @@ export function WelcomeScreen() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Jordan"
-                        className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-medium"
+                        className="mt-1 text-xs font-medium"
                       />
                     </div>
 
@@ -523,7 +523,7 @@ export function WelcomeScreen() {
                           value={age || ""}
                           onChange={(e) => setAge(Number(e.target.value))}
                           placeholder="e.g. 28"
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          className="mt-1 text-xs font-mono font-bold"
                         />
                       </div>
                       <div>
@@ -532,7 +532,7 @@ export function WelcomeScreen() {
                           id="setup-physique"
                           value={targetPhysique}
                           onChange={(e: any) => setTargetPhysique(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="lean">Lean</option>
                           <option value="athletic">Athletic</option>
@@ -555,9 +555,9 @@ export function WelcomeScreen() {
                           value={weight || ""}
                           onChange={(e) => setWeight(Number(e.target.value))}
                           placeholder="Weight"
-                          className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold flex-1"
+                          className="text-xs font-mono font-bold flex-1"
                         />
-                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-805 bg-zinc-950 p-1 shrink-0 w-28 select-none">
+                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-surface-border bg-surface p-1 shrink-0 w-28 select-none">
                           {(["lbs", "kg"] as const).map((unit) => (
                             <button
                               key={unit}
@@ -565,8 +565,8 @@ export function WelcomeScreen() {
                               onClick={() => handleWeightUnitChange(unit)}
                               className={`rounded-lg py-1 text-[10px] font-bold uppercase transition ${
                                 weightUnit === unit
-                                  ? "bg-emerald-300 text-zinc-955"
-                                  : "text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-emerald-500 text-white-keep shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                               }`}
                             >
                               {unit}
@@ -593,7 +593,7 @@ export function WelcomeScreen() {
                                 const inches = height % 12 || 0;
                                 setHeight(feet * 12 + inches);
                               }}
-                              className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold text-center"
+                              className="text-xs font-mono font-bold text-center"
                             />
                             <Input
                               type="number"
@@ -606,7 +606,7 @@ export function WelcomeScreen() {
                                 const feet = Math.floor(height / 12) || 5;
                                 setHeight(feet * 12 + inches);
                               }}
-                              className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold text-center"
+                              className="text-xs font-mono font-bold text-center"
                             />
                           </div>
                         ) : (
@@ -617,10 +617,10 @@ export function WelcomeScreen() {
                             value={height || ""}
                             onChange={(e) => setHeight(Number(e.target.value))}
                             placeholder="e.g. 178"
-                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold flex-1"
+                            className="text-xs font-mono font-bold flex-1"
                           />
                         )}
-                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-zinc-805 bg-zinc-950 p-1 shrink-0 w-28 select-none">
+                        <div className="grid grid-cols-2 gap-1 rounded-xl border border-surface-border bg-surface p-1 shrink-0 w-28 select-none">
                           {(["in", "cm"] as const).map((unit) => (
                             <button
                               key={unit}
@@ -628,8 +628,8 @@ export function WelcomeScreen() {
                               onClick={() => handleHeightUnitChange(unit)}
                               className={`rounded-lg py-1 text-[10px] font-bold uppercase transition ${
                                 heightUnit === unit
-                                  ? "bg-emerald-300 text-zinc-955"
-                                  : "text-zinc-400 hover:text-zinc-200"
+                                  ? "bg-emerald-500 text-white-keep shadow-sm"
+                                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                               }`}
                             >
                               {unit === "in" ? "ft" : "cm"}
@@ -654,7 +654,7 @@ export function WelcomeScreen() {
                         value={goal}
                         onChange={(e) => setGoal(e.target.value)}
                         placeholder="e.g., Build strength and muscle size"
-                        className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-medium h-16 min-h-[4rem]"
+                        className="mt-1 text-xs font-medium h-16 min-h-[4rem]"
                       />
                     </div>
 
@@ -669,7 +669,7 @@ export function WelcomeScreen() {
                           value={daysPerWeek || ""}
                           onChange={(e) => setDaysPerWeek(Number(e.target.value))}
                           placeholder="e.g. 3"
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          className="mt-1 text-xs font-mono font-bold"
                         />
                       </div>
 
@@ -679,7 +679,7 @@ export function WelcomeScreen() {
                           id="setup-style"
                           value={trainingStyle}
                           onChange={(e: any) => setTrainingStyle(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="general">General Fitness</option>
                           <option value="strength">Strength Focus</option>
@@ -697,7 +697,7 @@ export function WelcomeScreen() {
                           id="setup-equipment"
                           value={equipment}
                           onChange={(e: any) => setEquipment(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="full gym">Full Gym</option>
                           <option value="home gym">Home Gym</option>
@@ -711,7 +711,7 @@ export function WelcomeScreen() {
                           id="setup-experience"
                           value={experience}
                           onChange={(e: any) => setExperience(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="mt-1 text-xs font-bold"
                         >
                           <option value="beginner">Beginner (&lt; 1 yr)</option>
                           <option value="intermediate">Intermediate (1-3 yrs)</option>
@@ -726,7 +726,7 @@ export function WelcomeScreen() {
                         id="setup-bodytype"
                         value={bodyType}
                         onChange={(e: any) => setBodyType(e.target.value)}
-                        className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                        className="mt-1 text-xs font-bold"
                       >
                         <option value="mesomorph">Mesomorph (Athletic build)</option>
                         <option value="ectomorph">Ectomorph (Lean/faster metabolism)</option>
@@ -740,7 +740,7 @@ export function WelcomeScreen() {
                 <div className="bg-zinc-950/20 dark:bg-zinc-950/40 p-4 border border-card-border rounded-2xl space-y-4">
                   <div className="flex items-start justify-between gap-3 select-none">
                     <div className="space-y-1">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-450 flex items-center gap-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-455 flex items-center gap-2">
                         <Bot size={15} />
                         AI Coach Assistant
                       </h3>
@@ -779,7 +779,7 @@ export function WelcomeScreen() {
                             id="setup-provider"
                             value={providerType}
                             onChange={(e: any) => setProviderType(e.target.value)}
-                            className="mt-1 bg-zinc-950 border-zinc-800 text-xs font-bold"
+                            className="mt-1 text-xs font-bold"
                           >
                             <option value="gemini">Google Gemini</option>
                             <option value="openai">OpenAI (GPT-4o)</option>
@@ -807,13 +807,13 @@ export function WelcomeScreen() {
                                   ? "Not required for local servers"
                                   : "Paste secret API key"
                               }
-                              className="bg-zinc-950 border-zinc-800 pr-10 text-xs font-mono font-bold"
+                              className="pr-10 text-xs font-mono font-bold"
                             />
                             {providerType !== "ollama" && providerType !== "lmstudio" && (
                               <button
                                 type="button"
                                 onClick={() => setShowApiKey(!showApiKey)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
                               >
                                 {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
                               </button>

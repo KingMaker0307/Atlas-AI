@@ -782,7 +782,7 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-red-400"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500"
                           onClick={() => {
                             setPlanToDelete({ id: plan.id, name: plan.name });
                             setShowDeleteModal(true);
@@ -805,9 +805,9 @@ export function WorkoutScreen() {
 
                     {/* Progress Bar */}
                     <div className="mt-4 space-y-1.5 border-t border-white/5 pt-3">
-                      <div className="flex items-center justify-between text-[11px] text-zinc-550 font-bold uppercase tracking-wider">
+                      <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                         <span>Weekly Routines Progress</span>
-                        <span className="font-bold text-emerald-350">{completedCount}/{routinesCount}</span>
+                        <span className="font-bold text-emerald-500 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
                         <div 
@@ -1326,7 +1326,7 @@ export function WorkoutScreen() {
                     )}
 
                     <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-surface border border-surface-border text-zinc-500 dark:text-zinc-400 leading-none">
-                      <Clock3 size={8} className="text-zinc-450 dark:text-zinc-500" />
+                      <Clock3 size={8} className="text-zinc-400 dark:text-zinc-500" />
                       <span>{exercise.tempo}</span>
                     </span>
                   </div>
@@ -1340,7 +1340,7 @@ export function WorkoutScreen() {
                     {exercise.muscles.map((muscle) => (
                       <span
                         key={muscle}
-                        className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-surface text-zinc-650 dark:text-zinc-300 border border-surface-border capitalize leading-none"
+                        className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-surface text-zinc-600 dark:text-zinc-300 border border-surface-border capitalize leading-none"
                       >
                         {muscle}
                       </span>
@@ -1383,7 +1383,7 @@ export function WorkoutScreen() {
                     size="sm"
                     variant="ghost"
                     className={`h-7 px-1.5 sm:px-2 text-[10px] font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${
-                      isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-350"
+                      isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
                     }`}
                     onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                     aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
@@ -1410,9 +1410,9 @@ export function WorkoutScreen() {
 
               {/* Personal Record & Last Lift Stats indicators */}
               {!isSkipped && stats && (
-                <div className="mt-3 px-2 py-1.5 bg-surface/50 rounded-xl border border-surface-border flex items-center justify-between text-[10px] text-zinc-650 dark:text-zinc-400 select-none">
+                <div className="mt-3 px-2 py-1.5 bg-surface/50 rounded-xl border border-surface-border flex items-center justify-between text-[10px] text-zinc-600 dark:text-zinc-400 select-none">
                   <span className="truncate max-w-[70%] leading-none">
-                    <span className="text-zinc-450 dark:text-zinc-500 font-bold">Last logged:</span> {stats.last}
+                    <span className="text-zinc-400 dark:text-zinc-500 font-bold">Last logged:</span> {stats.last}
                   </span>
                   <span className="shrink-0 font-bold text-amber-600 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/25 leading-none">
                     PR: {stats.pr}
@@ -1471,7 +1471,7 @@ export function WorkoutScreen() {
                                     : "bg-input border-input focus-within:border-card-border"
                                 }`}
                               >
-                              <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 text-center leading-none">
+                              <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 text-center leading-none">
                                 {setIndex + 1}
                               </span>
 
@@ -1727,7 +1727,7 @@ export function WorkoutScreen() {
                                   : "bg-input border-input focus-within:border-card-border"
                               }`}
                             >
-                              <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 text-center leading-none">
+                              <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 text-center leading-none">
                                 {setIndex + 1}
                               </span>
                               

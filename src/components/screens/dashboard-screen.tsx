@@ -384,7 +384,7 @@ export function DashboardScreen() {
               type="button"
               onClick={() => void setGuidedMode(false)}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                !guidedMode ? "bg-zinc-900 text-white dark:bg-zinc-800 dark:text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                !guidedMode ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               Advanced
@@ -603,7 +603,7 @@ export function DashboardScreen() {
                     step="0.5"
                     value={logSleep}
                     onChange={(e) => setLogSleep(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -620,7 +620,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logSoreness}
                     onChange={(e) => setLogSoreness(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -637,7 +637,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logStress}
                     onChange={(e) => setLogStress(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -654,7 +654,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logEnergy}
                     onChange={(e) => setLogEnergy(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
               </div>
@@ -713,7 +713,7 @@ export function DashboardScreen() {
                   Today's Scheduled Target · {todayRoutine.day}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white">{todayRoutine.name}</h2>
-                <p className="text-xs text-zinc-350 max-w-md leading-relaxed">
+                <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
                   {todayRoutine.focus}
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1.5">
@@ -754,7 +754,7 @@ export function DashboardScreen() {
                   Rest & Recovery Cycle · {todayDayName}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-white">Active Muscle Restoration</h2>
-                <p className="text-xs text-zinc-350 max-w-md leading-relaxed">
+                <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
                   Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -786,7 +786,7 @@ export function DashboardScreen() {
                       }
                     }}
                     variant="secondary"
-                    className="w-full font-semibold border-btn-secondary-border bg-zinc-800 hover:bg-zinc-700 dark:bg-white/5 dark:hover:bg-white/10 text-white flex items-center justify-center gap-1.5 h-9 text-xs"
+                    className="w-full font-semibold flex items-center justify-center gap-1.5 h-9 text-xs"
                   >
                     <ClipboardList size={14} />
                     Weekly Schedule
@@ -987,11 +987,11 @@ export function DashboardScreen() {
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Age</span>
-              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-450">yrs</span></p>
+              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-400">yrs</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Weight</span>
-              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-450">{profile?.weightUnit}</span></p>
+              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-400">{profile?.weightUnit}</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-[10px] text-zinc-500 font-bold uppercase">Height</span>
@@ -1032,7 +1032,7 @@ export function DashboardScreen() {
             <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
               <button
                 onClick={() => setActiveChartTab("weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
               >
                 <span className="flex items-center gap-1.5">
                   <Weight size={13} />
@@ -1041,7 +1041,7 @@ export function DashboardScreen() {
               </button>
               <button
                 onClick={() => setActiveChartTab("volume")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
               >
                 <span className="flex items-center gap-1.5">
                   <TrendingUp size={13} />
@@ -1077,7 +1077,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
                       Requires at least two bodyweight logs to generate analytical trendlines.
                     </div>
                   )}
@@ -1106,7 +1106,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-550 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
                       Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
                     </div>
                   )}
@@ -1223,7 +1223,7 @@ export function DashboardScreen() {
             {coachBusy && (
               <Card className="p-4 border border-card-border bg-card shadow flex items-center justify-center gap-3">
                 <Bot className="h-5 w-5 text-emerald-400 animate-pulse" />
-                <span className="text-xs text-zinc-450 font-bold uppercase tracking-wider">Coach is designing new program...</span>
+                <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Coach is designing new program...</span>
               </Card>
             )}
           </section>
@@ -1539,7 +1539,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                       Load 3-Day Seed Plan
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Start tracking immediately with a pre-configured, beginner-friendly full-body template split.
                     </p>
                   </div>
@@ -1560,7 +1560,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       Create Manual Plan
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
                     </p>
                   </div>
@@ -1581,7 +1581,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                       Generate with AI Coach
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed mt-0.5">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Have the AI Coach write a personalized plan for you based on your biometrics, target goals, and training experience.
                     </p>
                   </div>

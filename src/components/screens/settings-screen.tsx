@@ -768,43 +768,42 @@ export function SettingsScreen() {
               {activeSettingsTab === "profile" && (
                 <div className="space-y-5">
                   {/* Profile Card Summary */}
-                  <Card className="relative overflow-hidden p-5 shadow-2xl border border-white/5 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950/45 flex items-center gap-4 select-none">
+                  <Card className="relative overflow-hidden p-5 flex items-center gap-4 select-none">
                     <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
                     <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] shrink-0">
                       <User size={26} className="text-zinc-950" />
-                      <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-zinc-900 border border-white/5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       </span>
                     </div>
                     <div>
-                      <h2 className="text-xl font-black tracking-tight text-white">{profile?.name ?? "Athlete"}</h2>
-                      <p className="text-xs text-zinc-400 font-medium mt-0.5">{profile?.goal || "Goal not set"}</p>
+                      <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">{profile?.name ?? "Athlete"}</h2>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">{profile?.goal || "Goal not set"}</p>
                     </div>
                   </Card>
 
                   {/* Physical Biometrics Panel */}
-                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
+                    <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
-                        <Palette className="text-emerald-400" size={18} />
-                        <h2 className="text-base font-bold text-white tracking-tight">Biometric Inputs</h2>
+                        <Palette className="text-emerald-500 dark:text-emerald-400" size={18} />
+                        <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">Biometric Inputs</h2>
                       </div>
                       <div className="flex items-center gap-1.5 select-none">
                         {saveIndicator === "saving" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-amber-300 border border-amber-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                            Saving...
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-amber-600 dark:text-amber-300 border border-amber-500/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse" />
+                            Pending Save
                           </span>
                         )}
                         {saveIndicator === "saved" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-300 border border-emerald-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                            Autosaved
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 animate-fade-in">
+                            Saved
                           </span>
                         )}
                         {saveIndicator === "error" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-rose-300 border border-rose-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase font-mono text-rose-600 dark:text-rose-300 border border-rose-500/20">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 dark:bg-rose-400" />
                             Error
                           </span>
                         )}
@@ -813,13 +812,13 @@ export function SettingsScreen() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="sm:col-span-2">
-                        <Field label="Preferred Name">
+                        <Field label="Full Name">
                           <Input
                             type="text"
                             maxLength={30}
                             value={draftProfile.name ?? ""}
                             onChange={(e) => handleProfileChange("name", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                            className="text-xs font-medium"
                             placeholder="e.g. Jordan"
                           />
                         </Field>
@@ -832,14 +831,14 @@ export function SettingsScreen() {
                           max={120}
                           value={draftProfile.age ?? ""}
                           onChange={(e) => handleProfileChange("age", Number(e.target.value))}
-                          className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          className="text-xs font-mono font-bold"
                         />
                       </Field>
                       <Field label="Target Physique">
                         <Select
                           value={draftProfile.targetPhysique ?? ""}
                           onChange={(e) => handleProfileChange("targetPhysique", e.target.value)}
-                          className="bg-zinc-950 border-zinc-800 text-xs font-bold"
+                          className="text-xs font-bold"
                         >
                           {physiqueOptions.map(option => (
                             <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
@@ -854,7 +853,7 @@ export function SettingsScreen() {
                           max={1000}
                           value={draftProfile.weight ?? ""}
                           onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
-                          className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                          className="text-xs font-mono font-bold"
                         />
                       </Field>
                       <SegmentedSetting<WeightUnit>
@@ -879,7 +878,7 @@ export function SettingsScreen() {
                                   const inches = (draftProfile.height ?? 0) % 12;
                                   handleProfileChange("height", feet * 12 + inches);
                                 }}
-                                className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                                className="text-xs font-mono font-bold"
                               />
                             </div>
                             <div>
@@ -894,7 +893,7 @@ export function SettingsScreen() {
                                   const feet = Math.floor((draftProfile.height ?? 0) / 12) || 5;
                                   handleProfileChange("height", feet * 12 + inches);
                                 }}
-                                className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                                className="text-xs font-mono font-bold"
                               />
                             </div>
                           </div>
@@ -905,7 +904,7 @@ export function SettingsScreen() {
                             max={300}
                             value={draftProfile.height ?? ""}
                             onChange={(e) => handleProfileChange("height", Number(e.target.value))}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                            className="text-xs font-mono font-bold"
                           />
                         )}
                       </Field>
@@ -924,7 +923,7 @@ export function SettingsScreen() {
                           maxLength={200}
                           onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
                           placeholder="e.g. Vegetarian, Gluten-free, no peanuts"
-                          className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                          className="text-xs font-medium"
                         />
                       </Field>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -934,7 +933,7 @@ export function SettingsScreen() {
                             maxLength={100}
                             onChange={(e) => handleProfileChange("injuries", e.target.value)}
                             placeholder="e.g. Lower back pain, bad knees"
-                            className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                            className="text-xs font-medium"
                           />
                         </Field>
                         <Field label="Workout Duration (min)">
@@ -945,7 +944,7 @@ export function SettingsScreen() {
                             value={draftProfile.workoutDuration ?? ""}
                             onChange={(e) => handleProfileChange("workoutDuration", e.target.value ? Number(e.target.value) : undefined)}
                             placeholder="e.g. 60"
-                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                            className="text-xs font-mono font-bold"
                           />
                         </Field>
                       </div>
@@ -954,7 +953,7 @@ export function SettingsScreen() {
                   </Card>
 
                   {/* Training Configuration Card */}
-                  <Card className="p-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40 shadow-xl space-y-5">
+                  <Card className="p-5 space-y-5">
                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
                         <Dumbbell className="text-emerald-400" size={18} />
@@ -972,7 +971,7 @@ export function SettingsScreen() {
                             handleProfileChange("customGoal", e.target.value);
                           }}
                           placeholder="e.g. Build muscle size, increase bench press, run twice a week"
-                          className="bg-zinc-950 border-zinc-800 text-xs font-medium"
+                          className="text-xs font-medium"
                         />
                       </Field>
 
@@ -981,7 +980,7 @@ export function SettingsScreen() {
                           <Select
                             value={draftProfile.trainingStyle ?? "general"}
                             onChange={(e) => handleProfileChange("trainingStyle", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                            className="text-xs font-bold font-sans"
                           >
                             <option value="general">General Fitness</option>
                             <option value="strength">Strength Focus</option>
@@ -998,7 +997,7 @@ export function SettingsScreen() {
                             max={7}
                             value={draftProfile.daysPerWeek ?? ""}
                             onChange={(e) => handleProfileChange("daysPerWeek", e.target.value ? Number(e.target.value) : undefined)}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                            className="text-xs font-mono font-bold"
                           />
                         </Field>
 
@@ -1006,7 +1005,7 @@ export function SettingsScreen() {
                           <Select
                             value={draftProfile.equipment ?? "full gym"}
                             onChange={(e) => handleProfileChange("equipment", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                            className="text-xs font-bold font-sans"
                           >
                             <option value="full gym">Full Gym</option>
                             <option value="home gym">Home Gym</option>
@@ -1018,7 +1017,7 @@ export function SettingsScreen() {
                           <Select
                             value={draftProfile.experience ?? "intermediate"}
                             onChange={(e) => handleProfileChange("experience", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                            className="text-xs font-bold font-sans"
                           >
                             <option value="beginner">Beginner (Under 1 yr)</option>
                             <option value="intermediate">Intermediate (1-3 yrs)</option>
@@ -1030,7 +1029,7 @@ export function SettingsScreen() {
                           <Select
                             value={draftProfile.bodyType ?? "mesomorph"}
                             onChange={(e) => handleProfileChange("bodyType", e.target.value)}
-                            className="bg-zinc-950 border-zinc-800 text-xs font-bold font-sans"
+                            className="text-xs font-bold font-sans"
                           >
                             <option value="ectomorph">Ectomorph (Naturally lean/narrow)</option>
                             <option value="mesomorph">Mesomorph (Naturally athletic/muscular)</option>
@@ -1050,14 +1049,14 @@ export function SettingsScreen() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {calculatedBmi && (
-                        <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/20 space-y-2 select-none shadow-xl flex flex-col justify-between">
+                        <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
                           <div>
                             <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
-                            <h4 className="text-sm font-bold text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
+                            <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
                           </div>
                           
                           <div className="py-2 flex items-baseline gap-2">
-                            <span className="text-3xl font-black text-white font-mono leading-none">{calculatedBmi.value}</span>
+                            <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedBmi.value}</span>
                             <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
                               {calculatedBmi.classification}
                             </span>
@@ -1073,7 +1072,7 @@ export function SettingsScreen() {
                               <button
                                 type="button"
                                 onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                                className="w-full flex items-center justify-between text-[10px] font-bold text-zinc-400 hover:text-white bg-white/5 border border-white/5 px-2.5 py-1.5 rounded-xl transition duration-200"
+                                className="w-full flex items-center justify-between text-[10px] font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
                               >
                                 <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
                                 <Info size={12} className="text-zinc-500" />
@@ -1109,15 +1108,15 @@ export function SettingsScreen() {
                       )}
 
                       {calculatedProtein && (
-                        <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/20 space-y-2 select-none shadow-xl flex flex-col justify-between">
+                        <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
                           <div>
                             <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
-                            <h4 className="text-sm font-bold text-white mt-1 leading-none">Daily Protein Target</h4>
+                            <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Daily Protein Target</h4>
                           </div>
 
                           <div className="py-2.5 flex items-baseline gap-1.5">
-                            <span className="text-3xl font-black text-white font-mono leading-none">{calculatedProtein.value}</span>
-                            <span className="text-xs font-extrabold text-zinc-400 font-mono">g / day</span>
+                            <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedProtein.value}</span>
+                            <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 font-mono">g / day</span>
                           </div>
 
                           <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
@@ -1134,7 +1133,7 @@ export function SettingsScreen() {
               {/* ─── AI INTELLIGENCE TAB ─── */}
               {activeSettingsTab === "ai" && (
                 <div className="space-y-5">
-                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                  <Card className="p-5 space-y-5">
                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
                         <Cpu className="text-purple-400" size={18} />
@@ -1155,7 +1154,7 @@ export function SettingsScreen() {
                             className={`relative flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 hover:scale-[1.02] ${
                               active
                                 ? `bg-gradient-to-br ${config.gradient} text-white shadow-lg`
-                                : "border-zinc-800 bg-zinc-950/30 text-zinc-400 hover:bg-zinc-900/50 hover:text-white"
+                                : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
                             }`}
                             key={type}
                             onClick={() => handleSelectType(type)}
@@ -1217,7 +1216,7 @@ export function SettingsScreen() {
                               value={draft.baseUrl ?? ""}
                               onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })}
                               placeholder="e.g. http://localhost:11434"
-                              className="bg-zinc-950 border-zinc-800 text-xs font-mono font-bold"
+                              className="text-xs font-mono font-bold"
                             />
                           </Field>
                         )}
@@ -1228,7 +1227,7 @@ export function SettingsScreen() {
                               value={draft.model}
                               onChange={(event) => setDraft({ ...draft, model: event.target.value })}
                               disabled={modelsLoading || !!modelsError || models.length === 0}
-                              className="bg-zinc-950 border-zinc-800 text-xs font-bold"
+                              className="text-xs font-bold"
                             >
                               {modelsLoading && <option>Loading models...</option>}
                               {modelsError && <option>{modelsError}</option>}
@@ -1250,7 +1249,7 @@ export function SettingsScreen() {
                                   value={apiKey}
                                   onChange={(event) => setApiKey(event.target.value)}
                                   placeholder={draft.apiKey ? "Stored securely" : "Paste key"}
-                                  className="bg-zinc-950 border-zinc-800 text-xs font-mono pr-10"
+                                  className="text-xs font-mono pr-10"
                                 />
                                 <button
                                   type="button"
@@ -1268,7 +1267,7 @@ export function SettingsScreen() {
 
                         {/* Terminals Console Log */}
                         {draft.lastStatus ? (
-                          <div className="rounded-2xl border border-zinc-850 bg-black/50 p-4 font-mono text-[11px] shadow-inner relative overflow-hidden backdrop-blur-md keep-dark">
+                          <div className="rounded-2xl border border-zinc-800 bg-black/50 p-4 font-mono text-[11px] shadow-inner relative overflow-hidden backdrop-blur-md keep-dark">
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
                             
                             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2 select-none">
@@ -1288,7 +1287,7 @@ export function SettingsScreen() {
                                 <span className="text-purple-400 font-bold">$</span>
                                 <span>ping -c 1 {draft.baseUrl || defaultBaseUrls[draft.type]}</span>
                               </p>
-                              <p className="pl-3.5 text-zinc-650">PING {draft.baseUrl || defaultBaseUrls[draft.type]} (56 bytes)...</p>
+                              <p className="pl-3.5 text-zinc-600">PING {draft.baseUrl || defaultBaseUrls[draft.type]} (56 bytes)...</p>
                               
                               <p className="flex items-center gap-1 mt-1">
                                 <span className="text-purple-400 font-bold">$</span>
@@ -1342,7 +1341,7 @@ export function SettingsScreen() {
                             disabled={providerBusy}
                             onClick={handleTestProvider}
                             title={providerHints.test}
-                            className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase bg-zinc-950 border border-zinc-800 hover:bg-zinc-900"
+                            className="h-10 sm:h-8 text-[11px] sm:text-xs font-bold uppercase"
                           >
                             Test Connection
                           </Button>
@@ -1357,7 +1356,7 @@ export function SettingsScreen() {
               {activeSettingsTab === "system" && (
                 <div className="space-y-5">
                   {/* Preferences and Database Statistics */}
-                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                  <Card className="p-5 space-y-5">
                     <div className="flex items-center justify-between border-b border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
                         <Server className="text-orange-400" size={18} />
@@ -1381,7 +1380,7 @@ export function SettingsScreen() {
                     </div>
 
                     {/* Local Storage database statistics engine */}
-                    <div className="rounded-2xl border border-zinc-850 bg-zinc-950/30 p-4 shadow-xl space-y-3">
+                    <div className="rounded-2xl border border-card-border bg-surface p-4 shadow-xl space-y-3">
                       <button
                         type="button"
                         onClick={() => setShowDbStats(!showDbStats)}
@@ -1441,7 +1440,7 @@ export function SettingsScreen() {
 
                     <div className="grid gap-3 md:grid-cols-2 pt-1 select-none">
                       {/* Notifications permission */}
-                      <Surface className="flex items-center justify-between gap-4 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/20 p-3.5 rounded-2xl shadow">
+                      <Surface className="flex items-center justify-between gap-4 p-3.5 shadow">
                         <div>
                           <p className="font-bold text-zinc-900 dark:text-white text-xs">App Notifications</p>
                           <p className="text-[10px] text-zinc-500 mt-1 font-medium">State: <span className="font-mono text-zinc-600 dark:text-zinc-400 font-bold uppercase">{notificationStatus}</span></p>
@@ -1450,7 +1449,7 @@ export function SettingsScreen() {
                           size="icon"
                           variant="secondary"
                           aria-label="Enable notifications"
-                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300"
+                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 p-0"
                           onClick={async () => {
                             if (!("Notification" in window)) {
                               setNotificationStatus("Unsupported");
@@ -1491,7 +1490,7 @@ export function SettingsScreen() {
                   </Card>
 
                   {/* Backup Vault Panel */}
-                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950/40">
+                  <Card className="p-5 space-y-5">
                     <div className="flex items-center justify-between border-b border-white/5 pb-3 select-none">
                       <div className="flex items-center gap-2.5">
                         <Shield className="text-blue-400" size={18} />
@@ -1501,7 +1500,7 @@ export function SettingsScreen() {
 
                     <div className="grid gap-5 md:grid-cols-2">
                       {/* Export Box */}
-                      <Surface className="flex flex-col justify-between border border-zinc-800 bg-zinc-950/20 p-4 rounded-2xl select-none">
+                      <Surface className="flex flex-col justify-between p-4 rounded-2xl select-none">
                         <div className="space-y-3">
                           <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans">Export training database</Label>
                           <div className="relative">
@@ -1511,7 +1510,7 @@ export function SettingsScreen() {
                               value={exportPassphrase}
                               onChange={(event) => setExportPassphrase(event.target.value)}
                               placeholder="Set encryption passphrase"
-                              className="bg-zinc-950 border-zinc-800 text-xs font-medium pr-10 text-zinc-100 font-sans"
+                              className="text-xs font-medium pr-10 font-sans"
                             />
                             <button
                               type="button"
@@ -1534,7 +1533,7 @@ export function SettingsScreen() {
                       </Surface>
 
                       {/* Import Box */}
-                      <Surface className="flex flex-col justify-between border border-zinc-800 bg-zinc-950/20 p-4 rounded-2xl">
+                      <Surface className="flex flex-col justify-between p-4 rounded-2xl">
                         <div className="space-y-3">
                           <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest select-none font-sans">Import Backup File</Label>
                           <div className="relative">
@@ -1547,7 +1546,7 @@ export function SettingsScreen() {
                             />
                             <label
                               htmlFor="import-file-uploader"
-                              className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-zinc-800 hover:border-zinc-700 rounded-xl bg-zinc-950/80 py-3.5 px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 transition duration-205 cursor-pointer w-full text-center font-sans"
+                              className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-input-border hover:border-emerald-500/50 hover:bg-input-focus-bg rounded-xl bg-input py-3.5 px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition duration-205 cursor-pointer w-full text-center font-sans"
                             >
                               <Upload size={18} className="text-blue-400" />
                               <span className="truncate max-w-[180px] normal-case font-sans">{importFile ? importFile.name : "Select backup.json"}</span>
@@ -1561,7 +1560,7 @@ export function SettingsScreen() {
                               value={importPassphrase}
                               onChange={(event) => setImportPassphrase(event.target.value)}
                               placeholder="Enter decrypt passphrase"
-                              className="bg-zinc-950 border-zinc-800 text-xs font-medium pr-10 text-zinc-100 font-sans"
+                              className="text-xs font-medium pr-10 font-sans"
                             />
                             <button
                               type="button"
