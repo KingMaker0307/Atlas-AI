@@ -93,15 +93,15 @@ const defaultDraftForType = (type: AiProviderSettings["type"]): AiProviderSettin
   type,
   label: providerConfig[type]?.label || "Custom API",
   baseUrl: defaultBaseUrls[type] || "",
-  model: 
-    type === "openai" ? "gpt-4o" : 
-    type === "anthropic" ? "claude-3-5-sonnet-20241022" : 
-    type === "gemini" ? "gemini-1.5-pro" : 
-    type === "deepseek" ? "deepseek-chat" : 
-    type === "grok" ? "grok-beta" : 
-    type === "openrouter" ? "meta-llama/llama-3.1-70b-instruct" : 
-    type === "ollama" ? "llama3" : 
-    type === "lmstudio" ? "model" : "model",
+  model:
+    type === "openai" ? "gpt-4o" :
+      type === "anthropic" ? "claude-3-5-sonnet-20241022" :
+        type === "gemini" ? "gemini-1.5-pro" :
+          type === "deepseek" ? "deepseek-chat" :
+            type === "grok" ? "grok-beta" :
+              type === "openrouter" ? "meta-llama/llama-3.1-70b-instruct" :
+                type === "ollama" ? "llama3" :
+                  type === "lmstudio" ? "model" : "model",
   temperature: 0.7,
   contextLength: 8000,
   streaming: true,
@@ -237,7 +237,7 @@ export function SettingsScreen() {
   const [models, setModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
-  
+
   const [profileError, setProfileError] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
@@ -458,7 +458,7 @@ export function SettingsScreen() {
 
   const handleSaveProvider = async () => {
     if (!draft) return;
-    
+
     if (draft.label.length === 0 || draft.label.length > 30) {
       setAiError("Label must be between 1 and 30 characters.");
       return;
@@ -493,7 +493,7 @@ export function SettingsScreen() {
 
   const handleTestProvider = async () => {
     if (!draft) return;
-    
+
     if (draft.label.length === 0 || draft.label.length > 30) {
       setAiError("Label must be between 1 and 30 characters.");
       return;
@@ -627,7 +627,7 @@ export function SettingsScreen() {
         badge: "Underweight Insight",
         color: "border-amber-500/15 dark:border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20",
         titleColor: "text-amber-800 dark:text-amber-300",
-        badgeColor: "bg-amber-500/10 dark:bg-white/10 text-amber-850 dark:text-zinc-300"
+        badgeColor: "bg-amber-500/10 dark:bg-white/10 text-amber-700 dark:text-zinc-300"
       };
     } else if (bmiValue < 25) {
       return {
@@ -639,8 +639,8 @@ export function SettingsScreen() {
         ],
         badge: "Optimal Range",
         color: "border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20",
-        titleColor: "text-emerald-800 dark:text-emerald-350",
-        badgeColor: "bg-emerald-500/10 dark:bg-white/10 text-emerald-850 dark:text-zinc-300"
+        titleColor: "text-emerald-800 dark:text-emerald-400",
+        badgeColor: "bg-emerald-500/10 dark:bg-white/10 text-emerald-700 dark:text-zinc-300"
       };
     } else if (bmiValue < 30) {
       return {
@@ -652,8 +652,8 @@ export function SettingsScreen() {
         ],
         badge: "Recomposition Guide",
         color: "border-orange-500/15 dark:border-orange-500/20 bg-orange-500/5 dark:bg-orange-950/20",
-        titleColor: "text-orange-800 dark:text-orange-350",
-        badgeColor: "bg-orange-500/10 dark:bg-white/10 text-orange-850 dark:text-zinc-300"
+        titleColor: "text-orange-800 dark:text-orange-400",
+        badgeColor: "bg-orange-500/10 dark:bg-white/10 text-orange-700 dark:text-zinc-300"
       };
     } else {
       return {
@@ -665,8 +665,8 @@ export function SettingsScreen() {
         ],
         badge: "Joint Safety Protocol",
         color: "border-rose-500/15 dark:border-rose-500/20 bg-rose-500/5 dark:bg-rose-950/20",
-        titleColor: "text-rose-800 dark:text-rose-350",
-        badgeColor: "bg-rose-500/10 dark:bg-white/10 text-rose-850 dark:text-zinc-300"
+        titleColor: "text-rose-800 dark:text-rose-400",
+        badgeColor: "bg-rose-500/10 dark:bg-white/10 text-rose-700 dark:text-zinc-300"
       };
     }
   }, [draftProfile.weight, draftProfile.height, draftProfile.heightUnit, draftProfile.weightUnit, heightUnit, weightUnit]);
@@ -722,11 +722,10 @@ export function SettingsScreen() {
             <button
               key={tab.id}
               onClick={() => setActiveSettingsTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${
-                active
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${active
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              }`}
+                }`}
             >
               {tab.icon}
               <span>{tab.label}</span>
@@ -748,11 +747,10 @@ export function SettingsScreen() {
               <button
                 key={tab.id}
                 onClick={() => setActiveSettingsTab(tab.id as any)}
-                className={`flex flex-row items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all w-full justify-start whitespace-nowrap ${
-                  active
+                className={`flex flex-row items-center gap-3 px-4 py-3 text-xs font-black uppercase tracking-wider rounded-xl transition-all w-full justify-start whitespace-nowrap ${active
                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
                     : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
+                  }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -791,7 +789,7 @@ export function SettingsScreen() {
                   </Card>
 
                   {/* Physical Biometrics Panel */}
-                  <Card className="p-5 shadow-2xl space-y-5 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40">
+                  <Card className="p-5 shadow-2xl space-y-5">
                     <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
                         <Palette className="text-emerald-500 dark:text-emerald-400" size={18} />
@@ -1056,83 +1054,83 @@ export function SettingsScreen() {
                         <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Physique Metrics</h3>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {calculatedBmi && (
-                        <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
-                          <div>
-                            <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
-                            <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
-                          </div>
-                          
-                          <div className="py-2 flex items-baseline gap-2">
-                            <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedBmi.value}</span>
-                            <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
-                              {calculatedBmi.classification}
-                            </span>
-                          </div>
-
-                          <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
-                            Estimated tissue mass calculations. Values between 18.5 and 24.9 reflect standard health ranges.
-                          </p>
-
-                          {/* BMI Improvement Action Guide Toggle Button */}
-                          {bmiAdvice && (
-                            <div className="pt-1.5 border-t border-white/5 mt-2">
-                              <button
-                                type="button"
-                                onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                                className="w-full flex items-center justify-between text-[10px] font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
-                              >
-                                <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
-                                <Info size={12} className="text-zinc-500" />
-                              </button>
-
-                              <AnimatePresence>
-                                {showBmiGuidance && (
-                                  <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="overflow-hidden pt-2"
-                                  >
-                                    <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-[10px] leading-relaxed space-y-1.5`}>
-                                      <div className="flex justify-between items-center select-none mb-1">
-                                        <span className={`font-extrabold uppercase tracking-wide ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
-                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
-                                          {bmiAdvice.badge}
-                                        </span>
-                                      </div>
-                                      <ul className="list-disc pl-3.5 space-y-1 text-zinc-700 dark:text-zinc-300 font-medium">
-                                        {bmiAdvice.tips.map((tip, idx) => (
-                                          <li key={idx} className="leading-snug">{tip}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
+                        {calculatedBmi && (
+                          <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
+                            <div>
+                              <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Live Telemetry</span>
+                              <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Body Mass Index (BMI)</h4>
                             </div>
-                          )}
-                        </div>
-                      )}
 
-                      {calculatedProtein && (
-                        <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
-                          <div>
-                            <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
-                            <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Daily Protein Target</h4>
+                            <div className="py-2 flex items-baseline gap-2">
+                              <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedBmi.value}</span>
+                              <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
+                                {calculatedBmi.classification}
+                              </span>
+                            </div>
+
+                            <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                              Estimated tissue mass calculations. Values between 18.5 and 24.9 reflect standard health ranges.
+                            </p>
+
+                            {/* BMI Improvement Action Guide Toggle Button */}
+                            {bmiAdvice && (
+                              <div className="pt-1.5 border-t border-white/5 mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowBmiGuidance(!showBmiGuidance)}
+                                  className="w-full flex items-center justify-between text-[10px] font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 bg-surface border border-surface-border px-2.5 py-1.5 rounded-xl transition duration-200"
+                                >
+                                  <span>{showBmiGuidance ? "Hide Strategy Details" : `How to Improve (${calculatedBmi.classification} Strategy)`}</span>
+                                  <Info size={12} className="text-zinc-500" />
+                                </button>
+
+                                <AnimatePresence>
+                                  {showBmiGuidance && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: "auto" }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      className="overflow-hidden pt-2"
+                                    >
+                                      <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-[10px] leading-relaxed space-y-1.5`}>
+                                        <div className="flex justify-between items-center select-none mb-1">
+                                          <span className={`font-extrabold uppercase tracking-wide ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
+                                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
+                                            {bmiAdvice.badge}
+                                          </span>
+                                        </div>
+                                        <ul className="list-disc pl-3.5 space-y-1 text-zinc-700 dark:text-zinc-300 font-medium">
+                                          {bmiAdvice.tips.map((tip, idx) => (
+                                            <li key={idx} className="leading-snug">{tip}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            )}
                           </div>
+                        )}
 
-                          <div className="py-2.5 flex items-baseline gap-1.5">
-                            <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedProtein.value}</span>
-                            <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 font-mono">g / day</span>
+                        {calculatedProtein && (
+                          <div className="p-4 rounded-2xl border border-surface-border bg-surface space-y-2 select-none shadow-xl flex flex-col justify-between">
+                            <div>
+                              <span className="text-[9px] font-extrabold uppercase font-mono tracking-widest text-zinc-500">Optimal Fueling</span>
+                              <h4 className="text-sm font-bold text-zinc-900 dark:text-white mt-1 leading-none">Daily Protein Target</h4>
+                            </div>
+
+                            <div className="py-2.5 flex items-baseline gap-1.5">
+                              <span className="text-3xl font-black text-zinc-900 dark:text-white font-mono leading-none">{calculatedProtein.value}</span>
+                              <span className="text-xs font-extrabold text-zinc-500 dark:text-zinc-400 font-mono">g / day</span>
+                            </div>
+
+                            <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
+                              Calculated at <span className="text-zinc-900 dark:text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-zinc-900 dark:text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
+                            </p>
                           </div>
-
-                          <p className="text-[10px] text-zinc-400 leading-relaxed font-medium">
-                            Calculated at <span className="text-zinc-900 dark:text-white font-extrabold font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for a <span className="text-zinc-900 dark:text-white font-bold">{draftProfile.targetPhysique || "athletic"}</span> profile.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1159,11 +1157,10 @@ export function SettingsScreen() {
                         return (
                           <button
                             type="button"
-                            className={`relative flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 hover:scale-[1.02] ${
-                              active
+                            className={`relative flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 hover:scale-[1.02] ${active
                                 ? `bg-gradient-to-br ${config.gradient} shadow-lg`
                                 : "border-surface-border bg-surface text-zinc-650 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-100"
-                            }`}
+                              }`}
                             key={type}
                             onClick={() => handleSelectType(type)}
                           >
@@ -1270,19 +1267,18 @@ export function SettingsScreen() {
                             </Field>
                           )}
                         </div>
-                        
+
                         {aiError && <p className="text-xs text-rose-400 font-medium font-mono">{aiError}</p>}
 
                         {/* Terminals Console Log */}
                         {draft.lastStatus ? (
                           <div className="rounded-2xl border border-zinc-800 bg-black/50 p-4 font-mono text-[11px] shadow-inner relative overflow-hidden backdrop-blur-md keep-dark">
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
-                            
+
                             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2 select-none">
                               <div className="flex items-center gap-1.5">
-                                <span className={`h-2 w-2 rounded-full ${
-                                  draft.lastStatus === "ok" ? "bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
-                                }`} />
+                                <span className={`h-2 w-2 rounded-full ${draft.lastStatus === "ok" ? "bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
+                                  }`} />
                                 <span className="text-zinc-500 uppercase font-black text-[8px] tracking-widest font-mono">system.adapter.diagnostics</span>
                               </div>
                               <span className="text-zinc-600 text-[8px] font-bold">
@@ -1296,12 +1292,12 @@ export function SettingsScreen() {
                                 <span>ping -c 1 {draft.baseUrl || defaultBaseUrls[draft.type]}</span>
                               </p>
                               <p className="pl-3.5 text-zinc-600">PING {draft.baseUrl || defaultBaseUrls[draft.type]} (56 bytes)...</p>
-                              
+
                               <p className="flex items-center gap-1 mt-1">
                                 <span className="text-purple-400 font-bold">$</span>
                                 <span>curl -X POST -H "Authorization: Bearer ****" -d "validate"</span>
                               </p>
-                              
+
                               {draft.lastError ? (
                                 <div className="pl-3.5 mt-1 bg-rose-500/5 p-2 rounded-lg border border-rose-500/10">
                                   <p className="text-rose-400 font-bold leading-normal">[ERROR] Connection Failure</p>
@@ -1410,31 +1406,31 @@ export function SettingsScreen() {
                             className="overflow-hidden"
                           >
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs leading-normal select-none pt-2">
-                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                              <div className="bg-surface p-3 rounded-xl border border-surface-border">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Logged Sessions</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{workouts.length}</span>
                               </div>
-                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                              <div className="bg-surface p-3 rounded-xl border border-surface-border">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Completed Sets</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {workouts.reduce((sum, w) => sum + w.exercises.reduce((es, e) => es + e.sets.filter(s => s.completed).length, 0), 0)}
                                 </span>
                               </div>
-                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                              <div className="bg-surface p-3 rounded-xl border border-surface-border">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">Subjective CNS logs</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{recoveryLogs.length}</span>
                               </div>
-                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                              <div className="bg-surface p-3 rounded-xl border border-surface-border">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Threads logged</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">{aiMessages.length}</span>
                               </div>
-                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                              <div className="bg-surface p-3 rounded-xl border border-surface-border">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Coach Queries</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {apiCallCount || 0}
                                 </span>
                               </div>
-                              <div className="bg-zinc-100 dark:bg-zinc-900/50 p-3 rounded-xl border border-zinc-200 dark:border-white/5">
+                              <div className="bg-surface p-3 rounded-xl border border-surface-border">
                                 <span className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest font-mono leading-none">AI Tokens Used</span>
                                 <span className="text-base font-black text-zinc-900 dark:text-white font-mono mt-1.5 block leading-none">
                                   {(tokenCount || 0).toLocaleString()}
@@ -1560,7 +1556,7 @@ export function SettingsScreen() {
                               <span className="truncate max-w-[180px] normal-case font-sans">{importFile ? importFile.name : "Select backup.json"}</span>
                             </label>
                           </div>
-                          
+
                           <div className="relative">
                             <Input
                               type={showImportPassphrase ? "text" : "password"}
@@ -1637,9 +1633,8 @@ function SegmentedSetting<T extends string>({
           return (
             <button
               type="button"
-              className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 ${
-                active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              }`}
+              className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 ${active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
               key={item}
               onClick={() => onChange(item)}
             >

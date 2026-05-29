@@ -541,7 +541,7 @@ export function DashboardScreen() {
 
             {/* Step 2 */}
             <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface border border-surface-border text-foreground text-xs font-bold font-mono">
                 2
               </div>
               <div className="space-y-1">
@@ -554,7 +554,7 @@ export function DashboardScreen() {
 
             {/* Step 3 */}
             <div className="flex gap-3 border-t border-zinc-100 dark:border-white/5 pt-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-400 text-xs font-bold font-mono">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface border border-surface-border text-foreground text-xs font-bold font-mono">
                 3
               </div>
               <div className="space-y-1">
@@ -603,7 +603,7 @@ export function DashboardScreen() {
                     step="0.5"
                     value={logSleep}
                     onChange={(e) => setLogSleep(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -620,7 +620,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logSoreness}
                     onChange={(e) => setLogSoreness(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -637,7 +637,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logStress}
                     onChange={(e) => setLogStress(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
 
@@ -654,7 +654,7 @@ export function DashboardScreen() {
                     step="1"
                     value={logEnergy}
                     onChange={(e) => setLogEnergy(Number(e.target.value))}
-                    className="w-full h-1 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                   />
                 </div>
               </div>
@@ -1188,7 +1188,7 @@ export function DashboardScreen() {
                       <span>Weekly Routines Progress</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-surface border border-surface-border/50 overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" 
                         style={{ width: `${progressPercent}%` }} 
@@ -1530,7 +1530,7 @@ export function DashboardScreen() {
                     void handleLoadSeedPlan();
                     setShowCreatePlanModal(false);
                   }}
-                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
                 >
                   <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 shrink-0">
                     <ClipboardList size={18} />
@@ -1551,7 +1551,7 @@ export function DashboardScreen() {
                     handleCreateManualPlan();
                     setShowCreatePlanModal(false);
                   }}
-                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
                 >
                   <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
                     <Plus size={18} />
@@ -1572,7 +1572,7 @@ export function DashboardScreen() {
                     handleGenerateAiPlan();
                     setShowCreatePlanModal(false);
                   }}
-                  className="w-full text-left p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-all flex gap-3.5 items-start group cursor-pointer"
+                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
                 >
                   <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-455 shrink-0">
                     <Bot size={18} />

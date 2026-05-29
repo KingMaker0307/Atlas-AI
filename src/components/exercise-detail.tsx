@@ -886,7 +886,7 @@ export function ExerciseDetail({
                   </div>
 
                   {/* Animation indicator overlay */}
-                  <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 bg-black/75 dark:bg-zinc-900/80 border border-zinc-800 dark:border-white/5 px-2 py-0.5 rounded-lg backdrop-blur">
+                  <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 bg-black/70 border border-white/10 px-2 py-0.5 rounded-lg backdrop-blur">
                     <button
                       onClick={() => setIsAnimating(!isAnimating)}
                       className="text-[9px] font-bold text-emerald-400 hover:text-white flex items-center gap-1 transition-colors"
@@ -1053,7 +1053,7 @@ export function ExerciseDetail({
                   </div>
                 </div>
               ) : (
-                <div className="text-zinc-500 text-xs p-4 text-center border border-dashed border-zinc-800 dark:border-zinc-700 rounded-2xl">
+                <div className="text-zinc-500 text-xs p-4 text-center border border-dashed border-surface-border rounded-2xl">
                   No execution guides provided.
                 </div>
               )}

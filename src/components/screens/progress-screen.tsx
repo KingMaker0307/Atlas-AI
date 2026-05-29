@@ -557,7 +557,7 @@ export function ProgressScreen() {
                       <span className="text-zinc-400 font-bold">Weekly Progress ({completedCount}/{routinesCount} routines)</span>
                       <span className="font-extrabold text-emerald-400">{progressPercent}%</span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800 border border-surface-border dark:border-white/5 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-surface border border-surface-border overflow-hidden">
                       <div 
                         className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" 
                         style={{ width: `${progressPercent}%` }} 
@@ -650,7 +650,7 @@ export function ProgressScreen() {
                   onClick={() => setChartTab(tab.id as any)}
                   className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shrink-0 whitespace-nowrap ${
                     chartTab === tab.id
-                      ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold shadow-sm"
+                      ? "bg-white dark:bg-white/10 text-zinc-950 dark:text-white font-bold shadow-sm"
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                   }`}
                 >
@@ -780,7 +780,7 @@ export function ProgressScreen() {
                         </AreaChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full border border-dashed border-zinc-800 rounded-xl text-zinc-500 text-xs p-4 text-center select-none gap-2">
+                      <div className="flex flex-col items-center justify-center h-full border border-dashed border-surface-border rounded-xl text-zinc-500 text-xs p-4 text-center select-none gap-2">
                         <Info size={18} className="text-zinc-500 shrink-0" />
                         <span>Record at least 2 bodyweight entries in the logs shelf below to view mass history.</span>
                       </div>
@@ -803,7 +803,7 @@ export function ProgressScreen() {
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full border border-dashed border-zinc-800 rounded-xl text-zinc-500 text-xs p-4 text-center select-none gap-2">
+                      <div className="flex flex-col items-center justify-center h-full border border-dashed border-surface-border rounded-xl text-zinc-500 text-xs p-4 text-center select-none gap-2">
                         <Info size={18} className="text-zinc-500 shrink-0" />
                         <span>Complete workouts with weight training sets to populate weekly volume analytics.</span>
                       </div>
@@ -818,7 +818,7 @@ export function ProgressScreen() {
       </Card>
 
       {/* ─── INTERACTIVE ACTIVE RECOVERY HEATMAP ─── */}
-      <Card className="p-4 mt-4 shadow-xl border border-zinc-800 relative overflow-hidden">
+      <Card className="p-4 mt-4 shadow-xl relative overflow-hidden">
         <div className="mb-2 flex items-center justify-between border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
             <Calendar className="text-emerald-400" size={16} />
@@ -864,7 +864,7 @@ export function ProgressScreen() {
       </Card>
 
       {/* ─── HISTORICAL SEARCH & GROUPED LOGS DRAWER ─── */}
-      <Card className="p-4 mt-4 shadow-xl border border-zinc-800">
+      <Card className="p-4 mt-4 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
           <div className="flex items-center gap-2">
             <ClipboardList className="text-zinc-400" size={16} />
@@ -921,7 +921,7 @@ export function ProgressScreen() {
             return (
               <div 
                 key={key} 
-                className="border border-surface-border rounded-2xl bg-surface/20 dark:bg-zinc-900/10 overflow-hidden"
+                className="border border-surface-border rounded-2xl bg-surface/20 overflow-hidden"
               >
                 {/* Folder Header */}
                 <button
