@@ -103,7 +103,7 @@ export function DashboardScreen() {
   const [migrationSubmitError, setMigrationSubmitError] = useState<string | null>(null);
   const [showMigrationSuccessAnimation, setShowMigrationSuccessAnimation] = useState(false);
 
-  const handleSendMigrationOtp = () => {
+  const handleSendMigrationOtp = async () => {
     setMigrationEmailError(null);
     setMigrationOtpError(null);
     const validation = validateEmail(migrationEmailInput);
@@ -112,12 +112,37 @@ export function DashboardScreen() {
       return;
     }
     
-    // Generate a random 6-digit OTP
+    setIsMigrationSubmitting(true);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setMigrationGeneratedOtp(code);
-    setMigrationOtpSent(true);
-    setShowMigrationSandboxOtp(true);
     setMigrationOtpCopied(false);
+
+    try {
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: migrationEmailInput,
+          otp: code,
+          userName: profile?.name || "Athlete"
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setMigrationOtpSent(true);
+        setShowMigrationSandboxOtp(false);
+      } else {
+        setMigrationOtpSent(true);
+        setShowMigrationSandboxOtp(true);
+        console.warn("Falling back to simulated sandbox mailbox:", data.error);
+      }
+    } catch (e) {
+      setMigrationOtpSent(true);
+      setShowMigrationSandboxOtp(true);
+      console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
+    } finally {
+      setIsMigrationSubmitting(false);
+    }
   };
 
   const handleVerifyMigrationOtp = async () => {
@@ -1866,7 +1891,7 @@ export function DashboardScreen() {
                       className="w-full font-bold bg-emerald-500 hover:bg-emerald-450 text-white mt-2"
                       disabled={isMigrationSubmitting}
                     >
-                      Send Verification Code
+                      {isMigrationSubmitting ? "Sending..." : "Send Verification Code"}
                     </Button>
                   </div>
                 ) : (
