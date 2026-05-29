@@ -152,6 +152,7 @@ export function WelcomeScreen() {
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [showSandboxOtp, setShowSandboxOtp] = useState(false);
   const [otpCopied, setOtpCopied] = useState(false);
   const [isRestoringFromCloud, setIsRestoringFromCloud] = useState(false);
@@ -188,7 +189,8 @@ export function WelcomeScreen() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const handleSendOtp = () => {
+
+  const handleSendOtp = async () => {
     setEmailError(null);
     setOtpError(null);
     const validation = validateEmail(emailInput);
@@ -197,12 +199,37 @@ export function WelcomeScreen() {
       return;
     }
     
-    // Generate a random 6-digit OTP
+    setIsSendingOtp(true);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(code);
-    setOtpSent(true);
-    setShowSandboxOtp(true);
     setOtpCopied(false);
+
+    try {
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailInput,
+          otp: code,
+          userName: name || "User"
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setOtpSent(true);
+        setShowSandboxOtp(false);
+      } else {
+        setOtpSent(true);
+        setShowSandboxOtp(true);
+        console.warn("Falling back to simulated sandbox mailbox:", data.error);
+      }
+    } catch (e) {
+      setOtpSent(true);
+      setShowSandboxOtp(true);
+      console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
+    } finally {
+      setIsSendingOtp(false);
+    }
   };
 
   const handleVerifyOtp = (onSuccess: () => void) => {
@@ -813,8 +840,9 @@ export function WelcomeScreen() {
                         variant="primary"
                         onClick={handleSendOtp}
                         icon={<Mail size={16} className="text-zinc-950" />}
+                        disabled={isSendingOtp}
                       >
-                        Send Sync Code
+                        {isSendingOtp ? "Sending..." : "Send Sync Code"}
                       </Button>
                     )}
                   </div>
@@ -947,8 +975,9 @@ export function WelcomeScreen() {
                         variant="primary"
                         onClick={handleSendOtp}
                         icon={<Mail size={16} className="text-zinc-950" />}
+                        disabled={isSendingOtp}
                       >
-                        Send Verification Code
+                        {isSendingOtp ? "Sending..." : "Send Verification Code"}
                       </Button>
                     )}
                   </div>
