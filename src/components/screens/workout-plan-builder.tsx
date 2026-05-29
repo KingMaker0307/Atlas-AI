@@ -138,7 +138,17 @@ const TemplateDetailView: FC<{
 }> = ({ template, onBack, onUseTemplate }) => {
   const storeExercises = useAtlasStore((state) => state.exercises);
   const getExerciseById = (id: string) => {
-    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      storeExercises.find((e) => {
+        const exerciseNormId = e.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        return (
+          e.id === id ||
+          exerciseNormId === normId ||
+          e.name.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+      }) || getStaticExerciseById(id)
+    );
   };
   return (
     <motion.div
@@ -290,7 +300,17 @@ const CategoryPill: FC<{
 export function WorkoutPlanBuilderScreen() {
   const storeExercises = useAtlasStore((state) => state.exercises);
   const getExerciseById = (id: string) => {
-    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      storeExercises.find((e) => {
+        const exerciseNormId = e.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        return (
+          e.id === id ||
+          exerciseNormId === normId ||
+          e.name.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+      }) || getStaticExerciseById(id)
+    );
   };
   const saveWorkoutPlan = useAtlasStore((state) => state.saveWorkoutPlan);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);

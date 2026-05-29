@@ -35,6 +35,7 @@ import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { AiProviderSettings, HeightUnit, ThemeMode, WeightUnit, UserProfile, Physique } from "@/types/domain";
 import { getProviderAdapter } from "@/providers";
+import { decryptString } from "@/lib/security/crypto";
 
 const providerTypes: AiProviderSettings["type"][] = [
   "openai",
@@ -213,6 +214,7 @@ export function SettingsScreen() {
   const setHeightUnit = useAtlasStore((state) => state.setHeightUnit);
   const saveProvider = useAtlasStore((state) => state.saveProvider);
   const setActiveProvider = useAtlasStore((state) => state.setActiveProvider);
+  const markProviderKeyStatus = useAtlasStore((state) => state.markProviderKeyStatus);
   const testProvider = useAtlasStore((state) => state.testProvider);
   const exportEncryptedProfile = useAtlasStore((state) => state.exportEncryptedProfile);
   const importEncryptedProfile = useAtlasStore((state) => state.importEncryptedProfile);
@@ -319,16 +321,49 @@ export function SettingsScreen() {
         return;
       }
 
+      // Short-circuit: if using the saved (masked) key that we've already confirmed
+      // is invalid, show the cached error without hitting the API again. This prevents
+      // an infinite loop: markProviderKeyStatus → providers update → draft update → re-fetch.
+      if (apiKey === "••••••••••••••••") {
+        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draft.id);
+        if (savedProvider?.lastStatus === "error") {
+          setModelsError(savedProvider.lastError ?? "API key is invalid");
+          setModels([]);
+          return;
+        }
+      }
+
       setModelsLoading(true);
       setModelsError(null);
       try {
         const adapter = getProviderAdapter(draft.type);
-        const modelList = await adapter.listModels(draft, apiKey);
+        let actualApiKey = apiKey;
+        if (apiKey === "••••••••••••••••" && draft.apiKey) {
+          try {
+            actualApiKey = await decryptString(draft.apiKey);
+          } catch (decErr) {
+            console.error("Failed to decrypt API key:", decErr);
+            actualApiKey = "";
+          }
+        }
+        const modelList = await adapter.listModels(draft, actualApiKey);
         setModels(modelList.map((m) => m.id));
+        // Key is valid — clear any error status on the saved provider
+        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draft.id);
+        if (savedProvider && savedProvider.lastStatus === "error") {
+          await markProviderKeyStatus(savedProvider.id, "ok");
+        }
       } catch (error: any) {
         console.error("Failed to fetch models:", error);
         setModelsError(error.message || "Failed to load models");
         setModels([]);
+        // Mark the saved provider as invalid if the error looks like an auth failure
+        const savedProvider = useAtlasStore.getState().aiProviders.find((p) => p.id === draft.id);
+        const isAuthError = error?.status === 401 || error?.status === 403 ||
+          /invalid.*key|incorrect.*key|api key|unauthorized|forbidden/i.test(error?.message ?? "");
+        if (savedProvider && isAuthError && savedProvider.lastStatus !== "error") {
+          await markProviderKeyStatus(savedProvider.id, "error", error.message || "Invalid API key");
+        }
       } finally {
         setModelsLoading(false);
       }
@@ -427,8 +462,13 @@ export function SettingsScreen() {
     const existing = providers.find((p) => p.type === type);
     if (existing) {
       setDraft({ ...existing });
+      // Reset apiKey immediately so fetchModels never sees the previous provider's
+      // decrypted key while the new draft is being applied (avoids cross-provider
+      // key contamination, e.g. sending a Gemini key to an OpenAI endpoint).
+      setApiKey(existing.apiKey ? "••••••••••••••••" : "");
     } else {
       setDraft(defaultDraftForType(type));
+      setApiKey("");
     }
     setAiError(null);
   };
@@ -485,6 +525,7 @@ export function SettingsScreen() {
     };
     const keyToPass = apiKey === "••••••••••••••••" ? undefined : apiKey;
     await saveProvider(updatedDraft, keyToPass);
+    await setActiveProvider(updatedDraft.id);
     setDraft(updatedDraft);
     if (apiKey !== "") {
       setApiKey("••••••••••••••••");
@@ -1320,25 +1361,14 @@ export function SettingsScreen() {
 
                         {/* Connection controller buttons */}
                         <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3 select-none">
-                          {isSaved && (
-                            <Button
-                              variant={isActive ? "primary" : "secondary"}
-                              icon={<CheckCircle2 size={15} />}
-                              onClick={() => void setActiveProvider(draft.id)}
-                              title={providerHints.active}
-                              disabled={isActive}
-                              className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
-                            >
-                              {isActive ? "Active Engine" : "Activate"}
-                            </Button>
-                          )}
                           <Button
+                            variant={isActive ? "secondary" : "primary"}
                             icon={<Save size={15} />}
                             onClick={handleSaveProvider}
                             title={providerHints.save}
                             className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
                           >
-                            {isSaved ? "Update Provider" : "Save Credentials"}
+                            {isSaved ? (isActive ? "Update Provider" : "Update & Activate") : "Save & Activate"}
                           </Button>
                           <Button
                             icon={<LinkIcon size={15} />}

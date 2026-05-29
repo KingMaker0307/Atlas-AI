@@ -8,8 +8,8 @@ import {
 } from "@/lib/ai/types";
 import type { AiProviderSettings } from "@/types/domain";
 
-function normalizeBaseUrl(baseUrl?: string): string {
-  return (baseUrl || "https://api.openai.com/v1").replace(/\/$/, "");
+function normalizeBaseUrl(baseUrl?: string, fallback = "https://api.openai.com/v1"): string {
+  return (baseUrl?.trim() || fallback).replace(/\/$/, "");
 }
 
 async function parseOpenAiError(response: Response): Promise<never> {
@@ -79,7 +79,7 @@ export function createOpenAiCompatibleAdapter(
       onToken,
     }: CoachChatRequest): Promise<CoachChatResponse> { // Updated return type
       try {
-        const response = await fetch(`${normalizeBaseUrl(provider.baseUrl ?? defaultBaseUrl)}/chat/completions`, {
+        const response = await fetch(`${normalizeBaseUrl(provider.baseUrl, defaultBaseUrl)}/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -129,7 +129,7 @@ export function createOpenAiCompatibleAdapter(
       }
     },
     async listModels(settings: AiProviderSettings, apiKey: string): Promise<ModelInfo[]> {
-      const response = await fetch(`${normalizeBaseUrl(settings.baseUrl ?? defaultBaseUrl)}/models`, {
+      const response = await fetch(`${normalizeBaseUrl(settings.baseUrl, defaultBaseUrl)}/models`, {
         headers: { Authorization: `Bearer ${apiKey}` },
       });
       if (!response.ok) await parseOpenAiError(response);

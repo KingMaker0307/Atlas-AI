@@ -3390,5 +3390,13 @@ export const exercises: Exercise[] = [
 ];
 
 export function getExerciseById(id: string): Exercise | undefined {
-  return exercises.find((exercise) => exercise.id === id);
+  const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return exercises.find((exercise) => {
+    const exerciseNormId = exercise.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      exercise.id === id ||
+      exerciseNormId === normId ||
+      exercise.name.trim().toLowerCase() === id.trim().toLowerCase()
+    );
+  });
 }

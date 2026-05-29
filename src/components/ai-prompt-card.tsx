@@ -1,12 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, type FC } from "react";
-import { X, User, Sparkles, Weight, Ruler } from "lucide-react";
+import { useState, useEffect, type FC } from "react";
+import { X, User, Sparkles, Weight, Ruler, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import type { UserProfile } from "@/types/domain";
+import { useAtlasStore } from "@/store/useAtlasStore";
 
 interface AiPromptCardProps {
   profile: UserProfile;
@@ -20,11 +21,49 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const [apiKeyBlocked, setApiKeyBlocked] = useState(false);
+
+  useEffect(() => {
+    const { activeProviderId, aiProviders } = useAtlasStore.getState();
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const isLocal = activeProvider?.type === "ollama" || activeProvider?.type === "lmstudio";
+    const hasKey = activeProvider && (isLocal || !!activeProvider.apiKey);
+
+    if (!hasKey) {
+      setError("API key is missing or invalid.");
+      setApiKeyBlocked(true);
+    } else if (activeProvider?.lastStatus === "error") {
+      setError(
+        activeProvider.lastError ??
+          "The saved API key was rejected by the provider. Please update it in Settings → AI."
+      );
+      setApiKeyBlocked(true);
+    }
+  }, []);
+
   const minTarget = new Date();
   minTarget.setDate(minTarget.getDate() + 7);
   const minDate = minTarget.toISOString().split("T")[0];
 
   const handleSubmit = () => {
+    const { activeProviderId, aiProviders } = useAtlasStore.getState();
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const isLocal = activeProvider?.type === "ollama" || activeProvider?.type === "lmstudio";
+    const hasKey = activeProvider && (isLocal || !!activeProvider.apiKey);
+    if (!hasKey) {
+      setError("API key is missing or invalid.");
+      setApiKeyBlocked(true);
+      return;
+    }
+    if (activeProvider?.lastStatus === "error") {
+      setError(
+        activeProvider.lastError ??
+          "The saved API key was rejected by the provider. Please update it in Settings → AI."
+      );
+      setApiKeyBlocked(true);
+      return;
+    }
+
     if (!targetDate) {
       setError("Please select a target date.");
       return;
@@ -130,14 +169,29 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
           </div>
 
           {error && (
-            <p className="text-red-400 text-sm font-medium mb-4">{error}</p>
+            <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/[0.05] dark:bg-rose-500/[0.08] p-3.5 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-rose-500 dark:text-rose-400 shrink-0" aria-hidden="true" />
+                <p className="text-xs font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">
+                  {apiKeyBlocked ? "AI Provider Not Configured" : "Plan Generation Failed"}
+                </p>
+              </div>
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
+                {error}
+              </p>
+              {apiKeyBlocked && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Go to <span className="font-bold text-zinc-700 dark:text-zinc-200">Settings → AI</span> to fix your API key, then try again.
+                </p>
+              )}
+            </div>
           )}
 
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={onCancel}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSubmit} disabled={isBusy}>
+            <Button variant="primary" onClick={handleSubmit} disabled={isBusy || apiKeyBlocked}>
               <Sparkles size={16} />
               {isBusy ? "Generating..." : "Generate Plan"}
             </Button>

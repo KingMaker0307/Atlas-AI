@@ -1198,7 +1198,7 @@ export function DashboardScreen() {
                   </div>
 
                   <div className="mt-4 flex gap-2">
-                    <Button className="flex-1 text-xs font-semibold py-2" variant="primary" onClick={() => {
+                    <Button className="flex-1 text-xs font-semibold py-2 disabled:opacity-40" variant="primary" disabled={coachBusy} onClick={() => {
                       setEditingWorkoutPlanId(plan.id);
                       setActiveSubScreen("workout-plan-detail");
                     }}>
@@ -1206,8 +1206,9 @@ export function DashboardScreen() {
                     </Button>
                     {!isActive && (
                       <Button 
-                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground"
+                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground disabled:opacity-40"
                         variant="secondary"
+                        disabled={coachBusy}
                         onClick={() => {
                           setPlanToActivate(plan.id);
                           setShowSwitchModal(true);

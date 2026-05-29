@@ -219,7 +219,17 @@ function parseSpeechCommand(text: string) {
 export function WorkoutScreen() {
   const storeExercises = useAtlasStore((state) => state.exercises);
   const getExerciseById = (id: string) => {
-    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      storeExercises.find((e) => {
+        const exerciseNormId = e.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        return (
+          e.id === id ||
+          exerciseNormId === normId ||
+          e.name.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+      }) || getStaticExerciseById(id)
+    );
   };
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
@@ -771,7 +781,8 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 disabled:opacity-40"
+                          disabled={coachBusy}
                           onClick={() => {
                             setEditingWorkoutPlanId(plan.id);
                             setActiveSubScreen("workout-plan-builder");
@@ -782,7 +793,8 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500 disabled:opacity-40"
+                          disabled={coachBusy}
                           onClick={() => {
                             setPlanToDelete({ id: plan.id, name: plan.name });
                             setShowDeleteModal(true);
@@ -819,7 +831,7 @@ export function WorkoutScreen() {
                   </div>
 
                   <div className="mt-5 flex gap-2">
-                    <Button className="flex-1 text-xs font-bold py-2 shadow" variant="primary" onClick={() => {
+                    <Button className="flex-1 text-xs font-bold py-2 shadow disabled:opacity-40" variant="primary" disabled={coachBusy} onClick={() => {
                       setEditingWorkoutPlanId(plan.id);
                       setActiveSubScreen("workout-plan-detail");
                     }}>
@@ -827,8 +839,9 @@ export function WorkoutScreen() {
                     </Button>
                     {!isActive && (
                       <Button
-                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground"
+                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground disabled:opacity-40"
                         variant="secondary"
+                        disabled={coachBusy}
                         onClick={() => {
                           setPlanToActivate(plan.id);
                           setShowSwitchModal(true);

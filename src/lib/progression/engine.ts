@@ -4,7 +4,17 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 function getExerciseById(id: string) {
   try {
     const storeExercises = useAtlasStore.getState().exercises;
-    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      storeExercises.find((e) => {
+        const exerciseNormId = e.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        return (
+          e.id === id ||
+          exerciseNormId === normId ||
+          e.name.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+      }) || getStaticExerciseById(id)
+    );
   } catch (e) {
     return getStaticExerciseById(id);
   }
