@@ -60,6 +60,8 @@ export interface UserProfile {
   customGoal?: string;
   injuries?: string;
   workoutDuration?: number;
+  email?: string;
+  emailVerified?: boolean;
 }
 
 export interface Exercise {

@@ -386,7 +386,8 @@ export function WorkoutScreen() {
 
   const [isListening, setIsListening] = useState(false);
   const [speechFeedback, setSpeechFeedback] = useState<string | null>(null);
-  const [planTab, setPlanTab] = useState<"plans" | "nutrition">("plans");
+  const planTab = useAtlasStore((state) => state.workoutTab);
+  const setPlanTab = useAtlasStore((state) => state.setWorkoutTab);
 
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;

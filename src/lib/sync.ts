@@ -37,12 +37,15 @@ function hasBackend(): boolean {
  * Checks if a user is blocked by querying the backend API
  * or falling back to Local Mock Drive.
  */
-export async function checkBlockedStatus(userId: string): Promise<boolean> {
+export async function checkBlockedStatus(userId: string, email?: string): Promise<boolean> {
   if (!userId) return false;
 
   if (hasBackend()) {
     try {
-      const url = getApiUrl(`/api/profile/?userId=${encodeURIComponent(userId)}`);
+      let url = getApiUrl(`/api/profile/?userId=${encodeURIComponent(userId)}`);
+      if (email) {
+        url += `&email=${encodeURIComponent(email.toLowerCase().trim())}`;
+      }
       const res = await fetch(url, { method: "GET" });
       if (res.ok) {
         const data = await res.json();
@@ -57,12 +60,24 @@ export async function checkBlockedStatus(userId: string): Promise<boolean> {
   }
 
   // Local Mock Drive Fallback
+  if (email) {
+    const cleanEmail = email.toLowerCase().trim();
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem(`atlas_mock_drive_email_${cleanEmail}`);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          return parsed.blocked === true || parsed.status === "blocked";
+        } catch (_) {}
+      }
+    }
+  }
   const mockData = getMockDriveData(userId);
   return mockData.blocked === true || mockData.status === "blocked";
 }
 
 /**
- * Synchronizes user snapshot data silently to the Google Drive backend API
+ * Synchronizes user snapshot data silently to the Cloud Sync backend API
  * or Local Mock Drive.
  */
 export async function syncProfile(
@@ -73,6 +88,8 @@ export async function syncProfile(
     return { success: false, blocked: false, mode: "mock" };
   }
 
+  const email = snapshot?.profile?.email;
+
   if (hasBackend()) {
     try {
       const url = getApiUrl("/api/profile/");
@@ -81,6 +98,7 @@ export async function syncProfile(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
+          email,
           snapshot,
         }),
       });
@@ -98,7 +116,15 @@ export async function syncProfile(
   }
 
   // Local Mock Drive Fallback
-  const mockData = getMockDriveData(userId);
+  const mockData = email 
+    ? (() => {
+        if (typeof window === "undefined") return { blocked: false };
+        const raw = localStorage.getItem(`atlas_mock_drive_email_${email.toLowerCase().trim()}`);
+        if (!raw) return getMockDriveData(userId);
+        try { return JSON.parse(raw); } catch { return getMockDriveData(userId); }
+      })()
+    : getMockDriveData(userId);
+    
   const isBlocked = mockData.blocked === true || mockData.status === "blocked";
 
   if (isBlocked) {
@@ -110,8 +136,60 @@ export async function syncProfile(
     lastSyncedAt: new Date().toISOString(),
     ...snapshot,
   };
+  
   writeMockDriveData(userId, newPayload);
+  
+  if (email) {
+    const cleanEmail = email.toLowerCase().trim();
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`atlas_mock_drive_email_${cleanEmail}`, JSON.stringify(newPayload));
+    }
+  }
 
-  console.log(`[Google Drive Mock] Silently saved profile for user ${userId} to localStorage key "atlas_mock_drive_${userId}"`);
+  console.log(`[Cloud Sync Mock] Silently saved profile for user ${userId} to localStorage key`);
   return { success: true, blocked: false, mode: "mock" };
+}
+
+/**
+ * Restores a snapshot profile from the Cloud backup using their email.
+ */
+export async function restoreProfileByEmail(
+  email: string
+): Promise<{ success: boolean; snapshot?: any; error?: string }> {
+  const cleanEmail = email.toLowerCase().trim();
+
+  if (hasBackend()) {
+    try {
+      const url = getApiUrl(`/api/profile/?email=${encodeURIComponent(cleanEmail)}&content=true`);
+      const res = await fetch(url, { method: "GET" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.snapshot) {
+          return { success: true, snapshot: data.snapshot };
+        } else {
+          return { success: false, error: "No profile backup found under this email." };
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        return { success: false, error: errData.error || "Failed to contact sync server." };
+      }
+    } catch (error: any) {
+      console.error("Cloud restore failed, falling back to local storage lookups:", error);
+    }
+  }
+
+  // Local Mock Drive Fallback
+  if (typeof window !== "undefined") {
+    const raw = localStorage.getItem(`atlas_mock_drive_email_${cleanEmail}`);
+    if (raw) {
+      try {
+        const snapshot = JSON.parse(raw);
+        return { success: true, snapshot };
+      } catch {
+        return { success: false, error: "Corrupted local backup file found." };
+      }
+    }
+  }
+
+  return { success: false, error: "No profile backup found under this email in local or cloud storage." };
 }

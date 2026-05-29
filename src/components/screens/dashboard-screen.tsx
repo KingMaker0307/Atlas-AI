@@ -28,6 +28,11 @@ import {
   BrainCircuit,
   Settings,
   AlertTriangle,
+  Lock,
+  ShieldCheck,
+  Mail,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -50,6 +55,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { UserProfile, RecoveryLog } from "@/types/domain";
 import { createId } from "@/lib/id";
+import { validateEmail } from "@/lib/email-validator";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 
 export function DashboardScreen() {
@@ -80,6 +86,74 @@ export function DashboardScreen() {
   const aiProviders = useAtlasStore((state) => state.aiProviders);
   const activeProviderId = useAtlasStore((state) => state.activeProviderId);
   const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
+  const updateProfile = useAtlasStore((state) => state.updateProfile);
+  const setWorkoutTab = useAtlasStore((state) => state.setWorkoutTab);
+
+  // One-time Cloud Sync Migration States
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [migrationEmailInput, setMigrationEmailInput] = useState("");
+  const [migrationEmailError, setMigrationEmailError] = useState<string | null>(null);
+  const [migrationOtpSent, setMigrationOtpSent] = useState(false);
+  const [migrationOtpInput, setMigrationOtpInput] = useState("");
+  const [migrationOtpError, setMigrationOtpError] = useState<string | null>(null);
+  const [migrationGeneratedOtp, setMigrationGeneratedOtp] = useState("");
+  const [showMigrationSandboxOtp, setShowMigrationSandboxOtp] = useState(false);
+  const [migrationOtpCopied, setMigrationOtpCopied] = useState(false);
+  const [isMigrationSubmitting, setIsMigrationSubmitting] = useState(false);
+  const [migrationSubmitError, setMigrationSubmitError] = useState<string | null>(null);
+  const [showMigrationSuccessAnimation, setShowMigrationSuccessAnimation] = useState(false);
+
+  const handleSendMigrationOtp = () => {
+    setMigrationEmailError(null);
+    setMigrationOtpError(null);
+    const validation = validateEmail(migrationEmailInput);
+    if (!validation.isValid) {
+      setMigrationEmailError(validation.error || "Invalid email address.");
+      return;
+    }
+    
+    // Generate a random 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setMigrationGeneratedOtp(code);
+    setMigrationOtpSent(true);
+    setShowMigrationSandboxOtp(true);
+    setMigrationOtpCopied(false);
+  };
+
+  const handleVerifyMigrationOtp = async () => {
+    setMigrationOtpError(null);
+    if (migrationOtpInput.trim() !== migrationGeneratedOtp) {
+      setMigrationOtpError("Incorrect 6-digit verification code. Please check your simulated sandbox mailbox and try again.");
+      return;
+    }
+
+    setShowMigrationSandboxOtp(false);
+    setIsMigrationSubmitting(true);
+    setMigrationSubmitError(null);
+
+    try {
+      // Complete profile migration
+      await updateProfile({
+        email: migrationEmailInput.toLowerCase().trim(),
+        emailVerified: true,
+      });
+      
+      // Close OTP forms and show success state
+      setMigrationOtpSent(false);
+      setShowMigrationSuccessAnimation(true);
+      setTimeout(() => {
+        setShowMigrationSuccessAnimation(false);
+        setShowMigrationModal(false);
+        setMigrationEmailInput("");
+        setMigrationOtpInput("");
+      }, 3500);
+    } catch (e: any) {
+      console.error("Migration failed:", e);
+      setMigrationSubmitError(e.message || "Failed to upgrade profile. Please verify your connection.");
+    } finally {
+      setIsMigrationSubmitting(false);
+    }
+  };
 
   // Modal & Edit States
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -171,6 +245,24 @@ export function DashboardScreen() {
     const proteinTarget = weightInLbs * multiplier;
     return Math.round(proteinTarget);
   }, [profile?.weight, profile?.targetPhysique, profile?.weightUnit]);
+
+  const calculatedCalories = useMemo(() => {
+    if (!profile?.weight || !profile?.age) return 2288;
+    const w = profile.weightUnit === "lbs" ? profile.weight * 0.453592 : profile.weight;
+    const h = profile.heightUnit === "in" ? (profile.height || 70) * 2.54 : profile.height || 170;
+    const gender = (profile.goal || "").toLowerCase().includes("female") ? "female" : "male";
+    const bmr = 10 * w + 6.25 * h - 5 * profile.age + (gender === "female" ? -161 : 5);
+    const tdee = bmr * 1.55;
+
+    const goalText = (profile.customGoal || profile.goal || "").toLowerCase();
+    let calorieAdjustment = 0;
+    if (goalText.includes("lose") || goalText.includes("cut") || goalText.includes("shred") || goalText.includes("deficit") || goalText.includes("lean")) {
+      calorieAdjustment = -500;
+    } else if (goalText.includes("gain") || goalText.includes("bulk") || goalText.includes("build") || goalText.includes("mass") || goalText.includes("surplus")) {
+      calorieAdjustment = 300;
+    }
+    return Math.round(tdee + calorieAdjustment);
+  }, [profile?.weight, profile?.age, profile?.height, profile?.weightUnit, profile?.heightUnit, profile?.goal, profile?.customGoal]);
 
   const getLocalDateString = (d: Date) => {
     const year = d.getFullYear();
@@ -344,12 +436,39 @@ export function DashboardScreen() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      className="flex flex-col gap-3 sm:gap-5 pb-28"
-    >
+    <>
+      {/* Sandbox Simulated Mailbox Notification */}
+      {showMigrationSandboxOtp && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-md animate-bounce select-none">
+          <div className="bg-zinc-900/95 border border-emerald-500/30 text-emerald-400 text-xs px-4 py-3 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.5)] flex items-center justify-between gap-3 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-mono text-[10px] sm:text-xs">
+                🔒 <span className="font-bold text-emerald-450">Sandbox Sync Mail:</span> "Your code is <span className="underline font-bold text-white tracking-widest">{migrationGeneratedOtp}</span>"
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(migrationGeneratedOtp);
+                setMigrationOtpCopied(true);
+                setTimeout(() => setMigrationOtpCopied(false), 2000);
+              }}
+              className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-250 border border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition"
+            >
+              {migrationOtpCopied ? <Check size={11} /> : <Copy size={11} />}
+              {migrationOtpCopied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        className="flex flex-col gap-3 sm:gap-5 pb-28"
+      >
       {/* ─── HEADER ZONE ─── */}
       <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border border-card-border bg-card shadow-lg">
         <div className="space-y-1">
@@ -433,6 +552,34 @@ export function DashboardScreen() {
           </div>
         </div>
       </section>
+
+      {/* ─── SECURE CLOUD BACKUP MIGRATION BANNER ─── */}
+      {profile && !profile.email && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-teal-950/20 to-zinc-950/90 shadow-md p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        >
+          <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-500/10 blur-[50px] pointer-events-none" />
+          <div className="space-y-1 relative z-10 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono">Security & Sync Upgrade</p>
+            </div>
+            <h3 className="text-sm sm:text-base font-bold text-white">Upgrade to Secure Cloud Backup</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+              Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices using high-fidelity naming conventions.
+            </p>
+          </div>
+          <Button
+            onClick={() => setShowMigrationModal(true)}
+            className="sm:shrink-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-white shadow-md h-9 text-xs px-4 rounded-xl relative z-10 flex items-center justify-center gap-1.5 self-start sm:self-center"
+          >
+            <Sparkles size={14} />
+            Secure Profile Now
+          </Button>
+        </motion.div>
+      )}
 
       {/* Quick-Log Recovery Card in Advanced mode, shown in the main dashboard flow */}
       <AnimatePresence>
@@ -704,81 +851,121 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-black to-emerald-950/20 relative shadow-xl overflow-hidden group">
-            {/* Visual glow element */}
-            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
+          <Card className="p-6 border border-emerald-500/20 dark:border-emerald-500/25 bg-zinc-50 dark:bg-zinc-950 bg-gradient-to-br from-zinc-50 via-emerald-50/30 to-amber-50/40 dark:from-zinc-950 dark:via-emerald-950/15 dark:to-amber-950/20 relative shadow-xl overflow-hidden group rounded-2xl">
+            {/* Visual glow elements */}
+            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300 pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 w-44 h-44 rounded-full bg-amber-500/5 blur-[80px] group-hover:bg-amber-500/10 transition-all duration-300 pointer-events-none" />
             
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
-              <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  Today's Scheduled Target · {todayRoutine.day}
+            <div className="relative z-10 space-y-4">
+              {/* Header Zone explaining WHY the card exists */}
+              <div className="space-y-2 select-none">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  Unified Bio-Telemetry Matrix · Stimulus & Fuel Coregulation
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">{todayRoutine.name}</h2>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
-                  {todayRoutine.focus}
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-950 dark:text-white leading-tight">Mechanical Loading & Metabolic Replenishment</h2>
+                <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-4xl">
+                  Muscle hypertrophy is a coordinated two-stage biological response. The training stimulus (Mechanical Overload) triggers structural micro-tears in muscle fibers and acts as the physiological signal for adaptation. However, muscle protein synthesis and tissue reconstruction are entirely dependent on metabolic fuel (Metabolic Replenishment). Failing to pair loading with adequate calories and protein inhibits growth and triggers central nervous system (CNS) and systemic fatigue.
                 </p>
-                <div className="flex flex-wrap gap-1.5 pt-1.5">
-                  {todayRoutine.exercises.map((item: any) => (
-                    <span 
-                      key={item.exerciseId}
-                      className="px-2.5 py-1 rounded-lg border border-emerald-500/20 dark:border-emerald-500/15 bg-emerald-500/10 dark:bg-emerald-500/10 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                    >
-                      {item.exerciseId.split("-").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
-                    </span>
-                  ))}
-                </div>
               </div>
 
-              <div className="sm:text-right shrink-0 flex flex-col justify-between sm:h-28">
-                <div className="text-zinc-550 dark:text-zinc-400 text-xs font-medium">
-                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
+              {/* Grid split representing both functions with equal-weight action buttons */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 pt-4 border-t border-zinc-200/50 dark:border-white/5">
+                {/* Column 1: Workout / Stimulus */}
+                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-450 font-mono">Mechanical Loading</span>
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase">{todayRoutine.day}</span>
+                    </div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">{todayRoutine.name}</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      Focused loading block targeting: <strong className="text-zinc-800 dark:text-zinc-200 font-bold">{todayRoutine.focus}</strong>
+                    </p>
+                    <div className="text-[10px] text-zinc-500 font-bold font-mono uppercase pt-1">
+                      {todayRoutine.exercises.length} exercises · {todayRoutine.estimatedMinutes} mins est. duration
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => handleLaunchWorkoutClick(todayRoutine)}
+                    className="w-full font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(16,185,129,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    <Dumbbell size={14} />
+                    Launch Workout Session
+                  </Button>
                 </div>
-                <Button 
-                  onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-white flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
-                >
-                  <Dumbbell size={16} />
-                  Launch Workout Session
-                </Button>
+
+                {/* Column 2: Calorie / Recovery */}
+                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Metabolic Replenishment</span>
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase">FUEL MATRIX</span>
+                    </div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">Nutrition & Calories</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      Replenish target glycogen energy of <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedCalories ?? 2288} kcal</strong> and lock in <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedProtein ?? 150}g protein</strong> synthesis threshold.
+                    </p>
+                    <div className="text-[10px] text-zinc-500 font-bold font-mono uppercase pt-1">
+                      2,500 ml baseline hydration · dynamic metabolic tracking
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setWorkoutTab("nutrition");
+                      setActiveTab("workout");
+                    }}
+                    className="w-full font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(245,158,11,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  >
+                    <Flame size={14} />
+                    Log Daily Nutrients
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-black to-violet-950/20 relative shadow-xl overflow-hidden group">
-            {/* Visual glow element */}
-            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
+          <Card className="p-6 border border-violet-500/20 dark:border-violet-500/25 bg-zinc-50 dark:bg-zinc-955 bg-gradient-to-br from-zinc-50 via-violet-50/30 to-amber-50/40 dark:from-zinc-950 dark:via-violet-955/15 dark:to-amber-955/20 relative shadow-xl overflow-hidden group rounded-2xl">
+            {/* Visual glow elements */}
+            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px] pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 w-44 h-44 rounded-full bg-amber-500/5 blur-[80px] group-hover:bg-amber-500/10 transition-all duration-300 pointer-events-none" />
             
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
-              <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
-                  Rest & Recovery Cycle · {todayDayName}
+            <div className="relative z-10 space-y-4">
+              {/* Header Zone explaining WHY the card exists */}
+              <div className="space-y-2 select-none">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                  Unified Bio-Telemetry Matrix · Rest & Restoration Coregulation
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">Active Muscle Restoration</h2>
-                <p className="text-xs text-zinc-650 dark:text-zinc-400 max-w-md leading-relaxed">
-                  Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-955 dark:text-white leading-tight">Nervous System Recovery & Anabolic Supercompensation</h2>
+                <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed max-w-4xl">
+                  Muscle fibers do not grow during a workout; training simply provides the stimulus. Growth and recovery occur entirely during rest, facilitated by the parasympathetic nervous system. Rest days allow for the clearance of metabolic waste, glycogen supercompensation in muscle cells, and central nervous system (CNS) pathway reconstruction. Matching this phase with target baseline calories and high-quality protein is vital to complete the systemic recovery loop.
                 </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-xs font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <Activity size={14} />
-                    Light Mobility Flow
-                  </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-xs font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <Moon size={14} />
-                    CNS Sleep Focus
-                  </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-xs font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <TimerReset size={14} />
-                    Hydration & Nutrition
-                  </span>
-                </div>
               </div>
 
-              <div className="shrink-0 sm:text-right flex flex-col justify-between gap-3 sm:min-w-[180px]">
-                <div className="text-zinc-400 font-bold font-mono text-xs tracking-widest">
-                  REST DAY CYCLE
-                </div>
-                <div className="flex flex-col gap-2 mt-2 sm:mt-0">
+              {/* Grid split representing both functions with equal-weight action buttons */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 pt-4 border-t border-zinc-200/50 dark:border-white/5">
+                {/* Column 1: System Restoration (CNS Recovery) */}
+                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-455 font-mono">CNS Recovery</span>
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase">Homeostasis</span>
+                    </div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">Systemic Restoration</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      Muscle micro-tears and loading stress accumulate systemic fatigue. Prioritize deep sleep, parasympathetic activation, and progressive recovery metrics.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1.5">
+                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
+                        <Activity size={10} />
+                        Light Mobility Flow
+                      </span>
+                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
+                        <Moon size={10} />
+                        CNS Sleep Focus
+                      </span>
+                    </div>
+                  </div>
                   <Button 
                     onClick={() => {
                       if (activePlan) {
@@ -786,23 +973,37 @@ export function DashboardScreen() {
                         setActiveSubScreen("workout-plan-detail");
                       }
                     }}
-                    variant="secondary"
-                    className="w-full font-semibold flex items-center justify-center gap-1.5 h-9 text-xs"
+                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(124,58,237,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                   >
                     <ClipboardList size={14} />
                     Weekly Schedule
                   </Button>
+                </div>
+
+                {/* Column 2: Calorie / Nutrition */}
+                <div className="flex flex-col justify-between gap-4 p-5 rounded-2xl bg-white/60 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-sm">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Metabolic Recovery</span>
+                      <span className="text-[10px] text-zinc-500 font-bold uppercase">GLYCOGEN BUFFER</span>
+                    </div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-100">Nutrition & Calories</h3>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                      Replenish target glycogen energy of <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedCalories ?? 2288} kcal</strong> and lock in <strong className="text-zinc-800 dark:text-zinc-200 font-black font-mono">{calculatedProtein ?? 150}g protein</strong> synthesis threshold.
+                    </p>
+                    <div className="text-[10px] text-zinc-500 font-bold font-mono uppercase pt-1">
+                      2,500 ml baseline hydration · dynamic metabolic tracking
+                    </div>
+                  </div>
                   <Button 
                     onClick={() => {
-                      if (activePlan) {
-                        setEditingWorkoutPlanId(activePlan.id);
-                        setActiveSubScreen("workout-plan-detail");
-                      }
+                      setWorkoutTab("nutrition");
+                      setActiveTab("workout");
                     }}
-                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 dark:bg-violet-600 dark:hover:bg-violet-500 text-white flex items-center justify-center gap-1.5 h-9 text-xs shadow-[0_4px_14px_rgba(124,58,237,0.3)] transition-all"
+                    className="w-full font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(245,158,11,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
-                    <Activity size={14} />
-                    Active Recovery
+                    <Flame size={14} />
+                    Log Daily Nutrients
                   </Button>
                 </div>
               </div>
@@ -1593,6 +1794,162 @@ export function DashboardScreen() {
           </Card>
         </div>
       )}
+
+      {/* ─── SECURE BACKUP UPGRADE MODAL ─── */}
+      {showMigrationModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+          <Card className="w-full max-w-md p-6 relative overflow-hidden bg-card/95 border border-card-border shadow-2xl">
+            <div className="absolute -right-20 -top-20 w-40 h-40 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+            {!showMigrationSuccessAnimation ? (
+              <>
+                <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-5 select-none">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="text-emerald-500" size={20} />
+                    <h3 className="font-bold text-white text-base">Secure Cloud Sync Setup</h3>
+                  </div>
+                  {!isMigrationSubmitting && (
+                    <button
+                      onClick={() => {
+                        setShowMigrationModal(false);
+                        setMigrationOtpSent(false);
+                        setShowMigrationSandboxOtp(false);
+                        setMigrationEmailError(null);
+                        setMigrationOtpError(null);
+                      }}
+                      className="text-zinc-400 hover:text-white transition"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+
+                {migrationSubmitError && (
+                  <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-455 text-xs">
+                    {migrationSubmitError}
+                  </div>
+                )}
+
+                {!migrationOtpSent ? (
+                  /* Email Form Step */
+                  <div className="space-y-4">
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      Upgrade to a verified cloud profile. Entering a verified email address enables automatic backups, multi-device synchronization, and secure account recovery.
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="migration-email" className="text-xs font-bold uppercase tracking-wider text-zinc-555 dark:text-zinc-400 font-mono">
+                        Email Address
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="migration-email"
+                          type="email"
+                          value={migrationEmailInput}
+                          onChange={(e) => {
+                            setMigrationEmailInput(e.target.value);
+                            setMigrationEmailError(null);
+                          }}
+                          placeholder="alex@example.com"
+                          className="pl-9 text-xs font-medium"
+                          disabled={isMigrationSubmitting}
+                        />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+                      </div>
+                      {migrationEmailError && (
+                        <p className="text-[10px] text-rose-500 dark:text-rose-455 font-medium leading-relaxed">
+                          {migrationEmailError}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={handleSendMigrationOtp}
+                      className="w-full font-bold bg-emerald-500 hover:bg-emerald-450 text-white mt-2"
+                      disabled={isMigrationSubmitting}
+                    >
+                      Send Verification Code
+                    </Button>
+                  </div>
+                ) : (
+                  /* OTP Form Step */
+                  <div className="space-y-4">
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      We've sent a 6-digit verification code. Please check your simulated sandbox mailbox at the top of your screen to copy the code.
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="migration-otp" className="text-xs font-bold uppercase tracking-wider text-zinc-555 dark:text-zinc-400 font-mono">
+                        Verification Code (OTP)
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="migration-otp"
+                          type="text"
+                          maxLength={6}
+                          value={migrationOtpInput}
+                          onChange={(e) => {
+                            setMigrationOtpInput(e.target.value.replace(/[^0-9]/g, ""));
+                            setMigrationOtpError(null);
+                          }}
+                          placeholder="123456"
+                          className="pl-9 text-xs font-mono font-bold tracking-[0.25em]"
+                          disabled={isMigrationSubmitting}
+                        />
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
+                      </div>
+                      {migrationOtpError && (
+                        <p className="text-[10px] text-rose-500 dark:text-rose-455 font-medium leading-relaxed">
+                          {migrationOtpError}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2.5 pt-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setMigrationOtpSent(false);
+                          setShowMigrationSandboxOtp(false);
+                          setMigrationOtpInput("");
+                          setMigrationOtpError(null);
+                        }}
+                        className="flex-1 font-semibold"
+                        disabled={isMigrationSubmitting}
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        onClick={handleVerifyMigrationOtp}
+                        className="flex-1 font-bold bg-emerald-500 hover:bg-emerald-450 text-white"
+                        disabled={isMigrationSubmitting}
+                      >
+                        {isMigrationSubmitting ? "Upgrading..." : "Confirm Code"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Success / Migration animation step */
+              <div className="text-center py-6 space-y-4 select-none">
+                <div className="mx-auto h-16 w-16 bg-emerald-500/20 border border-emerald-500/40 rounded-full flex items-center justify-center text-emerald-400">
+                  <Check className="stroke-[3]" size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-black text-white">Upgrade Successful</h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                    A secure email sync record has been verified. Your legacy backing file has been converted to the safe naming format:
+                  </p>
+                  <div className="bg-zinc-950/60 border border-white/5 py-1.5 px-3 rounded-lg font-mono text-[10px] font-bold text-emerald-400 max-w-sm mx-auto select-all break-all">
+                    profile_email_{migrationEmailInput.toLowerCase().trim()}.json
+                  </div>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed max-w-xs mx-auto pt-1">
+                    Your full logs, metrics, plans, and history have been successfully preserved and synced.
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
     </motion.div>
-  );
+  </>
+);
 }

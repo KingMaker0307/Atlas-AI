@@ -82,8 +82,9 @@ interface AtlasState {
   tokenCount: number; // New state for token count
   startupChoice: StartupChoice;
   activeWorkoutPlanId: string | null;
-  blocked: boolean;
+   blocked: boolean;
   lastSyncedAt: string | null;
+  workoutTab: "plans" | "nutrition";
   setBlocked: (blocked: boolean) => void;
   setStartupChoice: (choice: StartupChoice) => void;
   setActiveWorkoutPlanId: (id: string | null) => Promise<void>;
@@ -93,6 +94,7 @@ interface AtlasState {
   setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
   setEditingWorkoutPlanId: (id: string | null) => void;
   setEditingRoutineId: (id: string | null) => void;
+  setWorkoutTab: (tab: "plans" | "nutrition") => void;
   hydrate: () => Promise<void>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
@@ -124,6 +126,7 @@ interface AtlasState {
   sendCoachMessage: (content: string, options?: SendCoachMessageOptions) => Promise<void>;
   exportEncryptedProfile: (passphrase: string) => Promise<string>;
   importEncryptedProfile: (fileText: string, passphrase: string) => Promise<void>;
+  importRawSnapshot: (snapshot: any) => Promise<void>;
   resetLocalData: () => Promise<void>;
   getExerciseById: (id: string) => Exercise | undefined;
   generateGlobalExercise: (name: string) => Promise<Exercise | null>;
@@ -240,9 +243,22 @@ async function persistState(state: AtlasState): Promise<void> {
   console.log("persistState: Finished.");
 }
 
+// Global sync state lock variables to prevent concurrent race conditions or duplicated calls
+let isSyncingToDrive = false;
+let pendingSyncToDrive = false;
+
 async function syncProfileToDrive(state: AtlasState): Promise<void> {
   const profile = state.profile;
   if (!profile || !profile.id) return;
+  
+  if (isSyncingToDrive) {
+    pendingSyncToDrive = true;
+    return;
+  }
+
+  isSyncingToDrive = true;
+  pendingSyncToDrive = false;
+
   try {
     const res = await syncProfile(profile.id, snapshotFromState(state));
     if (res.blocked) {
@@ -252,6 +268,13 @@ async function syncProfileToDrive(state: AtlasState): Promise<void> {
     }
   } catch (error) {
     console.error("Failed to execute Google Drive silent sync:", error);
+  } finally {
+    isSyncingToDrive = false;
+    // If state changed while a sync was active, trigger a follow-up sync
+    if (pendingSyncToDrive) {
+      const latestState = useAtlasStore.getState();
+      void syncProfileToDrive(latestState);
+    }
   }
 }
 
@@ -371,7 +394,9 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   tokenCount: 0, // Initialize in store
   blocked: false,
   lastSyncedAt: null,
+  workoutTab: "plans",
   setBlocked: (blocked) => set({ blocked }),
+  setWorkoutTab: (tab) => set({ workoutTab: tab }),
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
   getExerciseById: (id: string) => {
     const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -776,7 +801,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   updateProfile: async (patch) => {
     const profile = get().profile;
     if (!profile) return;
-    const updatedProfile = { ...profile, ...patch };
+    // Protect email immutability: once email is set in profile, prevent updates to email or emailVerified
+    const { email, emailVerified, ...safePatch } = patch;
+    const finalPatch = profile.email ? safePatch : patch;
+    const updatedProfile = { ...profile, ...finalPatch };
     set({ profile: updatedProfile });
     await persistState(get());
   },
@@ -1440,6 +1468,17 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       }
       set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
       await persistState(get());
+    }
+  },
+  importRawSnapshot: async (snapshot) => {
+    if (isValidSnapshot(snapshot)) {
+      if (snapshot.deviceSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(snapshot.deviceSecret);
+      }
+      set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+      await persistState(get());
+    } else {
+      throw new Error("Invalid snapshot structure. Unable to restore.");
     }
   },
   resetLocalData: async () => {
