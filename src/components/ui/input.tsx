@@ -8,7 +8,7 @@ import type {
 import { cn } from "@/lib/cn";
 
 const fieldClass =
-  "w-full rounded-xl border border-input-border bg-input px-3 py-2.5 text-base md:text-sm text-foreground outline-none transition placeholder:text-zinc-500 focus:border-emerald-300/50 focus:bg-input-focus-bg";
+  "w-full rounded-xl border border-input-border bg-input px-3 py-2.5 text-base md:text-sm text-foreground outline-none transition placeholder:text-zinc-500 focus:border-emerald-300/50 focus:bg-input-focus-bg focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background";
 
 export function Input({
   className,

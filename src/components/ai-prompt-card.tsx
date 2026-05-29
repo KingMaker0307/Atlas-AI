@@ -59,11 +59,11 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
         exit={{ scale: 0.95, y: 10 }}
         className="w-full max-w-md"
       >
-        <Card className="p-4">
+        <Card className="p-4" role="dialog" aria-modal="true" aria-labelledby="generate-plan-title">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Generate AI Plan</h2>
-            <Button variant="ghost" size="icon" onClick={onCancel}>
-              <X size={20} />
+            <h2 id="generate-plan-title" className="text-lg font-semibold text-foreground">Generate AI Plan</h2>
+            <Button variant="ghost" size="icon" onClick={onCancel} aria-label="Close panel">
+              <X size={20} aria-hidden="true" />
             </Button>
           </div>
 

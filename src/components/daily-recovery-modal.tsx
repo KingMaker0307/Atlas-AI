@@ -77,11 +77,11 @@ export function DailyRecoveryModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <Card className="w-full max-w-md p-6 space-y-4 relative">
-        <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose}>
-          <X size={20} />
+      <Card className="w-full max-w-md p-6 space-y-4 relative" role="dialog" aria-modal="true" aria-labelledby="daily-recovery-title">
+        <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose} aria-label="Close modal">
+          <X size={20} aria-hidden="true" />
         </Button>
-        <h2 className="text-xl font-semibold text-foreground">
+        <h2 id="daily-recovery-title" className="text-xl font-semibold text-foreground">
           {dailyRecoveryLog ? "Edit Recovery Log" : "Add Recovery Log"} for {selectedDate}
         </h2>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">

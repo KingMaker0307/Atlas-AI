@@ -150,8 +150,8 @@ const TemplateDetailView: FC<{
     {/* Header */}
     <section className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ChevronLeft size={20} />
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
+          <ChevronLeft size={20} aria-hidden="true" />
         </Button>
         <div>
           <h1 className="text-xl font-semibold tracking-normal text-foreground">{template.name}</h1>
@@ -679,8 +679,8 @@ export function WorkoutPlanBuilderScreen() {
           className="space-y-6 pb-28"
         >
           <section className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setActiveSubScreen(null)}>
-              <ArrowLeft size={20} />
+            <Button variant="ghost" size="icon" onClick={() => setActiveSubScreen(null)} aria-label="Exit detail screen">
+              <ArrowLeft size={20} aria-hidden="true" />
             </Button>
             <h1 className="text-xl sm:text-2xl font-semibold tracking-normal text-foreground">Create Workout Plan</h1>
           </section>
@@ -782,8 +782,8 @@ export function WorkoutPlanBuilderScreen() {
         >
           {/* Header */}
           <section className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setView("choose-method")}>
-              <ChevronLeft size={20} />
+            <Button variant="ghost" size="icon" onClick={() => setView("choose-method")} aria-label="Back to selection">
+              <ChevronLeft size={20} aria-hidden="true" />
             </Button>
             <div className="flex-1">
               <h1 className="text-xl font-semibold tracking-normal text-foreground">Program Library</h1>
@@ -947,8 +947,8 @@ export function WorkoutPlanBuilderScreen() {
         >
           <section className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => editingWorkoutPlanId ? setActiveSubScreen(null) : setView("choose-method")}>
-                <ArrowLeft size={20} />
+              <Button variant="ghost" size="icon" onClick={() => editingWorkoutPlanId ? setActiveSubScreen(null) : setView("choose-method")} aria-label="Back">
+                <ArrowLeft size={20} aria-hidden="true" />
               </Button>
               <h1 className="text-xl font-semibold tracking-normal text-foreground">
                 {editingWorkoutPlanId ? "Edit Plan" : "New Plan"}
@@ -1094,16 +1094,16 @@ export function WorkoutPlanBuilderScreen() {
 
       {showStartDayModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-[0_0_50px_rgba(0,0,0,0.8)]" role="dialog" aria-modal="true" aria-labelledby="start-day-title">
             <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
               setShowStartDayModal(false);
               setPendingTemplate(null);
               setPendingAiData(null);
               setStartDayTarget(null);
-            }}>
-              <X size={20} />
+            }} aria-label="Close modal">
+              <X size={20} aria-hidden="true" />
             </Button>
-            <h2 className="text-xl font-semibold text-foreground">Select Start Day</h2>
+            <h2 id="start-day-title" className="text-xl font-semibold text-foreground">Select Start Day</h2>
             <p className="text-zinc-650 dark:text-zinc-300 text-sm leading-relaxed">
               Choose the start day of the week for your new plan. Your routines will be scheduled starting from this day.
             </p>
@@ -1139,14 +1139,15 @@ export function WorkoutPlanBuilderScreen() {
       {/* ─── AI PLAN GENERATION ERROR MODAL ─── */}
       {showAiErrorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
-          <Card className="w-full max-w-md p-6 space-y-4 relative border border-rose-500/30 bg-card shadow-2xl">
+          <Card className="w-full max-w-md p-6 space-y-4 relative border border-rose-500/30 bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="ai-error-title">
             <Button
               variant="ghost"
               size="icon"
               className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
               onClick={() => setShowAiErrorModal(false)}
+              aria-label="Close modal"
             >
-              <X size={20} />
+              <X size={20} aria-hidden="true" />
             </Button>
 
             {/* Header */}
@@ -1156,7 +1157,7 @@ export function WorkoutPlanBuilderScreen() {
               </div>
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
+                <h3 id="ai-error-title" className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
               </div>
             </div>

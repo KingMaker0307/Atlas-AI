@@ -832,7 +832,7 @@ export function ExerciseDetail({
             onClick={onClose}
             aria-label="Close exercise detail modal"
           >
-            <X size={20} />
+            <X size={20} aria-hidden="true" />
           </Button>
         </div>
 
@@ -960,7 +960,7 @@ export function ExerciseDetail({
 
         {/* Advanced Segmented Tabs bar control */}
         <div className="px-4 mt-4 shrink-0">
-          <div className="flex rounded-xl bg-surface border border-surface-border p-1">
+          <div className="flex rounded-xl bg-surface border border-surface-border p-1" role="tablist" aria-label="Exercise details tabs">
             {[
               { id: "guide", label: "Guide" },
               { id: "cues", label: "Cues" },
@@ -968,6 +968,10 @@ export function ExerciseDetail({
             ].map((tab) => (
               <button
                 key={tab.id}
+                id={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`${tab.id}-panel`}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all duration-300 ${
                   activeTab === tab.id
@@ -986,7 +990,7 @@ export function ExerciseDetail({
           
           {/* TAB 1: Stepper-based Interactive Step Guide */}
           {activeTab === "guide" && (
-            <div className="space-y-4">
+            <div className="space-y-4" role="tabpanel" id="guide-panel" aria-labelledby="guide">
               {combinedSteps.length > 0 ? (
                 <div className="space-y-3">
                   <div className="text-xs font-bold uppercase tracking-widest text-zinc-500 pl-1">
@@ -1023,7 +1027,7 @@ export function ExerciseDetail({
                           onClick={handlePrevStep}
                           aria-label="Previous step"
                         >
-                          <ChevronLeft size={16} />
+                          <ChevronLeft size={16} aria-hidden="true" />
                         </Button>
                         
                         {/* Dot indicator bullets */}
@@ -1046,7 +1050,7 @@ export function ExerciseDetail({
                           onClick={handleNextStep}
                           aria-label="Next step"
                         >
-                          <ChevronRight size={16} />
+                          <ChevronRight size={16} aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
@@ -1112,7 +1116,7 @@ export function ExerciseDetail({
 
           {/* TAB 2: Breathing & Tempo Cues */}
           {activeTab === "cues" && (
-            <div className="space-y-3">
+            <div className="space-y-3" role="tabpanel" id="cues-panel" aria-labelledby="cues">
               {/* Cardio Physiology Card */}
               {isCardio && (
                 <div className="p-3.5 rounded-2xl bg-violet-500/5 border border-violet-500/10">
@@ -1220,7 +1224,7 @@ export function ExerciseDetail({
 
           {/* TAB 3: Common Mistakes & Safety */}
           {activeTab === "safety" && (
-            <div className="space-y-3">
+            <div className="space-y-3" role="tabpanel" id="safety-panel" aria-labelledby="safety">
               
               {/* Common Mistakes box block */}
               {exercise.commonMistakes && exercise.commonMistakes.length > 0 && (

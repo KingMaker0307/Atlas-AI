@@ -29,7 +29,7 @@ export function RoutineDayConflictModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 pt-[max(1rem,env(safe-area-inset-top))] supports-[backdrop-filter]:backdrop-blur-md">
-      <Card className="w-full max-w-md p-6 space-y-4 relative flex flex-col overflow-hidden shadow-2xl border border-card-border bg-card">
+      <Card className="w-full max-w-md p-6 space-y-4 relative flex flex-col overflow-hidden shadow-2xl border border-card-border bg-card" role="dialog" aria-modal="true" aria-labelledby="conflict-modal-title">
         <Button
           variant="ghost"
           size="icon"
@@ -37,7 +37,7 @@ export function RoutineDayConflictModal({
           onClick={onClose}
           aria-label="Close warning"
         >
-          <X size={20} />
+          <X size={20} aria-hidden="true" />
         </Button>
 
         {/* Warning Icon Badge Header */}
@@ -46,7 +46,7 @@ export function RoutineDayConflictModal({
             <AlertTriangle size={24} />
           </div>
           <div>
-            <span className="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest leading-none">
+            <span id="conflict-modal-title" className="text-xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest leading-none">
               Schedule Conflict Warning
             </span>
             <h2 className="text-xl font-bold text-foreground mt-0.5 leading-snug">
