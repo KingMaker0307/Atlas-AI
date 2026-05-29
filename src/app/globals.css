@@ -219,6 +219,7 @@ textarea {
 
 /* Dark Mode overrides for dark text on dark backgrounds */
 .dark .text-black:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-955:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
 .dark .text-zinc-950:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
 .dark .text-zinc-900:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
 .dark .text-zinc-850:not(.keep-light):not(button):not(a):not(svg):not([class*="bg-white"]):not([class*="bg-emerald"]):not([class*="bg-teal"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-sky"]):not([class*="bg-blue"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="from-"]):not([class*="to-"]),
@@ -226,10 +227,23 @@ textarea {
   color: var(--foreground) !important;
 }
 
+/* Ensure dark mode gray texts are fully accessible and readable on dark backgrounds (WCAG AA compliant) */
+.dark .text-zinc-500:not(.keep-light):not(.keep-light *):not(button):not(a):not(svg):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-violet"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-550:not(.keep-light):not(.keep-light *):not(button):not(a):not(svg):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-violet"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-600:not(.keep-light):not(.keep-light *):not(button):not(a):not(svg):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-violet"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="from-"]):not([class*="to-"]),
+.dark .text-zinc-650:not(.keep-light):not(.keep-light *):not(button):not(a):not(svg):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-violet"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="from-"]):not([class*="to-"]) {
+  color: #a1a1aa !important; /* zinc-400, contrast ~8:1 */
+}
+
+.dark .text-zinc-700:not(.keep-light):not(.keep-light *):not(button):not(a):not(svg):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-amber"]):not([class*="bg-violet"]):not([class*="bg-blue"]):not([class*="bg-green"]):not([class*="from-"]):not([class*="to-"]) {
+  color: #d4d4d8 !important; /* zinc-300, contrast ~13.5:1 */
+}
+
 /* Also ensure dark text inside cards, surfaces, and inputs is overridden to light foreground in dark mode */
 .dark .bg-card .text-black:not(.keep-light):not(button):not(a),
 .dark .bg-surface .text-black:not(.keep-light):not(button):not(a),
 .dark .bg-input .text-black:not(.keep-light):not(button):not(a),
+.dark .bg-card .text-zinc-955:not(.keep-light):not(button):not(a),
 .dark .bg-card .text-zinc-950:not(.keep-light):not(button):not(a),
 .dark .bg-surface .text-zinc-950:not(.keep-light):not(button):not(a),
 .dark .bg-input .text-zinc-950:not(.keep-light):not(button):not(a),
@@ -243,6 +257,14 @@ textarea {
 .dark .bg-surface .text-zinc-800:not(.keep-light):not(button):not(a),
 .dark .bg-input .text-zinc-800:not(.keep-light):not(button):not(a) {
   color: var(--foreground) !important;
+}
+
+/* Ensure placeholder colors have high contrast in dark mode inputs */
+.dark ::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #a1a1aa !important; /* zinc-400 */
+  opacity: 1 !important;
 }
 
 /* Keep actual white text on high-contrast dark buttons & badges in light mode */
@@ -371,24 +393,24 @@ textarea {
   color: #a1a1aa !important;
 }
 
-.light .keep-dark .text-zinc-500 {
-  color: #71717a !important;
-}
-
+.light .keep-dark .text-zinc-500,
+.light .keep-dark .text-zinc-550,
+.light .keep-dark .text-zinc-600,
 .light .keep-dark .text-zinc-650 {
-  color: #52525b !important;
+  color: #a1a1aa !important; /* zinc-400, contrast ~8:1 */
 }
 
+.light .keep-dark .text-zinc-700,
 .light .keep-dark .text-zinc-800 {
-  color: #27272a !important;
+  color: #d4d4d8 !important; /* zinc-300, contrast ~13.5:1 */
 }
 
 .light .keep-dark .text-zinc-900 {
-  color: #18181b !important;
+  color: #e4e4e7 !important; /* zinc-200, contrast ~16:1 */
 }
 
 .light .keep-dark .text-zinc-950 {
-  color: #09090b !important;
+  color: #ffffff !important;
 }
 
 .light .keep-dark .text-white {
@@ -615,3 +637,85 @@ textarea {
   color: #6d28d9 !important; /* violet-700 */
 }
 
+/* ─── NATIVE DATE / TIME PICKER FIELD ACCESSIBILITY OVERRIDES ─── */
+.light input[type="date"]::-webkit-datetime-edit,
+.light input[type="datetime-local"]::-webkit-datetime-edit,
+.light input[type="time"]::-webkit-datetime-edit,
+.light input[type="month"]::-webkit-datetime-edit,
+.light input[type="week"]::-webkit-datetime-edit,
+.light input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.light input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.light input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.light input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.light input[type="week"]::-webkit-datetime-edit-fields-wrapper,
+.light input[type="date"]::-webkit-datetime-edit-text,
+.light input[type="datetime-local"]::-webkit-datetime-edit-text,
+.light input[type="time"]::-webkit-datetime-edit-text,
+.light input[type="month"]::-webkit-datetime-edit-text,
+.light input[type="week"]::-webkit-datetime-edit-text,
+.light input[type="date"]::-webkit-datetime-edit-month-field,
+.light input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+.light input[type="time"]::-webkit-datetime-edit-month-field,
+.light input[type="month"]::-webkit-datetime-edit-month-field,
+.light input[type="week"]::-webkit-datetime-edit-month-field,
+.light input[type="date"]::-webkit-datetime-edit-day-field,
+.light input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+.light input[type="time"]::-webkit-datetime-edit-day-field,
+.light input[type="month"]::-webkit-datetime-edit-day-field,
+.light input[type="week"]::-webkit-datetime-edit-day-field,
+.light input[type="date"]::-webkit-datetime-edit-year-field,
+.light input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+.light input[type="time"]::-webkit-datetime-edit-year-field,
+.light input[type="month"]::-webkit-datetime-edit-year-field,
+.light input[type="week"]::-webkit-datetime-edit-year-field {
+  color: #121417 !important;
+}
+
+.dark input[type="date"]::-webkit-datetime-edit,
+.dark input[type="datetime-local"]::-webkit-datetime-edit,
+.dark input[type="time"]::-webkit-datetime-edit,
+.dark input[type="month"]::-webkit-datetime-edit,
+.dark input[type="week"]::-webkit-datetime-edit,
+.dark input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="week"]::-webkit-datetime-edit-fields-wrapper,
+.dark input[type="date"]::-webkit-datetime-edit-text,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-text,
+.dark input[type="time"]::-webkit-datetime-edit-text,
+.dark input[type="month"]::-webkit-datetime-edit-text,
+.dark input[type="week"]::-webkit-datetime-edit-text,
+.dark input[type="date"]::-webkit-datetime-edit-month-field,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+.dark input[type="time"]::-webkit-datetime-edit-month-field,
+.dark input[type="month"]::-webkit-datetime-edit-month-field,
+.dark input[type="week"]::-webkit-datetime-edit-month-field,
+.dark input[type="date"]::-webkit-datetime-edit-day-field,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+.dark input[type="time"]::-webkit-datetime-edit-day-field,
+.dark input[type="month"]::-webkit-datetime-edit-day-field,
+.dark input[type="week"]::-webkit-datetime-edit-day-field,
+.dark input[type="date"]::-webkit-datetime-edit-year-field,
+.dark input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+.dark input[type="time"]::-webkit-datetime-edit-year-field,
+.dark input[type="month"]::-webkit-datetime-edit-year-field,
+.dark input[type="week"]::-webkit-datetime-edit-year-field {
+  color: #ffffff !important;
+}
+
+.light input[type="date"]::-webkit-calendar-picker-indicator,
+.light input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.light input[type="time"]::-webkit-calendar-picker-indicator,
+.light input[type="month"]::-webkit-calendar-picker-indicator,
+.light input[type="week"]::-webkit-calendar-picker-indicator {
+  filter: invert(0) !important;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="week"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) !important;
+}
