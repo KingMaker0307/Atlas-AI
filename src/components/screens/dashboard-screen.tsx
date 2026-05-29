@@ -368,69 +368,174 @@ export function DashboardScreen() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Experience Mode Toggle */}
-          <div className="flex rounded-xl bg-surface p-1 border border-surface-border self-start sm:self-center select-none">
-            <button
-              type="button"
-              onClick={() => void setGuidedMode(true)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                guidedMode ? "bg-emerald-500 text-white-keep shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-              }`}
-            >
-              Guided
-            </button>
-            <button
-              type="button"
-              onClick={() => void setGuidedMode(false)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                !guidedMode ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-              }`}
-            >
-              Advanced
-            </button>
-          </div>
+        <div className="flex flex-col gap-3 items-stretch md:items-end w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Experience Mode Toggle */}
+            <div className="flex rounded-xl bg-surface p-1 border border-surface-border self-start sm:self-center select-none">
+              <button
+                type="button"
+                onClick={() => void setGuidedMode(true)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
+                  guidedMode ? "bg-emerald-500 text-white-keep shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                Guided
+              </button>
+              <button
+                type="button"
+                onClick={() => void setGuidedMode(false)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 ${
+                  !guidedMode ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                Advanced
+              </button>
+            </div>
 
-          {/* Dynamic Recovery Ring */}
-          {!guidedMode && (
-            <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
-              <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
-                <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
-                  <motion.circle
-                    cx="32"
-                    cy="32"
-                    r="28"
-                    fill="none"
-                    stroke={insight.ringColor}
-                    strokeWidth="4.5"
-                    strokeDasharray="176"
-                    initial={{ strokeDashoffset: 176 }}
-                    animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-center">
-                  <span className="text-lg font-black text-white">{recoveryScore}</span>
-                  <span className="text-xs font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+            {/* Dynamic Recovery Ring */}
+            {!guidedMode && (
+              <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
+                <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
+                  <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
+                    <motion.circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      fill="none"
+                      stroke={insight.ringColor}
+                      strokeWidth="4.5"
+                      strokeDasharray="176"
+                      initial={{ strokeDashoffset: 176 }}
+                      animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="text-center">
+                    <span className="text-lg font-black text-white">{recoveryScore}</span>
+                    <span className="text-xs font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
+                  <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
+                  <button 
+                    onClick={() => setShowQuickLog(!showQuickLog)}
+                    className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
+                  >
+                    <TimerReset size={12} />
+                    Quick-Log Daily Recovery
+                  </button>
                 </div>
               </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
-                <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
-                <button 
-                  onClick={() => setShowQuickLog(!showQuickLog)}
-                  className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
-                >
-                  <TimerReset size={12} />
-                  Quick-Log Daily Recovery
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
+
+      {/* Quick-Log Recovery Card in Advanced mode, shown in the main dashboard flow */}
+      <AnimatePresence>
+        {!guidedMode && showQuickLog && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="w-full overflow-hidden"
+          >
+            <Card className="p-5 border-emerald-500/20 bg-emerald-950/5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <div className="flex items-center gap-2">
+                  <Heart size={16} className="text-emerald-450 animate-pulse" />
+                  <h3 className="font-bold text-white text-sm">Bio-Telemetry Recovery Log</h3>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-white" onClick={() => setShowQuickLog(false)}>
+                  <X size={16} />
+                </Button>
+              </div>
+
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+                {/* Sleep Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-300 font-semibold">Sleep Duration</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSleep} Hours</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="4"
+                    max="12"
+                    step="0.5"
+                    value={logSleep}
+                    onChange={(e) => setLogSleep(Number(e.target.value))}
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                  />
+                </div>
+
+                {/* Soreness Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-300 font-semibold">Muscle Soreness</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSoreness}/10 (High = Pain)</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={logSoreness}
+                    onChange={(e) => setLogSoreness(Number(e.target.value))}
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                  />
+                </div>
+
+                {/* Stress Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-300 font-semibold">Systemic Stress</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logStress}/10 (High = Stressed)</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={logStress}
+                    onChange={(e) => setLogStress(Number(e.target.value))}
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                  />
+                </div>
+
+                {/* Nervous Energy Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-300 font-semibold">Nervous Energy</span>
+                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logEnergy}/10 (High = Energetic)</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={logEnergy}
+                    onChange={(e) => setLogEnergy(Number(e.target.value))}
+                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+                <Button variant="secondary" size="sm" onClick={() => setShowQuickLog(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold">
+                  Log Recovery metrics
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {coachBusy && (
         <motion.div
@@ -568,110 +673,6 @@ export function DashboardScreen() {
         </Card>
       )}
 
-
-      {/* ─── INLINE RECOVERY LOGGER DRAWER ─── */}
-      <AnimatePresence>
-        {showQuickLog && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <Card className="p-5 border-emerald-500/20 bg-emerald-950/5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <div className="flex items-center gap-2">
-                  <Heart size={16} className="text-emerald-450 animate-pulse" />
-                  <h3 className="font-bold text-white text-sm">Bio-Telemetry Recovery Log</h3>
-                </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-white" onClick={() => setShowQuickLog(false)}>
-                  <X size={16} />
-                </Button>
-              </div>
-
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                {/* Sleep Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Sleep Duration</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSleep} Hours</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="4"
-                    max="12"
-                    step="0.5"
-                    value={logSleep}
-                    onChange={(e) => setLogSleep(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                {/* Soreness Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Muscle Soreness</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSoreness}/10 (High = Pain)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={logSoreness}
-                    onChange={(e) => setLogSoreness(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                {/* Stress Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Systemic Stress</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logStress}/10 (High = Stressed)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={logStress}
-                    onChange={(e) => setLogStress(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                {/* Nervous Energy Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Nervous Energy</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logEnergy}/10 (High = Energetic)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={logEnergy}
-                    onChange={(e) => setLogEnergy(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
-                <Button variant="secondary" size="sm" onClick={() => setShowQuickLog(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold">
-                  Save Bio-Recovery Log
-                </Button>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ─── PHYSIOLOGICAL GUIDANCE BLOCK ─── */}
       {!guidedMode && (
         <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-1.5 ${insight.color}`}>
@@ -703,7 +704,7 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 dark:from-zinc-950 dark:to-emerald-950/20 relative shadow-xl overflow-hidden group">
+          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-white to-emerald-50/50 dark:from-black dark:to-emerald-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
             
@@ -744,7 +745,7 @@ export function DashboardScreen() {
           </Card>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/50 to-violet-100/30 dark:from-zinc-955 dark:to-violet-950/20 relative shadow-xl overflow-hidden group">
+          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/50 to-violet-100/30 dark:from-black dark:to-violet-950/20 relative shadow-xl overflow-hidden group">
             {/* Visual glow element */}
             <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
             
