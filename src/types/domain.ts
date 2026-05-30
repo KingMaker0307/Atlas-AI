@@ -60,6 +60,8 @@ export interface UserProfile {
   customGoal?: string;
   injuries?: string;
   workoutDuration?: number;
+  gender?: "male" | "female";
+  activityLevel?: "sedentary" | "lightly_active" | "moderately_active" | "very_active" | "extra_active";
   email?: string;
   emailVerified?: boolean;
   capturedProvider?: "google" | "apple" | "email" | null;

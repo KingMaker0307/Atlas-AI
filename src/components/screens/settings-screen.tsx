@@ -56,6 +56,19 @@ const providerTypes: AiProviderSettings["type"][] = [
 
 const physiqueOptions: Physique[] = ["lean", "athletic", "bulky", "shredded", "toned"];
 
+const genderOptions = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+] as const;
+
+const activityLevelOptions = [
+  { value: "sedentary", label: "Sedentary (Little/no exercise)" },
+  { value: "lightly_active", label: "Lightly Active (Exercise 1-3 days/wk)" },
+  { value: "moderately_active", label: "Moderately Active (Exercise 3-5 days/wk)" },
+  { value: "very_active", label: "Very Active (Exercise 6-7 days/wk)" },
+  { value: "extra_active", label: "Extra Active (Physical job or 2x daily)" },
+] as const;
+
 const providerHints: Record<string, string> = {
   label: "A nickname for this provider, like 'OpenAI (GPT-4)'.",
   type: "The type of AI provider you are using.",
@@ -790,6 +803,17 @@ export function SettingsScreen() {
                           className="text-xs font-mono font-bold"
                         />
                       </Field>
+                      <Field label="Biological Sex">
+                        <Select
+                          value={draftProfile.gender ?? "male"}
+                          onChange={(e) => handleProfileChange("gender", e.target.value as "male" | "female")}
+                          className="text-xs font-bold"
+                        >
+                          {genderOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </Select>
+                      </Field>
                       <Field label="Target Physique">
                         <Select
                           value={draftProfile.targetPhysique ?? ""}
@@ -798,6 +822,17 @@ export function SettingsScreen() {
                         >
                           {physiqueOptions.map(option => (
                             <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Field label="Weekly Activity Level">
+                        <Select
+                          value={draftProfile.activityLevel ?? "moderately_active"}
+                          onChange={(e) => handleProfileChange("activityLevel", e.target.value as any)}
+                          className="text-xs font-bold"
+                        >
+                          {activityLevelOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
                           ))}
                         </Select>
                       </Field>

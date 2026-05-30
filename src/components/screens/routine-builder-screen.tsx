@@ -29,6 +29,8 @@ export function RoutineBuilderScreen() {
   const setEditingRoutineId = useAtlasStore((state) => state.setEditingRoutineId);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
+  const routineBuilderDefaultDay = useAtlasStore((state) => state.routineBuilderDefaultDay);
+  const setRoutineBuilderDefaultDay = useAtlasStore((state) => state.setRoutineBuilderDefaultDay);
 
   const [routine, setRoutine] = useState<Routine>(freshRoutine());
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,11 +46,16 @@ export function RoutineBuilderScreen() {
     } else {
       const plan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
       const takenDays = new Set(plan?.routines.map(r => r.day) ?? []);
-      const availableDay = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].find(d => !takenDays.has(d)) || "Monday";
+      // Use the pre-selected day from a rest-day card, or fall back to first available
+      const preselectedDay = routineBuilderDefaultDay && !takenDays.has(routineBuilderDefaultDay)
+        ? routineBuilderDefaultDay
+        : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].find(d => !takenDays.has(d)) || "Monday";
       setRoutine({
         ...freshRoutine(),
-        day: availableDay,
+        day: preselectedDay,
       });
+      // Clear the default day after consuming it
+      if (routineBuilderDefaultDay) setRoutineBuilderDefaultDay(null);
     }
   }, [editingWorkoutPlanId, editingRoutineId, workoutPlans]);
 

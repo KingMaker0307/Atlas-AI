@@ -1130,7 +1130,7 @@ export function WelcomeScreen() {
                       </div>
 
                       {showRestoreSandboxOtp && (
-                        <div className="fixed top-4 left-4 right-4 sm:relative sm:top-0 sm:left-0 sm:right-0 sm:mt-4 z-[9999] p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 shadow-lg sm:shadow-none animate-fadeIn">
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 animate-fadeIn">
                           <Lock size={14} className="text-emerald-500 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sandbox Verification Code</p>
@@ -1141,7 +1141,7 @@ export function WelcomeScreen() {
                             onClick={() => {
                               navigator.clipboard.writeText(restoreEmailGeneratedOtp);
                             }}
-                            className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded hover:bg-emerald-500/10 transition"
+                            className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition"
                           >
                             Copy
                           </button>

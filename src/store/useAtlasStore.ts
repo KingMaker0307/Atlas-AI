@@ -52,6 +52,20 @@ interface SendCoachMessageOptions {
   startDay?: string;
 }
 
+function migrateProfile(profile: UserProfile | null): UserProfile | null {
+  if (!profile) return profile;
+  const newProfile = { ...profile };
+
+  if (!newProfile.gender) {
+    newProfile.gender = (newProfile.goal || "").toLowerCase().includes("female") ? "female" : "male";
+  }
+  if (!newProfile.activityLevel) {
+    newProfile.activityLevel = "moderately_active";
+  }
+  
+  return newProfile;
+}
+
 interface AtlasState {
   hydrated: boolean;
   activeTab: AtlasTab;
@@ -59,6 +73,7 @@ interface AtlasState {
   activeSettingsTab: "profile" | "ai" | "system";
   editingWorkoutPlanId: string | null;
   editingRoutineId: string | null;
+  routineBuilderDefaultDay: string | null;
   profile: UserProfile | null;
   workouts: Workout[];
   activeWorkout: Workout | null;
@@ -93,6 +108,7 @@ interface AtlasState {
   setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
   setEditingWorkoutPlanId: (id: string | null) => void;
   setEditingRoutineId: (id: string | null) => void;
+  setRoutineBuilderDefaultDay: (day: string | null) => void;
   setWorkoutTab: (tab: "plans" | "nutrition") => void;
   hydrate: () => Promise<void>;
   pullCloudUpdate: () => Promise<void>;
@@ -389,6 +405,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   activeSettingsTab: "profile",
   editingWorkoutPlanId: null,
   editingRoutineId: null,
+  routineBuilderDefaultDay: null,
   coachBusy: false,
   providerBusy: false,
   apiCallCount: 0, // Initialize in store
@@ -503,6 +520,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
   setEditingWorkoutPlanId: (id) => set({ editingWorkoutPlanId: id }),
   setEditingRoutineId: (id) => set({ editingRoutineId: id }),
+  setRoutineBuilderDefaultDay: (day) => set({ routineBuilderDefaultDay: day }),
   checkAndAutoStopActiveWorkout: async () => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
@@ -538,6 +556,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   hydrate: async () => {
     const localData = await loadSnapshot();
     const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
+
+    // Migrate user profile for gender and activityLevel
+    if (snapshot.profile) {
+      snapshot.profile = migrateProfile(snapshot.profile);
+    }
     
     // Restore device secret to localStorage if it's found in IndexedDB
     if (snapshot.deviceSecret && typeof window !== "undefined") {
@@ -643,9 +666,13 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         if (!localLastSyncedAt || (cloudUpdatedAt && new Date(cloudUpdatedAt).getTime() > new Date(localLastSyncedAt).getTime())) {
           console.log("[Cloud Sync] Found newer cloud snapshot. Restoring silently...");
           const activeStartupChoice = get().startupChoice || "local";
+          const restoredSnapshot = { ...res.snapshot };
+          if (restoredSnapshot.profile) {
+            restoredSnapshot.profile = migrateProfile(restoredSnapshot.profile);
+          }
           set({
             ...freshSnapshot(),
-            ...res.snapshot,
+            ...restoredSnapshot,
             hasOnboarded: true,
             startupChoice: activeStartupChoice,
             hydrated: true,
@@ -1517,6 +1544,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         hasOnboarded: true,
         startupChoice: "local" as StartupChoice,
       };
+      if (mergedSnapshot.profile) {
+        mergedSnapshot.profile = migrateProfile(mergedSnapshot.profile);
+      }
       if (mergedSnapshot.deviceSecret && typeof window !== "undefined") {
         setDeviceSecretValue(mergedSnapshot.deviceSecret);
       }
@@ -1532,6 +1562,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         hasOnboarded: true,
         startupChoice: "local" as StartupChoice,
       };
+      if (mergedSnapshot.profile) {
+        mergedSnapshot.profile = migrateProfile(mergedSnapshot.profile);
+      }
       if (mergedSnapshot.deviceSecret && typeof window !== "undefined") {
         setDeviceSecretValue(mergedSnapshot.deviceSecret);
       }

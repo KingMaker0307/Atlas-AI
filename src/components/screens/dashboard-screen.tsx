@@ -60,6 +60,7 @@ import { createId } from "@/lib/id";
 import { validateEmail } from "@/lib/email-validator";
 import { restoreProfileByEmail } from "@/lib/sync";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
+import { calculateNutritionTargets } from "@/lib/calculators";
 
 export function DashboardScreen() {
   const profile = useAtlasStore((state) => state.profile);
@@ -319,42 +320,9 @@ export function DashboardScreen() {
     return parseAiWorkoutPlan(content) !== null;
   };
 
-  const calculatedProtein = useMemo(() => {
-    const w = profile?.weight;
-    if (!w) return null;
-
-    const unit = profile?.weightUnit ?? "lbs";
-    const weightInLbs = unit === "lbs" ? w : w * 2.20462;
-    const physique = profile?.targetPhysique || "athletic";
-
-    let multiplier = 1.0;
-    if (physique === "shredded") multiplier = 1.2;
-    else if (physique === "lean") multiplier = 1.1;
-    else if (physique === "athletic") multiplier = 1.0;
-    else if (physique === "toned") multiplier = 0.9;
-    else if (physique === "bulky") multiplier = 1.0;
-
-    const proteinTarget = weightInLbs * multiplier;
-    return Math.round(proteinTarget);
-  }, [profile?.weight, profile?.targetPhysique, profile?.weightUnit]);
-
-  const calculatedCalories = useMemo(() => {
-    if (!profile?.weight || !profile?.age) return 2288;
-    const w = profile.weightUnit === "lbs" ? profile.weight * 0.453592 : profile.weight;
-    const h = profile.heightUnit === "in" ? (profile.height || 70) * 2.54 : profile.height || 170;
-    const gender = (profile.goal || "").toLowerCase().includes("female") ? "female" : "male";
-    const bmr = 10 * w + 6.25 * h - 5 * profile.age + (gender === "female" ? -161 : 5);
-    const tdee = bmr * 1.55;
-
-    const goalText = (profile.customGoal || profile.goal || "").toLowerCase();
-    let calorieAdjustment = 0;
-    if (goalText.includes("lose") || goalText.includes("cut") || goalText.includes("shred") || goalText.includes("deficit") || goalText.includes("lean")) {
-      calorieAdjustment = -500;
-    } else if (goalText.includes("gain") || goalText.includes("bulk") || goalText.includes("build") || goalText.includes("mass") || goalText.includes("surplus")) {
-      calorieAdjustment = 300;
-    }
-    return Math.round(tdee + calorieAdjustment);
-  }, [profile?.weight, profile?.age, profile?.height, profile?.weightUnit, profile?.heightUnit, profile?.goal, profile?.customGoal]);
+  const nutritionTargets = useMemo(() => {
+    return calculateNutritionTargets(profile);
+  }, [profile]);
 
   const getLocalDateString = (d: Date) => {
     const year = d.getFullYear();
@@ -977,7 +945,7 @@ export function DashboardScreen() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-amber-450 font-mono">Daily Nutrition</span>
                     <h3 className="text-sm sm:text-base font-black text-foreground">Nutrition &amp; Calories</h3>
                     <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed">
-                      Target <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong> today.
+                      Target <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.protein}g protein</strong> today.
                     </p>
                     <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
                       2,500 ml water · Log all meals
@@ -1008,7 +976,7 @@ export function DashboardScreen() {
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                     Today's Target
                   </span>
-                  <span className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase">Rest Day</span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase">{todayDayName} - Rest Day</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-foreground leading-tight tracking-tight">Rest, Recharge &amp; Recovery</h2>
                 <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed max-w-2xl">
@@ -1057,7 +1025,7 @@ export function DashboardScreen() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-amber-450 font-mono">Daily Nutrition</span>
                     <h3 className="text-sm sm:text-base font-black text-foreground">Nutrition &amp; Energy</h3>
                     <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed">
-                      Aim for <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong> to support recovery.
+                      Aim for <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.protein}g protein</strong> to support recovery.
                     </p>
                     <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
                       2,500 ml water · Log all meals
@@ -1279,7 +1247,7 @@ export function DashboardScreen() {
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
               <span className="text-xs text-zinc-500 font-bold uppercase">Protein Target</span>
               <p className="font-bold text-emerald-600 dark:text-emerald-300 text-sm">
-                {calculatedProtein ? `${calculatedProtein} g/day` : "N/A"}
+                {nutritionTargets.protein ? `${nutritionTargets.protein} g/day` : "N/A"}
               </p>
             </div>
           </div>

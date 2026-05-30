@@ -30,6 +30,7 @@ export function WorkoutPlanDetailScreen() {
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const setEditingRoutineId = useAtlasStore((state) => state.setEditingRoutineId);
+  const setRoutineBuilderDefaultDay = useAtlasStore((state) => state.setRoutineBuilderDefaultDay);
   const deleteRoutine = useAtlasStore((state) => state.deleteRoutine);
   const startWorkout = useAtlasStore((state) => state.startWorkout);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
@@ -330,15 +331,15 @@ export function WorkoutPlanDetailScreen() {
               </Card>
             );
           } else {
-            // Rest Day block
+            // Rest Day block — with option to convert to a workout for any plan type
             return (
               <Card className="p-5 border border-dashed border-violet-500/20 bg-surface flex flex-col items-center justify-center min-h-[220px] text-center" key={day}>
                 <div className="p-3 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mb-2.5">
                   <Moon size={24} />
                 </div>
                 <span className="text-xs text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
-                <p className="text-sm font-bold text-zinc-900 dark:text-white mt-1">Rest & CNS Restoration</p>
-                <p className="text-xs text-zinc-750 max-w-[220px] mt-0.5 leading-normal">
+                <p className="text-sm font-bold text-foreground mt-1">Rest &amp; CNS Restoration</p>
+                <p className="text-xs text-zinc-555 dark:text-zinc-450 max-w-[220px] mt-0.5 leading-normal">
                   Muscle hypertrophy and neural system recovery occur on rest cycles. Focus on targeted hydration and sleep.
                 </p>
 
@@ -389,26 +390,27 @@ export function WorkoutPlanDetailScreen() {
                     </span>
                   )}
                 </div>
+
+                {/* Convert rest day to a workout routine — available for all plan types */}
+                <div className="mt-4 w-full border-t border-violet-500/10 pt-4">
+                  <Button
+                    variant="ghost"
+                    className="w-full h-9 text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-all active:scale-[0.98]"
+                    onClick={() => {
+                      setRoutineBuilderDefaultDay(day);
+                      setEditingRoutineId(null);
+                      setActiveSubScreen("routine-builder");
+                    }}
+                  >
+                    <Plus size={13} className="mr-1.5" />
+                    Schedule Workout for {day}
+                  </Button>
+                </div>
               </Card>
             );
           }
         })}
 
-        {/* Add Routine card */}
-        {!isReadOnly && plan.routines.length < 7 && (
-          <Card className="p-5 flex flex-col items-center justify-center border-dashed border-2 border-card-border hover:border-emerald-500/20 bg-white/[0.005] hover:bg-emerald-500/[0.01] transition-all cursor-pointer min-h-[220px] group"
-            onClick={() => {
-              setEditingRoutineId(null);
-              setActiveSubScreen("routine-builder");
-            }}
-          >
-             <div className="p-3 rounded-full bg-emerald-500/5 text-emerald-450 border border-emerald-500/10 mb-2.5 group-hover:scale-105 transition-transform duration-300">
-              <Plus size={28} />
-            </div>
-            <p className="text-zinc-900 dark:text-white font-bold group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors">Add Scheduled Routine</p>
-            <p className="text-xs text-zinc-750 text-center mt-0.5 max-w-[200px] leading-normal">Configure a new training routine day for this workout plan.</p>
-          </Card>
-        )}
       </div>
 
       <PreWorkoutCheckinModal

@@ -28,6 +28,8 @@ const providerTypes = [
 
 const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
+  gender: z.enum(["male", "female"]),
+  activityLevel: z.enum(["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"]),
   customGoal: z.string().min(8, "Add a specific goal").max(120, "Goal must be 120 characters or less"),
   bodyType: z.enum(["ectomorph", "mesomorph", "endomorph"]),
   experience: z.enum(["beginner", "intermediate", "advanced"]),
@@ -80,6 +82,14 @@ const targetPhysiqueOptions = [
   { value: "bulky", label: "Bulky", desc: "Maximize size and thickness." },
   { value: "shredded", label: "Shredded", desc: "Ultra-low fat, high definition." },
   { value: "toned", label: "Toned", desc: "Firm muscles, healthy look." },
+] as const;
+
+const activityLevelOptions = [
+  { value: "sedentary", label: "Sedentary", desc: "Desk job, little to no weekly exercise." },
+  { value: "lightly_active", label: "Lightly Active", desc: "Light exercise or sports 1-3 days/week." },
+  { value: "moderately_active", label: "Moderately Active", desc: "Moderate exercise or sports 3-5 days/week." },
+  { value: "very_active", label: "Very Active", desc: "Hard exercise or sports 6-7 days/week." },
+  { value: "extra_active", label: "Extra Active", desc: "Very physical job or athletic training twice/day." },
 ] as const;
 
 const durationOptions = [
@@ -210,6 +220,8 @@ export function Onboarding() {
         equipment: "full gym",
         providerType: "none",
         workoutDuration: 45,
+        gender: "male",
+        activityLevel: "moderately_active",
       });
     } catch (e: any) {
       setSubmitError(e.message || "Failed to skip onboarding.");
@@ -228,6 +240,8 @@ export function Onboarding() {
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       name: "",
+      gender: "male",
+      activityLevel: "moderately_active",
       customGoal: "",
       bodyType: "mesomorph",
       experience: "intermediate",
@@ -266,11 +280,11 @@ export function Onboarding() {
   const nextStep = async () => {
     let fieldsToValidate: Array<keyof OnboardingForm> = [];
     if (step === 1) {
-      fieldsToValidate = ["name", "age", "height", "weight", "heightUnit", "weightUnit"];
+      fieldsToValidate = ["name", "age", "height", "weight", "heightUnit", "weightUnit", "gender"];
     } else if (step === 2) {
       fieldsToValidate = ["customGoal", "trainingStyle", "daysPerWeek", "equipment", "workoutDuration"];
     } else if (step === 3) {
-      fieldsToValidate = ["bodyType", "targetPhysique", "experience", "injuries"];
+      fieldsToValidate = ["bodyType", "targetPhysique", "experience", "injuries", "activityLevel"];
     }
 
     const isValid = await trigger(fieldsToValidate);
@@ -512,6 +526,38 @@ export function Onboarding() {
                       <div className="mt-1.5">
                         <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" className="text-xs font-mono font-bold" />
                         {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
+                      </div>
+                    </div>
+
+                    {/* Gender */}
+                    <div>
+                      <Label>Biological Sex</Label>
+                      <div className="mt-1.5">
+                        <Controller
+                          name="gender"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-input-border bg-input p-1 h-9 select-none">
+                              {[
+                                { value: "male", label: "Male" },
+                                { value: "female", label: "Female" },
+                              ].map((g) => (
+                                <button
+                                  key={g.value}
+                                  type="button"
+                                  onClick={() => field.onChange(g.value)}
+                                  className={`rounded-lg text-xs font-bold transition cursor-pointer ${
+                                    field.value === g.value
+                                      ? "bg-emerald-500 text-white-keep dark:text-zinc-950 shadow-sm animate-click"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                                  }`}
+                                >
+                                  {g.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        />
                       </div>
                     </div>
 
@@ -794,6 +840,25 @@ export function Onboarding() {
                           onChange={field.onChange}
                           options={targetPhysiqueOptions}
                           columns={2}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Weekly Activity Level</Label>
+                    <p className="text-zinc-500 text-xs mb-2">
+                      Required to estimate your Daily Energy Expenditure (TDEE):
+                    </p>
+                    <Controller
+                      name="activityLevel"
+                      control={control}
+                      render={({ field }) => (
+                        <CardGridSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          options={activityLevelOptions}
+                          columns={1}
                         />
                       )}
                     />
