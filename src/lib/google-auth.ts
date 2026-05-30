@@ -101,14 +101,7 @@ export async function renderGoogleSignInButton(
   onError?: (message: string) => void,
   theme: "outline" | "filled_black" | "filled_blue" = "outline"
 ): Promise<void> {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-  if (!clientId) {
-    onError?.(
-      "Google Client ID is not set. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to your .env file and restart the dev server."
-    );
-    return;
-  }
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "59606573141-j2el2qru2gg4g9aj8mqgc1tbn6lhtt7t.apps.googleusercontent.com";
 
   try {
     await loadGIS();
@@ -195,13 +188,7 @@ export async function triggerGoogleSignIn(
   onSuccess: (user: GoogleUser) => void,
   onError?: (message: string) => void
 ): Promise<void> {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    onError?.(
-      "Google Client ID is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env."
-    );
-    return;
-  }
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "59606573141-j2el2qru2gg4g9aj8mqgc1tbn6lhtt7t.apps.googleusercontent.com";
 
   try {
     await loadGIS();
