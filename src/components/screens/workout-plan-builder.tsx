@@ -287,8 +287,8 @@ const CategoryPill: FC<{
     onClick={onClick}
     className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
       active
-        ? "border-violet-500/50 bg-violet-500/20 text-violet-300 shadow-[0_0_12px_rgba(139,92,246,0.15)]"
-        : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:bg-white/10"
+        ? "border-violet-500/50 bg-violet-500/20 text-violet-450 shadow-[0_0_12px_rgba(139,92,246,0.15)]"
+        : "border-surface-border bg-surface text-zinc-750 hover:bg-surface/80"
     }`}
   >
     {label}
@@ -702,7 +702,7 @@ export function WorkoutPlanBuilderScreen() {
             <Button variant="ghost" size="icon" onClick={() => setActiveSubScreen(null)} aria-label="Exit detail screen">
               <ArrowLeft size={20} aria-hidden="true" />
             </Button>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-normal text-foreground">Create Workout Plan</h1>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Create Workout Plan</h1>
           </section>
 
           <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
@@ -852,8 +852,8 @@ export function WorkoutPlanBuilderScreen() {
                   onClick={() => setFilterExperience(filterExperience === exp ? null : exp)}
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all capitalize ${
                     filterExperience === exp
-                      ? "border-violet-500/50 bg-violet-500/20 text-violet-300"
-                      : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
+                      ? "border-violet-500/50 bg-violet-500/20 text-violet-450"
+                      : "border-surface-border bg-surface/30 text-zinc-750 hover:bg-surface/80"
                   }`}
                 >
                   <User size={12} className="inline mr-1" />
@@ -861,7 +861,7 @@ export function WorkoutPlanBuilderScreen() {
                 </button>
               ))}
 
-              <div className="w-px h-5 bg-white/10 self-center mx-1" />
+              <div className="w-px h-5 bg-surface-border self-center mx-1" />
 
               {/* Days filter */}
               {[2, 3, 4, 5, 6].map((d) => (
@@ -870,15 +870,15 @@ export function WorkoutPlanBuilderScreen() {
                   onClick={() => setFilterDays(filterDays === d ? null : d)}
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
                     filterDays === d
-                      ? "border-violet-500/50 bg-violet-500/20 text-violet-300"
-                      : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
+                      ? "border-violet-500/50 bg-violet-500/20 text-violet-450"
+                      : "border-surface-border bg-surface/30 text-zinc-750 hover:bg-surface/80"
                   }`}
                 >
                   {d}×/wk
                 </button>
               ))}
 
-              <div className="w-px h-5 bg-white/10 self-center mx-1" />
+              <div className="w-px h-5 bg-surface-border self-center mx-1" />
 
               {/* Duration filter */}
               {[30, 45, 60, 90].map((m) => (
@@ -887,8 +887,8 @@ export function WorkoutPlanBuilderScreen() {
                   onClick={() => setFilterDuration(filterDuration === m ? null : m)}
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
                     filterDuration === m
-                      ? "border-violet-500/50 bg-violet-500/20 text-violet-300"
-                      : "border-white/10 bg-transparent text-zinc-500 hover:border-white/20"
+                      ? "border-violet-500/50 bg-violet-500/20 text-violet-450"
+                      : "border-surface-border bg-surface/30 text-zinc-750 hover:bg-surface/80"
                   }`}
                 >
                   {m}m
@@ -970,7 +970,7 @@ export function WorkoutPlanBuilderScreen() {
               <Button variant="ghost" size="icon" onClick={() => editingWorkoutPlanId ? setActiveSubScreen(null) : setView("choose-method")} aria-label="Back">
                 <ArrowLeft size={20} aria-hidden="true" />
               </Button>
-              <h1 className="text-xl font-semibold tracking-normal text-foreground">
+              <h1 className="text-xl font-black tracking-tight text-foreground">
                 {editingWorkoutPlanId ? "Edit Plan" : "New Plan"}
               </h1>
             </div>
@@ -1044,31 +1044,31 @@ export function WorkoutPlanBuilderScreen() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="text-xs py-2.5 h-auto bg-violet-500/10 border-violet-500/20 text-violet-300 hover:bg-violet-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
+                className="text-xs py-2.5 h-auto bg-violet-500/10 border-violet-500/20 text-violet-450 hover:bg-violet-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
                 onClick={() => handleSeedSplit("ppl")}
               >
                 <span className="font-bold">Push / Pull / Legs</span>
-                <span className="text-xs text-zinc-500 font-medium">3-Day Classic Split</span>
+                <span className="text-xs text-zinc-750 font-medium">3-Day Classic Split</span>
               </Button>
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="text-xs py-2.5 h-auto bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
+                className="text-xs py-2.5 h-auto bg-emerald-500/10 border-emerald-500/20 text-emerald-450 hover:bg-emerald-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
                 onClick={() => handleSeedSplit("upper-lower")}
               >
                 <span className="font-bold">Upper / Lower</span>
-                <span className="text-xs text-zinc-500 font-medium">4-Day Muscle Split</span>
+                <span className="text-xs text-zinc-750 font-medium">4-Day Muscle Split</span>
               </Button>
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="text-xs py-2.5 h-auto bg-sky-500/10 border-sky-500/20 text-sky-300 hover:bg-sky-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
+                className="text-xs py-2.5 h-auto bg-sky-500/10 border-sky-500/20 text-blue-455 hover:bg-sky-500/20 flex flex-col gap-0.5 justify-center items-center rounded-xl"
                 onClick={() => handleSeedSplit("full-body")}
               >
                 <span className="font-bold">Full Body</span>
-                <span className="text-xs text-zinc-500 font-medium">3-Day Alternating Plan</span>
+                <span className="text-xs text-zinc-750 font-medium">3-Day Alternating Plan</span>
               </Button>
             </div>
           </Card>
@@ -1113,9 +1113,9 @@ export function WorkoutPlanBuilderScreen() {
       )}
 
       {showStartDayModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-[0_0_50px_rgba(0,0,0,0.8)]" role="dialog" aria-modal="true" aria-labelledby="start-day-title">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/85 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="start-day-title">
+            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
               setShowStartDayModal(false);
               setPendingTemplate(null);
               setPendingAiData(null);
@@ -1123,8 +1123,8 @@ export function WorkoutPlanBuilderScreen() {
             }} aria-label="Close modal">
               <X size={20} aria-hidden="true" />
             </Button>
-            <h2 id="start-day-title" className="text-xl font-semibold text-foreground">Select Start Day</h2>
-            <p className="text-zinc-650 dark:text-zinc-300 text-sm leading-relaxed">
+            <h2 id="start-day-title" className="text-xl font-bold text-zinc-900 dark:text-white">Select Start Day</h2>
+            <p className="text-zinc-750 text-sm leading-relaxed">
               Choose the start day of the week for your new plan. Your routines will be scheduled starting from this day.
             </p>
             <div className="space-y-2">
@@ -1158,12 +1158,12 @@ export function WorkoutPlanBuilderScreen() {
 
       {/* ─── AI PLAN GENERATION ERROR MODAL ─── */}
       {showAiErrorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md p-6 space-y-4 relative border border-rose-500/30 bg-card shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="ai-error-title">
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
+              className="absolute top-2.5 right-2.5 text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
               onClick={() => setShowAiErrorModal(false)}
               aria-label="Close modal"
             >

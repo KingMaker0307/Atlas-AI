@@ -40,16 +40,16 @@ export function WorkoutPlanCard({ onBuild }: WorkoutPlanCardProps) {
   const isLimitReached = workoutsToday.length >= 3;
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 border border-card-border bg-card shadow">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-emerald-200">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-450">
             {routine.estimatedMinutes} min
           </p>
-          <h2 className="mt-2 text-xl font-semibold text-white">{routine.name}</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">{routine.focus}</p>
+          <h2 className="mt-2 text-xl font-bold text-zinc-900 dark:text-white tracking-tight">{routine.name}</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-750">{routine.focus}</p>
         </div>
-        <Dumbbell className="text-zinc-500" size={20} />
+        <Dumbbell className="text-zinc-750" size={20} />
       </div>
 
       <Button
@@ -69,18 +69,18 @@ export function WorkoutPlanCard({ onBuild }: WorkoutPlanCardProps) {
       </Button>
 
       {!activeWorkout && !isLimitReached && (
-        <p className="text-[10px] text-zinc-505 dark:text-zinc-500 mt-2 text-center">
+        <p className="text-[10px] text-zinc-555 mt-2 text-center">
           Note: Sessions have a maximum duration of 3 hours.
         </p>
       )}
 
       {isLimitReached && !activeWorkout && (
-        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1.5">
-          <div className="flex items-center gap-1.5 font-semibold">
-            <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+        <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-200 text-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 font-bold">
+            <AlertTriangle size={14} className="text-amber-450 shrink-0" />
             <span>Overtraining Warning</span>
           </div>
-          <p className="text-zinc-300 leading-relaxed">
+          <p className="text-zinc-750 leading-relaxed">
             You've completed 3 workouts today. Performing more than 3 high-intensity sessions in a single day is not recommended. Excessive training increases the risk of muscle breakdown (rhabdomyolysis), central nervous fatigue, and chronic joint strain. Prioritize recovery today.
           </p>
         </div>

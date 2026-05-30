@@ -921,7 +921,7 @@ export function WelcomeScreen() {
                   <FileUp className="text-blue-400" size={20} />
                   Restore training profile
                 </h2>
-                <p className="text-[11px] text-zinc-405 leading-normal">
+                <p className="text-[11px] text-zinc-400 leading-normal">
                   Restore your routines, workouts, and settings using Google Drive or your Cloud Email Sync account.
                 </p>
               </div>

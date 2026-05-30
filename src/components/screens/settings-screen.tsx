@@ -754,7 +754,16 @@ export function SettingsScreen() {
                       </div>
 
                       <div className="sm:col-span-2">
-                        <Field label="Email Address">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5 select-none">
+                            <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">Email Address</Label>
+                            {profile?.emailVerified && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-sm">
+                                <Check size={10} className="stroke-[3.5]" />
+                                Verified Sync
+                              </span>
+                            )}
+                          </div>
                           <div className="relative">
                             <Input
                               type="email"
@@ -764,17 +773,11 @@ export function SettingsScreen() {
                               className="text-xs font-mono font-bold pl-9 bg-zinc-150/50 dark:bg-zinc-900/50 cursor-not-allowed select-all border-zinc-200 dark:border-zinc-800 text-zinc-555 dark:text-zinc-400 opacity-80"
                             />
                             <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
-                            {profile?.emailVerified && (
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-sm">
-                                <Check size={10} className="stroke-[3.5]" />
-                                Verified Sync
-                              </span>
-                            )}
                           </div>
                           <span className="text-[10px] text-zinc-400 mt-1 block">
                             Used for Secure Cloud Sync naming conventions. This email is locked and cannot be altered.
                           </span>
-                        </Field>
+                        </div>
                       </div>
 
                       <Field label="Age">
