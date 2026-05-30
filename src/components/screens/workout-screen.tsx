@@ -819,6 +819,7 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Edit plan"
                           className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 disabled:opacity-40"
                           disabled={coachBusy}
                           onClick={() => {
@@ -831,6 +832,7 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          aria-label="Delete plan"
                           className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500 disabled:opacity-40"
                           disabled={coachBusy}
                           onClick={() => {
@@ -1114,7 +1116,7 @@ export function WorkoutScreen() {
         {showSwitchModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <Card className="w-full max-w-sm p-6 space-y-4 relative">
-              <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
+              <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
                 setShowSwitchModal(false);
                 setPlanToActivate(null);
               }}>
@@ -1150,7 +1152,7 @@ export function WorkoutScreen() {
         {showDeleteModal && planToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <Card className="w-full max-w-sm p-6 space-y-4 relative">
-              <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
+              <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
                 setShowDeleteModal(false);
                 setPlanToDelete(null);
               }}>

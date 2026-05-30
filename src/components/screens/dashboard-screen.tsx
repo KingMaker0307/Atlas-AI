@@ -1152,7 +1152,7 @@ export function DashboardScreen() {
               <User size={16} className="text-emerald-600 dark:text-emerald-400" />
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Athlete Biometrics</h2>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setActiveTab("settings")}>
+            <Button variant="ghost" size="icon" aria-label="Edit biometrics" className="h-7 w-7 text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setActiveTab("settings")}>
               <Pencil size={14} />
             </Button>
           </div>
@@ -1339,7 +1339,7 @@ export function DashboardScreen() {
                       <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
+                      <Button variant="ghost" size="icon" aria-label="Edit workout plan" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
                         setEditingWorkoutPlanId(plan.id);
                         setActiveSubScreen("workout-plan-builder");
                       }}>
@@ -1497,7 +1497,7 @@ export function DashboardScreen() {
       {showSwitchModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
               setShowSwitchModal(false);
               setPlanToActivate(null);
             }}>
@@ -1533,7 +1533,7 @@ export function DashboardScreen() {
       {showDeleteModal && planToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
               setShowDeleteModal(false);
               setPlanToDelete(null);
             }}>
@@ -1786,6 +1786,7 @@ export function DashboardScreen() {
                         setMigrationSubmitError(null);
                       }}
                       className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition"
+                      aria-label="Close sync setup"
                     >
                       <X size={18} />
                     </button>

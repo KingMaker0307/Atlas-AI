@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, ClipboardList, Home, Settings, WifiOff, ShieldAlert } from "lucide-react";
+import { BarChart3, Bot, ClipboardList, Home, Settings, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
@@ -16,6 +16,7 @@ import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Onboarding } from "@/components/onboarding";
 import { PwaRegistrar } from "@/components/pwa-registrar";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { useAtlasStore, type AtlasTab } from "@/store/useAtlasStore";
@@ -103,6 +104,12 @@ export function AtlasApp() {
       root.classList.toggle("dark", shouldDark);
       root.classList.toggle("light", !shouldDark);
       root.style.colorScheme = shouldDark ? "dark" : "light";
+
+      // Dynamically update the theme-color meta tag so iOS/Android status bar matches
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute("content", shouldDark ? "#07080a" : "#f6f7f9");
+      }
     };
 
     updateTheme();
@@ -110,7 +117,16 @@ export function AtlasApp() {
     return () => mediaQuery.removeEventListener("change", updateTheme);
   }, [theme]);
 
-  if (!online) return <OfflineBlockerScreen />;
+  // Lock body scroll when a full-screen subscreen is active (prevents background scroll)
+  useEffect(() => {
+    if (activeSubScreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [activeSubScreen]);
+
   if (blocked) return <BlockedBlockerScreen />;
   if (!hydrated) return <LoadingApp />;
   if (!startupChoice) return <WelcomeScreen />;
@@ -119,13 +135,13 @@ export function AtlasApp() {
   const renderSubScreen = () => {
     switch (activeSubScreen) {
       case "routine-builder":
-        return <RoutineBuilderScreen />;
+        return <ErrorBoundary screen="Routine Builder"><RoutineBuilderScreen /></ErrorBoundary>;
       case "workout-plan-builder":
-        return <WorkoutPlanBuilderScreen />;
+        return <ErrorBoundary screen="Plan Builder"><WorkoutPlanBuilderScreen /></ErrorBoundary>;
       case "workout-plan-detail":
-        return <WorkoutPlanDetailScreen />;
+        return <ErrorBoundary screen="Plan Detail"><WorkoutPlanDetailScreen /></ErrorBoundary>;
       case "active-workout":
-        return <WorkoutScreen />;
+        return <ErrorBoundary screen="Active Workout"><WorkoutScreen /></ErrorBoundary>;
       default:
         return null;
     }
@@ -136,7 +152,10 @@ export function AtlasApp() {
       <PwaRegistrar />
       
       {/* ─── DESKTOP SIDEBAR NAVIGATION PANEL (Hidden on mobile) ─── */}
-      <aside className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-header border-r border-card-border p-5 z-40 select-none">
+      <aside
+        aria-label="Main navigation"
+        className="hidden md:flex flex-col w-64 fixed inset-y-0 left-0 bg-header border-r border-card-border p-5 z-40 select-none"
+      >
         {/* Brand Header Logo block */}
         <div className="flex items-center gap-3 mb-8 shrink-0">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 font-extrabold text-zinc-950">
@@ -160,8 +179,10 @@ export function AtlasApp() {
                   if (navigator.vibrate) navigator.vibrate(8);
                   setActiveTab(item.id);
                 }}
+                aria-current={active ? "page" : undefined}
+                aria-label={item.label}
                 className={cn(
-                  "relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition w-full justify-start leading-none",
+                  "relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition w-full justify-start leading-none min-h-[44px]",
                   active ? "text-emerald-500 dark:text-emerald-250 font-black" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                 )}
               >
@@ -214,18 +235,18 @@ export function AtlasApp() {
             renderSubScreen()
           ) : (
             <motion.div key={activeTab}>
-              {activeTab === "dashboard" ? <DashboardScreen /> : null}
-              {activeTab === "workout" ? <WorkoutScreen /> : null}
-              {activeTab === "coach" ? <CoachScreen /> : null}
-              {activeTab === "progress" ? <ProgressScreen /> : null}
-              {activeTab === "settings" ? <SettingsScreen /> : null}
+              {activeTab === "dashboard" ? <ErrorBoundary screen="Dashboard"><DashboardScreen /></ErrorBoundary> : null}
+              {activeTab === "workout" ? <ErrorBoundary screen="Workout"><WorkoutScreen /></ErrorBoundary> : null}
+              {activeTab === "coach" ? <ErrorBoundary screen="Coach"><CoachScreen /></ErrorBoundary> : null}
+              {activeTab === "progress" ? <ErrorBoundary screen="Progress"><ProgressScreen /></ErrorBoundary> : null}
+              {activeTab === "settings" ? <ErrorBoundary screen="Settings"><SettingsScreen /></ErrorBoundary> : null}
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
       {/* ─── MOBILE BOTTOM BAR NAVIGATION (Hidden on desktop) ─── */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
+      <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
         <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-5 px-1 sm:px-2 md:max-w-xl">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -233,10 +254,12 @@ export function AtlasApp() {
             return (
               <button
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 rounded-2xl text-[10px] sm:text-[11px] font-medium transition",
+                  "relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 rounded-2xl text-[10px] sm:text-[11px] font-medium transition min-h-[44px]",
                   active ? "text-emerald-500 dark:text-emerald-200" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                 )}
                 key={item.id}
+                aria-current={active ? "page" : undefined}
+                aria-label={item.label}
                 onClick={() => {
                   if (navigator.vibrate) navigator.vibrate(8);
                   setActiveTab(item.id);
@@ -277,27 +300,10 @@ function LoadingApp() {
 }
 
 function OfflineBlockerScreen() {
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-background p-4 text-center text-foreground">
-      <Card className="w-full max-w-md p-8 space-y-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.8)]">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-500 animate-pulse">
-          <WifiOff size={32} />
-        </div>
-        <div className="space-y-3">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Internet Connection Required</h1>
-          <p className="text-sm text-zinc-500 leading-relaxed">
-            Atlas AI Coach is a secure web-based application and requires an active internet connection to synchronize your training profile and function properly.
-          </p>
-        </div>
-        <div className="pt-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-card-border bg-input px-3.5 py-1.5 text-xs text-zinc-500 font-medium">
-            <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
-            Waiting for connection...
-          </div>
-        </div>
-      </Card>
-    </main>
-  );
+  // This screen is no longer used — the app works offline for all local-data features.
+  // Kept as a reference but never rendered. The OfflineIndicator in the nav handles
+  // displaying the offline state inline without blocking the whole UI.
+  return null;
 }
 
 function BlockedBlockerScreen() {
