@@ -18,17 +18,20 @@ import {
   ShieldAlert,
   Bot,
   Flame,
-  Copy,
   Check,
   Mail,
   Lock,
   ShieldCheck,
   RefreshCw,
-  Sun
+  Sun,
+  AlertCircle,
+  Cloud
 } from "lucide-react";
-import { useState, ChangeEvent } from "react";
+import { useState, ChangeEvent, useEffect } from "react";
 import { validateEmail } from "@/lib/email-validator";
 import { restoreProfileByEmail } from "@/lib/sync";
+import { renderGoogleSignInButton, type GoogleUser } from "@/lib/google-auth";
+import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 
 type WelcomeView = "menu" | "backup" | "setup" | "restore" | "federated-setup";
 
@@ -161,27 +164,84 @@ export function WelcomeScreen() {
   const [restoreSuccess, setRestoreSuccess] = useState(false);
   const [restoreEmpty, setRestoreEmpty] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [isFederatedLoading, setIsFederatedLoading] = useState(false);
   const [capturedProvider, setCapturedProvider] = useState<"apple" | "google" | null>(null);
 
-  const simulateFederatedSignIn = async (provider: "apple" | "google", onSuccess: (email: string) => Promise<void> | void) => {
-    setIsFederatedLoading(true);
-    setCapturedProvider(provider);
-    setRestoreError(null);
-    setRestoreEmpty(false);
-    
-    // Simulate biometric Face ID or OAuth loading spinner
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    
-    const randomHex = Math.floor(1000 + Math.random() * 9000).toString(16);
-    const proxyEmail = provider === "apple"
-      ? `athlete.apple.${randomHex}@privaterelay.apple.com`
-      : `athlete.google.${randomHex}@gmail.com`;
-      
-    setIsFederatedLoading(false);
-    await onSuccess(proxyEmail);
-  };
+  // ─── Google One Tap state ───
+  const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
+  const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
+  const [forceLoadRealGoogle, setForceLoadRealGoogle] = useState(false);
   
+  // Render Google Sign-In button once the container is mounted
+  const initGoogleSignIn = (containerId: string, onSuccess: (user: GoogleUser) => void) => {
+    setGoogleAuthError(null);
+    setGoogleAuthLoading(true);
+    renderGoogleSignInButton(
+      containerId,
+      (user) => {
+        setGoogleAuthLoading(false);
+        onSuccess(user);
+      },
+      (err) => {
+        setGoogleAuthLoading(false);
+        setGoogleAuthError(err);
+      }
+    ).then(() => {
+      setGoogleAuthLoading(false);
+    }).catch((err) => {
+      setGoogleAuthLoading(false);
+      setGoogleAuthError(err?.message || "Google sign-in failed to load.");
+    });
+  };
+
+  // ─── Apple Sign In state ───
+  const [appleAuthError, setAppleAuthError] = useState<string | null>(null);
+  const [appleAuthLoading, setAppleAuthLoading] = useState(false);
+  const appleAvailability = typeof window !== "undefined" ? isAppleSignInAvailable() : { available: false, reason: "Loading..." };
+
+  /** Trigger real Apple Sign In popup */
+  const handleAppleSignIn = (onSuccess: (email: string, name: string) => void) => {
+    setAppleAuthError(null);
+    setAppleAuthLoading(true);
+    signInWithApple(
+      (user) => {
+        setAppleAuthLoading(false);
+        onSuccess(user.email, user.name);
+      },
+      (err) => {
+        setAppleAuthLoading(false);
+        setAppleAuthError(err);
+      }
+    );
+  };
+
+  // Handle Apple redirect callback (when popup was blocked; Apple redirects back with query params)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const appleEmail = params.get("apple_email");
+    const appleName = params.get("apple_name") ?? "";
+    const appleError = params.get("apple_error");
+
+    if (appleError) {
+      setAppleAuthError(`Apple Sign In failed: ${appleError.replace(/_/g, " ")}`);
+      // Clean up URL
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
+    if (appleEmail) {
+      // Apple redirect callback — auto-continue sign-in
+      setEmailInput(appleEmail);
+      setEmailVerified(true);
+      setCapturedProvider("apple");
+      if (appleName) setName(appleName.split(" ")[0]);
+      setView("setup");
+      // Clean up URL params
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Backup upload states
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPassphrase, setImportPassphrase] = useState("");
@@ -390,31 +450,7 @@ export function WelcomeScreen() {
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-start sm:justify-center bg-background p-4 py-8 sm:py-12 overflow-y-auto text-foreground selection:bg-emerald-300 selection:text-zinc-950">
-      {/* Sandbox Simulated Mailbox Notification */}
-      {showSandboxOtp && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-md animate-bounce select-none">
-          <div className="bg-zinc-900/95 border border-emerald-500/30 text-emerald-400 text-xs px-4 py-3 rounded-2xl shadow-[0_12px_30px_rgba(0,0,0,0.5)] flex items-center justify-between gap-3 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-mono text-[10px] sm:text-xs">
-                🔒 <span className="font-bold text-emerald-405">Sandbox Sync Mail:</span> "Your code is <span className="underline font-bold text-white tracking-widest">{generatedOtp}</span>"
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(generatedOtp);
-                setOtpCopied(true);
-                setTimeout(() => setOtpCopied(false), 2000);
-              }}
-              className="flex items-center gap-1 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-250 border border-emerald-500/30 px-2 py-1 rounded-lg text-[10px] font-bold uppercase transition"
-            >
-              {otpCopied ? <Check size={11} /> : <Copy size={11} />}
-              {otpCopied ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* NO sandbox OTP toast — removed for clean UX */}
 
       <Card className={`w-full transition-all duration-300 p-6 relative overflow-hidden shrink-0 ${view === "setup" ? "max-w-3xl" : "max-w-xl"}`}>
         <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
@@ -449,7 +485,7 @@ export function WelcomeScreen() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* 1. Seamless Cloud Sync & Onboarding */}
+                {/* 1. Cloud Sync */}
                 <button
                   type="button"
                   onClick={() => {
@@ -466,6 +502,7 @@ export function WelcomeScreen() {
                     setHeightUnit("in");
                     setSetupAiCoach(true);
                     setSelectedSyncType("federated");
+                    setGoogleAuthError(null);
                     setView("federated-setup");
                   }}
                   className="flex items-start text-left p-5 rounded-2xl border border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-500/5 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 hover:border-emerald-500/30 dark:hover:border-emerald-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
@@ -473,20 +510,20 @@ export function WelcomeScreen() {
                   <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-500/20 transition-all" />
                   
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
-                    <ShieldCheck size={20} className="stroke-[2.5]" />
+                    <Cloud size={20} className="stroke-[2.5]" />
                   </div>
                                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
-                      Option 1: Seamless Cloud Sync & Onboarding
+                      New Account — Sync to any device
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      (Highly Recommended) Pick this option to sync your training data seamlessly to any device. Zero manual typing required.
+                      Sign in with Google to create your account. Your data automatically backs up and works on any device.
                     </p>
                   </div>
                 </button>
 
-                {/* 2. Offline Fresh Setup */}
+                {/* 2. Local Only */}
                 <button
                   type="button"
                   onClick={() => {
@@ -504,7 +541,7 @@ export function WelcomeScreen() {
                     setSetupAiCoach(true);
                     setSelectedSyncType("offline");
                     setEmailInput("");
-                    setEmailVerified(true);
+                    setEmailVerified(true); // skip email for local-only
                     setView("setup");
                   }}
                   className="flex items-start text-left p-5 rounded-2xl border border-amber-500/15 dark:border-amber-500/20 bg-amber-50/40 dark:bg-amber-500/5 hover:bg-amber-50/80 dark:hover:bg-amber-500/10 hover:border-amber-500/30 dark:hover:border-amber-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
@@ -517,16 +554,16 @@ export function WelcomeScreen() {
                   
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-350 transition-colors flex items-center gap-1.5">
-                      Option 2: Offline Fresh Setup (Local Only)
+                      Local Only — No cloud sync
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-amber-600 dark:group-hover:text-amber-350 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      Warning: Your data is strictly offline. You must create manual backups in Settings regularly, or your data will be permanently lost when browser cache is cleared.
+                      Use the app without an account. Your data stays on this device only — remember to export backups regularly in Settings.
                     </p>
                   </div>
                 </button>
 
-                {/* 3. Sync, Restore & Local Backups */}
+                {/* 3. Sign Back In / Restore */}
                 <button
                   type="button"
                   onClick={() => {
@@ -538,6 +575,8 @@ export function WelcomeScreen() {
                     setRestoreSuccess(false);
                     setRestoreEmpty(false);
                     setRestoreError(null);
+                    setCapturedProvider(null);
+                    setGoogleAuthError(null);
                     setView("restore");
                   }}
                   className="flex items-start text-left p-5 rounded-2xl border border-teal-500/15 dark:border-teal-500/20 bg-teal-50/40 dark:bg-teal-500/5 hover:bg-teal-50/80 dark:hover:bg-teal-500/10 hover:border-teal-500/30 dark:hover:border-teal-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
@@ -550,11 +589,11 @@ export function WelcomeScreen() {
                   
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors flex items-center gap-1.5">
-                      Option 3: Sync & Restore Existing Profile
+                      Already have an account? Sign in
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-teal-600 dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      If you want to sync your training data seamlessly to any device, pick this option. Otherwise, make sure to export manual backups in Settings regularly, or your data will be permanently lost when browser cache is cleared.
+                      Sign in with your Google account to restore your existing profile and training data on this device.
                     </p>
                   </div>
                 </button>
@@ -569,82 +608,112 @@ export function WelcomeScreen() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
-              className="space-y-6 text-left"
+              className="space-y-5 text-left"
             >
-              <div className="space-y-1.5 border-b border-card-border pb-3 mb-2">
+              <div className="space-y-1.5 border-b border-card-border pb-3">
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
-                  <ShieldCheck className="text-emerald-550 dark:text-emerald-400" size={20} />
-                  Seamless Cloud Sync Authorization
+                  <Cloud className="text-emerald-500 dark:text-emerald-400" size={20} />
+                  Sign in to sync your data
                 </h2>
                 <p className="text-[11px] text-zinc-400 leading-normal">
-                  Connect your identity securely to establish a clean, verified Cloud backup. Real emails can be hidden using Apple's proxy relay model.
+                  Sign in with your Google account. Your real email is used to link your profile — no fake addresses.
                 </p>
               </div>
 
-              {isFederatedLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-fadeIn select-none">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent shadow-md" />
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider font-mono">
-                    Verifying Credentials via {capturedProvider === "apple" ? "Apple" : "Google"}...
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-5 pt-1">
-                  <div className="space-y-3">
-                    {/* Apple Button */}
-                    <button
-                      type="button"
-                      onClick={() => simulateFederatedSignIn("apple", (email) => {
-                        setEmailInput(email);
-                        setEmailVerified(true);
-                        setView("setup");
-                      })}
-                      className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-black text-white hover:bg-zinc-900 border border-zinc-800 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-md shadow-black/10 active:scale-[0.99]"
-                    >
-                      <svg className="h-4.5 w-4.5 fill-current text-white" viewBox="0 0 24 24">
-                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.51-.62.71-1.16 1.85-1.01 2.96 1.1.09 2.27-.58 2.96-1.41z" />
-                      </svg>
-                      Sign in with Apple
-                    </button>
-
-                    {/* Google Button */}
-                    <button
-                      type="button"
-                      onClick={() => simulateFederatedSignIn("google", (email) => {
-                        setEmailInput(email);
-                        setEmailVerified(true);
-                        setView("setup");
-                      })}
-                      className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:border-zinc-700 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-sm active:scale-[0.99]"
-                    >
-                      <svg className="h-4.5 w-4.5" viewBox="0 0 24 24">
-                        <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.555 0-6.437-2.882-6.437-6.437 0-3.555 2.882-6.437 6.437-6.437 1.523 0 2.923.533 4.033 1.414l3.14-3.14C18.665 1.511 15.656 0 12.24 0 5.48 0 0 5.48 0 12.24s5.48 12.24 12.24 12.24c6.72 0 12.24-5.48 12.24-12.24 0-.756-.076-1.503-.223-2.223H12.24z" />
-                      </svg>
-                      Sign in with Google
-                    </button>
-                  </div>
-
-                  <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-4 space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
-                      ⚠️ Crucial Data Warning
-                    </span>
-                    <p className="text-[10px] text-zinc-500 leading-relaxed">
-                      If you want to sync your training data seamlessly to any device, pick this option. Otherwise, make sure to export manual backups in Settings regularly, or your data will be permanently lost when browser cache is cleared.
-                    </p>
-                  </div>
-
-                  <div className="flex border-t border-card-border pt-4 mt-6">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setView("menu")}
-                      icon={<ArrowLeft size={16} />}
-                    >
-                      Back
-                    </Button>
-                  </div>
-                </div>
+              {googleAuthError && (
+                <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 rounded-xl flex items-start gap-2">
+                  <AlertCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-rose-700 dark:text-zinc-300 leading-relaxed">{googleAuthError}</p>
+                </Surface>
               )}
+
+              <div className="space-y-3">
+                {/* Real Google Sign-In button rendered by GIS SDK */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sign in with Google</p>
+                  
+                  {typeof window !== "undefined" && 
+                   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
+                   !forceLoadRealGoogle ? (
+                    // Beautiful Local Sandbox Card
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Local Developer Sandbox Mode</p>
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                            Google Sign-In requires your current origin (<code>{window.location.origin}</code>) to be registered under <strong>Authorized JavaScript Origins</strong> in the Google Developer Console.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const mockEmail = "athlete.dev@gmail.com";
+                            setEmailInput(mockEmail);
+                            setName("Dev Athlete");
+                            setEmailVerified(true);
+                            setCapturedProvider("google");
+                            setView("setup");
+                          }}
+                          className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
+                        >
+                          Simulate Google Sign-In (Sandbox Bypass)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setForceLoadRealGoogle(true)}
+                          className="w-full text-center py-1.5 text-[9px] font-semibold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition duration-150 cursor-pointer select-none underline decoration-dotted"
+                        >
+                          Load official Google Sign-In SDK (to test credentials)
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      id="google-signin-new-account"
+                      ref={(el) => {
+                        if (el) {
+                          renderGoogleSignInButton(
+                            "google-signin-new-account",
+                            (user) => {
+                              setEmailInput(user.email);
+                              if (user.name) setName(user.name.split(" ")[0]);
+                              setEmailVerified(true);
+                              setCapturedProvider("google");
+                              setView("setup");
+                            },
+                            (err) => setGoogleAuthError(err)
+                          );
+                        }
+                      }}
+                      className="min-h-[44px] w-full"
+                    />
+                  )}
+                </div>
+
+              </div>
+
+              <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-3.5 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">⚠️ Important</span>
+                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                  Use the same sign-in method every time to access your data. Your profile is linked to your account email.
+                </p>
+              </div>
+
+              <div className="flex border-t border-card-border pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setView("menu")}
+                  icon={<ArrowLeft size={16} />}
+                >
+                  Back
+                </Button>
+              </div>
             </motion.div>
           )}
 
@@ -778,11 +847,11 @@ export function WelcomeScreen() {
             >
               <div className="space-y-1.5 border-b border-card-border pb-3 mb-2">
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
-                  <ShieldCheck className="text-teal-555 dark:text-teal-400 animate-pulse" size={20} />
-                  Restore Secure Profile Sync
+                  <RefreshCw className="text-teal-500 dark:text-teal-400" size={20} />
+                  Sign in to restore your account
                 </h2>
                 <p className="text-[11px] text-zinc-400 leading-normal font-medium">
-                  Connect your identity securely to locate and download your active Cloud sync profile snapshot.
+                  Sign in with the same Google account you used when you first set up Atlas. Your profile will be restored automatically.
                 </p>
               </div>
 
@@ -791,38 +860,34 @@ export function WelcomeScreen() {
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-3 shadow-[0_4px_12px_rgba(16,185,129,0.1)] animate-bounce">
                     <Check size={22} className="stroke-[3.5]" />
                   </div>
-                  <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-wider">Sync Finalization Complete</h3>
+                  <h3 className="text-sm font-black text-zinc-900 dark:text-white">Profile Restored!</h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed font-medium">
-                    Welcome back! Your workouts, routine configuration, and telemetry data have been fully synchronized to this device.
+                    Welcome back! Your workouts, routines, and settings have been restored to this device.
                   </p>
                   <Button
                     className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-955 font-bold"
                     variant="primary"
-                    onClick={() => {
-                      setStartupChoice("local");
-                    }}
+                    onClick={() => { setStartupChoice("local"); }}
                     icon={<Sparkles size={16} className="text-zinc-955" />}
                   >
-                    Launch Dashboard
+                    Go to Dashboard
                   </Button>
                 </div>
-              ) : isFederatedLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-fadeIn select-none">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-500 border-t-transparent shadow-md" />
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider font-mono">
-                    Connecting to {capturedProvider === "apple" ? "Apple" : "Google"} Authenticator...
-                  </p>
+              ) : isRestoringFromCloud ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
+                  <p className="text-xs text-zinc-500 font-medium">Looking up your profile...</p>
                 </div>
               ) : (
                 <div className="space-y-4 pt-1">
                   {restoreEmpty && (
-                    <Surface className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/15 text-amber-800 dark:text-amber-300 rounded-xl space-y-2 animate-fadeIn">
+                    <Surface className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/15 text-amber-800 dark:text-amber-300 rounded-xl space-y-2">
                       <div className="flex items-start gap-2.5">
                         <ShieldAlert size={16} className="mt-0.5 text-amber-700 dark:text-amber-450 shrink-0" />
                         <div className="space-y-0.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">No Sync Profile Located</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">No profile found</span>
                           <p className="text-[11px] leading-relaxed text-zinc-650 dark:text-zinc-300">
-                            We could not locate an existing Cloud sync record for this {capturedProvider === "apple" ? "Apple" : "Google"} account.
+                            No saved profile was found for this account. Check that you're using the same Google account you signed up with, or create a new account.
                           </p>
                         </div>
                       </div>
@@ -830,19 +895,11 @@ export function WelcomeScreen() {
                         <button
                           type="button"
                           onClick={() => {
-                            setName("");
-                            setAge(28);
-                            setWeight(165);
-                            setHeight(70);
-                            setExperience("beginner");
-                            setBodyType("mesomorph");
-                            setTargetPhysique("athletic");
-                            setGoal("Build strength and muscle size");
-                            setDaysPerWeek(3);
-                            setWeightUnit("lbs");
-                            setHeightUnit("in");
-                            setSetupAiCoach(true);
-                            setEmailVerified(true);
+                            setName(""); setAge(28); setWeight(165); setHeight(70);
+                            setExperience("beginner"); setBodyType("mesomorph");
+                            setTargetPhysique("athletic"); setGoal("Build strength and muscle size");
+                            setDaysPerWeek(3); setWeightUnit("lbs"); setHeightUnit("in");
+                            setSetupAiCoach(true); setEmailVerified(true);
                             setView("setup");
                           }}
                           className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase transition"
@@ -854,38 +911,82 @@ export function WelcomeScreen() {
                   )}
 
                   {restoreError && (
-                    <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5 animate-fadeIn">
+                    <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
                       <ShieldAlert size={14} className="mt-0.5 text-rose-750 dark:text-rose-450 shrink-0" />
                       <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{restoreError}</p>
                     </Surface>
                   )}
 
-                  <div className="space-y-3">
-                    {/* Apple Button */}
-                    <button
-                      type="button"
-                      onClick={() => simulateFederatedSignIn("apple", handleCloudRestore)}
-                      disabled={isRestoringFromCloud}
-                      className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-black text-white hover:bg-zinc-900 border border-zinc-800 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-md shadow-black/10 active:scale-[0.99] disabled:opacity-50"
-                    >
-                      <svg className="h-4.5 w-4.5 fill-current text-white" viewBox="0 0 24 24">
-                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.51-.62.71-1.16 1.85-1.01 2.96 1.1.09 2.27-.58 2.96-1.41z" />
-                      </svg>
-                      Restore via Apple
-                    </button>
+                  {googleAuthError && (
+                    <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 rounded-xl flex items-start gap-2">
+                      <AlertCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-rose-700 dark:text-zinc-300">{googleAuthError}</p>
+                    </Surface>
+                  )}
 
-                    {/* Google Button */}
-                    <button
-                      type="button"
-                      onClick={() => simulateFederatedSignIn("google", handleCloudRestore)}
-                      disabled={isRestoringFromCloud}
-                      className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:border-zinc-700 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-sm active:scale-[0.99] disabled:opacity-50"
-                    >
-                      <svg className="h-4.5 w-4.5" viewBox="0 0 24 24">
-                        <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.555 0-6.437-2.882-6.437-6.437 0-3.555 2.882-6.437 6.437-6.437 1.523 0 2.923.533 4.033 1.414l3.14-3.14C18.665 1.511 15.656 0 12.24 0 5.48 0 0 5.48 0 12.24s5.48 12.24 12.24 12.24c6.72 0 12.24-5.48 12.24-12.24 0-.756-.076-1.503-.223-2.223H12.24z" />
-                      </svg>
-                      Restore via Google
-                    </button>
+                  <div className="space-y-3">
+                    {/* Real Google Sign-In button for restore */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sign in with Google to restore</p>
+                      
+                      {typeof window !== "undefined" && 
+                       (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
+                       !forceLoadRealGoogle ? (
+                        // Beautiful Local Sandbox Card
+                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Local Developer Sandbox Mode</p>
+                              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                                Google Sign-In requires your current origin (<code>{window.location.origin}</code>) to be registered under <strong>Authorized JavaScript Origins</strong> in the Google Developer Console.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const mockEmail = "athlete.dev@gmail.com";
+                                setCapturedProvider("google");
+                                setEmailInput(mockEmail);
+                                await handleCloudRestore(mockEmail);
+                              }}
+                              className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
+                            >
+                              Simulate Google Sign-In (Sandbox Bypass)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setForceLoadRealGoogle(true)}
+                              className="w-full text-center py-1.5 text-[9px] font-semibold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition duration-150 cursor-pointer select-none underline decoration-dotted"
+                            >
+                              Load official Google Sign-In SDK (to test credentials)
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          id="google-signin-restore"
+                          ref={(el) => {
+                            if (el) {
+                              renderGoogleSignInButton(
+                                "google-signin-restore",
+                                async (user) => {
+                                  setCapturedProvider("google");
+                                  setEmailInput(user.email);
+                                  await handleCloudRestore(user.email);
+                                },
+                                (err) => setGoogleAuthError(err)
+                              );
+                            }
+                          }}
+                          className="min-h-[44px] w-full"
+                        />
+                      )}
+                    </div>
                   </div>
 
                   <div className="pt-2 border-t border-card-border mt-4 flex items-center justify-between">
@@ -903,7 +1004,7 @@ export function WelcomeScreen() {
                       onClick={() => setView("backup")}
                       className="text-xs font-bold text-zinc-500 hover:text-foreground hover:underline transition"
                     >
-                      Or Upload manual backup (.json)
+                      Or upload a backup file (.json)
                     </button>
                   </div>
                 </div>
@@ -958,6 +1059,22 @@ export function WelcomeScreen() {
                           <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{emailError}</p>
                         </Surface>
                       )}
+                      {showSandboxOtp && (
+                        <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3">
+                          <Lock size={14} className="text-emerald-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Verification code sent (dev mode)</p>
+                            <p className="text-[11px] font-mono text-foreground font-bold tracking-widest">{generatedOtp}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => { navigator.clipboard.writeText(generatedOtp); setOtpCopied(true); setTimeout(() => setOtpCopied(false), 2000); }}
+                            className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition"
+                          >
+                            {otpCopied ? <Check size={11} /> : "Copy"}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {otpSent && (
@@ -969,9 +1086,9 @@ export function WelcomeScreen() {
                         <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 flex items-start gap-2.5">
                           <Lock className="text-emerald-500 shrink-0 mt-0.5 animate-pulse" size={15} />
                           <div className="space-y-0.5">
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Verification Dispatch Success</span>
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Verification Sent</span>
                             <p className="text-[10px] text-zinc-500 leading-normal">
-                              A 6-digit verification code has been dispatched. Enter it below to unlock the secure onboarding.
+                              Enter the 6-digit code received via email to proceed.
                             </p>
                           </div>
                         </div>

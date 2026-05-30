@@ -72,6 +72,31 @@ GOOGLE_DRIVE_REFRESH_TOKEN=your-oauth-refresh-token
 
 ---
 
+## 🌐 Production Release: Enabling Google Sign-In for All Users
+
+To deploy the app to production so that **any** user on the web can log in with their personal Google Account without encountering `access_denied`, `GSI_LOGGER`, or verification blocks, complete these simple configuration steps:
+
+### 1. Publish the OAuth Consent Screen to Production
+By default, your Google Cloud OAuth app is in **Testing** status. This limits access to specifically declared test accounts.
+1. Go to the [Google Cloud Console OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent).
+2. Under the **Publishing status** section, click **Publish App**.
+3. Confirm the push to production. 
+   *(Note: For simple scopes like email/profile, Google does not require a formal verification review, so your app goes live instantly for everyone!)*
+
+### 2. Configure Production Allowed JavaScript Origins
+Google Identity Services restricts sign-in buttons to domains registered in your Client ID settings:
+1. Go to the [Google Cloud Console Credentials](https://console.cloud.google.com/apis/credentials).
+2. Click your OAuth 2.0 Web Client ID to edit it.
+3. Under **Authorized JavaScript origins**, click **Add URI** and enter your production domain (e.g., `https://your-app-domain.vercel.app` or `https://your-custom-domain.com`).
+4. Click **Save** at the bottom. *(Allow up to 5 minutes for Google to update global domain cache).*
+
+### 3. Expose Client ID to Production Frontend
+In your production hosting environment (e.g., Vercel, Netlify, AWS):
+1. Add an Environment Variable key: `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+2. Set its value to your exact Google Client ID: `59606573141-j2el2qru2gg4g9aj8mqgc1tbn6lhtt7t.apps.googleusercontent.com` (or your custom Client ID if you generated a new one).
+
+---
+
 ## Part 4: Testing & Verification
 
 1. Start your local server: `npm run dev`.

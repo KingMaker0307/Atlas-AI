@@ -1,173 +1,238 @@
 /**
- * useGoogleOneTap — integrates Google Identity Services (GIS) One Tap sign-in.
+ * google-auth.ts
  *
- * Loads the GIS SDK from accounts.google.com, initialises the One Tap prompt,
- * and returns a helper to imperatively open the full-screen Sign-in popup as a
- * fallback (used when One Tap is suppressed by the browser).
+ * Real Google Sign In using Google Identity Services (GIS) SDK.
+ * Loads accounts.google.com/gsi/client, renders the official Google Sign-In
+ * button inside any container div, and decodes the returned JWT client-side
+ * to extract the user's real email, name and picture.
  *
- * The resolved credential JWT is decoded client-side (no server round-trip) to
- * extract the user's email, name, and picture — the fields Atlas needs.
+ * Requirements:
+ *   1. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env
+ *   2. In Google Cloud Console → APIs & Services → Credentials → your OAuth client:
+ *      Add "http://localhost:3000" (dev) and your production domain under
+ *      "Authorized JavaScript origins". Save. Takes ~5 minutes to propagate.
  */
 
 export interface GoogleUser {
   email: string;
   name: string;
   picture?: string;
+  sub?: string; // Google's unique user ID
 }
 
-type OneTapCallback = (user: GoogleUser) => void;
+// ── Module-level singletons ───────────────────────────────────────────────────
 
-let scriptLoaded = false;
+let gisScriptPromise: Promise<void> | null = null;
+// Track which container IDs have already had a button rendered to avoid
+// re-initialising the GIS client on the same page load (GIS throws if you
+// call initialize() more than once per client_id per page).
+const renderedContainers = new Set<string>();
 
-function loadGISScript(): Promise<void> {
-  if (scriptLoaded || (typeof window !== "undefined" && (window as any).google?.accounts)) {
-    scriptLoaded = true;
-    return Promise.resolve();
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Lazily load the GIS script. Returns the same Promise on repeated calls. */
+function loadGIS(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  const g = (window as any).google;
+  if (g?.accounts?.id) return Promise.resolve();
+
+  if (!gisScriptPromise) {
+    gisScriptPromise = new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector(
+        'script[src="https://accounts.google.com/gsi/client"]'
+      );
+      if (existing) {
+        // Script tag already in DOM — wait for it
+        existing.addEventListener("load", () => resolve());
+        existing.addEventListener("error", () =>
+          reject(new Error("Google Identity Services script failed to load."))
+        );
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = "https://accounts.google.com/gsi/client";
+      s.async = true;
+      s.defer = true;
+      s.onload = () => resolve();
+      s.onerror = () =>
+        reject(new Error("Google Identity Services script failed to load."));
+      document.head.appendChild(s);
+    });
   }
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => { scriptLoaded = true; resolve(); };
-    script.onerror = () => reject(new Error("Failed to load Google Identity Services SDK."));
-    document.head.appendChild(script);
-  });
+  return gisScriptPromise;
 }
 
-/** Decode a Google JWT credential without a server round-trip. */
+/** Decode a Google-issued JWT without a network round-trip. */
 function decodeGoogleJwt(credential: string): GoogleUser | null {
   try {
-    const parts = credential.split(".");
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(
-      atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+    const [, payload] = credential.split(".");
+    const json = JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
     );
+    if (!json.email) return null;
     return {
-      email: payload.email ?? "",
-      name: payload.name ?? "",
-      picture: payload.picture ?? undefined,
+      email: json.email as string,
+      name: (json.name as string) ?? "",
+      picture: (json.picture as string) ?? undefined,
+      sub: (json.sub as string) ?? undefined,
     };
   } catch {
     return null;
   }
 }
 
-/**
- * Initialise Google One Tap and invoke `onSuccess` when the user picks an account.
- * Returns a `signInWithPopup` function that can be called from a button click.
- */
-export async function initGoogleOneTap(
-  onSuccess: OneTapCallback,
-  onError?: (msg: string) => void
-): Promise<() => void> {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    onError?.("Google Client ID is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your .env file.");
-    return () => {};
-  }
-
-  await loadGISScript();
-
-  const google = (window as any).google;
-  if (!google?.accounts?.id) {
-    onError?.("Google Identity Services failed to load. Please check your internet connection.");
-    return () => {};
-  }
-
-  const handleCredential = (response: { credential: string }) => {
-    const user = decodeGoogleJwt(response.credential);
-    if (user?.email) {
-      onSuccess(user);
-    } else {
-      onError?.("Could not retrieve your Google account email. Please try again.");
-    }
-  };
-
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: handleCredential,
-    auto_select: false,
-    cancel_on_tap_outside: true,
-    context: "signin",
-  });
-
-  // Show One Tap prompt immediately (suppressed if user already dismissed)
-  google.accounts.id.prompt();
-
-  // Return a function that opens the full-screen Google OAuth popup as a fallback
-  const signInWithPopup = () => {
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      // Request only the 'openid email profile' scope — we don't need Drive access here
-      scope: "openid email profile",
-      callback: () => {}, // Not used — we use the id_token callback below
-    });
-
-    // Use the newer popup sign-in flow via accounts.id
-    google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // One Tap not available — open chooser via renderButton
-        const container = document.getElementById("google-signin-container");
-        if (container) {
-          google.accounts.id.renderButton(container, {
-            theme: "filled_blue",
-            size: "large",
-            type: "standard",
-            width: container.offsetWidth || 320,
-          });
-          // Auto-click the rendered button
-          const btn = container.querySelector("div[role='button']") as HTMLElement | null;
-          btn?.click();
-        }
-      }
-    });
-  };
-
-  return signInWithPopup;
-}
+// ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Render a real Google Sign-In button into a container div.
- * This is used when One Tap is not available (suppressed by browser).
+ * Render an official Google Sign-In button inside the element with `containerId`.
+ *
+ * The GIS SDK replaces the div contents with a styled iframe button.
+ * When the user completes sign-in the `onSuccess` callback receives their
+ * real Google account details.
+ *
+ * @param containerId  - id of the host <div>
+ * @param onSuccess    - called with the signed-in user's details
+ * @param onError      - called with a human-readable error string
+ * @param theme        - "outline" (light) | "filled_black" | "filled_blue"
  */
 export async function renderGoogleSignInButton(
   containerId: string,
-  onSuccess: OneTapCallback,
-  onError?: (msg: string) => void
+  onSuccess: (user: GoogleUser) => void,
+  onError?: (message: string) => void,
+  theme: "outline" | "filled_black" | "filled_blue" = "outline"
 ): Promise<void> {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  if (!clientId) return;
 
-  await loadGISScript();
+  if (!clientId) {
+    onError?.(
+      "Google Client ID is not set. Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to your .env file and restart the dev server."
+    );
+    return;
+  }
+
+  try {
+    await loadGIS();
+  } catch (err: any) {
+    onError?.(
+      "Failed to load Google Sign-In. Check your internet connection and try again."
+    );
+    return;
+  }
 
   const google = (window as any).google;
-  if (!google?.accounts?.id) return;
-
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: (response: { credential: string }) => {
-      const user = decodeGoogleJwt(response.credential);
-      if (user?.email) {
-        onSuccess(user);
-      } else {
-        onError?.("Could not retrieve your Google account email. Please try again.");
-      }
-    },
-    auto_select: false,
-    context: "signin",
-  });
+  if (!google?.accounts?.id) {
+    onError?.("Google Identity Services is not available.");
+    return;
+  }
 
   const container = document.getElementById(containerId);
   if (!container) return;
 
+  // GIS only allows one initialize() call per page per client_id.
+  // We call it once (when first container is rendered) and reuse for subsequent ones.
+  if (renderedContainers.size === 0) {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: (response: { credential?: string; error?: string }) => {
+        if (!response.credential) {
+          onError?.(
+            response.error === "suppressed_by_user"
+              ? "Sign-in was cancelled."
+              : "Sign-in failed — no credential returned. Make sure http://localhost:3000 is added to Authorized JavaScript Origins in Google Cloud Console."
+          );
+          return;
+        }
+        const user = decodeGoogleJwt(response.credential);
+        if (user) {
+          onSuccess(user);
+        } else {
+          onError?.(
+            "Could not read your Google account details. Please try again."
+          );
+        }
+      },
+      // These improve UX: don't auto-select, allow cancelling, use sign-in context
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      context: "signin",
+      // itp_support enables One Tap on Chrome with ITP (Safari-like tracking prevention)
+      itp_support: true,
+    });
+  }
+
+  renderedContainers.add(containerId);
+
+  // Render the branded Google button into the container
   google.accounts.id.renderButton(container, {
-    theme: "outline",
-    size: "large",
     type: "standard",
+    theme,
+    size: "large",
     shape: "rectangular",
-    width: Math.min(container.offsetWidth || 320, 400),
-    text: "signin_with",
     logo_alignment: "left",
+    text: "signin_with",
+    width: Math.min(container.offsetWidth || 360, 400),
   });
+
+  // Also show the One Tap prompt (the floating overlay) in case the user
+  // prefers that over clicking the button. It will only show if the browser
+  // hasn't suppressed it.
+  google.accounts.id.prompt((notification: any) => {
+    if (
+      notification.isNotDisplayed() &&
+      notification.getNotDisplayedReason() === "opt_out_or_no_session"
+    ) {
+      // User opted out of One Tap — that's fine, the button is still visible.
+    }
+  });
+}
+
+/**
+ * Programmatically trigger the Google Sign-In popup.
+ * Use this when you want sign-in to happen on a custom button click
+ * rather than rendering the Google-branded button.
+ */
+export async function triggerGoogleSignIn(
+  onSuccess: (user: GoogleUser) => void,
+  onError?: (message: string) => void
+): Promise<void> {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    onError?.(
+      "Google Client ID is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env."
+    );
+    return;
+  }
+
+  try {
+    await loadGIS();
+  } catch {
+    onError?.("Failed to load Google Sign-In SDK.");
+    return;
+  }
+
+  const google = (window as any).google;
+  if (!google?.accounts?.id) {
+    onError?.("Google Identity Services is not available.");
+    return;
+  }
+
+  if (renderedContainers.size === 0) {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: (response: { credential?: string }) => {
+        if (!response.credential) {
+          onError?.("Sign-in cancelled or failed.");
+          return;
+        }
+        const user = decodeGoogleJwt(response.credential);
+        if (user) onSuccess(user);
+        else onError?.("Could not read account details.");
+      },
+      auto_select: false,
+      context: "signin",
+    });
+  }
+
+  // Use the prompt to show a chooser dialog
+  google.accounts.id.prompt();
 }
