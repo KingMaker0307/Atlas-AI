@@ -38,7 +38,10 @@ export const DEFAULT_TARGETS: NutritionTargets = {
 
 /**
  * Calculates dynamic daily BMR, TDEE, Calories, and Macros based on user profile.
- * Implements standard Mifflin-St Jeor BMR and activity multiplier of 1.55.
+ * Implements the Mifflin-St Jeor BMR formula with gender-aware constants,
+ * PAL activity multipliers (1.2–1.9) driven by profile.activityLevel,
+ * and goal-type + target-physique calorie/macro adjustments.
+ * Micronutrient targets follow USDA/NIH RDAs including gender-specific iron.
  */
 export function calculateNutritionTargets(profile: UserProfile | null): NutritionTargets {
   if (!profile || !profile.weight || !profile.age) {
@@ -80,25 +83,20 @@ export function calculateNutritionTargets(profile: UserProfile | null): Nutritio
 
   // Goal adjustment
   const goalText = (profile.customGoal || profile.goal || "").toLowerCase();
+  const physiqueText = (profile.targetPhysique || "").toLowerCase();
   let calorieAdjustment = 0;
   let goalType: "maintain" | "lose" | "gain" = "maintain";
 
-  if (
-    goalText.includes("lose") ||
-    goalText.includes("cut") ||
-    goalText.includes("shred") ||
-    goalText.includes("deficit") ||
-    goalText.includes("lean")
-  ) {
+  const isGainGoal = goalText.includes("gain") || goalText.includes("bulk") || goalText.includes("build") || goalText.includes("mass") || goalText.includes("surplus") || goalText.includes("performance");
+  const isGainPhysique = physiqueText.includes("bulky");
+
+  const isLoseGoal = goalText.includes("lose") || goalText.includes("cut") || goalText.includes("shred") || goalText.includes("deficit") || goalText.includes("lean") || goalText.includes("tone") || goalText.includes("define") || goalText.includes("definition");
+  const isLosePhysique = physiqueText.includes("shredded") || physiqueText.includes("lean") || physiqueText.includes("toned");
+
+  if (isLoseGoal || (isLosePhysique && !isGainGoal)) {
     calorieAdjustment = -500;
     goalType = "lose";
-  } else if (
-    goalText.includes("gain") ||
-    goalText.includes("bulk") ||
-    goalText.includes("build") ||
-    goalText.includes("mass") ||
-    goalText.includes("surplus")
-  ) {
+  } else if (isGainGoal || (isGainPhysique && !isLoseGoal)) {
     calorieAdjustment = 300;
     goalType = "gain";
   }
@@ -113,6 +111,9 @@ export function calculateNutritionTargets(profile: UserProfile | null): Nutritio
   // Carbs: remainder
   const carbsTarget = Math.round((calorieTarget - (proteinTarget * 4 + fatTarget * 9)) / 4);
 
+  // Iron RDA: 18mg for pre-menopausal females (19–50), 8mg for males (NIH/USDA)
+  const ironTarget = isFemale ? 18 : 8;
+
   return {
     calories: calorieTarget,
     protein: proteinTarget,
@@ -124,7 +125,7 @@ export function calculateNutritionTargets(profile: UserProfile | null): Nutritio
     potassium: 4700,
     vitaminC: 90,
     calcium: 1000,
-    iron: 8,
+    iron: ironTarget,
     goalType,
     calorieAdjustment,
     tdee,

@@ -34,6 +34,7 @@ import { Card, Surface } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useAtlasStore } from "@/store/useAtlasStore";
+import { calculateNutritionTargets, DEFAULT_TARGETS } from "@/lib/calculators";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface NutritionEntry {
@@ -88,24 +89,7 @@ const MEAL_LABELS: Record<NutritionEntry["meal"], { label: string; icon: FC<any>
   snack: { label: "Snack", icon: Apple, color: "text-rose-700 dark:text-rose-500", bg: "bg-rose-500/10 dark:bg-rose-500/15 border-rose-500/20" },
 };
 
-// Default daily targets based on a typical active adult
-const DEFAULT_TARGETS = {
-  calories: 2200,
-  protein: 150,
-  carbs: 220,
-  fat: 75,
-  fiber: 30,
-  sugar: 50,
-  sodium: 2300,
-  potassium: 4700,
-  vitaminC: 90,
-  calcium: 1000,
-  iron: 8,
-  goalType: "maintain" as "maintain" | "lose" | "gain",
-  calorieAdjustment: 0,
-  tdee: 2200,
-  bmr: 1500,
-};
+// DEFAULT_TARGETS is imported from @/lib/calculators
 
 // Helper to format Date as YYYY-MM-DD
 const getLocalDateString = (dateOrStr: Date | string) => {
@@ -446,59 +430,10 @@ export function NutritionTracker() {
     }
   }, []);
 
-  // Compute targets dynamically based on profile weight, age, height, and goal
-  const targets = useMemo(() => {
-    if (!profile?.weight || !profile?.age) return DEFAULT_TARGETS;
-    const w = profile.weightUnit === "lbs" ? profile.weight * 0.453592 : profile.weight;
-    const h = profile.heightUnit === "in" ? profile.height! * 2.54 : profile.height ?? 170;
-    
-    // BMR Calculation (Mifflin-St Jeor formula)
-    const bmr = Math.round(10 * w + 6.25 * h - 5 * profile.age + (profile.goal?.toLowerCase().includes("female") ? -161 : 5));
-    const tdee = Math.round(bmr * 1.55); // moderate physical activity multiplier
-
-    // Determine weight goal from user profile customGoal or goal text
-    const goalText = (profile.customGoal || profile.goal || "").toLowerCase();
-    let calorieAdjustment = 0;
-    let goalType: "maintain" | "lose" | "gain" = "maintain";
-
-    if (goalText.includes("lose") || goalText.includes("cut") || goalText.includes("shred") || goalText.includes("deficit") || goalText.includes("lean")) {
-      calorieAdjustment = -500; // Caloric deficit to achieve weight loss
-      goalType = "lose";
-    } else if (goalText.includes("gain") || goalText.includes("bulk") || goalText.includes("build") || goalText.includes("mass") || goalText.includes("surplus")) {
-      calorieAdjustment = 300; // Caloric surplus to achieve weight gain / muscle build
-      goalType = "gain";
-    }
-
-    const calorieTarget = tdee + calorieAdjustment;
-    
-    // Adjust macros based on goal type:
-    // Protein: 2.2g per kg (or 2.4g if cutting to spare muscle, 2.0g if gaining)
-    const proteinTarget = Math.round(w * (goalType === "lose" ? 2.4 : 2.0));
-    
-    // Fat: 25% of total calories
-    const fatTarget = Math.round((calorieTarget * 0.25) / 9);
-    
-    // Carbs: remainder of daily calorie target
-    const carbsTarget = Math.round((calorieTarget - (proteinTarget * 4 + fatTarget * 9)) / 4);
-
-    return {
-      calories: calorieTarget,
-      protein: proteinTarget,
-      carbs: carbsTarget,
-      fat: fatTarget,
-      fiber: 30,
-      sugar: 50,
-      sodium: 2300,
-      potassium: 4700,
-      vitaminC: 90,
-      calcium: 1000,
-      iron: 8,
-      goalType,
-      calorieAdjustment,
-      tdee,
-      bmr,
-    };
-  }, [profile]);
+  // Compute targets via the centralized Mifflin-St Jeor engine in @/lib/calculators.
+  // This correctly handles: gender (BMR constant), activityLevel (PAL multiplier),
+  // goal text + targetPhysique (calorie adjustment), and gender-aware iron RDA.
+  const targets = useMemo(() => calculateNutritionTargets(profile), [profile]);
 
   // Beginner Guide inner sub-tab selection (lose vs gain vs maintain)
   const [activeGuideGoal, setActiveGuideGoal] = useState<"lose" | "gain" | "maintain">("lose");
@@ -1243,7 +1178,7 @@ export function NutritionTracker() {
                         </div>
 
                         <p className="text-xs text-zinc-750 leading-relaxed font-medium">
-                          Calculated at <span className="text-zinc-955 font-black font-mono">{calculatedProtein.multiplier}g</span> per lb of bodyweight to promote active muscle cell restoration for your <span className="text-zinc-955 font-black">{profile?.targetPhysique || "athletic"}</span> profile.
+                          Physique-goal estimate at <span className="text-zinc-955 font-black font-mono">{calculatedProtein.multiplier}g</span> per lb for your <span className="text-zinc-955 font-black">{profile?.targetPhysique || "athletic"}</span> target. Your macro bar uses a per-kg clinical target based on your activity level.
                         </p>
                       </div>
                     )}
@@ -1461,6 +1396,9 @@ export function NutritionTracker() {
                             );
                           })}
                         </div>
+                        <p className="text-[9px] text-zinc-750 italic text-center select-none">
+                          ⭐ denotes your active target, dynamically matched from your profile goal: <strong className="text-zinc-955 capitalize">{profile?.goal || "Not Set"}</strong>.
+                        </p>
 
                         {/* Guide Content Panels */}
                         <Surface className="p-3.5 space-y-3 bg-surface/50">

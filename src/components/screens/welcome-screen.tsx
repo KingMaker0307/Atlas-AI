@@ -159,7 +159,7 @@ export function WelcomeScreen() {
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
   const [height, setHeight] = useState<number>(68); // total inches or cm
   const [heightUnit, setHeightUnit] = useState<"in" | "cm">("in");
-  const [goal, setGoal] = useState("");
+  const [goal, setGoal] = useState("Build muscle and strength");
   const [daysPerWeek, setDaysPerWeek] = useState<number>(3);
   const [trainingStyle, setTrainingStyle] = useState<"strength" | "hypertrophy" | "powerbuilding" | "endurance" | "general">("general");
   const [equipment, setEquipment] = useState<"full gym" | "home gym" | "bodyweight">("full gym");
@@ -1271,7 +1271,7 @@ export function WelcomeScreen() {
                           onClick={() => {
                             setName(""); setAge(28); setWeight(165); setHeight(70);
                             setExperience("beginner"); setBodyType("mesomorph");
-                            setTargetPhysique("athletic"); setGoal("Build strength and muscle size");
+                            setTargetPhysique("athletic"); setGoal("Build muscle and strength");
                             setDaysPerWeek(3); setWeightUnit("lbs"); setHeightUnit("in");
                             setSetupAiCoach(true); setEmailVerified(true);
                             setView("setup");
@@ -1722,14 +1722,19 @@ export function WelcomeScreen() {
                         
                         <div>
                           <Label htmlFor="setup-goal" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Workout Goal</Label>
-                          <Textarea
+                          <Select
                             id="setup-goal"
-                            maxLength={120}
                             value={goal}
-                            onChange={(e) => setGoal(e.target.value)}
-                            placeholder="e.g., Build strength and muscle size"
-                            className="mt-1 text-xs font-medium h-16 min-h-[4rem]"
-                          />
+                            onChange={(e: any) => setGoal(e.target.value)}
+                            className="mt-1 text-xs font-bold font-sans"
+                          >
+                            <option value="Build muscle and strength">Build Muscle & Strength</option>
+                            <option value="Lose body fat and weight">Lose Body Fat & Weight</option>
+                            <option value="Tone muscles and define shape">Tone Muscles & Define Shape</option>
+                            <option value="Improve general health and fitness">Improve General Health & Fitness</option>
+                            <option value="Increase cardiovascular endurance">Increase Cardiovascular Endurance</option>
+                            <option value="Enhance athletic performance">Enhance Athletic Performance</option>
+                          </Select>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">

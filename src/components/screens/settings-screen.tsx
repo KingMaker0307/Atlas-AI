@@ -953,17 +953,25 @@ export function SettingsScreen() {
                     </div>
 
                     <div className="space-y-4">
-                      <Field label="Workout Goal" hint="Custom focus target used by the AI coach to generate and adapt your routine">
-                        <Input
-                          value={draftProfile.goal ?? draftProfile.customGoal ?? ""}
-                          maxLength={120}
+                      <Field label="Workout Goal" hint="Primary focus target used by the AI coach to generate and adapt your routine">
+                        <Select
+                          value={draftProfile.goal ?? draftProfile.customGoal ?? "Build muscle and strength"}
                           onChange={(e) => {
                             handleProfileChange("goal", e.target.value);
                             handleProfileChange("customGoal", e.target.value);
                           }}
-                          placeholder="e.g. Build muscle size, increase bench press, run twice a week"
-                          className="text-xs font-medium"
-                        />
+                          className="text-xs font-bold font-sans"
+                        >
+                          <option value="Build muscle and strength">Build Muscle & Strength</option>
+                          <option value="Lose body fat and weight">Lose Body Fat & Weight</option>
+                          <option value="Tone muscles and define shape">Tone Muscles & Define Shape</option>
+                          <option value="Improve general health and fitness">Improve General Health & Fitness</option>
+                          <option value="Increase cardiovascular endurance">Increase Cardiovascular Endurance</option>
+                          <option value="Enhance athletic performance">Enhance Athletic Performance</option>
+                          {draftProfile.goal && !["Build muscle and strength", "Lose body fat and weight", "Tone muscles and define shape", "Improve general health and fitness", "Increase cardiovascular endurance", "Enhance athletic performance"].includes(draftProfile.goal) && (
+                            <option value={draftProfile.goal}>{draftProfile.goal}</option>
+                          )}
+                        </Select>
                       </Field>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
