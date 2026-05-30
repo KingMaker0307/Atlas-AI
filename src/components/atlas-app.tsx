@@ -117,16 +117,6 @@ export function AtlasApp() {
     return () => mediaQuery.removeEventListener("change", updateTheme);
   }, [theme]);
 
-  // Lock body scroll when a full-screen subscreen is active (prevents background scroll)
-  useEffect(() => {
-    if (activeSubScreen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [activeSubScreen]);
-
   if (blocked) return <BlockedBlockerScreen />;
   if (!hydrated) return <LoadingApp />;
   if (!startupChoice) return <WelcomeScreen />;

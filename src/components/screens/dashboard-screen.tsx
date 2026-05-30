@@ -928,74 +928,67 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <div className="p-5 sm:p-6 border border-emerald-500/20 dark:border-emerald-500/30 bg-gradient-to-br from-emerald-50/40 to-amber-50/30 dark:bg-none dark:bg-zinc-950 relative shadow-xl overflow-hidden group rounded-2xl">
-            {/* Visual glow elements */}
-            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300 pointer-events-none" />
-            <div className="absolute -left-20 -bottom-20 w-44 h-44 rounded-full bg-amber-500/5 blur-[80px] group-hover:bg-amber-500/10 transition-all duration-300 pointer-events-none" />
-            
+          <div className="p-5 sm:p-6 border border-emerald-500/20 dark:border-emerald-500/20 bg-card relative shadow-sm overflow-hidden group rounded-2xl">
+            {/* Ambient glow — theme-safe, pointer-events off */}
+            <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full bg-emerald-500/8 dark:bg-emerald-500/10 blur-[70px] group-hover:bg-emerald-500/12 transition-all duration-500 pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-40 h-40 rounded-full bg-amber-500/6 dark:bg-amber-500/8 blur-[70px] group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
+
             <div className="relative z-10 space-y-5">
-              {/* Header Zone: Clean & Spacious */}
-              <div className="space-y-1 select-none">
+              {/* Header */}
+              <div className="space-y-1.5 select-none">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     Today's Target
                   </span>
-                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase">{todayRoutine.day}</span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase">{todayRoutine.day}</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white leading-tight">Today's Training & Nutrition Target</h2>
-                <p className="text-xs text-zinc-555 dark:text-zinc-405 leading-normal max-w-2xl">
-                  Your daily target is simple: complete today's workout to build strength, and eat high-quality meals to fuel muscle recovery.
+                <h2 className="text-xl sm:text-2xl font-black text-foreground leading-tight tracking-tight">Today's Training &amp; Nutrition Target</h2>
+                <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed max-w-2xl">
+                  Complete today's workout to build strength, and eat high-quality meals to fuel muscle recovery.
                 </p>
               </div>
 
-              {/* Grid split: Simple, transparent columns with clean layouts */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200/50 dark:border-white/5">
-                {/* Column 1: Workout Plan */}
+              {/* Two-column grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface-border">
+                {/* Column 1: Workout */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-mono">Workout Plan</span>
-                    </div>
-                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-150">{todayRoutine.name}</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                      Workout Focus: <strong className="text-zinc-800 dark:text-zinc-200 font-bold">{todayRoutine.focus}</strong>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-mono">Workout Plan</span>
+                    <h3 className="text-sm sm:text-base font-black text-foreground">{todayRoutine.name}</h3>
+                    <p className="text-xs text-zinc-555 dark:text-zinc-450">
+                      Focus: <strong className="text-zinc-850 dark:text-zinc-955 font-bold">{todayRoutine.focus}</strong>
                     </p>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase pt-0.5">
-                      {todayRoutine.exercises.length} exercises · {todayRoutine.estimatedMinutes} mins est. duration
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
+                      {todayRoutine.exercises.length} exercises · {todayRoutine.estimatedMinutes} mins
                     </div>
                   </div>
-                  <Button 
+                  <Button
                     onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                    className="w-full font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(16,185,129,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    className="w-full font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(16,185,129,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
                     <Dumbbell size={14} />
-                    Launch Workout Session
+                    Launch Workout
                   </Button>
                 </div>
 
-                {/* Column 2: Fuel Matrix */}
+                {/* Column 2: Nutrition */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Daily Nutrition</span>
-                    </div>
-                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-150">Nutrition & Calories</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-normal">
-                      Aim for a baseline of <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong> to fuel your body.
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-450 font-mono">Daily Nutrition</span>
+                    <h3 className="text-sm sm:text-base font-black text-foreground">Nutrition &amp; Calories</h3>
+                    <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed">
+                      Target <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong> today.
                     </p>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase pt-0.5">
-                      Drink at least 2,500 ml of water · Track your daily meals
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
+                      2,500 ml water · Log all meals
                     </div>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setWorkoutTab("nutrition");
-                      setActiveTab("workout");
-                    }}
-                    className="w-full font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(245,158,11,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  <Button
+                    onClick={() => { setWorkoutTab("nutrition"); setActiveTab("workout"); }}
+                    className="w-full font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(245,158,11,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
                     <Flame size={14} />
-                    Log Daily Nutrients
+                    Log Nutrients
                   </Button>
                 </div>
               </div>
@@ -1003,86 +996,79 @@ export function DashboardScreen() {
           </div>
         ) : (
           /* Rest Day Restorative Hero */
-          <div className="p-5 sm:p-6 border border-violet-500/20 dark:border-violet-500/30 bg-gradient-to-br from-violet-50/40 to-amber-50/30 dark:bg-none dark:bg-zinc-950 relative shadow-xl overflow-hidden group rounded-2xl">
-            {/* Visual glow elements */}
-            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px] pointer-events-none" />
-            <div className="absolute -left-20 -bottom-20 w-44 h-44 rounded-full bg-amber-500/5 blur-[80px] group-hover:bg-amber-500/10 transition-all duration-300 pointer-events-none" />
-            
+          <div className="p-5 sm:p-6 border border-violet-500/20 dark:border-violet-500/20 bg-card relative shadow-sm overflow-hidden group rounded-2xl">
+            {/* Ambient glow — theme-safe */}
+            <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full bg-violet-500/8 dark:bg-violet-500/10 blur-[70px] group-hover:bg-violet-500/12 transition-all duration-500 pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-40 h-40 rounded-full bg-amber-500/6 dark:bg-amber-500/8 blur-[70px] group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
+
             <div className="relative z-10 space-y-5">
-              {/* Header Zone: Clean & Spacious */}
-              <div className="space-y-1 select-none">
+              {/* Header */}
+              <div className="space-y-1.5 select-none">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                     Today's Target
                   </span>
-                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase">REST DAY</span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase">Rest Day</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white leading-tight">Rest, Recharge & Recovery</h2>
-                <p className="text-xs text-zinc-555 dark:text-zinc-405 leading-normal max-w-2xl">
-                  Today is all about rest: let your body recover from training, recharge your energy, and hit your nutrition goals to stay on track.
+                <h2 className="text-xl sm:text-2xl font-black text-foreground leading-tight tracking-tight">Rest, Recharge &amp; Recovery</h2>
+                <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed max-w-2xl">
+                  Let your body recover from training, recharge your energy, and hit nutrition goals to stay on track.
                 </p>
               </div>
 
-              {/* Grid split: Simple, transparent columns with clean layouts */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200/50 dark:border-white/5">
-                {/* Column 1: System Restoration (CNS Recovery) */}
+              {/* Two-column grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface-border">
+                {/* Column 1: Active Recovery */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-455 font-mono">Recharge & Rest</span>
-                    </div>
-                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">Active Recovery</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                      Focus on getting deep sleep, relaxing your body, and doing light stretching.
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400 font-mono">Recharge &amp; Rest</span>
+                    <h3 className="text-sm sm:text-base font-black text-foreground">Active Recovery</h3>
+                    <p className="text-xs text-zinc-555 dark:text-zinc-450">
+                      Focus on deep sleep, body relaxation, and light stretching.
                     </p>
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1">
                         <Activity size={10} />
                         Light Stretching
                       </span>
-                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1">
                         <Moon size={10} />
                         Deep Rest
                       </span>
                     </div>
                   </div>
-                  <Button 
+                  <Button
                     onClick={() => {
                       if (activePlan) {
                         setEditingWorkoutPlanId(activePlan.id);
                         setActiveSubScreen("workout-plan-detail");
                       }
                     }}
-                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(124,58,237,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                    className="w-full font-black uppercase tracking-wider bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(124,58,237,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                   >
                     <ClipboardList size={14} />
                     Weekly Schedule
                   </Button>
                 </div>
 
-                {/* Column 2: Calorie / Nutrition */}
+                {/* Column 2: Nutrition */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-455 font-mono">Daily Nutrition</span>
-                    </div>
-                    <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">Nutrition & Energy</h3>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-normal">
-                      Keep your recovery on track by aiming for <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-800 dark:text-zinc-200 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong>.
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-450 font-mono">Daily Nutrition</span>
+                    <h3 className="text-sm sm:text-base font-black text-foreground">Nutrition &amp; Energy</h3>
+                    <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed">
+                      Aim for <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedCalories ?? 2288} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{calculatedProtein ?? 150}g protein</strong> to support recovery.
                     </p>
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-bold font-mono uppercase pt-0.5">
-                      Drink at least 2,500 ml of water · Track your daily meals
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
+                      2,500 ml water · Log all meals
                     </div>
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setWorkoutTab("nutrition");
-                      setActiveTab("workout");
-                    }}
-                    className="w-full font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_12px_rgba(245,158,11,0.2)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  <Button
+                    onClick={() => { setWorkoutTab("nutrition"); setActiveTab("workout"); }}
+                    className="w-full font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(245,158,11,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
                     <Flame size={14} />
-                    Log Daily Nutrients
+                    Log Nutrients
                   </Button>
                 </div>
               </div>
