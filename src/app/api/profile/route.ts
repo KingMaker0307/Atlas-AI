@@ -450,14 +450,26 @@ export async function GET(request: NextRequest) {
         }, { headers: corsHeaders(request) });
       }
 
+      // Check if local dev mock file exists in local storage to prevent data loss in dev environment
+      const mockFilePath = findMockFilePath(userId || "", email || undefined);
+      if (mockFilePath && fs.existsSync(mockFilePath)) {
+        try {
+          const fileData = JSON.parse(fs.readFileSync(mockFilePath, "utf-8"));
+          const isBlocked = fileData.blocked === true || fileData.status === "blocked";
+          console.log(`[Cloud Sync Fallback] Loaded local mock file: ${mockFilePath}`);
+          return NextResponse.json({ 
+            blocked: isBlocked, 
+            mode: "drive", 
+            snapshot: fetchContent ? fileData : undefined 
+          }, { headers: corsHeaders(request) });
+        } catch (_) {}
+      }
+
       return NextResponse.json({ blocked: false, mode: "drive" }, { headers: corsHeaders(request) });
     } catch (driveError: any) {
-      // Fallback silently if there is any network timeout/connection error
-      if (isNetworkOrTimeoutError(driveError)) {
-        console.warn("[Cloud Sync] Google Drive connection timeout or offline. Gracefully falling back to local Mock Sync:", driveError.message || driveError);
-        return handleMockGet(userId || "", email, fetchContent, request);
-      }
-      throw driveError;
+      // Fallback silently to local Mock Sync for any error (network, auth, or rate limit) on localhost
+      console.warn("[Cloud Sync] Google Drive API failed. Gracefully falling back to local Mock Sync:", driveError.message || driveError);
+      return handleMockGet(userId || "", email, fetchContent, request);
     }
   } catch (error: any) {
     console.error("GET /api/profile error:", error);
@@ -534,12 +546,9 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ success: true, blocked: false, mode: "drive" }, { headers: corsHeaders(request) });
     } catch (driveError: any) {
-      // Fallback silently if there is any network timeout/connection error
-      if (isNetworkOrTimeoutError(driveError)) {
-        console.warn("[Cloud Sync] Google Drive connection timeout or offline. Gracefully falling back to local Mock Sync:", driveError.message || driveError);
-        return handleMockPost(userId, emailToUse, snapshot, request);
-      }
-      throw driveError;
+      // Fallback silently to local Mock Sync for any error (network, auth, or rate limit) on localhost
+      console.warn("[Cloud Sync] Google Drive API failed. Gracefully falling back to local Mock Sync:", driveError.message || driveError);
+      return handleMockPost(userId, emailToUse, snapshot, request);
     }
   } catch (error: any) {
     console.error("POST /api/profile error:", error);

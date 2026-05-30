@@ -23,9 +23,7 @@ export interface GoogleUser {
 // ── Module-level singletons ───────────────────────────────────────────────────
 
 let gisScriptPromise: Promise<void> | null = null;
-// Track which container IDs have already had a button rendered to avoid
-// re-initialising the GIS client on the same page load (GIS throws if you
-// call initialize() more than once per client_id per page).
+// Track rendered containers (kept for state reference)
 const renderedContainers = new Set<string>();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -62,13 +60,26 @@ function loadGIS(): Promise<void> {
   return gisScriptPromise;
 }
 
-/** Decode a Google-issued JWT without a network round-trip. */
+/** Decode a Google-issued JWT without a network round-trip. Robust to HMR and strict base64url padding. */
 function decodeGoogleJwt(credential: string): GoogleUser | null {
   try {
-    const [, payload] = credential.split(".");
+    const parts = credential.split(".");
+    if (parts.length < 2) return null;
+    const payload = parts[1];
+    const rawPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = rawPayload.length % 4;
+    const padded = pad ? rawPayload + "=".repeat(4 - pad) : rawPayload;
+    
+    // Parse using Unicode-safe character mapping to support robust name rendering
     const json = JSON.parse(
-      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+      decodeURIComponent(
+        atob(padded)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      )
     );
+
     if (!json.email) return null;
     return {
       email: json.email as string,
@@ -76,7 +87,8 @@ function decodeGoogleJwt(credential: string): GoogleUser | null {
       picture: (json.picture as string) ?? undefined,
       sub: (json.sub as string) ?? undefined,
     };
-  } catch {
+  } catch (error) {
+    console.error("Failed to decode Google JWT:", error);
     return null;
   }
 }
@@ -105,7 +117,7 @@ export async function renderGoogleSignInButton(
 
   try {
     await loadGIS();
-  } catch (err: any) {
+  } catch {
     onError?.(
       "Failed to load Google Sign-In. Check your internet connection and try again."
     );
@@ -121,37 +133,35 @@ export async function renderGoogleSignInButton(
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  // GIS only allows one initialize() call per page per client_id.
-  // We call it once (when first container is rendered) and reuse for subsequent ones.
-  if (renderedContainers.size === 0) {
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: (response: { credential?: string; error?: string }) => {
-        if (!response.credential) {
-          onError?.(
-            response.error === "suppressed_by_user"
-              ? "Sign-in was cancelled."
-              : "Sign-in failed — no credential returned. Make sure http://localhost:3000 is added to Authorized JavaScript Origins in Google Cloud Console."
-          );
-          return;
-        }
-        const user = decodeGoogleJwt(response.credential);
-        if (user) {
-          onSuccess(user);
-        } else {
-          onError?.(
-            "Could not read your Google account details. Please try again."
-          );
-        }
-      },
-      // These improve UX: don't auto-select, allow cancelling, use sign-in context
-      auto_select: false,
-      cancel_on_tap_outside: true,
-      context: "signin",
-      // itp_support enables One Tap on Chrome with ITP (Safari-like tracking prevention)
-      itp_support: true,
-    });
-  }
+  // Dynamically initialize on every render to bind current active callback closures directly.
+  // This completely eliminates hot-module reloading (HMR) reference decay in the dev environment.
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response: { credential?: string; error?: string }) => {
+      if (!response.credential) {
+        onError?.(
+          response.error === "suppressed_by_user"
+            ? "Sign-in was cancelled."
+            : "Sign-in failed — no credential returned. Make sure http://localhost:3000 is added to Authorized JavaScript Origins in Google Cloud Console."
+        );
+        return;
+      }
+      const user = decodeGoogleJwt(response.credential);
+      if (user) {
+        onSuccess(user);
+      } else {
+        onError?.(
+          "Could not read your Google account details. Please try again."
+        );
+      }
+    },
+    // These improve UX: don't auto-select, allow cancelling, use sign-in context
+    auto_select: false,
+    cancel_on_tap_outside: true,
+    context: "signin",
+    // itp_support enables One Tap on Chrome with ITP (Safari-like tracking prevention)
+    itp_support: true,
+  });
 
   renderedContainers.add(containerId);
 
@@ -203,22 +213,21 @@ export async function triggerGoogleSignIn(
     return;
   }
 
-  if (renderedContainers.size === 0) {
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: (response: { credential?: string }) => {
-        if (!response.credential) {
-          onError?.("Sign-in cancelled or failed.");
-          return;
-        }
-        const user = decodeGoogleJwt(response.credential);
-        if (user) onSuccess(user);
-        else onError?.("Could not read account details.");
-      },
-      auto_select: false,
-      context: "signin",
-    });
-  }
+  // Bind active callbacks directly to avoid stale module closures during HMR
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: (response: { credential?: string }) => {
+      if (!response.credential) {
+        onError?.("Sign-in cancelled or failed.");
+        return;
+      }
+      const user = decodeGoogleJwt(response.credential);
+      if (user) onSuccess(user);
+      else onError?.("Could not read account details.");
+    },
+    auto_select: false,
+    context: "signin",
+  });
 
   // Use the prompt to show a chooser dialog
   google.accounts.id.prompt();

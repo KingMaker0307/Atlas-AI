@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "kill -9 $(lsof -t -i:3000 2>/dev/null) 2>/dev/null || true",
     "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build",
     "export": "NEXT_TELEMETRY_DISABLED=1 next build",

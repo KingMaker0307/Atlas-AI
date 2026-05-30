@@ -145,10 +145,26 @@ export function WelcomeScreen() {
   const completeOnboarding = useAtlasStore((state) => state.completeOnboarding);
   const importEncryptedProfile = useAtlasStore((state) => state.importEncryptedProfile);
   const importRawSnapshot = useAtlasStore((state) => state.importRawSnapshot);
+  const finalizeRestore = useAtlasStore((state) => state.finalizeRestore);
 
   const [view, setView] = useState<WelcomeView>("menu");
   const [selectedSyncType, setSelectedSyncType] = useState<"federated" | "offline" | null>(null);
-  
+
+  // Setup form states
+  const [name, setName] = useState("");
+  const [age, setAge] = useState<number>(28);
+  const [weight, setWeight] = useState<number>(160);
+  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [height, setHeight] = useState<number>(68); // total inches or cm
+  const [heightUnit, setHeightUnit] = useState<"in" | "cm">("in");
+  const [goal, setGoal] = useState("");
+  const [daysPerWeek, setDaysPerWeek] = useState<number>(3);
+  const [trainingStyle, setTrainingStyle] = useState<"strength" | "hypertrophy" | "powerbuilding" | "endurance" | "general">("general");
+  const [equipment, setEquipment] = useState<"full gym" | "home gym" | "bodyweight">("full gym");
+  const [experience, setExperience] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
+  const [bodyType, setBodyType] = useState<"ectomorph" | "mesomorph" | "endomorph">("mesomorph");
+  const [targetPhysique, setTargetPhysique] = useState<"lean" | "athletic" | "bulky" | "shredded" | "toned">("athletic");
+
   // New Onboarding and Restore Email states
   const [emailInput, setEmailInput] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -170,28 +186,7 @@ export function WelcomeScreen() {
   const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
   const [googleAuthLoading, setGoogleAuthLoading] = useState(false);
   const [forceLoadRealGoogle, setForceLoadRealGoogle] = useState(false);
-  
-  // Render Google Sign-In button once the container is mounted
-  const initGoogleSignIn = (containerId: string, onSuccess: (user: GoogleUser) => void) => {
-    setGoogleAuthError(null);
-    setGoogleAuthLoading(true);
-    renderGoogleSignInButton(
-      containerId,
-      (user) => {
-        setGoogleAuthLoading(false);
-        onSuccess(user);
-      },
-      (err) => {
-        setGoogleAuthLoading(false);
-        setGoogleAuthError(err);
-      }
-    ).then(() => {
-      setGoogleAuthLoading(false);
-    }).catch((err) => {
-      setGoogleAuthLoading(false);
-      setGoogleAuthError(err?.message || "Google sign-in failed to load.");
-    });
-  };
+  const [sandboxEmail, setSandboxEmail] = useState("athlete.dev@gmail.com");
 
   // ─── Apple Sign In state ───
   const [appleAuthError, setAppleAuthError] = useState<string | null>(null);
@@ -248,21 +243,6 @@ export function WelcomeScreen() {
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
-
-  // Setup form states
-  const [name, setName] = useState("");
-  const [age, setAge] = useState<number>(28);
-  const [weight, setWeight] = useState<number>(160);
-  const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
-  const [height, setHeight] = useState<number>(68); // total inches or cm
-  const [heightUnit, setHeightUnit] = useState<"in" | "cm">("in");
-  const [goal, setGoal] = useState("");
-  const [daysPerWeek, setDaysPerWeek] = useState<number>(3);
-  const [trainingStyle, setTrainingStyle] = useState<"strength" | "hypertrophy" | "powerbuilding" | "endurance" | "general">("general");
-  const [equipment, setEquipment] = useState<"full gym" | "home gym" | "bodyweight">("full gym");
-  const [experience, setExperience] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
-  const [bodyType, setBodyType] = useState<"ectomorph" | "mesomorph" | "endomorph">("mesomorph");
-  const [targetPhysique, setTargetPhysique] = useState<"lean" | "athletic" | "bulky" | "shredded" | "toned">("athletic");
 
   // AI Setup states
   const [setupAiCoach, setSetupAiCoach] = useState(false);
@@ -328,9 +308,26 @@ export function WelcomeScreen() {
     setIsRestoringFromCloud(true);
     setRestoreError(null);
     setRestoreEmpty(false);
+    
+    const cleanEmail = email.toLowerCase().trim();
+    const activeLocalProfile = useAtlasStore.getState().profile;
+    
+    // If the local IndexedDB profile already matches this email, load immediately and bypass network requests!
+    if (activeLocalProfile && activeLocalProfile.email?.toLowerCase().trim() === cleanEmail) {
+      console.log("[Cloud Restore] Matching profile already exists in IndexedDB. Loading immediately...");
+      await finalizeRestore("local");
+      setIsRestoringFromCloud(false);
+      return;
+    }
+
     try {
-      const res = await restoreProfileByEmail(email);
+      const res = await restoreProfileByEmail(cleanEmail);
       if (res.success && res.snapshot) {
+        // Guarantee the imported profile retains the logged-in email and verification status
+        if (res.snapshot.profile) {
+          res.snapshot.profile.email = cleanEmail;
+          res.snapshot.profile.emailVerified = true;
+        }
         await importRawSnapshot(res.snapshot);
         setRestoreSuccess(true);
       } else {
@@ -647,12 +644,23 @@ export function WelcomeScreen() {
                         </div>
                       </div>
 
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Sandbox Test Email</Label>
+                        <Input
+                          type="email"
+                          value={sandboxEmail}
+                          onChange={(e) => setSandboxEmail(e.target.value)}
+                          placeholder="e.g. athlete.dev@gmail.com or your real email"
+                          className="bg-zinc-950/40 border-zinc-500/20 focus:ring-1 focus:ring-amber-500/30 text-xs font-medium"
+                        />
+                      </div>
+
                       <div className="grid grid-cols-1 gap-2.5">
                         <button
                           type="button"
                           onClick={() => {
-                            const mockEmail = "athlete.dev@gmail.com";
-                            setEmailInput(mockEmail);
+                            const cleanEmail = sandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
+                            setEmailInput(cleanEmail);
                             setName("Dev Athlete");
                             setEmailVerified(true);
                             setCapturedProvider("google");
@@ -867,7 +875,9 @@ export function WelcomeScreen() {
                   <Button
                     className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-955 font-bold"
                     variant="primary"
-                    onClick={() => { setStartupChoice("local"); }}
+                    onClick={async () => {
+                      await finalizeRestore("local");
+                    }}
                     icon={<Sparkles size={16} className="text-zinc-955" />}
                   >
                     Go to Dashboard
@@ -944,14 +954,25 @@ export function WelcomeScreen() {
                             </div>
                           </div>
 
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Sandbox Test Email</Label>
+                            <Input
+                              type="email"
+                              value={sandboxEmail}
+                              onChange={(e) => setSandboxEmail(e.target.value)}
+                              placeholder="e.g. athlete.dev@gmail.com or your real email"
+                              className="bg-zinc-950/40 border-zinc-500/20 focus:ring-1 focus:ring-amber-500/30 text-xs font-medium"
+                            />
+                          </div>
+
                           <div className="grid grid-cols-1 gap-2.5">
                             <button
                               type="button"
                               onClick={async () => {
-                                const mockEmail = "athlete.dev@gmail.com";
+                                const cleanEmail = sandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
                                 setCapturedProvider("google");
-                                setEmailInput(mockEmail);
-                                await handleCloudRestore(mockEmail);
+                                setEmailInput(cleanEmail);
+                                await handleCloudRestore(cleanEmail);
                               }}
                               className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
                             >

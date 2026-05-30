@@ -526,22 +526,22 @@ export function DashboardScreen() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="keep-dark relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/40 via-teal-950/20 to-zinc-950/90 shadow-md p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          className="relative overflow-hidden rounded-2xl border border-card-border bg-card shadow-lg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         >
-          <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-500/10 blur-[50px] pointer-events-none" />
+          <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-[50px] pointer-events-none" />
           <div className="space-y-1 relative z-10 flex-1">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400 font-mono">Security & Sync Upgrade</p>
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">Security & Sync Upgrade</p>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-white-keep">Upgrade to Secure Cloud Backup</h3>
-            <p className="text-xs text-zinc-400 leading-relaxed max-w-2xl">
+            <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white">Upgrade to Secure Cloud Backup</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-2xl">
               Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices using high-fidelity naming conventions.
             </p>
           </div>
           <Button
             onClick={() => setShowMigrationModal(true)}
-            className="sm:shrink-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-white shadow-md h-9 text-xs px-4 rounded-xl relative z-10 flex items-center justify-center gap-1.5 self-start sm:self-center"
+            className="sm:shrink-0 font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm h-9 text-xs px-4 rounded-xl relative z-10 flex items-center justify-center gap-1.5 self-start sm:self-center"
           >
             <Sparkles size={14} />
             Secure Profile Now

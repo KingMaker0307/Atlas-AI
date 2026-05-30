@@ -17,7 +17,7 @@ import { getProgressionRecommendations } from "@/lib/progression/engine";
 import { decryptExport, decryptString, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
 import { loadSnapshot, saveSnapshot } from "@/lib/storage/db";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
-import { checkBlockedStatus, syncProfile } from "@/lib/sync";
+import { checkBlockedStatus, syncProfile, restoreProfileByEmail } from "@/lib/sync";
 import type {
   AiMessage,
   AiProviderSettings,
@@ -35,7 +35,6 @@ import type {
   WorkoutPlan,
   EncryptedSecret,
 } from "@/types/domain";
-import { CoachChatResponse } from "@/lib/ai/types";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "local-offline" | "backup" | null;
@@ -96,7 +95,9 @@ interface AtlasState {
   setEditingRoutineId: (id: string | null) => void;
   setWorkoutTab: (tab: "plans" | "nutrition") => void;
   hydrate: () => Promise<void>;
+  pullCloudUpdate: () => Promise<void>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
+  finalizeRestore: (choice: StartupChoice) => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
   setWeightUnit: (unit: WeightUnit) => Promise<void>;
@@ -184,10 +185,7 @@ function isValidSnapshot(data: any): data is StoredSnapshot {
   return (
     data &&
     typeof data === "object" &&
-    "profile" in data &&
-    "workoutPlans" in data &&
-    "exercises" in data &&
-    "workouts" in data
+    "profile" in data
   );
 }
 
@@ -249,7 +247,7 @@ let pendingSyncToDrive = false;
 
 async function syncProfileToDrive(state: AtlasState): Promise<void> {
   const profile = state.profile;
-  if (!profile || !profile.id) return;
+  if (!profile || !profile.id || profile.id === "default-user") return;
   
   if (isSyncingToDrive) {
     pendingSyncToDrive = true;
@@ -264,7 +262,10 @@ async function syncProfileToDrive(state: AtlasState): Promise<void> {
     if (res.blocked) {
       useAtlasStore.setState({ blocked: true });
     } else if (res.success) {
-      useAtlasStore.setState({ lastSyncedAt: new Date().toISOString() });
+      const newSyncTime = new Date().toISOString();
+      useAtlasStore.setState({ lastSyncedAt: newSyncTime });
+      // Guarantee the updated sync timestamp is written back to IndexedDB local database immediately!
+      await saveSnapshot(snapshotFromState(useAtlasStore.getState()));
     }
   } catch (error) {
     console.error("Failed to execute Google Drive silent sync:", error);
@@ -494,7 +495,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       throw error;
     }
   },
-  setStartupChoice: (choice) => set({ startupChoice: choice }),
+  setStartupChoice: (choice) => {
+    set({ startupChoice: choice });
+    void persistState(get());
+  },
   setActiveTab: (tab) => set({ activeTab: tab, activeSubScreen: null }),
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
   setEditingWorkoutPlanId: (id) => set({ editingWorkoutPlanId: id }),
@@ -589,6 +593,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     }
     
     const activeWorkoutPlanId = snapshot.activeWorkoutPlanId || snapshot.workoutPlans[0]?.id || null;
+    const startupChoice = snapshot.startupChoice || (snapshot.hasOnboarded ? "local" : null);
     set({
       ...snapshot,
       workouts,
@@ -596,6 +601,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeSubScreen,
       aiMessages,
       activeWorkoutPlanId,
+      startupChoice,
       guidedMode: snapshot.guidedMode !== undefined ? snapshot.guidedMode : true,
       hydrated: true,
       activeTab: "dashboard",
@@ -608,6 +614,8 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       await persistState(get());
     }
 
+    void get().pullCloudUpdate();
+
     // Check blocked status if online and onboarded
     if (typeof window !== "undefined" && navigator.onLine && snapshot.profile?.id) {
       try {
@@ -618,6 +626,38 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       } catch (error) {
         console.error("Failed to check blocked status:", error);
       }
+    }
+  },
+  pullCloudUpdate: async () => {
+    const email = get().profile?.email;
+    if (!email || typeof window === "undefined" || !navigator.onLine) return;
+
+    try {
+      console.log("[Cloud Sync] Checking for newer snapshot in Google Drive...");
+      const res = await restoreProfileByEmail(email);
+      if (res.success && res.snapshot) {
+        const cloudUpdatedAt = res.snapshot.updatedAt;
+        const localLastSyncedAt = get().lastSyncedAt;
+        
+        // If the cloud snapshot is newer, restore it!
+        if (!localLastSyncedAt || (cloudUpdatedAt && new Date(cloudUpdatedAt).getTime() > new Date(localLastSyncedAt).getTime())) {
+          console.log("[Cloud Sync] Found newer cloud snapshot. Restoring silently...");
+          const activeStartupChoice = get().startupChoice || "local";
+          set({
+            ...freshSnapshot(),
+            ...res.snapshot,
+            hasOnboarded: true,
+            startupChoice: activeStartupChoice,
+            hydrated: true,
+            coachBusy: false,
+            providerBusy: false,
+          });
+          // Save locally to IndexedDB
+          await saveSnapshot(snapshotFromState(get()));
+        }
+      }
+    } catch (e) {
+      console.error("[Cloud Sync] Background pull failed:", e);
     }
   },
   setActiveWorkoutPlanId: async (id) => {
@@ -705,6 +745,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
     await persistState(get());
   },
+  finalizeRestore: async (choice) => {
+    set({ hasOnboarded: true, startupChoice: choice });
+    await persistState(get());
+  },
   completeOnboarding: async (data) => {
     const { apiKey, providerType, customGoal, ...profile } = data;
     
@@ -719,7 +763,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       }
 
       const isLocalProvider = providerType === "ollama" || providerType === "lmstudio";
-      const keyToUse = apiKey || (isLocalProvider ? "local-key" : "");
 
       const defaultModelForType: Record<string, string> = {
         openai: "gpt-4o",
@@ -802,7 +845,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const profile = get().profile;
     if (!profile) return;
     // Protect email immutability: once email is set in profile, prevent updates to email or emailVerified
-    const { email, emailVerified, ...safePatch } = patch;
+    const safePatch = { ...patch };
+    delete safePatch.email;
+    delete safePatch.emailVerified;
     const finalPatch = profile.email ? safePatch : patch;
     const updatedProfile = { ...profile, ...finalPatch };
     set({ profile: updatedProfile });
@@ -1463,19 +1508,31 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   importEncryptedProfile: async (fileText, passphrase) => {
     const snapshot = await decryptExport<any>(fileText, passphrase);
     if (isValidSnapshot(snapshot)) {
-      if (snapshot.deviceSecret && typeof window !== "undefined") {
-        setDeviceSecretValue(snapshot.deviceSecret);
+      const mergedSnapshot = {
+        ...freshSnapshot(),
+        ...snapshot,
+        hasOnboarded: true,
+        startupChoice: "local" as StartupChoice,
+      };
+      if (mergedSnapshot.deviceSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(mergedSnapshot.deviceSecret);
       }
-      set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+      set({ ...mergedSnapshot, hydrated: true, coachBusy: false, providerBusy: false });
       await persistState(get());
     }
   },
   importRawSnapshot: async (snapshot) => {
     if (isValidSnapshot(snapshot)) {
-      if (snapshot.deviceSecret && typeof window !== "undefined") {
-        setDeviceSecretValue(snapshot.deviceSecret);
+      const mergedSnapshot = {
+        ...freshSnapshot(),
+        ...snapshot,
+        hasOnboarded: true,
+        startupChoice: "local" as StartupChoice,
+      };
+      if (mergedSnapshot.deviceSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(mergedSnapshot.deviceSecret);
       }
-      set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+      set({ ...mergedSnapshot, hydrated: true, coachBusy: false, providerBusy: false });
       await persistState(get());
     } else {
       throw new Error("Invalid snapshot structure. Unable to restore.");
