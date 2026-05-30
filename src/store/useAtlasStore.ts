@@ -845,9 +845,12 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const profile = get().profile;
     if (!profile) return;
     // Protect email immutability: once email is set in profile, prevent updates to email or emailVerified
+    // EXCEPT when changing capturedProvider (e.g. upgrading/linking to Google)
     const safePatch = { ...patch };
-    delete safePatch.email;
-    delete safePatch.emailVerified;
+    if (!patch.capturedProvider || patch.capturedProvider === profile.capturedProvider) {
+      delete safePatch.email;
+      delete safePatch.emailVerified;
+    }
     const finalPatch = profile.email ? safePatch : patch;
     const updatedProfile = { ...profile, ...finalPatch };
     set({ profile: updatedProfile });

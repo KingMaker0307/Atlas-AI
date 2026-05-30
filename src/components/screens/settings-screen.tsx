@@ -26,6 +26,8 @@ import {
   Lock,
   Check,
   Dumbbell,
+  Cloud,
+  AlertCircle,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -37,6 +39,8 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 import type { AiProviderSettings, HeightUnit, ThemeMode, WeightUnit, UserProfile, Physique } from "@/types/domain";
 import { getProviderAdapter } from "@/providers";
 import { decryptString } from "@/lib/security/crypto";
+import { renderGoogleSignInButton } from "@/lib/google-auth";
+import { restoreProfileByEmail } from "@/lib/sync";
 
 const providerTypes: AiProviderSettings["type"][] = [
   "openai",
@@ -217,8 +221,6 @@ export function SettingsScreen() {
   const setActiveProvider = useAtlasStore((state) => state.setActiveProvider);
   const markProviderKeyStatus = useAtlasStore((state) => state.markProviderKeyStatus);
   const testProvider = useAtlasStore((state) => state.testProvider);
-  const exportEncryptedProfile = useAtlasStore((state) => state.exportEncryptedProfile);
-  const importEncryptedProfile = useAtlasStore((state) => state.importEncryptedProfile);
   const resetLocalData = useAtlasStore((state) => state.resetLocalData);
   const providerBusy = useAtlasStore((state) => state.providerBusy);
   const updateProfile = useAtlasStore((state) => state.updateProfile);
@@ -247,16 +249,15 @@ export function SettingsScreen() {
 
   const [saveIndicator, setSaveIndicator] = useState<"saved" | "saving" | "error" | null>("saved");
   const [showApiKey, setShowApiKey] = useState(false);
-  const [showExportPassphrase, setShowExportPassphrase] = useState(false);
-  const [showImportPassphrase, setShowImportPassphrase] = useState(false);
+  const [isUpgradingGoogle, setIsUpgradingGoogle] = useState(false);
+  const [upgradeGoogleAuthError, setUpgradeGoogleAuthError] = useState<string | null>(null);
+  const [upgradeSandboxEmail, setUpgradeSandboxEmail] = useState("");
+  const [forceLoadRealGoogleUpgrade, setForceLoadRealGoogleUpgrade] = useState(false);
 
   const [initialized, setInitialized] = useState(false);
   const [selectedType, setSelectedType] = useState<AiProviderSettings["type"]>("openai");
   const [draft, setDraft] = useState<AiProviderSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
-  const [exportPassphrase, setExportPassphrase] = useState("");
-  const [importPassphrase, setImportPassphrase] = useState("");
-  const [importFile, setImportFile] = useState<File | null>(null);
   const [notificationStatus, setNotificationStatus] = useState("Not enabled");
   const [showDbStats, setShowDbStats] = useState(false);
 
@@ -500,24 +501,31 @@ export function SettingsScreen() {
     setAiError(null);
   };
 
-  async function handleExport() {
-    if (!exportPassphrase) return;
-    const text = await exportEncryptedProfile(exportPassphrase);
-    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `atlas-ai-coach-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
+  const handleUpgradeGoogleAuthSuccess = async (googleEmail: string, displayName?: string) => {
+    setIsUpgradingGoogle(true);
+    setUpgradeGoogleAuthError(null);
+    try {
+      const cleanEmail = googleEmail.toLowerCase().trim();
+      const checkRes = await restoreProfileByEmail(cleanEmail);
+      if (checkRes.success && checkRes.snapshot) {
+        setUpgradeGoogleAuthError("This Google account is already linked to another profile in the cloud. Please use a different Google account.");
+        setIsUpgradingGoogle(false);
+        return;
+      }
 
-  async function handleImport() {
-    if (!importFile || !importPassphrase) return;
-    const text = await importFile.text();
-    await importEncryptedProfile(text, importPassphrase);
-    setImportFile(null);
-    setImportPassphrase("");
-  }
+      await updateProfile({
+        capturedProvider: "google",
+        email: cleanEmail,
+        emailVerified: true,
+      });
+      setIsUpgradingGoogle(false);
+      alert("Successfully upgraded to Google Cloud Backup!");
+    } catch (e: any) {
+      console.error("Failed to upgrade sync provider:", e);
+      setUpgradeGoogleAuthError(e.message || "An error occurred during Google Sign-In setup.");
+      setIsUpgradingGoogle(false);
+    }
+  };
 
   const handleProfileChange = (field: keyof UserProfile, value: any) => {
     setDraftProfile((prev) => ({ ...prev, [field]: value }));
@@ -595,35 +603,7 @@ export function SettingsScreen() {
     await testProvider(updatedDraft.id);
   };
 
-  const handleExportWithValidation = async () => {
-    if (!exportPassphrase) return;
-    if (exportPassphrase.length > 64) {
-      setBackupError("Passphrase must be 64 characters or less.");
-      return;
-    }
-    setBackupError(null);
-    await handleExport();
-  };
 
-  const handleImportWithValidation = async () => {
-    if (!importFile || !importPassphrase) return;
-    if (importPassphrase.length > 64) {
-      setBackupError("Passphrase must be 64 characters or less.");
-      return;
-    }
-    if (activeWorkout) {
-      const confirmImport = window.confirm(
-        "You have a workout session in progress. Importing a profile will replace your entire database, which will discard your current active workout. Do you want to continue?"
-      );
-      if (!confirmImport) return;
-    }
-    setBackupError(null);
-    try {
-      await handleImport();
-    } catch (e: any) {
-      setBackupError(e.message || "Failed to import profile.");
-    }
-  };
 
   // Helper flags
   const isSaved = useMemo(() => {
@@ -1363,100 +1343,95 @@ export function SettingsScreen() {
                     </div>
                   </Card>
 
-                  {/* Backup Vault Panel */}
-                  <Card className="p-5 space-y-5">
-                    <div className="flex items-center justify-between border-b border-card-border pb-3 select-none">
-                      <div className="flex items-center gap-2.5">
-                        <Shield className="text-blue-500 dark:text-blue-400" size={18} />
-                        <h2 className="text-base font-bold text-foreground tracking-tight">Encrypted Profile Backups</h2>
+                  {/* Google Drive Upgrade Card */}
+                  {profile?.capturedProvider === "email" && (
+                    <Card className="p-5 space-y-5">
+                      <div className="flex items-center justify-between border-b border-card-border pb-3 select-none">
+                        <div className="flex items-center gap-2.5">
+                          <Cloud className="text-emerald-500 dark:text-emerald-400" size={18} />
+                          <h2 className="text-base font-bold text-foreground tracking-tight">Upgrade to Google Cloud Backup</h2>
+                        </div>
                       </div>
-                    </div>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
+                        Secure your training data and workouts using Google Drive. Upgrading allows you to sign in with a single click and sync automatically across all devices.
+                      </p>
 
-                    <div className="grid gap-5 md:grid-cols-2">
-                      {/* Export Box */}
-                      <Surface className="flex flex-col justify-between p-4 rounded-2xl select-none">
-                        <div className="space-y-3">
-                          <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-sans">Export training database</Label>
-                          <div className="relative">
-                            <Input
-                              type={showExportPassphrase ? "text" : "password"}
-                              maxLength={64}
-                              value={exportPassphrase}
-                              onChange={(event) => setExportPassphrase(event.target.value)}
-                              placeholder="Set encryption passphrase"
-                              className="text-xs font-medium pr-10 font-sans"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowExportPassphrase(!showExportPassphrase)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                            >
-                              {showExportPassphrase ? <EyeOff size={15} /> : <Eye size={15} />}
-                            </button>
-                          </div>
+                      {upgradeGoogleAuthError && (
+                        <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 rounded-xl flex items-start gap-2">
+                          <AlertCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
+                          <p className="text-[11px] text-rose-700 dark:text-zinc-300 leading-relaxed">{upgradeGoogleAuthError}</p>
+                        </Surface>
+                      )}
+
+                      {isUpgradingGoogle ? (
+                        <div className="py-6 flex flex-col items-center justify-center space-y-4">
+                          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+                          <p className="text-xs text-zinc-500 font-medium">Connecting to Google Account...</p>
                         </div>
-                        <Button
-                          className="mt-4 w-full h-11 sm:h-9 text-sm sm:text-xs font-bold uppercase font-sans"
-                          variant="primary"
-                          icon={<Download size={15} />}
-                          disabled={!exportPassphrase}
-                          onClick={handleExportWithValidation}
-                        >
-                          Export Encrypted JSON
-                        </Button>
-                      </Surface>
-
-                      {/* Import Box */}
-                      <Surface className="flex flex-col justify-between p-4 rounded-2xl">
+                      ) : (
                         <div className="space-y-3">
-                          <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest select-none font-sans">Import Backup File</Label>
-                          <div className="relative">
-                            <input
-                              type="file"
-                              id="import-file-uploader"
-                              accept="application/json"
-                              onChange={(event: ChangeEvent<HTMLInputElement>) => setImportFile(event.target.files?.[0] ?? null)}
-                              className="hidden"
+                          {typeof window !== "undefined" && 
+                           (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
+                           !forceLoadRealGoogleUpgrade ? (
+                            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                              <div className="flex items-start gap-2.5">
+                                <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                  <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Local Sandbox Mode</p>
+                                  <p className="text-[10px] text-zinc-555 dark:text-zinc-400 leading-relaxed">
+                                    Simulate linking a Google Account. Enter the email address you wish to authenticate with Google.
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Sandbox Test Email</Label>
+                                <Input
+                                  type="email"
+                                  value={upgradeSandboxEmail}
+                                  onChange={(e) => setUpgradeSandboxEmail(e.target.value)}
+                                  placeholder="e.g. athlete.dev@gmail.com"
+                                  className="bg-zinc-950/40 border-zinc-500/20 focus:ring-1 focus:ring-amber-500/30 text-xs font-medium"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const cleanEmail = upgradeSandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
+                                  await handleUpgradeGoogleAuthSuccess(cleanEmail, "Dev Athlete");
+                                }}
+                                className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
+                              >
+                                Simulate Linking Google Account
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setForceLoadRealGoogleUpgrade(true)}
+                                className="w-full text-center py-1.5 text-[9px] font-semibold text-zinc-555 hover:text-zinc-700 dark:hover:text-zinc-300 transition duration-150 cursor-pointer select-none underline decoration-dotted"
+                              >
+                                Load official Google Sign-In SDK
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              id="google-signin-upgrade"
+                              ref={(el) => {
+                                if (el) {
+                                  renderGoogleSignInButton(
+                                    "google-signin-upgrade",
+                                    async (user) => {
+                                      await handleUpgradeGoogleAuthSuccess(user.email, user.name);
+                                    },
+                                    (err) => setUpgradeGoogleAuthError(err)
+                                  );
+                                }
+                              }}
+                              className="min-h-[44px] w-full"
                             />
-                            <label
-                              htmlFor="import-file-uploader"
-                              className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-input-border hover:border-emerald-500/50 hover:bg-input-focus-bg rounded-xl bg-input py-3.5 px-3 text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition duration-205 cursor-pointer w-full text-center font-sans"
-                            >
-                              <Upload size={18} className="text-blue-400" />
-                              <span className="truncate max-w-[180px] normal-case font-sans">{importFile ? importFile.name : "Select backup.json"}</span>
-                            </label>
-                          </div>
-
-                          <div className="relative">
-                            <Input
-                              type={showImportPassphrase ? "text" : "password"}
-                              maxLength={64}
-                              value={importPassphrase}
-                              onChange={(event) => setImportPassphrase(event.target.value)}
-                              placeholder="Enter decrypt passphrase"
-                              className="text-xs font-medium pr-10 font-sans"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowImportPassphrase(!showImportPassphrase)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                            >
-                              {showImportPassphrase ? <EyeOff size={15} /> : <Eye size={15} />}
-                            </button>
-                          </div>
+                          )}
                         </div>
-                        <Button
-                          className="w-full mt-4 h-11 sm:h-9 text-sm sm:text-xs font-bold uppercase font-sans"
-                          icon={<Upload size={15} />}
-                          disabled={!importFile || !importPassphrase}
-                          onClick={handleImportWithValidation}
-                        >
-                          Import Decrypted profile
-                        </Button>
-                      </Surface>
-                    </div>
-                    {backupError && <p className="text-xs text-rose-400 font-medium font-mono">{backupError}</p>}
-                  </Card>
+                      )}
+                    </Card>
+                  )}
                 </div>
               )}
             </motion.div>

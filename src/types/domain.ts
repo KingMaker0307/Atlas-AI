@@ -62,6 +62,7 @@ export interface UserProfile {
   workoutDuration?: number;
   email?: string;
   emailVerified?: boolean;
+  capturedProvider?: "google" | "apple" | "email" | null;
 }
 
 export interface Exercise {

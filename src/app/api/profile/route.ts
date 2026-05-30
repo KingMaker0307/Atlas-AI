@@ -154,7 +154,7 @@ async function findDriveFile(accessToken: string, userId: string, email?: string
     }
   }
 
-  if (userId) {
+  if (userId && userId.trim() !== "") {
     const query = `'${FOLDER_ID}' in parents and name contains '${userId}' and trashed = false`;
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&pageSize=100`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -300,14 +300,17 @@ function findMockFilePath(userId: string, email?: string): string | null {
     const filePath = path.join(MOCK_DIR, targetName);
     if (fs.existsSync(filePath)) return filePath;
   }
-  try {
-    const files = fs.readdirSync(MOCK_DIR);
-    const match = files.find((file) => file.includes(userId));
-    return match ? path.join(MOCK_DIR, match) : null;
-  } catch (error) {
-    console.error("Failed to read mock directory:", error);
-    return null;
+  if (userId && userId.trim() !== "") {
+    try {
+      const files = fs.readdirSync(MOCK_DIR);
+      const match = files.find((file) => file.includes(userId));
+      return match ? path.join(MOCK_DIR, match) : null;
+    } catch (error) {
+      console.error("Failed to read mock directory:", error);
+      return null;
+    }
   }
+  return null;
 }
 
 // Check if any credentials exist
@@ -448,21 +451,6 @@ export async function GET(request: NextRequest) {
           mode: "drive", 
           snapshot: fetchContent ? fileData : undefined 
         }, { headers: corsHeaders(request) });
-      }
-
-      // Check if local dev mock file exists in local storage to prevent data loss in dev environment
-      const mockFilePath = findMockFilePath(userId || "", email || undefined);
-      if (mockFilePath && fs.existsSync(mockFilePath)) {
-        try {
-          const fileData = JSON.parse(fs.readFileSync(mockFilePath, "utf-8"));
-          const isBlocked = fileData.blocked === true || fileData.status === "blocked";
-          console.log(`[Cloud Sync Fallback] Loaded local mock file: ${mockFilePath}`);
-          return NextResponse.json({ 
-            blocked: isBlocked, 
-            mode: "drive", 
-            snapshot: fetchContent ? fileData : undefined 
-          }, { headers: corsHeaders(request) });
-        } catch (_) {}
       }
 
       return NextResponse.json({ blocked: false, mode: "drive" }, { headers: corsHeaders(request) });

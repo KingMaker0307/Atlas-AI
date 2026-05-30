@@ -34,6 +34,7 @@ import {
   Mail,
   Copy,
   Check,
+  ArrowLeft,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,7 @@ import ReactMarkdown from "react-markdown";
 import type { UserProfile, RecoveryLog } from "@/types/domain";
 import { createId } from "@/lib/id";
 import { validateEmail } from "@/lib/email-validator";
+import { restoreProfileByEmail } from "@/lib/sync";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 
 export function DashboardScreen() {
@@ -94,45 +96,152 @@ export function DashboardScreen() {
 
   // One-time Cloud Sync Migration States
   const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [migrationMethod, setMigrationMethod] = useState<"google" | "email">("google");
   const [migrationEmailInput, setMigrationEmailInput] = useState("");
+  const [migrationEmailError, setMigrationEmailError] = useState<string | null>(null);
   const [isMigrationSubmitting, setIsMigrationSubmitting] = useState(false);
   const [migrationSubmitError, setMigrationSubmitError] = useState<string | null>(null);
   const [showMigrationSuccessAnimation, setShowMigrationSuccessAnimation] = useState(false);
   const [isMigrationFederatedLoading, setIsMigrationFederatedLoading] = useState(false);
   const [migrationCapturedProvider, setMigrationCapturedProvider] = useState<"apple" | "google" | null>(null);
 
-  const simulateMigrationFederatedSignIn = async (provider: "apple" | "google") => {
-    setIsMigrationFederatedLoading(true);
-    setMigrationCapturedProvider(provider);
+  // OTP states for manual migration
+  const [migrationOtpSent, setMigrationOtpSent] = useState(false);
+  const [migrationGeneratedOtp, setMigrationGeneratedOtp] = useState("");
+  const [migrationOtpInput, setMigrationOtpInput] = useState("");
+  const [migrationOtpError, setMigrationOtpError] = useState<string | null>(null);
+  const [isSendingMigrationOtp, setIsSendingMigrationOtp] = useState(false);
+  const [showMigrationSandboxOtp, setShowMigrationSandboxOtp] = useState(false);
+  const [migrationOtpCopied, setMigrationOtpCopied] = useState(false);
+
+  const handleGoogleMigrationSubmit = async () => {
+    setMigrationEmailError(null);
     setMigrationSubmitError(null);
-    
-    // Simulate biometric Face ID or OAuth loading spinner
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-    
-    const randomHex = Math.floor(1000 + Math.random() * 9000).toString(16);
-    const proxyEmail = provider === "apple"
-      ? `athlete.apple.${randomHex}@privaterelay.apple.com`
-      : `athlete.google.${randomHex}@gmail.com`;
-      
-    setIsMigrationFederatedLoading(false);
-    setIsMigrationSubmitting(true);
-    
+    const validation = validateEmail(migrationEmailInput);
+    if (!validation.isValid) {
+      setMigrationEmailError(validation.error || "Invalid email address.");
+      return;
+    }
+
+    setIsMigrationFederatedLoading(true);
+    setMigrationCapturedProvider("google");
+
+    const cleanEmail = migrationEmailInput.toLowerCase().trim();
+
     try {
-      setMigrationEmailInput(proxyEmail);
+      // Uniqueness check: email must not exist in cloud sync storage
+      const checkRes = await restoreProfileByEmail(cleanEmail);
+      if (checkRes.success && checkRes.snapshot) {
+        setMigrationSubmitError("This email is already associated with an existing profile. To load that profile, please refresh/logout and sign in using Google or email restore on the welcome screen.");
+        setIsMigrationFederatedLoading(false);
+        return;
+      }
+
       await updateProfile({
-        email: proxyEmail.toLowerCase().trim(),
+        email: cleanEmail,
         emailVerified: true,
       });
-      
+
       setShowMigrationSuccessAnimation(true);
       setTimeout(() => {
         setShowMigrationSuccessAnimation(false);
         setShowMigrationModal(false);
         setMigrationEmailInput("");
+        setMigrationEmailError(null);
       }, 3500);
     } catch (e: any) {
-      console.error("Migration failed:", e);
+      console.error("Google Migration failed:", e);
       setMigrationSubmitError(e.message || "Failed to upgrade profile. Please verify your connection.");
+    } finally {
+      setIsMigrationFederatedLoading(false);
+    }
+  };
+
+  const handleSendMigrationOtp = async () => {
+    setMigrationEmailError(null);
+    setMigrationOtpError(null);
+    setMigrationSubmitError(null);
+    const validation = validateEmail(migrationEmailInput);
+    if (!validation.isValid) {
+      setMigrationEmailError(validation.error || "Invalid email address.");
+      return;
+    }
+
+    setIsSendingMigrationOtp(true);
+
+    try {
+      // Uniqueness check
+      const checkRes = await restoreProfileByEmail(migrationEmailInput.toLowerCase().trim());
+      if (checkRes.success && checkRes.snapshot) {
+        setMigrationEmailError("This email is already associated with an existing profile. Please use a different email or log out to restore it.");
+        setIsSendingMigrationOtp(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Migration uniqueness check failed:", e);
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setMigrationGeneratedOtp(code);
+    setMigrationOtpCopied(false);
+
+    try {
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: migrationEmailInput,
+          otp: code,
+          userName: profile?.name || "Athlete"
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setMigrationOtpSent(true);
+        setShowMigrationSandboxOtp(false);
+      } else {
+        setMigrationOtpSent(true);
+        setShowMigrationSandboxOtp(true);
+        console.warn("Falling back to simulated sandbox mailbox:", data.error);
+      }
+    } catch (e) {
+      setMigrationOtpSent(true);
+      setShowMigrationSandboxOtp(true);
+      console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
+    } finally {
+      setIsSendingMigrationOtp(false);
+    }
+  };
+
+  const handleVerifyMigrationOtp = async () => {
+    setMigrationOtpError(null);
+    setMigrationSubmitError(null);
+    if (migrationOtpInput.trim() !== migrationGeneratedOtp) {
+      setMigrationOtpError("Incorrect 6-digit verification code. Please check your simulated sandbox mailbox and try again.");
+      return;
+    }
+
+    setIsMigrationSubmitting(true);
+    const cleanEmail = migrationEmailInput.toLowerCase().trim();
+
+    try {
+      await updateProfile({
+        email: cleanEmail,
+        emailVerified: true,
+      });
+
+      setShowMigrationSuccessAnimation(true);
+      setTimeout(() => {
+        setShowMigrationSuccessAnimation(false);
+        setShowMigrationModal(false);
+        setMigrationEmailInput("");
+        setMigrationEmailError(null);
+        setMigrationOtpSent(false);
+        setMigrationOtpInput("");
+        setShowMigrationSandboxOtp(false);
+      }, 3500);
+    } catch (e: any) {
+      setMigrationOtpError(e.message || "Failed to verify and update profile.");
     } finally {
       setIsMigrationSubmitting(false);
     }
@@ -1799,53 +1908,211 @@ export function DashboardScreen() {
                   </div>
                 )}
 
-                {isMigrationFederatedLoading ? (
-                  <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-fadeIn select-none">
-                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent shadow-md" />
-                    <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider font-mono">
-                      Verifying credentials via {migrationCapturedProvider === "apple" ? "Apple" : "Google"}...
-                    </p>
+                {/* Tab selector for Google vs Manual Email Sync */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-950/40 border border-zinc-500/10 dark:border-white/5 rounded-xl mb-4 select-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMigrationMethod("google");
+                      setMigrationEmailError(null);
+                      setMigrationSubmitError(null);
+                    }}
+                    className={`py-2 text-[11px] font-bold rounded-lg transition duration-200 cursor-pointer ${
+                      migrationMethod === "google"
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-150 shadow-sm"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200"
+                    }`}
+                    disabled={isMigrationFederatedLoading || isMigrationSubmitting || isSendingMigrationOtp}
+                  >
+                    Google Sign-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMigrationMethod("email");
+                      setMigrationEmailError(null);
+                      setMigrationSubmitError(null);
+                      setMigrationOtpError(null);
+                    }}
+                    className={`py-2 text-[11px] font-bold rounded-lg transition duration-200 cursor-pointer ${
+                      migrationMethod === "email"
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-150 shadow-sm"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200"
+                    }`}
+                    disabled={isMigrationFederatedLoading || isMigrationSubmitting || isSendingMigrationOtp}
+                  >
+                    Manual Email Sync
+                  </button>
+                </div>
+
+                {migrationMethod === "google" ? (
+                  <div className="space-y-4 animate-fadeIn">
+                    {isMigrationFederatedLoading ? (
+                      <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-fadeIn select-none">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent shadow-md" />
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider font-mono">
+                          Checking sync status...
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="migration-google-email" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Google Email Address</Label>
+                          <div className="relative">
+                            <Input
+                              id="migration-google-email"
+                              type="email"
+                              value={migrationEmailInput}
+                              onChange={(e) => {
+                                setMigrationEmailInput(e.target.value);
+                                setMigrationEmailError(null);
+                              }}
+                              placeholder="e.g. athlete.dev@gmail.com"
+                              className="pl-9 text-xs font-medium focus:ring-2 focus:ring-emerald-450/10"
+                            />
+                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          </div>
+                          {migrationEmailError && (
+                            <p className="text-[10px] text-rose-500 font-medium mt-1">{migrationEmailError}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2.5 pt-2">
+                          <button
+                            type="button"
+                            onClick={handleGoogleMigrationSubmit}
+                            disabled={!migrationEmailInput.trim()}
+                            className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99] disabled:opacity-50"
+                          >
+                            Simulate Google Sign-In (Sandbox Sync)
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-5">
-                    <p className="text-xs text-zinc-400 leading-relaxed">
-                      Upgrade to a verified cloud profile. Pick an identity provider below to establish a clean, verified Cloud backup. Your real email can be hidden using Apple's proxy relay model.
-                    </p>
+                  <div className="space-y-4 animate-fadeIn">
+                    {!migrationOtpSent ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="migration-manual-email" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Email Address</Label>
+                          <div className="relative">
+                            <Input
+                              id="migration-manual-email"
+                              type="email"
+                              value={migrationEmailInput}
+                              onChange={(e) => {
+                                setMigrationEmailInput(e.target.value);
+                                setMigrationEmailError(null);
+                              }}
+                              placeholder="e.g. athlete.dev@gmail.com"
+                              className="pl-9 text-xs font-medium focus:ring-2 focus:ring-emerald-450/10"
+                              disabled={isSendingMigrationOtp}
+                            />
+                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          </div>
+                          {migrationEmailError && (
+                            <p className="text-[10px] text-rose-500 font-medium mt-1">{migrationEmailError}</p>
+                          )}
+                        </div>
 
-                    <div className="space-y-3">
-                      {/* Apple Button */}
-                      <button
-                        type="button"
-                        onClick={() => simulateMigrationFederatedSignIn("apple")}
-                        disabled={isMigrationSubmitting}
-                        className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-black text-white hover:bg-zinc-900 border border-zinc-800 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-md shadow-black/10 active:scale-[0.99] disabled:opacity-50"
-                      >
-                        <svg className="h-4.5 w-4.5 fill-current text-white" viewBox="0 0 24 24">
-                          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.51-.62.71-1.16 1.85-1.01 2.96 1.1.09 2.27-.58 2.96-1.41z" />
-                        </svg>
-                        Sign in with Apple
-                      </button>
+                        <div className="grid grid-cols-1 gap-2.5 pt-2">
+                          <Button
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                            variant="primary"
+                            onClick={handleSendMigrationOtp}
+                            icon={isSendingMigrationOtp ? (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                            ) : (
+                              <Mail size={16} className="text-zinc-955" />
+                            )}
+                            disabled={isSendingMigrationOtp || !migrationEmailInput.trim()}
+                          >
+                            {isSendingMigrationOtp ? "Sending OTP..." : "Send Verification Code"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 animate-fadeIn">
+                        {showMigrationSandboxOtp && (
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3">
+                            <Lock size={14} className="text-emerald-500 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sandbox Verification Code</p>
+                              <p className="text-[11px] font-mono text-foreground font-bold tracking-widest">{migrationGeneratedOtp}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(migrationGeneratedOtp);
+                                setMigrationOtpCopied(true);
+                                setTimeout(() => setMigrationOtpCopied(false), 2000);
+                              }}
+                              className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded hover:bg-emerald-500/10 transition"
+                            >
+                              {migrationOtpCopied ? "Copied" : "Copy"}
+                            </button>
+                          </div>
+                        )}
 
-                      {/* Google Button */}
-                      <button
-                        type="button"
-                        onClick={() => simulateMigrationFederatedSignIn("google")}
-                        disabled={isMigrationSubmitting}
-                        className="w-full flex items-center justify-center gap-3 p-3.5 rounded-2xl bg-white text-zinc-900 hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800 dark:border-zinc-700 transition duration-200 cursor-pointer font-bold text-xs select-none shadow-sm active:scale-[0.99] disabled:opacity-50"
-                      >
-                        <svg className="h-4.5 w-4.5" viewBox="0 0 24 24">
-                          <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.555 0-6.437-2.882-6.437-6.437 0-3.555 2.882-6.437 6.437-6.437 1.523 0 2.923.533 4.033 1.414l3.14-3.14C18.665 1.511 15.656 0 12.24 0 5.48 0 0 5.48 0 12.24s5.48 12.24 12.24 12.24c6.72 0 12.24-5.48 12.24-12.24 0-.756-.076-1.503-.223-2.223H12.24z" />
-                        </svg>
-                        Sign in with Google
-                      </button>
-                    </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="migration-otp" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">6-Digit Code</Label>
+                          <Input
+                            id="migration-otp"
+                            type="text"
+                            maxLength={6}
+                            value={migrationOtpInput}
+                            onChange={(e) => {
+                              setMigrationOtpInput(e.target.value.replace(/[^0-9]/g, ""));
+                              setMigrationOtpError(null);
+                            }}
+                            placeholder="e.g. 123456"
+                            className="text-xs font-mono font-black text-center tracking-widest focus:ring-2 focus:ring-emerald-450/10"
+                            disabled={isMigrationSubmitting}
+                          />
+                          {migrationOtpError && (
+                            <p className="text-[10px] text-rose-500 font-medium mt-1">{migrationOtpError}</p>
+                          )}
+                        </div>
 
-                    <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-4 space-y-1.5">
+                        <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setMigrationOtpSent(false);
+                              setMigrationOtpInput("");
+                              setMigrationOtpError(null);
+                              setShowMigrationSandboxOtp(false);
+                            }}
+                            icon={<ArrowLeft size={16} />}
+                            disabled={isMigrationSubmitting}
+                          >
+                            Change Email
+                          </Button>
+                          <Button
+                            className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                            variant="primary"
+                            onClick={handleVerifyMigrationOtp}
+                            icon={isMigrationSubmitting ? (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                            ) : (
+                              <Check size={16} className="text-zinc-955 font-bold" />
+                            )}
+                            disabled={isMigrationSubmitting || migrationOtpInput.length !== 6}
+                          >
+                            {isMigrationSubmitting ? "Verifying..." : "Verify & Enable Sync"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-4 space-y-1.5 mt-4">
                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
                         ⚠️ Crucial Data Warning
                       </span>
-                      <p className="text-[10px] text-zinc-500 leading-relaxed">
-                        If you want to sync your training data seamlessly to any device, pick this option. Otherwise, make sure to export manual backups in Settings regularly, or your data will be permanently lost when browser cache is cleared.
+                      <p className="text-[10px] text-zinc-555 dark:text-zinc-500 leading-relaxed">
+                        If you want to sync your training data seamlessly to any device, pick this option. Otherwise, your training data remains local to this browser session and may be lost if your browser cache is cleared.
                       </p>
                     </div>
                   </div>

@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   RefreshCw,
   Sun,
+  Moon,
   AlertCircle,
   Cloud
 } from "lucide-react";
@@ -143,9 +144,10 @@ function getProviderInstructions(provider: string) {
 export function WelcomeScreen() {
   const setStartupChoice = useAtlasStore((state) => state.setStartupChoice);
   const completeOnboarding = useAtlasStore((state) => state.completeOnboarding);
-  const importEncryptedProfile = useAtlasStore((state) => state.importEncryptedProfile);
   const importRawSnapshot = useAtlasStore((state) => state.importRawSnapshot);
   const finalizeRestore = useAtlasStore((state) => state.finalizeRestore);
+  const theme = useAtlasStore((state) => state.theme);
+  const setTheme = useAtlasStore((state) => state.setTheme);
 
   const [view, setView] = useState<WelcomeView>("menu");
   const [selectedSyncType, setSelectedSyncType] = useState<"federated" | "offline" | null>(null);
@@ -180,7 +182,7 @@ export function WelcomeScreen() {
   const [restoreSuccess, setRestoreSuccess] = useState(false);
   const [restoreEmpty, setRestoreEmpty] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
-  const [capturedProvider, setCapturedProvider] = useState<"apple" | "google" | null>(null);
+  const [capturedProvider, setCapturedProvider] = useState<"apple" | "google" | "email" | null>(null);
 
   // ─── Google One Tap state ───
   const [googleAuthError, setGoogleAuthError] = useState<string | null>(null);
@@ -237,12 +239,18 @@ export function WelcomeScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Backup upload states
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importPassphrase, setImportPassphrase] = useState("");
-  const [showPassphrase, setShowPassphrase] = useState(false);
+  // Cloud restore states
   const [backupError, setBackupError] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreMethod, setRestoreMethod] = useState<"google" | "email">("google");
+  const [restoreEmailInput, setRestoreEmailInput] = useState("");
+  const [restoreEmailError, setRestoreEmailError] = useState<string | null>(null);
+  const [restoreEmailOtpSent, setRestoreEmailOtpSent] = useState(false);
+  const [restoreEmailGeneratedOtp, setRestoreEmailGeneratedOtp] = useState("");
+  const [restoreEmailOtpInput, setRestoreEmailOtpInput] = useState("");
+  const [restoreEmailOtpError, setRestoreEmailOtpError] = useState<string | null>(null);
+  const [isSendingRestoreEmailOtp, setIsSendingRestoreEmailOtp] = useState(false);
+  const [showRestoreSandboxOtp, setShowRestoreSandboxOtp] = useState(false);
 
   // AI Setup states
   const [setupAiCoach, setSetupAiCoach] = useState(false);
@@ -262,6 +270,23 @@ export function WelcomeScreen() {
     }
     
     setIsSendingOtp(true);
+
+    try {
+      const checkRes = await restoreProfileByEmail(emailInput.toLowerCase().trim());
+      if (checkRes.success && checkRes.snapshot) {
+        const isGoogle = checkRes.snapshot.profile?.capturedProvider === "google";
+        if (isGoogle) {
+          setEmailError("This email is already associated with an account via Google Sign-In. Please return to the main screen and select 'Sign up with Google'.");
+        } else {
+          setEmailError("This email is already associated with an existing profile. To restore your data, please return to the main screen and select the Import/Restore Backup option.");
+        }
+        setIsSendingOtp(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Uniqueness check error:", e);
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(code);
     setOtpCopied(false);
@@ -304,39 +329,46 @@ export function WelcomeScreen() {
     }
   };
 
-  const handleCloudRestore = async (email: string) => {
-    setIsRestoringFromCloud(true);
-    setRestoreError(null);
-    setRestoreEmpty(false);
-    
+  const handleGoogleAuthSuccess = async (email: string, displayName?: string, mode?: string) => {
+    setGoogleAuthLoading(true);
+    setGoogleAuthError(null);
+
     const cleanEmail = email.toLowerCase().trim();
+    setEmailInput(cleanEmail);
+    setCapturedProvider("google");
+
     const activeLocalProfile = useAtlasStore.getState().profile;
-    
-    // If the local IndexedDB profile already matches this email, load immediately and bypass network requests!
     if (activeLocalProfile && activeLocalProfile.email?.toLowerCase().trim() === cleanEmail) {
-      console.log("[Cloud Restore] Matching profile already exists in IndexedDB. Loading immediately...");
+      console.log("[Google Sign-In] Matching profile already exists in IndexedDB. Loading immediately...");
       await finalizeRestore("local");
-      setIsRestoringFromCloud(false);
+      setGoogleAuthLoading(false);
       return;
     }
 
     try {
       const res = await restoreProfileByEmail(cleanEmail);
       if (res.success && res.snapshot) {
-        // Guarantee the imported profile retains the logged-in email and verification status
+        console.log("[Google Sign-In] Existing cloud profile found. Restoring...");
         if (res.snapshot.profile) {
           res.snapshot.profile.email = cleanEmail;
           res.snapshot.profile.emailVerified = true;
         }
         await importRawSnapshot(res.snapshot);
-        setRestoreSuccess(true);
+        console.log("[Google Sign-In] Auto-finalizing cloud restore...");
+        await finalizeRestore("local");
       } else {
-        setRestoreEmpty(true);
+        console.log("[Google Sign-In] No profile found. Directing to onboarding biometrics setup...");
+        if (displayName) setName(displayName.split(" ")[0]);
+        setEmailVerified(true);
+        setView("setup");
       }
     } catch (e: any) {
-      setRestoreError(e.message || "Failed to contact secure Cloud sync storage.");
+      console.warn("[Google Sign-In] Cloud check failed, falling back to manual onboarding setup:", e);
+      if (displayName) setName(displayName.split(" ")[0]);
+      setEmailVerified(true);
+      setView("setup");
     } finally {
-      setIsRestoringFromCloud(false);
+      setGoogleAuthLoading(false);
     }
   };
 
@@ -366,16 +398,90 @@ export function WelcomeScreen() {
     }
   };
 
-  const handleImport = async () => {
-    if (!importFile || !importPassphrase) return;
-    setIsRestoring(true);
-    setBackupError(null);
+
+
+  const handleSendRestoreEmailOtp = async () => {
+    setRestoreEmailError(null);
+    setRestoreEmailOtpError(null);
+    const validation = validateEmail(restoreEmailInput);
+    if (!validation.isValid) {
+      setRestoreEmailError(validation.error || "Invalid email address.");
+      return;
+    }
+
+    setIsSendingRestoreEmailOtp(true);
+
     try {
-      const text = await importFile.text();
-      await importEncryptedProfile(text, importPassphrase);
-    } catch (e: any) {
-      console.error("Backup decryption failed:", e);
-      setBackupError(e.message || "Failed to decrypt or restore backup. Verify your passphrase and JSON file.");
+      const checkRes = await restoreProfileByEmail(restoreEmailInput.toLowerCase().trim());
+      if (!checkRes.success || !checkRes.snapshot) {
+        setRestoreEmailError("No saved cloud profile was found for this email. If you want to create a new profile, please return to the welcome screen and select 'Sign up with Google' or use 'Local Setup'.");
+        setIsSendingRestoreEmailOtp(false);
+        return;
+      }
+
+      // Check if it's a Google Sign-In profile
+      const isGoogle = checkRes.snapshot.profile?.capturedProvider === "google";
+      if (isGoogle) {
+        setRestoreEmailError("This profile is registered through Google Sign-In. Please return to the main menu and select 'Sign up with Google' to access your profile.");
+        setIsSendingRestoreEmailOtp(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Uniqueness lookup failed during email restore setup:", e);
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setRestoreEmailGeneratedOtp(code);
+    setRestoreEmailOtpSent(true);
+
+    try {
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: restoreEmailInput,
+          otp: code,
+          userName: "Athlete"
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setShowRestoreSandboxOtp(false);
+      } else {
+        setShowRestoreSandboxOtp(true);
+        console.warn("Falling back to simulated sandbox mailbox:", data.error);
+      }
+    } catch (e) {
+      setShowRestoreSandboxOtp(true);
+      console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
+    } finally {
+      setIsSendingRestoreEmailOtp(false);
+    }
+  };
+
+  const handleVerifyRestoreEmailOtp = async () => {
+    setRestoreEmailOtpError(null);
+    if (restoreEmailOtpInput.trim() !== restoreEmailGeneratedOtp) {
+      setRestoreEmailOtpError("Incorrect 6-digit verification code. Please check your simulated sandbox mailbox and try again.");
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const res = await restoreProfileByEmail(restoreEmailInput.toLowerCase().trim());
+      if (res.success && res.snapshot) {
+        if (res.snapshot.profile) {
+          res.snapshot.profile.email = restoreEmailInput.toLowerCase().trim();
+          res.snapshot.profile.emailVerified = true;
+        }
+        await importRawSnapshot(res.snapshot);
+        console.log("[Email Restore] Syncing complete! Auto-finalizing...");
+        await finalizeRestore("local");
+      } else {
+        setRestoreEmailOtpError("Failed to fetch cloud database snapshot.");
+      }
+    } catch (err: any) {
+      setRestoreEmailOtpError(err.message || "Failed to load snapshot from Cloud sync storage.");
     } finally {
       setIsRestoring(false);
     }
@@ -409,8 +515,69 @@ export function WelcomeScreen() {
       return;
     }
 
+    if (capturedProvider === "email") {
+      const emailValidation = validateEmail(emailInput);
+      if (!emailValidation.isValid) {
+        setSubmitError(emailValidation.error || "Please enter a valid email address.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
+
+    const cleanEmail = emailInput.toLowerCase().trim();
+    if (cleanEmail) {
+      try {
+        const checkRes = await restoreProfileByEmail(cleanEmail);
+        if (checkRes.success && checkRes.snapshot) {
+          const isGoogle = checkRes.snapshot.profile?.capturedProvider === "google";
+          if (isGoogle) {
+            setSubmitError("This email is already associated with a profile via Google Sign-In. Please return to the welcome screen and select 'Sign up with Google'.");
+          } else {
+            setSubmitError("This email is already associated with an existing profile. Please return to the welcome screen and select the Import/Restore Backup option.");
+          }
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("Uniqueness check during setup submit failed:", e);
+      }
+    }
+
+    if (capturedProvider === "email") {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(code);
+      setOtpCopied(false);
+
+      try {
+        const response = await fetch("/api/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: cleanEmail,
+            otp: code,
+            userName: name.trim() || "User"
+          })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+          setOtpSent(true);
+          setShowSandboxOtp(false);
+        } else {
+          setOtpSent(true);
+          setShowSandboxOtp(true);
+          console.warn("Falling back to simulated sandbox mailbox:", data.error);
+        }
+      } catch (e) {
+        setOtpSent(true);
+        setShowSandboxOtp(true);
+        console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     try {
       await completeOnboarding({
@@ -433,8 +600,9 @@ export function WelcomeScreen() {
         apiKey: setupAiCoach ? apiKey : "",
         workoutDuration: 60,
         createdAt: new Date().toISOString(),
-        email: emailInput.toLowerCase().trim(),
-        emailVerified: true,
+        email: cleanEmail,
+        emailVerified: cleanEmail !== "",
+        capturedProvider: capturedProvider,
       });
       setStartupChoice("local");
     } catch (e: any) {
@@ -446,7 +614,18 @@ export function WelcomeScreen() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-start sm:justify-center bg-background p-4 py-8 sm:py-12 overflow-y-auto text-foreground selection:bg-emerald-300 selection:text-zinc-950">
+    <main className="flex min-h-dvh flex-col items-center justify-start sm:justify-center bg-background p-4 py-8 sm:py-12 overflow-y-auto text-foreground selection:bg-emerald-300 selection:text-zinc-950 relative">
+      <div className="absolute top-4 right-4 z-50">
+        <button
+          type="button"
+          onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-card-border bg-card/80 text-zinc-500 hover:text-foreground shadow-sm transition duration-200 cursor-pointer"
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+      </div>
+
       {/* NO sandbox OTP toast — removed for clean UX */}
 
       <Card className={`w-full transition-all duration-300 p-6 relative overflow-hidden shrink-0 ${view === "setup" ? "max-w-3xl" : "max-w-xl"}`}>
@@ -454,8 +633,8 @@ export function WelcomeScreen() {
         
         {/* App Logo & Header */}
         <div className="text-center mb-6 select-none">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] mb-3">
-            <Dumbbell size={26} className="text-zinc-950" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] mb-3 keep-light">
+            <Dumbbell size={26} className="text-zinc-955 keep-light" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Welcome to Atlas</h1>
           <p className="mt-1 text-xs sm:text-sm text-zinc-400">Your private offline-first fitness intelligence OS</p>
@@ -482,7 +661,7 @@ export function WelcomeScreen() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* 1. Cloud Sync */}
+                {/* 1. Sign up with Google */}
                 <button
                   type="button"
                   onClick={() => {
@@ -509,18 +688,18 @@ export function WelcomeScreen() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
                     <Cloud size={20} className="stroke-[2.5]" />
                   </div>
-                                  <div className="space-y-1">
+                  <div className="space-y-1">
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
-                      New Account — Sync to any device
+                      Sign up with Google
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      Sign in with Google to create your account. Your data automatically backs up and works on any device.
+                      Sync to any device. Logs you in automatically if an account exists, or starts a fresh personalized setup.
                     </p>
                   </div>
                 </button>
 
-                {/* 2. Local Only */}
+                {/* 2. Local Setup (Continue with Email) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -538,29 +717,33 @@ export function WelcomeScreen() {
                     setSetupAiCoach(true);
                     setSelectedSyncType("offline");
                     setEmailInput("");
-                    setEmailVerified(true); // skip email for local-only
+                    setEmailVerified(true); // skip separate entry screen, go straight to setup
+                    setOtpSent(false);
+                    setOtpInput("");
+                    setOtpError(null);
+                    setEmailError(null);
+                    setCapturedProvider("email");
                     setView("setup");
                   }}
-                  className="flex items-start text-left p-5 rounded-2xl border border-amber-500/15 dark:border-amber-500/20 bg-amber-50/40 dark:bg-amber-500/5 hover:bg-amber-50/80 dark:hover:bg-amber-500/10 hover:border-amber-500/30 dark:hover:border-amber-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  className="flex items-start text-left p-5 rounded-2xl border border-blue-500/15 dark:border-blue-500/20 bg-blue-50/40 dark:bg-blue-500/5 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 hover:border-blue-500/30 dark:hover:border-blue-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-amber-500/5 dark:bg-amber-500/10 blur-xl pointer-events-none group-hover:bg-amber-500/10 dark:group-hover:bg-amber-500/20 transition-all" />
+                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl pointer-events-none group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-all" />
                   
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-45 shrink-0 mr-4 shadow-sm border border-amber-500/20">
-                    <Sparkles size={20} className="stroke-[2.5]" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mr-4 shadow-sm border border-blue-500/20">
+                    <Mail size={20} className="stroke-[2.5]" />
                   </div>
-                  
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-350 transition-colors flex items-center gap-1.5">
-                      Local Only — No cloud sync
-                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-amber-600 dark:group-hover:text-amber-350 group-hover:translate-x-0.5 transition-all" />
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
+                      Local Setup
+                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-blue-600 dark:group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      Use the app without an account. Your data stays on this device only — remember to export backups regularly in Settings.
+                      Create your training profile manually. Verifies your email with a 6-digit code to enable secure cloud sync and automatic backups.
                     </p>
                   </div>
                 </button>
 
-                {/* 3. Sign Back In / Restore */}
+                {/* 3. Restore Profile */}
                 <button
                   type="button"
                   onClick={() => {
@@ -574,7 +757,8 @@ export function WelcomeScreen() {
                     setRestoreError(null);
                     setCapturedProvider(null);
                     setGoogleAuthError(null);
-                    setView("restore");
+                    setRestoreMethod("google");
+                    setView("backup");
                   }}
                   className="flex items-start text-left p-5 rounded-2xl border border-teal-500/15 dark:border-teal-500/20 bg-teal-50/40 dark:bg-teal-500/5 hover:bg-teal-50/80 dark:hover:bg-teal-500/10 hover:border-teal-500/30 dark:hover:border-teal-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
@@ -586,11 +770,11 @@ export function WelcomeScreen() {
                   
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-300 transition-colors flex items-center gap-1.5">
-                      Already have an account? Sign in
+                      Restore Profile
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-teal-600 dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      Sign in with your Google account to restore your existing profile and training data on this device.
+                      Restore workouts, routines, and settings from a cloud backup using Google Drive or Cloud Email Sync.
                     </p>
                   </div>
                 </button>
@@ -610,10 +794,10 @@ export function WelcomeScreen() {
               <div className="space-y-1.5 border-b border-card-border pb-3">
                 <h2 className="text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
                   <Cloud className="text-emerald-500 dark:text-emerald-400" size={20} />
-                  Sign in to sync your data
+                  Sign in with Google
                 </h2>
                 <p className="text-[11px] text-zinc-400 leading-normal">
-                  Sign in with your Google account. Your real email is used to link your profile — no fake addresses.
+                  Access your profile or sync a new device. Existing profiles are loaded automatically; new users proceed to a quick biometrics setup.
                 </p>
               </div>
 
@@ -624,91 +808,89 @@ export function WelcomeScreen() {
                 </Surface>
               )}
 
-              <div className="space-y-3">
-                {/* Real Google Sign-In button rendered by GIS SDK */}
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Sign in with Google</p>
-                  
-                  {typeof window !== "undefined" && 
-                   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
-                   !forceLoadRealGoogle ? (
-                    // Beautiful Local Sandbox Card
-                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Local Developer Sandbox Mode</p>
-                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            Google Sign-In requires your current origin (<code>{window.location.origin}</code>) to be registered under <strong>Authorized JavaScript Origins</strong> in the Google Developer Console.
-                          </p>
+              {googleAuthLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+                  <p className="text-xs text-zinc-500 font-medium">Checking sync status...</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Real Google Sign-In button rendered by GIS SDK */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-555 font-mono">Google Authentication</p>
+                    
+                    {typeof window !== "undefined" && 
+                     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
+                     !forceLoadRealGoogle ? (
+                      // Beautiful Local Sandbox Card
+                      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                        <div className="flex items-start gap-2.5">
+                          <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Local Developer Sandbox Mode</p>
+                            <p className="text-[10px] text-zinc-555 dark:text-zinc-400 leading-relaxed">
+                              Google Sign-In requires your current origin (<code>{window.location.origin}</code>) to be registered under <strong>Authorized JavaScript Origins</strong> in the Google Developer Console.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Sandbox Test Email</Label>
+                          <Input
+                            type="email"
+                            value={sandboxEmail}
+                            onChange={(e) => setSandboxEmail(e.target.value)}
+                            placeholder="e.g. athlete.dev@gmail.com or your real email"
+                            className="bg-zinc-950/40 border-zinc-500/20 focus:ring-1 focus:ring-amber-500/30 text-xs font-medium"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2.5">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const cleanEmail = sandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
+                              await handleGoogleAuthSuccess(cleanEmail, "Dev Athlete", "signup");
+                            }}
+                            className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
+                          >
+                            Simulate Google Sign-In (Sandbox Bypass)
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setForceLoadRealGoogle(true)}
+                            className="w-full text-center py-1.5 text-[9px] font-semibold text-zinc-555 hover:text-zinc-700 dark:hover:text-zinc-300 transition duration-150 cursor-pointer select-none underline decoration-dotted"
+                          >
+                            Load official Google Sign-In SDK (to test credentials)
+                          </button>
                         </div>
                       </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Sandbox Test Email</Label>
-                        <Input
-                          type="email"
-                          value={sandboxEmail}
-                          onChange={(e) => setSandboxEmail(e.target.value)}
-                          placeholder="e.g. athlete.dev@gmail.com or your real email"
-                          className="bg-zinc-950/40 border-zinc-500/20 focus:ring-1 focus:ring-amber-500/30 text-xs font-medium"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const cleanEmail = sandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
-                            setEmailInput(cleanEmail);
-                            setName("Dev Athlete");
-                            setEmailVerified(true);
-                            setCapturedProvider("google");
-                            setView("setup");
-                          }}
-                          className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
-                        >
-                          Simulate Google Sign-In (Sandbox Bypass)
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setForceLoadRealGoogle(true)}
-                          className="w-full text-center py-1.5 text-[9px] font-semibold text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition duration-150 cursor-pointer select-none underline decoration-dotted"
-                        >
-                          Load official Google Sign-In SDK (to test credentials)
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      id="google-signin-new-account"
-                      ref={(el) => {
-                        if (el) {
-                          renderGoogleSignInButton(
-                            "google-signin-new-account",
-                            (user) => {
-                              setEmailInput(user.email);
-                              if (user.name) setName(user.name.split(" ")[0]);
-                              setEmailVerified(true);
-                              setCapturedProvider("google");
-                              setView("setup");
-                            },
-                            (err) => setGoogleAuthError(err)
-                          );
-                        }
-                      }}
-                      className="min-h-[44px] w-full"
-                    />
-                  )}
+                    ) : (
+                      <div
+                        id="google-signin-new-account"
+                        ref={(el) => {
+                          if (el) {
+                            renderGoogleSignInButton(
+                              "google-signin-new-account",
+                              async (user) => {
+                                await handleGoogleAuthSuccess(user.email, user.name, "signup");
+                              },
+                              (err) => setGoogleAuthError(err)
+                            );
+                          }
+                        }}
+                        className="min-h-[44px] w-full"
+                      />
+                    )}
+                  </div>
                 </div>
-
-              </div>
+              )}
 
               <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-3.5 space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">⚠️ Important</span>
                 <p className="text-[10px] text-zinc-500 leading-relaxed">
-                  Use the same sign-in method every time to access your data. Your profile is linked to your account email.
+                  Your profile and data will sync securely using this email. Use the same sign-in method on all other devices.
                 </p>
               </div>
 
@@ -739,108 +921,290 @@ export function WelcomeScreen() {
                   <FileUp className="text-blue-400" size={20} />
                   Restore training profile
                 </h2>
-                <p className="text-[11px] text-zinc-400 leading-normal">
-                  Upload your encrypted JSON backup file and enter the decryption passphrase to restore your workouts, routines, and settings.
+                <p className="text-[11px] text-zinc-405 leading-normal">
+                  Restore your routines, workouts, and settings using Google Drive or your Cloud Email Sync account.
                 </p>
               </div>
 
-              <div className="space-y-4 pt-1">
-                {/* File Uploader */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Select Backup File</Label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="welcome-import-file-uploader"
-                      accept="application/json"
-                      onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                        setImportFile(event.target.files?.[0] ?? null);
-                        setBackupError(null);
-                      }}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="welcome-import-file-uploader"
-                      className="flex items-center justify-center gap-2 border border-dashed border-card-border rounded-xl bg-input py-4 px-3 text-xs font-semibold text-zinc-400 hover:bg-input hover:text-foreground transition duration-200 cursor-pointer w-full text-center hover:border-blue-400/50"
-                    >
-                      <Upload size={16} className="text-blue-400" />
-                      {importFile ? (
-                        <span className="text-blue-600 dark:text-blue-300 font-bold truncate max-w-sm">
-                          {importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)
-                        </span>
-                      ) : (
-                        <span>Choose backup.json file</span>
-                      )}
-                    </label>
-                  </div>
-                </div>
-
-                {/* Passphrase Input */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Decryption Passphrase</Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassphrase ? "text" : "password"}
-                      maxLength={64}
-                      value={importPassphrase}
-                      onChange={(event) => {
-                        setImportPassphrase(event.target.value);
-                        setBackupError(null);
-                      }}
-                      placeholder="Enter decrypt passphrase"
-                      className="pr-10 focus:ring-2 focus:ring-blue-400/10 text-xs font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassphrase(!showPassphrase)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                    >
-                      {showPassphrase ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {backupError && (
-                  <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
-                    <ShieldAlert size={16} className="mt-0.5 text-rose-750 dark:text-rose-450 shrink-0" />
-                    <div className="space-y-1">
-                      <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 block">Restore Failed</span>
-                      <p className="text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{backupError}</p>
-                    </div>
-                  </Surface>
-                )}
-
-                {/* Action buttons */}
-                <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setView("menu");
-                      setBackupError(null);
-                      setImportFile(null);
-                      setImportPassphrase("");
-                    }}
-                    icon={<ArrowLeft size={16} />}
-                    disabled={isRestoring}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    className="ml-auto"
-                    variant="primary"
-                    disabled={!importFile || !importPassphrase || isRestoring}
-                    onClick={handleImport}
-                    icon={isRestoring ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <FileUp size={16} />
-                    )}
-                  >
-                    {isRestoring ? "Decrypting & Restoring..." : "Import Backup"}
-                  </Button>
-                </div>
+              {/* Restore Method Selection Tabs */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-950/40 border border-zinc-500/10 dark:border-white/5 rounded-xl mb-4 select-none">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRestoreMethod("google");
+                    setGoogleAuthError(null);
+                  }}
+                  className={`py-2 text-[11px] font-bold rounded-lg transition duration-200 cursor-pointer ${
+                    restoreMethod === "google"
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-150 shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  Google Drive Backup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRestoreMethod("email");
+                    setRestoreEmailError(null);
+                    setRestoreEmailOtpError(null);
+                  }}
+                  className={`py-2 text-[11px] font-bold rounded-lg transition duration-200 cursor-pointer ${
+                    restoreMethod === "email"
+                      ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-150 shadow-sm"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  Cloud Email Sync
+                </button>
               </div>
+
+              {restoreMethod === "google" ? (
+                <div className="space-y-4 pt-1 animate-fadeIn">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal mb-2">
+                    Sign in with Google to retrieve your profile and training logs automatically from your secure Google Drive.
+                  </p>
+
+                  {googleAuthError && (
+                    <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 rounded-xl flex items-start gap-2">
+                      <AlertCircle size={14} className="text-rose-500 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-rose-700 dark:text-zinc-300 leading-relaxed">{googleAuthError}</p>
+                    </Surface>
+                  )}
+
+                  {googleAuthLoading ? (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+                      <p className="text-xs text-zinc-500 font-medium">Checking sync status...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Google Sign-in options */}
+                      {typeof window !== "undefined" && 
+                       (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && 
+                       !forceLoadRealGoogle ? (
+                        // Sandbox card
+                        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-amber-700 dark:text-amber-300">Local Developer Sandbox Mode</p>
+                              <p className="text-[10px] text-zinc-555 dark:text-zinc-400 leading-relaxed">
+                                Google Sign-In requires your current origin (<code>{window.location.origin}</code>) to be registered under <strong>Authorized JavaScript Origins</strong> in the Google Developer Console.
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Sandbox Test Email</Label>
+                            <Input
+                              type="email"
+                              value={sandboxEmail}
+                              onChange={(e) => setSandboxEmail(e.target.value)}
+                              placeholder="e.g. athlete.dev@gmail.com or your real email"
+                              className="bg-zinc-950/40 border-zinc-500/20 focus:ring-1 focus:ring-amber-500/30 text-xs font-medium"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-2.5">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const cleanEmail = sandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
+                                await handleGoogleAuthSuccess(cleanEmail, "Dev Athlete", "signup");
+                              }}
+                              className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
+                            >
+                              Simulate Google Sign-In (Sandbox Bypass)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setForceLoadRealGoogle(true)}
+                              className="w-full text-center py-1.5 text-[9px] font-semibold text-zinc-555 hover:text-zinc-700 dark:hover:text-zinc-300 transition duration-150 cursor-pointer select-none underline decoration-dotted"
+                            >
+                              Load official Google Sign-In SDK (to test credentials)
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          id="google-signin-restore-account"
+                          ref={(el) => {
+                            if (el) {
+                              renderGoogleSignInButton(
+                                "google-signin-restore-account",
+                                async (user) => {
+                                  await handleGoogleAuthSuccess(user.email, user.name, "signup");
+                                },
+                                (err) => setGoogleAuthError(err)
+                              );
+                            }
+                          }}
+                          className="min-h-[44px] w-full"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setView("menu");
+                        setGoogleAuthError(null);
+                      }}
+                      icon={<ArrowLeft size={16} />}
+                      disabled={googleAuthLoading}
+                    >
+                      Back
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 pt-1 animate-fadeIn">
+                  {!restoreEmailOtpSent ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="restore-email" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Email Address</Label>
+                        <div className="relative">
+                          <Input
+                            id="restore-email"
+                            type="email"
+                            value={restoreEmailInput}
+                            onChange={(e) => {
+                              setRestoreEmailInput(e.target.value);
+                              setRestoreEmailError(null);
+                            }}
+                            placeholder="e.g. your-profile-email@domain.com"
+                            className="pl-9 text-xs font-medium focus:ring-2 focus:ring-blue-400/10"
+                            disabled={isSendingRestoreEmailOtp}
+                          />
+                          <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-505" />
+                        </div>
+                      </div>
+
+                      {restoreEmailError && (
+                        <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5 animate-fadeIn">
+                          <ShieldAlert size={14} className="mt-0.5 text-rose-750 dark:text-rose-450 shrink-0" />
+                          <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{restoreEmailError}</p>
+                        </Surface>
+                      )}
+
+                      <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => setView("menu")}
+                          icon={<ArrowLeft size={16} />}
+                          disabled={isSendingRestoreEmailOtp}
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                          variant="primary"
+                          onClick={handleSendRestoreEmailOtp}
+                          icon={isSendingRestoreEmailOtp ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                          ) : (
+                            <Mail size={16} className="text-zinc-955" />
+                          )}
+                          disabled={isSendingRestoreEmailOtp || !restoreEmailInput.trim()}
+                        >
+                          {isSendingRestoreEmailOtp ? "Searching & Sending..." : "Send Verification Code"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 flex items-start gap-2.5">
+                        <Lock className="text-emerald-500 shrink-0 mt-0.5 animate-pulse" size={15} />
+                        <div className="space-y-0.5 text-left">
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Verification Sent</span>
+                          <p className="text-[10px] text-zinc-400 leading-normal">
+                            We sent a 6-digit verification code to <strong className="text-zinc-900 dark:text-zinc-200">{restoreEmailInput}</strong>.
+                          </p>
+                        </div>
+                      </div>
+
+                      {showRestoreSandboxOtp && (
+                        <div className="fixed top-4 left-4 right-4 sm:relative sm:top-0 sm:left-0 sm:right-0 sm:mt-4 z-[9999] p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 shadow-lg sm:shadow-none animate-fadeIn">
+                          <Lock size={14} className="text-emerald-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sandbox Verification Code</p>
+                            <p className="text-[11px] font-mono text-foreground font-bold tracking-widest">{restoreEmailGeneratedOtp}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(restoreEmailGeneratedOtp);
+                            }}
+                            className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded hover:bg-emerald-500/10 transition"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="space-y-1">
+                        <Label htmlFor="restore-otp" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">6-Digit Code</Label>
+                        <Input
+                          id="restore-otp"
+                          type="text"
+                          maxLength={6}
+                          value={restoreEmailOtpInput}
+                          onChange={(e) => {
+                            setRestoreEmailOtpInput(e.target.value.replace(/[^0-9]/g, ""));
+                            setRestoreEmailOtpError(null);
+                          }}
+                          placeholder="e.g. 123456"
+                          className="text-xs font-mono font-black text-center tracking-widest focus:ring-2 focus:ring-blue-400/10"
+                          disabled={isRestoring}
+                        />
+                      </div>
+
+                      {restoreEmailOtpError && (
+                        <Surface className="p-3 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5 animate-fadeIn">
+                          <ShieldAlert size={14} className="mt-0.5 text-rose-750 dark:text-rose-450 shrink-0" />
+                          <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{restoreEmailOtpError}</p>
+                        </Surface>
+                      )}
+
+                      <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setRestoreEmailOtpSent(false);
+                            setRestoreEmailOtpInput("");
+                            setRestoreEmailOtpError(null);
+                            setShowRestoreSandboxOtp(false);
+                          }}
+                          icon={<ArrowLeft size={16} />}
+                          disabled={isRestoring}
+                        >
+                          Change Email
+                        </Button>
+                        <Button
+                          className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                          variant="primary"
+                          onClick={handleVerifyRestoreEmailOtp}
+                          icon={isRestoring ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                          ) : (
+                            <Check size={16} className="text-zinc-955 font-bold animate-pulse" />
+                          )}
+                          disabled={isRestoring || restoreEmailOtpInput.length !== 6}
+                        >
+                          {isRestoring ? "Restoring Profile..." : "Verify & Restore"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -970,9 +1334,7 @@ export function WelcomeScreen() {
                               type="button"
                               onClick={async () => {
                                 const cleanEmail = sandboxEmail.toLowerCase().trim() || "athlete.dev@gmail.com";
-                                setCapturedProvider("google");
-                                setEmailInput(cleanEmail);
-                                await handleCloudRestore(cleanEmail);
+                                await handleGoogleAuthSuccess(cleanEmail, undefined, "signin");
                               }}
                               className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99]"
                             >
@@ -996,9 +1358,7 @@ export function WelcomeScreen() {
                               renderGoogleSignInButton(
                                 "google-signin-restore",
                                 async (user) => {
-                                  setCapturedProvider("google");
-                                  setEmailInput(user.email);
-                                  await handleCloudRestore(user.email);
+                                  await handleGoogleAuthSuccess(user.email, user.name, "signin");
                                 },
                                 (err) => setGoogleAuthError(err)
                               );
@@ -1025,7 +1385,7 @@ export function WelcomeScreen() {
                       onClick={() => setView("backup")}
                       className="text-xs font-bold text-zinc-500 hover:text-foreground hover:underline transition"
                     >
-                      Or upload a backup file (.json)
+                      Or check other restore options
                     </button>
                   </div>
                 </div>
@@ -1042,101 +1402,63 @@ export function WelcomeScreen() {
               transition={{ duration: 0.15 }}
               className="space-y-6 text-left animate-fadeIn"
             >
-              {!emailVerified ? (
+              {otpSent ? (
+                // --- OTP Verification Panel for manual email flow ---
                 <div className="space-y-6 animate-fadeIn">
-                  <div className="space-y-1.5 border-b border-card-border pb-3 mb-2 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                        <Mail className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={20} />
-                        Establish Secure Profile Email
-                      </h2>
-                      <p className="text-[11px] text-zinc-400 leading-normal font-medium">
-                        Enter your email to verify your identity. This creates a secure, unique naming convention for automatic Cloud syncing.
-                      </p>
-                    </div>
+                  <div className="space-y-1.5 border-b border-card-border pb-3 mb-2">
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                      <Lock className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={20} />
+                      Verify Your Email Address
+                    </h2>
+                    <p className="text-[11px] text-zinc-400 leading-normal font-medium">
+                      We sent a 6-digit verification code to <strong className="text-zinc-900 dark:text-zinc-200">{emailInput.toLowerCase().trim()}</strong>. Enter it below to complete your profile setup.
+                    </p>
                   </div>
 
                   <div className="space-y-4 bg-card p-5 border border-card-border rounded-2xl shadow-sm">
-                    <div className="space-y-2">
-                      <Label htmlFor="setup-email" className="text-[10px] font-bold uppercase tracking-wider text-zinc-555 font-mono">Email Address</Label>
-                      <div className="relative">
-                        <Input
-                          id="setup-email"
-                          type="email"
-                          value={emailInput}
-                          onChange={(e) => {
-                            setEmailInput(e.target.value);
-                            setEmailError(null);
+                    {showSandboxOtp && (
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 animate-fadeIn">
+                        <Lock size={14} className="text-emerald-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Verification code (dev mode)</p>
+                          <p className="text-[11px] font-mono text-foreground font-bold tracking-widest">{generatedOtp}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedOtp);
+                            setOtpCopied(true);
+                            setTimeout(() => setOtpCopied(false), 2000);
                           }}
-                          placeholder="e.g. alex@example.com"
-                          disabled={otpSent}
-                          className="text-xs font-medium pl-9 focus:ring-emerald-500/20"
-                        />
-                        <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition"
+                        >
+                          {otpCopied ? "Copied" : "Copy"}
+                        </button>
                       </div>
-                      {emailError && (
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="setup-otp-input" className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">6-Digit Verification Code</Label>
+                      <Input
+                        id="setup-otp-input"
+                        type="text"
+                        maxLength={6}
+                        value={otpInput}
+                        onChange={(e) => {
+                          setOtpInput(e.target.value.replace(/[^0-9]/g, ""));
+                          setOtpError(null);
+                        }}
+                        placeholder="e.g. 123456"
+                        className="text-xs font-mono font-black text-center tracking-widest focus:ring-emerald-500/20"
+                        disabled={isSubmitting}
+                      />
+                      {otpError && (
                         <Surface className="p-3 mt-2 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5 animate-fadeIn">
                           <ShieldAlert size={14} className="mt-0.5 text-rose-750 dark:text-rose-450 shrink-0" />
-                          <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{emailError}</p>
+                          <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{otpError}</p>
                         </Surface>
                       )}
-                      {showSandboxOtp && (
-                        <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3">
-                          <Lock size={14} className="text-emerald-500 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Verification code sent (dev mode)</p>
-                            <p className="text-[11px] font-mono text-foreground font-bold tracking-widest">{generatedOtp}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => { navigator.clipboard.writeText(generatedOtp); setOtpCopied(true); setTimeout(() => setOtpCopied(false), 2000); }}
-                            className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded-lg hover:bg-emerald-500/10 transition"
-                          >
-                            {otpCopied ? <Check size={11} /> : "Copy"}
-                          </button>
-                        </div>
-                      )}
                     </div>
-
-                    {otpSent && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="space-y-3 pt-4 border-t border-card-border"
-                      >
-                        <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 flex items-start gap-2.5">
-                          <Lock className="text-emerald-500 shrink-0 mt-0.5 animate-pulse" size={15} />
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Verification Sent</span>
-                            <p className="text-[10px] text-zinc-500 leading-normal">
-                              Enter the 6-digit code received via email to proceed.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="setup-otp" className="text-[10px] font-bold uppercase tracking-wider text-zinc-555 font-mono">6-Digit Verification Code</Label>
-                          <Input
-                            id="setup-otp"
-                            type="text"
-                            maxLength={6}
-                            value={otpInput}
-                            onChange={(e) => {
-                              setOtpInput(e.target.value.replace(/[^0-9]/g, ""));
-                              setOtpError(null);
-                            }}
-                            placeholder="e.g. 123456"
-                            className="text-xs font-mono font-black text-center tracking-widest focus:ring-emerald-500/20"
-                          />
-                          {otpError && (
-                            <Surface className="p-3 mt-2 bg-rose-50 dark:bg-red-950/20 border border-rose-200 dark:border-red-500/15 text-rose-800 dark:text-rose-300 rounded-xl flex items-start gap-2.5 animate-fadeIn">
-                              <ShieldAlert size={14} className="mt-0.5 text-rose-750 dark:text-rose-450 shrink-0" />
-                              <p className="text-[10px] sm:text-[11px] leading-relaxed text-rose-955 dark:text-zinc-300">{otpError}</p>
-                            </Surface>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
                   </div>
 
                   <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
@@ -1144,43 +1466,73 @@ export function WelcomeScreen() {
                       type="button"
                       variant="secondary"
                       onClick={() => {
-                        if (otpSent) {
-                          setOtpSent(false);
-                          setOtpInput("");
-                          setOtpError(null);
-                          setShowSandboxOtp(false);
-                        } else {
-                          setView("menu");
-                        }
+                        setOtpSent(false);
+                        setOtpInput("");
+                        setOtpError(null);
+                        setShowSandboxOtp(false);
                       }}
                       icon={<ArrowLeft size={16} />}
+                      disabled={isSubmitting}
                     >
-                      {otpSent ? "Change Email" : "Back"}
+                      Back to Edit Form
                     </Button>
-
-                    {otpSent ? (
-                      <Button
-                        className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold font-mono"
-                        variant="primary"
-                        onClick={() => handleVerifyOtp(() => setEmailVerified(true))}
-                        icon={<ArrowRight size={16} className="text-zinc-950" />}
-                      >
-                        Verify & Continue
-                      </Button>
-                    ) : (
-                      <Button
-                        className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
-                        variant="primary"
-                        onClick={handleSendOtp}
-                        icon={<Mail size={16} className="text-zinc-950" />}
-                        disabled={isSendingOtp}
-                      >
-                        {isSendingOtp ? "Sending..." : "Send Verification Code"}
-                      </Button>
-                    )}
+                    <Button
+                      className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                      variant="primary"
+                      onClick={async () => {
+                        setOtpError(null);
+                        if (otpInput.trim() === generatedOtp) {
+                          setShowSandboxOtp(false);
+                          setIsSubmitting(true);
+                          try {
+                            await completeOnboarding({
+                              id: createId("user"),
+                              name: name.trim(),
+                              goal: goal.trim() || "General Fitness",
+                              customGoal: goal.trim() || "General Fitness",
+                              age,
+                              weight,
+                              height,
+                              weightUnit,
+                              heightUnit,
+                              bodyType,
+                              targetPhysique,
+                              experience,
+                              trainingStyle,
+                              daysPerWeek,
+                              equipment,
+                              providerType: setupAiCoach ? providerType : "none",
+                              apiKey: setupAiCoach ? apiKey : "",
+                              workoutDuration: 60,
+                              createdAt: new Date().toISOString(),
+                              email: emailInput.toLowerCase().trim(),
+                              emailVerified: true,
+                              capturedProvider: "email",
+                            });
+                            setStartupChoice("local");
+                          } catch (e: any) {
+                            console.error("Onboarding setup failed:", e);
+                            setOtpError(e.message || "Failed to finalize profile. Please check API key or server configuration.");
+                          } finally {
+                            setIsSubmitting(false);
+                          }
+                        } else {
+                          setOtpError("Incorrect 6-digit verification code. Please check your simulated sandbox mailbox and try again.");
+                        }
+                      }}
+                      disabled={isSubmitting || otpInput.length !== 6}
+                      icon={isSubmitting ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                      ) : (
+                        <Check size={16} className="text-zinc-955 font-bold" />
+                      )}
+                    >
+                      {isSubmitting ? "Finalizing Profile..." : "Verify & Start Atlas"}
+                    </Button>
                   </div>
                 </div>
               ) : (
+                // --- Setup Form View ---
                 <>
                   <div className="space-y-1.5 border-b border-card-border pb-3 mb-2 flex items-center justify-between">
                     <div>
@@ -1213,6 +1565,26 @@ export function WelcomeScreen() {
                             className="mt-1 text-xs font-medium"
                           />
                         </div>
+
+                        {capturedProvider === "email" && (
+                          <div>
+                            <Label htmlFor="setup-email-input" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Email Address</Label>
+                            <div className="relative mt-1">
+                              <Input
+                                id="setup-email-input"
+                                type="email"
+                                value={emailInput}
+                                onChange={(e) => {
+                                  setEmailInput(e.target.value);
+                                  setSubmitError(null);
+                                }}
+                                placeholder="e.g. alex@example.com"
+                                className="text-xs font-medium pl-9 focus:ring-emerald-500/20"
+                              />
+                              <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                            </div>
+                          </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -1589,7 +1961,7 @@ export function WelcomeScreen() {
                         icon={isSubmitting ? (
                           <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                         ) : (
-                          <Sparkles size={16} className="text-zinc-950" />
+                          <Sparkles size={16} className="text-zinc-955 font-bold" />
                         )}
                       >
                         {isSubmitting ? "Setting up..." : "Create Profile & Start"}
