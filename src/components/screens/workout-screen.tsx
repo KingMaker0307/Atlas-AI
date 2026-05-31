@@ -1224,8 +1224,8 @@ export function WorkoutScreen() {
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
       <Card className="fixed inset-x-0 md:left-64 top-0 z-20 px-2 py-1.5 sm:px-3 sm:py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
-        <div className="flex items-center justify-between gap-1.5 max-w-5xl mx-auto flex-nowrap">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-1 max-w-5xl mx-auto flex-nowrap">
+          <div className="flex items-center gap-1 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
@@ -1245,12 +1245,12 @@ export function WorkoutScreen() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0 justify-end flex-nowrap">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end flex-nowrap">
             {/* Hands-Free Voice Logger Button */}
             <Button
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-lg shrink-0 transition-all border border-surface-border",
+                "h-8 w-8 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center",
                 isListening
                   ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
                   : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
@@ -1263,7 +1263,7 @@ export function WorkoutScreen() {
             </Button>
 
             {/* Active Timer badge (Inline space-saving) */}
-            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] sm:text-xs font-bold select-none h-8 shrink-0">
+            <div className="flex items-center gap-1 px-1.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] sm:text-xs font-bold select-none h-8 shrink-0">
               <Timer size={13} className="shrink-0" />
               <span>{formatDuration(elapsedWorkoutTime)}</span>
             </div>
@@ -1275,7 +1275,7 @@ export function WorkoutScreen() {
                 else void startRestTimer(60);
               }}
               className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded-lg border font-mono text-[11px] sm:text-xs font-bold select-none h-8 shrink-0 cursor-pointer transition-all",
+                "flex items-center gap-1 px-1.5 py-1 rounded-lg border font-mono text-[10px] sm:text-xs font-bold select-none h-8 shrink-0 cursor-pointer transition-all",
                 remaining > 0
                   ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-300 animate-pulse"
                   : "bg-surface border-surface-border text-zinc-555 hover:bg-surface/80"
@@ -1290,7 +1290,7 @@ export function WorkoutScreen() {
             <Button
               size="sm"
               variant="primary"
-              className="h-8 px-2.5 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1"
+              className="h-8 px-2 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1"
               onClick={handleFinishSessionClick}
             >
               Finish

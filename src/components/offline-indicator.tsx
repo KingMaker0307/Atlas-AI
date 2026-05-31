@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CloudOff, Wifi } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export function OfflineIndicator() {
+export function OfflineIndicator({ compact = false }: { compact?: boolean }) {
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -22,14 +22,16 @@ export function OfflineIndicator() {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
+        "inline-flex items-center justify-center rounded-lg border text-xs font-medium transition-all duration-350 shrink-0 h-8",
+        compact ? "w-8 p-0" : "px-3 py-1.5 gap-2",
         online
-          ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-200"
-          : "border-amber-300/25 bg-amber-300/10 text-amber-200",
+          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-450"
+          : "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-450",
       )}
+      title={online ? "Atlas online & synced" : "Offline mode active"}
     >
-      {online ? <Wifi size={14} /> : <CloudOff size={14} />}
-      {online ? "Local ready" : "Offline"}
+      {online ? <Wifi size={14} className="shrink-0" /> : <CloudOff size={14} className="shrink-0" />}
+      {!compact && (online ? "Local ready" : "Offline")}
     </div>
   );
 }
