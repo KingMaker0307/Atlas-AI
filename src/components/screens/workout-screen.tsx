@@ -274,11 +274,15 @@ export function WorkoutScreen() {
   // Refs for smooth scrolling to the focused exercise card
   const exerciseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Reset accordion to first exercise whenever a NEW workout starts
+  // Reset accordion to first exercise whenever a NEW workout starts and scroll into view
   useEffect(() => {
     if (activeWorkout) {
       setFocusedExIdx(0);
       setManualActiveSetIdx({});
+      // Smooth scroll to the first active exercise card after mounting
+      setTimeout(() => {
+        exerciseCardRefs.current[0]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 350);
     }
   }, [activeWorkout?.id]);
 
@@ -1569,7 +1573,7 @@ export function WorkoutScreen() {
                                 className="h-7 px-2 rounded-lg border border-surface-border bg-surface text-xs font-black text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/5 transition-all flex items-center gap-1"
                                 title={`Switch to ${exUnit === "kg" ? "lbs" : "kg"}`}
                               >
-                                <Scale size={11} />
+                                <Scale size={14} />
                                 {exUnit.toUpperCase()}
                               </button>
                             )}
@@ -1582,7 +1586,7 @@ export function WorkoutScreen() {
                               onClick={() => setSelectedExercise(exercise)}
                               aria-label="View step-by-step instructions"
                             >
-                              <Info size={14} />
+                              <Info size={15} />
                               <span className="hidden sm:inline">Guide</span>
                             </Button>
 
@@ -1595,7 +1599,7 @@ export function WorkoutScreen() {
                                 onClick={() => { setActiveSwapExercise(workoutExercise); setSwapSearch(""); }}
                                 aria-label="Swap exercise"
                               >
-                                <Shuffle size={14} />
+                                <Shuffle size={15} />
                                 <span className="hidden sm:inline">Swap</span>
                               </Button>
                             )}
@@ -1610,7 +1614,7 @@ export function WorkoutScreen() {
                               onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                               aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
                             >
-                              <SkipForward size={14} />
+                              <SkipForward size={15} />
                               <span className="hidden sm:inline">{isSkipped ? "Resume" : "Skip"}</span>
                             </Button>
 
@@ -1623,7 +1627,7 @@ export function WorkoutScreen() {
                                 onClick={() => void addSet(workoutExercise.id)}
                                 aria-label="Add set"
                               >
-                                <CirclePlus size={14} />
+                                <CirclePlus size={15} />
                                 <span className="hidden sm:inline">Add Set</span>
                               </Button>
                             )}
@@ -1679,14 +1683,14 @@ export function WorkoutScreen() {
                                           {set.distance ? ` · ${set.distance}mi` : ""}
                                           {set.calories ? ` · ${set.calories}kcal` : ""}
                                         </span>
-                                        <Check size={14} className="stroke-[3px] text-emerald-500 shrink-0" />
+                                        <Check size={16} className="stroke-[3px] text-emerald-500 shrink-0" />
                                         <button
                                           type="button"
                                           className="text-zinc-455 hover:text-rose-500 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
                                           onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                           aria-label="Delete set"
                                         >
-                                          <Trash2 size={13} />
+                                          <Trash2 size={16} />
                                         </button>
                                         <button
                                           type="button"
@@ -1698,7 +1702,7 @@ export function WorkoutScreen() {
                                           aria-label="Undo set completion"
                                           title="Undo"
                                         >
-                                          <X size={13} />
+                                          <X size={16} />
                                         </button>
                                       </div>
                                     );
@@ -1792,7 +1796,7 @@ export function WorkoutScreen() {
                                         }}
                                         className="h-8 px-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0"
                                       >
-                                        <Check size={11} className="stroke-[3px]" />
+                                        <Check size={13} className="stroke-[3px]" />
                                         Check
                                       </button>
                                     </div>
@@ -1825,14 +1829,14 @@ export function WorkoutScreen() {
                                           {set.reps} reps · {set.weight} {exUnit}
                                           {set.rir !== undefined ? ` · RIR ${set.rir}` : ""}
                                         </span>
-                                        <Check size={14} className="stroke-[3px] text-emerald-500 shrink-0" />
+                                        <Check size={16} className="stroke-[3px] text-emerald-500 shrink-0" />
                                         <button
                                           type="button"
                                           className="text-zinc-455 hover:text-rose-500 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
                                           onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                           aria-label="Delete set"
                                         >
-                                          <Trash2 size={12} />
+                                          <Trash2 size={16} />
                                         </button>
                                         <button
                                           type="button"
@@ -1844,7 +1848,7 @@ export function WorkoutScreen() {
                                           aria-label="Undo set completion"
                                           title="Undo"
                                         >
-                                          <X size={12} />
+                                          <X size={16} />
                                         </button>
                                       </div>
                                     );
@@ -1965,7 +1969,7 @@ export function WorkoutScreen() {
                                         }}
                                         className="h-8 px-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0"
                                       >
-                                        <Check size={11} className="stroke-[3px]" />
+                                        <Check size={13} className="stroke-[3px]" />
                                         Check
                                       </button>
                                     </div>
@@ -1977,7 +1981,7 @@ export function WorkoutScreen() {
                                   <Button
                                     size="sm" variant="ghost"
                                     className="text-xs text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-8"
-                                    icon={<Flame size={14} className="text-amber-500" />}
+                                    icon={<Flame size={15} className="text-amber-500" />}
                                     onClick={() => {
                                       const last = workoutExercise.sets.at(-1);
                                       if (!last) return;
@@ -1989,7 +1993,7 @@ export function WorkoutScreen() {
                                   <Button
                                     size="sm" variant="ghost"
                                     className="text-xs text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-8"
-                                    icon={<Timer size={14} />}
+                                    icon={<Timer size={15} />}
                                     onClick={() => void startRestTimer(workoutExercise.restSeconds)}
                                   >
                                     Rest {Math.round(workoutExercise.restSeconds / 60)}m
