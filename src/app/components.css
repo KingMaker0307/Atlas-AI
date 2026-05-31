@@ -1,0 +1,66 @@
+/* ALERT / BANNER BACKGROUNDS AND TEXT CONTRAST IN LIGHT MODE */
+.light .bg-emerald-955\/10,
+.light .bg-emerald-500\/5,
+.light .bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+}
+
+.light .bg-rose-500\/10,
+.light .bg-rose-500\/5,
+.light .bg-red-955\/10,
+.light .bg-red-955\/20 {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.light .bg-amber-500\/10,
+.light .bg-amber-500\/5 {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+}
+
+.light .bg-violet-500\/10,
+.light .bg-violet-500\/5,
+.light .bg-violet-950\/15 {
+  background-color: rgba(139, 92, 246, 0.08) !important;
+}
+
+.light .text-emerald-200,
+.light .text-emerald-300,
+.light .text-emerald-450 {
+  color: #047857 !important;
+}
+
+.light .text-rose-200,
+.light .text-rose-300 {
+  color: #be123c !important;
+}
+
+.light .text-amber-200,
+.light .text-amber-300 {
+  color: #b45309 !important;
+}
+
+.light .text-violet-200,
+.light .text-violet-300,
+.light .text-violet-455,
+.light .text-violet-450 {
+  color: #6d28d9 !important;
+}
+
+/* GRADIENT BUTTON SHADOWS */
+.light [class*="shadow-emerald-500"] {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
+}
+.light [class*="shadow-violet-500"] {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2) !important;
+}
+
+/* INSIGHT COLOR BLOCK BACKGROUNDS */
+.light .bg-emerald-500\/10.border-emerald-500\/20 {
+  background-color: rgba(16, 185, 129, 0.06) !important;
+}
+.light .bg-amber-500\/10.border-amber-500\/20 {
+  background-color: rgba(245, 158, 11, 0.06) !important;
+}
+.light .bg-rose-500\/10.border-rose-500\/20 {
+  background-color: rgba(239, 68, 68, 0.06) !important;
+}

@@ -1,0 +1,146 @@
+/* TYPO COLOR DEFINITIONS & COMPATIBILITY STYLING */
+.text-zinc-350,
+.text-zinc-355 {
+  color: #a1a1aa;
+}
+.light .text-zinc-350,
+.light .text-zinc-355 {
+  color: #71717a;
+}
+
+.text-zinc-450,
+.text-zinc-455 {
+  color: #94a3b8;
+}
+.dark .text-zinc-450,
+.dark .text-zinc-455 {
+  color: #a1a1aa;
+}
+.light .text-zinc-450,
+.light .text-zinc-455 {
+  color: #71717a;
+}
+
+.text-zinc-550 {
+  color: #71717a;
+}
+.light .text-zinc-550 {
+  color: #52525b;
+}
+
+.text-zinc-650 {
+  color: #52525b;
+}
+.light .text-zinc-650 {
+  color: #3f3f46;
+}
+
+.text-zinc-555 {
+  color: #71717a;
+}
+.light .text-zinc-555 {
+  color: #52525b;
+}
+.dark .text-zinc-555 {
+  color: #a1a1aa;
+}
+
+.text-zinc-750 {
+  color: #52525b;
+}
+.light .text-zinc-750 {
+  color: #27272a;
+}
+.dark .text-zinc-750 {
+  color: #d4d4d8;
+}
+
+.text-zinc-850 {
+  color: #3f3f46;
+}
+.light .text-zinc-850 {
+  color: #18181b;
+}
+.dark .text-zinc-850 {
+  color: #e4e4e7;
+}
+
+.text-zinc-955 {
+  color: #09090b;
+}
+.dark .text-zinc-955 {
+  color: #f4f4f5;
+}
+
+.text-emerald-450 {
+  color: #34d399;
+}
+.light .text-emerald-450 {
+  color: #059669;
+}
+
+.text-violet-455,
+.text-violet-450 {
+  color: #a78bfa;
+}
+.light .text-violet-455,
+.light .text-violet-450 {
+  color: #7c3aed;
+}
+
+.text-blue-455 {
+  color: #60a5fa;
+}
+.light .text-blue-455 {
+  color: #2563eb;
+}
+
+.text-amber-455,
+.text-amber-450 {
+  color: #fbbf24;
+}
+.light .text-amber-455,
+.light .text-amber-450 {
+  color: #d97706;
+}
+
+.bg-emerald-955,
+.bg-emerald-955\/10 {
+  background-color: rgba(6, 78, 59, 0.1);
+}
+.light .bg-emerald-955,
+.light .bg-emerald-955\/10 {
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+.bg-zinc-150 {
+  background-color: #f4f4f5;
+}
+.dark .bg-zinc-150 {
+  background-color: #09090b;
+}
+
+.border-zinc-805 {
+  border-color: #27272a;
+}
+.light .border-zinc-805 {
+  border-color: rgba(9, 9, 11, 0.08);
+}
+
+.border-zinc-850 {
+  border-color: #27272a;
+}
+.light .border-zinc-850 {
+  border-color: rgba(9, 9, 11, 0.08);
+}
+
+/* HYDRATION / WATER TEXT LEGIBILITY */
+.light .text-sky-400 {
+  color: #0369a1 !important;
+}
+.light .text-sky-600 {
+  color: #0369a1 !important;
+}
+.dark .text-sky-400 {
+  color: #7dd3fc !important;
+}

@@ -322,7 +322,22 @@ const mapOffProductToFoodItem = (product: any): CommonFoodItem => {
     servingUnit: servingSizeText || "100g",
     servingWeight,
   };
-};// ─── Add Food Modal ──────────────────────────────────────────────
+};
+
+const COUNTRY_OPTIONS = [
+  { code: "world", name: "Global", flag: "🌎" },
+  { code: "us", name: "United States", flag: "🇺🇸" },
+  { code: "uk", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "ca", name: "Canada", flag: "🇨🇦" },
+  { code: "in", name: "India", flag: "🇮🇳" },
+  { code: "au", name: "Australia", flag: "🇦🇺" },
+  { code: "fr", name: "France", flag: "🇫🇷" },
+  { code: "de", name: "Germany", flag: "🇩🇪" },
+  { code: "es", name: "Spain", flag: "🇪🇸" },
+  { code: "br", name: "Brazil", flag: "🇧🇷" },
+];
+
+// ─── Add Food Modal ──────────────────────────────────────────────
 const AddFoodModal: FC<{
   onAdd: (entry: NutritionEntry | NutritionEntry[]) => void;
   onClose: () => void;
@@ -349,7 +364,10 @@ const AddFoodModal: FC<{
   const removeRecentFoodSearch = useAtlasStore((s) => s.removeRecentFoodSearch);
 
   // Live brand search state
+  const [offlineInput, setOfflineInput] = useState("");
   const [liveSearch, setLiveSearch] = useState("");
+  const [liveInput, setLiveInput] = useState("");
+  const [searchCountry, setSearchCountry] = useState("world");
   const [liveResults, setLiveResults] = useState<CommonFoodItem[]>([]);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
 
@@ -357,6 +375,51 @@ const AddFoodModal: FC<{
   const [barcodeQuery, setBarcodeQuery] = useState("");
   const [isBarcodeLoading, setIsBarcodeLoading] = useState(false);
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
+
+  // Automatically detect country code from browser locale
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.language) {
+      const parts = navigator.language.split("-");
+      if (parts.length > 1) {
+        let country = parts[1].toLowerCase();
+        if (country === "gb") country = "uk";
+        const supported = ["us", "uk", "fr", "in", "ca", "au", "de", "es", "br"];
+        if (supported.includes(country)) {
+          setSearchCountry(country);
+        }
+      }
+    }
+  }, []);
+
+  // Debounce inputs to prevent keyboard typing lag in the modal
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(offlineInput);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [offlineInput]);
+
+  const handleLiveSearchTrigger = () => {
+    if (liveInput.trim().length >= 3) {
+      setLiveSearch(liveInput.trim());
+    }
+  };
+
+  const handleOfflineInputChange = (val: string) => {
+    setOfflineInput(val);
+    setSelected(null);
+    if (!val.trim()) {
+      setSearch("");
+    }
+  };
+
+  const handleLiveInputChange = (val: string) => {
+    setLiveInput(val);
+    setSelected(null);
+    if (!val.trim()) {
+      setLiveSearch("");
+    }
+  };
 
   // Custom fields
   const [customName, setCustomName] = useState("");
@@ -444,36 +507,42 @@ const AddFoodModal: FC<{
     });
   };
 
-  // Debounced search for Open Food Facts
+  // Fetch Open Food Facts products using location-based subdomain and active flag guard
   useEffect(() => {
-    if (searchTab !== "live" || !liveSearch.trim()) {
+    if (searchTab !== "live" || liveSearch.trim().length < 3) {
       setLiveResults([]);
       return;
     }
 
-    const handler = setTimeout(async () => {
+    let active = true;
+    const fetchResults = async () => {
       setIsLoadingLive(true);
-      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(liveSearch)}&search_simple=1&action=process&json=1&page_size=20`;
+      const url = `/api/food?search=${encodeURIComponent(liveSearch)}&country=${searchCountry}`;
       try {
-        const res = await fetch(url, {
-          headers: {
-            "User-Agent": "AtlasAI - WebClient - 1.0"
-          }
-        });
+        const res = await fetch(url);
         if (!res.ok) throw new Error("API call failed");
         const data = await res.json();
+        if (!active) return;
         const products = data.products || [];
         const mapped = products.map((p: any) => mapOffProductToFoodItem(p));
         setLiveResults(mapped);
       } catch (err) {
-        console.error("Live search failed:", err);
+        if (active) {
+          console.error("Live search failed:", err);
+        }
       } finally {
-        setIsLoadingLive(false);
+        if (active) {
+          setIsLoadingLive(false);
+        }
       }
-    }, 400);
+    };
 
-    return () => clearTimeout(handler);
-  }, [liveSearch, searchTab]);
+    void fetchResults();
+
+    return () => {
+      active = false;
+    };
+  }, [liveSearch, searchCountry, searchTab]);
 
   const handleBarcodeSearch = async (barcode: string) => {
     if (!barcode.trim()) return;
@@ -481,12 +550,8 @@ const AddFoodModal: FC<{
     setBarcodeError(null);
     setSelected(null);
     try {
-      const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode.trim())}.json`;
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "AtlasAI - WebClient - 1.0"
-        }
-      });
+      const url = `/api/food?barcode=${encodeURIComponent(barcode.trim())}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Barcode lookup failed");
       const data = await res.json();
       if (data.status === 1 && data.product) {
@@ -680,8 +745,8 @@ const AddFoodModal: FC<{
                       aria-label="Search quick-add database"
                       className="w-full h-9 pl-8 pr-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder:text-zinc-600 dark:placeholder:text-zinc-350"
                       placeholder="Search common foods..."
-                      value={search}
-                      onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
+                      value={offlineInput}
+                      onChange={(e) => handleOfflineInputChange(e.target.value)}
                     />
                   </div>
 
@@ -847,18 +912,49 @@ const AddFoodModal: FC<{
 
               {searchTab === "live" && (
                 <>
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-350" aria-hidden="true" />
-                    <input
-                      aria-label="Search Open Food Facts"
-                      className="w-full h-9 pl-8 pr-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder:text-zinc-600 dark:placeholder:text-zinc-350"
-                      placeholder="Search millions of products (e.g. Chobani)..."
-                      value={liveSearch}
-                      onChange={(e) => { setLiveSearch(e.target.value); setSelected(null); }}
-                    />
+                  <div className="relative flex gap-1.5 items-center">
+                    <div className="relative flex-1">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-350" aria-hidden="true" />
+                      <input
+                        aria-label="Search Open Food Facts"
+                        className="w-full h-9 pl-8 pr-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder:text-zinc-600 dark:placeholder:text-zinc-350"
+                        placeholder="Search brands (press Enter)..."
+                        value={liveInput}
+                        onChange={(e) => handleLiveInputChange(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleLiveSearchTrigger();
+                          }
+                        }}
+                      />
+                    </div>
+                    <select
+                      aria-label="Select search region"
+                      value={searchCountry}
+                      onChange={(e) => setSearchCountry(e.target.value)}
+                      className="h-9 px-2 text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shrink-0 cursor-pointer font-mono"
+                    >
+                      {COUNTRY_OPTIONS.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.flag} {c.code.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleLiveSearchTrigger}
+                      disabled={liveInput.trim().length < 3}
+                      className="h-9 px-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 text-zinc-955 font-bold rounded-xl text-xs flex items-center justify-center shrink-0 shadow active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      Search
+                    </button>
                   </div>
+                  <p className="mt-1 text-[10px] text-zinc-500 px-1 select-none">
+                    💡 Press <strong>Enter</strong> or tap <strong>Search</strong> to query brand databases.
+                  </p>
 
-                  {liveSearch.trim() ? (
+                  {liveSearch.trim().length >= 3 ? (
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {isLoadingLive ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-2">
