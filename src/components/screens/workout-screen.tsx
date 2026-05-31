@@ -587,8 +587,24 @@ export function WorkoutScreen() {
       setRemaining(Math.max(0, Math.ceil((new Date(restTimerEndsAt).getTime() - Date.now()) / 1000)));
     };
     tick();
+    
     const interval = window.setInterval(tick, 1000);
-    return () => window.clearInterval(interval);
+
+    // Immediately sync the timer whenever the page gains focus or changes visibility
+    const handleSync = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+    };
+    
+    window.addEventListener("focus", handleSync);
+    document.addEventListener("visibilitychange", handleSync);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleSync);
+      document.removeEventListener("visibilitychange", handleSync);
+    };
   }, [restTimerEndsAt]);
 
   // Auto-request notification permissions when a workout is active
@@ -609,8 +625,34 @@ export function WorkoutScreen() {
         setTimerMaxDuration((prev) => Math.max(diff, prev));
         
         // Notify on transition or change in rest timer
-        if (restTimerEndsAt !== lastEndsAtRef.current && diff > 2) {
-          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        if (restTimerEndsAt !== lastEndsAtRef.current) {
+          // Schedule background notification via Service Worker TimestampTrigger if supported
+          const anyWindow = window as any;
+          if (typeof window !== "undefined" && "serviceWorker" in navigator && "TimestampTrigger" in anyWindow) {
+            navigator.serviceWorker.ready.then((registration) => {
+              try {
+                // Cancel any existing scheduled notification first
+                if (registration.getNotifications) {
+                  registration.getNotifications({ tag: "atlas-rest-timer", includeTriggered: true } as any).then((notifications) => {
+                    notifications.forEach((n) => n.close());
+                  });
+                }
+                const targetTime = new Date(restTimerEndsAt).getTime();
+                const showTrigger = new anyWindow.TimestampTrigger(targetTime);
+                registration.showNotification("Rest Finished! 🏋️", {
+                  body: "Time to start your next set!",
+                  tag: "atlas-rest-timer",
+                  requireInteraction: true,
+                  showTrigger,
+                } as any);
+              } catch (e) {
+                console.warn("Failed to schedule background notification:", e);
+              }
+            });
+          }
+
+          // Trigger "Rest Timer Started" notification only if app is hidden
+          if (diff > 2 && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted" && document.visibilityState === "hidden") {
             try {
               new Notification("Rest Timer Started ⏱️", {
                 body: `Rest for ${diff} seconds. Take a breath!`,
@@ -625,6 +667,20 @@ export function WorkoutScreen() {
       }
     } else {
       setTimerMaxDuration(60);
+      // Cancel scheduled notifications if restTimerEndsAt is stopped/cleared
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.ready.then((registration) => {
+          try {
+            if (registration.getNotifications) {
+              registration.getNotifications({ tag: "atlas-rest-timer", includeTriggered: true } as any).then((notifications) => {
+                notifications.forEach((n) => n.close());
+              });
+            }
+          } catch (e) {
+            console.warn("Failed to clear scheduled notifications:", e);
+          }
+        });
+      }
     }
     lastEndsAtRef.current = restTimerEndsAt;
   }, [restTimerEndsAt]);
@@ -657,24 +713,29 @@ export function WorkoutScreen() {
           console.warn("Web Audio API rest chime bypassed:", err);
         }
 
-        // Trigger finish Web Notification
+        // Trigger finish Web Notification if the app is hidden or out of focus
         if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-          try {
-            new Notification("Rest Finished! 🏋️", {
-              body: "Time to start your next set!",
-              tag: "atlas-rest-timer",
-              requireInteraction: true,
-            });
-          } catch (e) {
-            console.warn("Notification error:", e);
+          if (document.visibilityState === "hidden" || !document.hasFocus()) {
+            try {
+              new Notification("Rest Finished! 🏋️", {
+                body: "Time to start your next set!",
+                tag: "atlas-rest-timer",
+                requireInteraction: true,
+              });
+            } catch (e) {
+              console.warn("Notification error:", e);
+            }
           }
         }
+
+        // Auto-clear the rest timer in the store so it doesn't trigger again on tab re-focus/re-mount
+        void stopRestTimer();
       }
     } else if (restTimerEndsAt && remaining > 0) {
       // Reset completed trigger flag when timer resets or ticks down
       restFinishedNotifiedRef.current = false;
     }
-  }, [remaining, restTimerEndsAt]);
+  }, [remaining, restTimerEndsAt, stopRestTimer]);
 
   // Effect for workout duration timer
   useEffect(() => {
