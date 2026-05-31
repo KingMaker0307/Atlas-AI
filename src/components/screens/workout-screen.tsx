@@ -251,6 +251,26 @@ export function WorkoutScreen() {
   const workouts = useMemo(() => {
     return allWorkouts.filter(w => w.exercises.some(ex => ex.sets.some(s => s.completed)));
   }, [allWorkouts]);
+
+  const lastWorkoutForExercise = useMemo(() => {
+    const map: Record<string, Array<{ reps: number; weight: number }>> = {};
+    const completedWorkouts = [...workouts]
+      .filter(w => w.completedAt)
+      .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+    for (const w of completedWorkouts) {
+      for (const ex of w.exercises) {
+        const exerciseKey = ex.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        if (!ex.skipped && !map[exerciseKey]) {
+          const completedSets = ex.sets.filter(s => s.completed);
+          if (completedSets.length > 0) {
+            map[exerciseKey] = completedSets.map(s => ({ reps: s.reps, weight: s.weight }));
+          }
+        }
+      }
+    }
+    return map;
+  }, [workouts]);
+
   const activeSubScreen = useAtlasStore((state) => state.activeSubScreen);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
@@ -403,6 +423,7 @@ export function WorkoutScreen() {
   const [fatigue, setFatigue] = useState(6);
   const [notes, setNotes] = useState("");
   const [remaining, setRemaining] = useState(0);
+  const [timerMaxDuration, setTimerMaxDuration] = useState(60);
   const [elapsedWorkoutTime, setElapsedWorkoutTime] = useState(0);
   const [activeSwapExercise, setActiveSwapExercise] = useState<any | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
@@ -556,7 +577,7 @@ export function WorkoutScreen() {
   const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
 
 
-  // Effect for rest timer
+  // Effect for rest timer countdown
   useEffect(() => {
     const tick = () => {
       if (!restTimerEndsAt) {
@@ -570,30 +591,88 @@ export function WorkoutScreen() {
     return () => window.clearInterval(interval);
   }, [restTimerEndsAt]);
 
-  // Premium haptic and synthesized audio notification on rest timer finish
+  // Auto-request notification permissions when a workout is active
+  useEffect(() => {
+    if (activeWorkout && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        void Notification.requestPermission();
+      }
+    }
+  }, [activeWorkout]);
+
+  // Track max timer duration for visual progress bar & trigger start notification
+  const lastEndsAtRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (restTimerEndsAt) {
+      const diff = Math.max(0, Math.ceil((new Date(restTimerEndsAt).getTime() - Date.now()) / 1000));
+      if (diff > 0) {
+        setTimerMaxDuration((prev) => Math.max(diff, prev));
+        
+        // Notify on transition or change in rest timer
+        if (restTimerEndsAt !== lastEndsAtRef.current && diff > 2) {
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            try {
+              new Notification("Rest Timer Started ⏱️", {
+                body: `Rest for ${diff} seconds. Take a breath!`,
+                tag: "atlas-rest-timer",
+                silent: true,
+              });
+            } catch (e) {
+              console.warn("Notification error:", e);
+            }
+          }
+        }
+      }
+    } else {
+      setTimerMaxDuration(60);
+    }
+    lastEndsAtRef.current = restTimerEndsAt;
+  }, [restTimerEndsAt]);
+
+  // Premium haptic, synthesized audio chime, and push notification on rest timer finish
+  const restFinishedNotifiedRef = useRef<boolean>(false);
   useEffect(() => {
     if (restTimerEndsAt && remaining === 0) {
-      if (navigator.vibrate) {
-        navigator.vibrate([150, 100, 150]);
-      }
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const audioCtx = new AudioCtx();
-          const oscillator = audioCtx.createOscillator();
-          const gainNode = audioCtx.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(audioCtx.destination);
-          oscillator.type = "sine";
-          oscillator.frequency.value = 880; // A5 pitch
-          gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-          oscillator.start();
-          oscillator.stop(audioCtx.currentTime + 0.3);
+      if (!restFinishedNotifiedRef.current) {
+        restFinishedNotifiedRef.current = true;
+        if (navigator.vibrate) {
+          navigator.vibrate([150, 100, 150]);
         }
-      } catch (err) {
-        console.warn("Web Audio API rest chime bypassed:", err);
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            const audioCtx = new AudioCtx();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = "sine";
+            oscillator.frequency.value = 880; // A5 pitch
+            gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+          }
+        } catch (err) {
+          console.warn("Web Audio API rest chime bypassed:", err);
+        }
+
+        // Trigger finish Web Notification
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          try {
+            new Notification("Rest Finished! 🏋️", {
+              body: "Time to start your next set!",
+              tag: "atlas-rest-timer",
+              requireInteraction: true,
+            });
+          } catch (e) {
+            console.warn("Notification error:", e);
+          }
+        }
       }
+    } else if (restTimerEndsAt && remaining > 0) {
+      // Reset completed trigger flag when timer resets or ticks down
+      restFinishedNotifiedRef.current = false;
     }
   }, [remaining, restTimerEndsAt]);
 
@@ -1374,6 +1453,15 @@ export function WorkoutScreen() {
             </div>
           </div>
         )}
+        {/* Thin countdown progress bar at the bottom of the card */}
+        {restTimerEndsAt && remaining > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-1000 ease-linear"
+              style={{ width: `${timerMaxDuration > 0 ? (remaining / timerMaxDuration) * 100 : 0}%` }}
+            />
+          </div>
+        )}
       </Card>
 
       {/* Active Workout Exercises mapping — smart accordion flow */}
@@ -1404,7 +1492,32 @@ export function WorkoutScreen() {
           // Helper: handle completing a set with auto-advance and value propagation
           const handleCompleteSet = async (setId: string, currentlyCompleted: boolean) => {
             if (navigator.vibrate) navigator.vibrate(currentlyCompleted ? 6 : 14);
-            await updateSet(workoutExercise.id, setId, { completed: !currentlyCompleted });
+
+            const targetSetIdx = workoutExercise.sets.findIndex(s => s.id === setId);
+            const targetSet = workoutExercise.sets[targetSetIdx];
+            if (targetSet && !currentlyCompleted) {
+              const prevSet = targetSetIdx > 0 ? workoutExercise.sets[targetSetIdx - 1] : null;
+              const isTimeBased = exercise.category === "mobility" || /s\b|sec|min/i.test(workoutExercise.targetReps) || /hold/i.test(exercise.name) || /plank/i.test(exercise.name);
+              const exerciseKey = workoutExercise.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+              const prevSessionSets = lastWorkoutForExercise[exerciseKey];
+              const prevSessionSet = prevSessionSets ? (prevSessionSets[targetSetIdx] || prevSessionSets.at(-1)) : null;
+
+              const defaultReps = isTimeBased ? 30 : 10;
+              const prevReps = prevSessionSet ? prevSessionSet.reps : defaultReps;
+              const prevWeight = prevSessionSet ? prevSessionSet.weight : 0;
+
+              const displayReps = targetSet.reps === 0 ? (prevSet ? (prevSet.reps === 0 ? prevReps : prevSet.reps) : prevReps) : targetSet.reps;
+              const displayWeight = targetSet.weight === 0 ? (prevSet ? (prevSet.weight === 0 ? prevWeight : prevSet.weight) : prevWeight) : targetSet.weight;
+
+              await updateSet(workoutExercise.id, setId, {
+                completed: true,
+                reps: displayReps,
+                weight: displayWeight
+              });
+            } else {
+              await updateSet(workoutExercise.id, setId, { completed: !currentlyCompleted });
+            }
+
             if (!currentlyCompleted) {
               void startRestTimer(workoutExercise.restSeconds);
 
@@ -1904,267 +2017,281 @@ export function WorkoutScreen() {
                               <>
                                 {(() => {
                                   const isTimeBased = exercise.category === "mobility" || /s\b|sec|min/i.test(workoutExercise.targetReps) || /hold/i.test(exercise.name) || /plank/i.test(exercise.name);
+                                  const exerciseKey = workoutExercise.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+                                  const prevSessionSets = lastWorkoutForExercise[exerciseKey];
+
                                   return workoutExercise.sets.map((set, setIndex) => {
                                     const isActiveSet = setIndex === activeSetIdx;
                                     const prevSet = setIndex > 0 ? workoutExercise.sets[setIndex - 1] : null;
 
-                                    // Pre-fill from previous set when value is 0
-                                    const displayReps = set.reps === 0 && prevSet ? prevSet.reps : set.reps;
-                                    const displayWeight = set.weight === 0 && prevSet ? prevSet.weight : set.weight;
+                                    const prevSessionSet = prevSessionSets ? (prevSessionSets[setIndex] || prevSessionSets.at(-1)) : null;
+                                    const defaultReps = isTimeBased ? 30 : 10;
+                                    const prevReps = prevSessionSet ? prevSessionSet.reps : defaultReps;
+                                    const prevWeight = prevSessionSet ? prevSessionSet.weight : 0;
 
-                                  // ─── Case 1: Completed Set ───
-                                  if (set.completed) {
-                                    return (
-                                      <div
-                                        key={set.id}
-                                        className="flex items-center gap-3 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs select-none transition-all min-h-[44px]"
-                                      >
-                                        <span className="font-black text-emerald-500 shrink-0">#{setIndex + 1}</span>
-                                        {set.isDropSet && (
-                                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
-                                        )}
-                                        <span className="flex-1 font-semibold text-emerald-700 dark:text-emerald-300 truncate text-left">
-                                          {isTimeBased ? `${set.reps}s` : `${set.reps} reps`} · {set.weight === 0 ? "bodyweight" : `${set.weight} ${exUnit}`}
-                                          {set.rir !== undefined ? ` · RIR ${set.rir}` : ""}
-                                        </span>
-                                        <Check size={16} className="stroke-[3px] text-emerald-500 shrink-0" />
-                                        <button
-                                          type="button"
-                                          className="text-zinc-455 hover:text-rose-500 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
-                                          onClick={() => void deleteSet(workoutExercise.id, set.id)}
-                                          aria-label="Delete set"
-                                        >
-                                          <Trash2 size={16} />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="text-emerald-600 dark:text-emerald-400 hover:text-zinc-755 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
-                                          onClick={() => {
-                                            if (navigator.vibrate) navigator.vibrate(6);
-                                            void updateSet(workoutExercise.id, set.id, { completed: false });
-                                          }}
-                                          aria-label="Undo set completion"
-                                          title="Undo"
-                                        >
-                                          <X size={16} />
-                                        </button>
-                                      </div>
-                                    );
-                                  }
+                                    const displayReps = set.reps === 0 ? (prevSet ? (prevSet.reps === 0 ? prevReps : prevSet.reps) : prevReps) : set.reps;
+                                    const displayWeight = set.weight === 0 ? (prevSet ? (prevSet.weight === 0 ? prevWeight : prevSet.weight) : prevWeight) : set.weight;
 
-                                  // ─── Case 2: Active Focused Set Card ───
-                                  if (isActiveSet) {
-                                    return (
-                                      <div
-                                        key={set.id}
-                                        className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
-                                      >
-                                        <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-xs font-black text-emerald-500 tracking-wider">
-                                              SET #{setIndex + 1} (ACTIVE)
-                                            </span>
-                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                            {set.isDropSet && (
-                                              <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[10px] font-black uppercase tracking-wider text-amber-500">Drop</span>
-                                            )}
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <Button
-                                              aria-label="Delete set"
-                                              className="h-10 w-10 rounded-xl text-zinc-750 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                              size="icon" variant="ghost"
-                                              onClick={() => void deleteSet(workoutExercise.id, set.id)}
-                                            >
-                                              <Trash2 size={16} />
-                                            </Button>
-                                            <Button
-                                              aria-label="Complete set"
-                                              className="h-10 px-4 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
-                                              onClick={() => void handleCompleteSet(set.id, set.completed)}
-                                            >
-                                              <Check size={16} className="stroke-[3px]" />
-                                              Check
-                                            </Button>
-                                          </div>
+                                    // ─── Case 1: Completed Set ───
+                                    if (set.completed) {
+                                      return (
+                                        <div
+                                          key={set.id}
+                                          className="flex items-center gap-3 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs select-none transition-all min-h-[44px]"
+                                        >
+                                          <span className="font-black text-emerald-500 shrink-0">#{setIndex + 1}</span>
+                                          {set.isDropSet && (
+                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
+                                          )}
+                                          <span className="flex-1 font-semibold text-emerald-700 dark:text-emerald-300 truncate text-left">
+                                            {isTimeBased ? `${set.reps}s` : `${set.reps} reps`} · {set.weight === 0 ? "bodyweight" : `${set.weight} ${exUnit}`}
+                                            {set.rir !== undefined ? ` · RIR ${set.rir}` : ""}
+                                          </span>
+                                          <Check size={16} className="stroke-[3px] text-emerald-500 shrink-0" />
+                                          <button
+                                            type="button"
+                                            className="text-zinc-455 hover:text-rose-500 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                                            onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                            aria-label="Delete set"
+                                          >
+                                            <Trash2 size={16} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="text-emerald-600 dark:text-emerald-400 hover:text-zinc-755 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                                            onClick={() => {
+                                              if (navigator.vibrate) navigator.vibrate(6);
+                                              void updateSet(workoutExercise.id, set.id, { completed: false });
+                                            }}
+                                            aria-label="Undo set completion"
+                                            title="Undo"
+                                          >
+                                            <X size={16} />
+                                          </button>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-3 text-left">
-                                          {(() => {
-                                            const repStep = isTimeBased ? 5 : 1;
-                                            const maxRepVal = isTimeBased ? 999 : 100;
-                                            return (
-                                              <div>
-                                                <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">{isTimeBased ? "Seconds" : "Reps"}</label>
-                                                <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      if (navigator.vibrate) navigator.vibrate(6);
-                                                      const v = Math.max(0, displayReps - repStep);
-                                                      void updateSet(workoutExercise.id, set.id, { reps: v });
-                                                    }}
-                                                    className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                    aria-label={isTimeBased ? "Decrease seconds" : "Decrease reps"}
-                                                  >
-                                                    <Minus size={14} className="stroke-[3px]" />
-                                                  </button>
-                                                  <Input
-                                                    inputMode="numeric" type="number" min={0} max={maxRepVal}
-                                                    className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
-                                                    value={displayReps}
-                                                    onChange={e => {
-                                                      const v = Math.min(maxRepVal, Math.max(0, Number(e.target.value)));
-                                                      void updateSet(workoutExercise.id, set.id, { reps: v });
-                                                    }}
-                                                  />
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      if (navigator.vibrate) navigator.vibrate(6);
-                                                      const v = Math.min(maxRepVal, displayReps + repStep);
-                                                      void updateSet(workoutExercise.id, set.id, { reps: v });
-                                                    }}
-                                                    className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                    aria-label={isTimeBased ? "Increase seconds" : "Increase reps"}
-                                                  >
-                                                    <Plus size={14} className="stroke-[3px]" />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            );
-                                          })()}
-                                          
-                                          <div>
-                                            <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">Load ({exUnit})</label>
-                                            <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  if (navigator.vibrate) navigator.vibrate(6);
-                                                  const step = exUnit === "kg" ? 1.0 : 2.5;
-                                                  const v = parseFloat(Math.max(0, displayWeight - step).toFixed(1));
-                                                  void updateSet(workoutExercise.id, set.id, { weight: v });
-                                                }}
-                                                className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                aria-label="Decrease load"
+                                      );
+                                    }
+
+                                    // ─── Case 2: Active Focused Set Card ───
+                                    if (isActiveSet) {
+                                      return (
+                                        <div
+                                          key={set.id}
+                                          className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
+                                        >
+                                          <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xs font-black text-emerald-500 tracking-wider">
+                                                SET #{setIndex + 1} (ACTIVE)
+                                              </span>
+                                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                              {set.isDropSet && (
+                                                <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[10px] font-black uppercase tracking-wider text-amber-500">Drop</span>
+                                              )}
+                                              {prevSessionSet && (
+                                                <span className="text-[10px] font-black text-zinc-555">
+                                                  Last: {prevSessionSet.weight === 0 ? "BW" : `${prevSessionSet.weight}${exUnit}`} x {prevSessionSet.reps}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Button
+                                                aria-label="Delete set"
+                                                className="h-10 w-10 rounded-xl text-zinc-750 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                                size="icon" variant="ghost"
+                                                onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                               >
-                                                <Minus size={14} className="stroke-[3px]" />
-                                              </button>
-                                              <Input
-                                                inputMode="decimal" type="number" min={0} max={2000} step="any"
-                                                className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
-                                                value={displayWeight}
-                                                onChange={e => {
-                                                  const v = Math.min(2000, Math.max(0, Number(e.target.value)));
-                                                  void updateSet(workoutExercise.id, set.id, { weight: v });
-                                                }}
-                                              />
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  if (navigator.vibrate) navigator.vibrate(6);
-                                                  const step = exUnit === "kg" ? 1.0 : 2.5;
-                                                  const v = parseFloat(Math.min(2000, displayWeight + step).toFixed(1));
-                                                  void updateSet(workoutExercise.id, set.id, { weight: v });
-                                                }}
-                                                className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                aria-label="Increase load"
+                                                <Trash2 size={16} />
+                                              </Button>
+                                              <Button
+                                                aria-label="Complete set"
+                                                className="h-11 px-5 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
+                                                onClick={() => void handleCompleteSet(set.id, set.completed)}
                                               >
-                                                <Plus size={14} className="stroke-[3px]" />
-                                              </button>
+                                                <Check size={16} className="stroke-[3px]" />
+                                                Check
+                                              </Button>
                                             </div>
                                           </div>
-                                          
-                                          <div>
-                                            <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">RIR</label>
-                                            {guidedMode ? (
-                                              <div className="bg-surface border border-surface-border rounded-xl overflow-hidden shadow-sm focus-within:border-emerald-500/50">
-                                                <Select
-                                                  value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
-                                                  onChange={e => {
-                                                    if (navigator.vibrate) navigator.vibrate(6);
-                                                    const v = e.target.value === "easy" ? 8 : e.target.value === "hard" ? 0 : 4;
-                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                  }}
-                                                  className="h-10 py-0.5 px-2 text-center font-bold bg-transparent border-0 text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
-                                                >
-                                                  <option value="easy">Easy (8)</option>
-                                                  <option value="moderate">Mod (4)</option>
-                                                  <option value="hard">Hard (0)</option>
-                                                </Select>
-                                              </div>
-                                            ) : (
-                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
+                                          <div className="grid grid-cols-3 gap-3 text-left">
+                                            {(() => {
+                                              const repStep = isTimeBased ? 5 : 1;
+                                              const maxRepVal = isTimeBased ? 999 : 100;
+                                              return (
+                                                <div>
+                                                  <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">{isTimeBased ? "Seconds" : "Reps"}</label>
+                                                  <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        if (navigator.vibrate) navigator.vibrate(6);
+                                                        const v = Math.max(0, displayReps - repStep);
+                                                        void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                      }}
+                                                      className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                      aria-label={isTimeBased ? "Decrease seconds" : "Decrease reps"}
+                                                    >
+                                                      <Minus size={14} className="stroke-[3px]" />
+                                                    </button>
+                                                    <Input
+                                                      inputMode="numeric" type="number" min={0} max={maxRepVal}
+                                                      className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                      value={set.reps === 0 ? "" : set.reps}
+                                                      placeholder={String(displayReps)}
+                                                      onChange={e => {
+                                                        const v = Math.min(maxRepVal, Math.max(0, Number(e.target.value)));
+                                                        void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                      }}
+                                                    />
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        if (navigator.vibrate) navigator.vibrate(6);
+                                                        const v = Math.min(maxRepVal, displayReps + repStep);
+                                                        void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                      }}
+                                                      className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                      aria-label={isTimeBased ? "Increase seconds" : "Increase reps"}
+                                                    >
+                                                      <Plus size={14} className="stroke-[3px]" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })()}
+                                            
+                                            <div>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">Load ({exUnit})</label>
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
                                                 <button
                                                   type="button"
                                                   onClick={() => {
                                                     if (navigator.vibrate) navigator.vibrate(6);
-                                                    const v = Math.max(0, (set.rir ?? 2) - 1);
-                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                    const v = parseFloat(Math.max(0, displayWeight - step).toFixed(1));
+                                                    void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
-                                                  className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                  aria-label="Decrease RIR"
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Decrease load"
                                                 >
                                                   <Minus size={14} className="stroke-[3px]" />
                                                 </button>
                                                 <Input
-                                                  inputMode="numeric" type="number" min={0} max={10}
+                                                  inputMode="decimal" type="number" min={0} max={2000} step="any"
                                                   className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
-                                                  value={set.rir ?? 2}
+                                                  value={set.weight === 0 ? "" : set.weight}
+                                                  placeholder={String(displayWeight)}
                                                   onChange={e => {
-                                                    const v = Math.min(10, Math.max(0, Number(e.target.value)));
-                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    const v = Math.min(2000, Math.max(0, Number(e.target.value)));
+                                                    void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
                                                 />
                                                 <button
                                                   type="button"
                                                   onClick={() => {
                                                     if (navigator.vibrate) navigator.vibrate(6);
-                                                    const v = Math.min(10, (set.rir ?? 2) + 1);
-                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                    const v = parseFloat(Math.min(2000, displayWeight + step).toFixed(1));
+                                                    void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
-                                                  className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                  aria-label="Increase RIR"
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Increase load"
                                                 >
                                                   <Plus size={14} className="stroke-[3px]" />
                                                 </button>
                                               </div>
-                                            )}
+                                            </div>
+                                            
+                                            <div>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">RIR</label>
+                                              {guidedMode ? (
+                                                <div className="bg-surface border border-surface-border rounded-xl overflow-hidden shadow-sm focus-within:border-emerald-500/50 h-11 flex items-center">
+                                                  <Select
+                                                    value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
+                                                    onChange={e => {
+                                                      if (navigator.vibrate) navigator.vibrate(6);
+                                                      const v = e.target.value === "easy" ? 8 : e.target.value === "hard" ? 0 : 4;
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                    className="h-10 py-0.5 px-2 text-center font-bold bg-transparent border-0 text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  >
+                                                    <option value="easy">Easy (8)</option>
+                                                    <option value="moderate">Mod (4)</option>
+                                                    <option value="hard">Hard (0)</option>
+                                                  </Select>
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      if (navigator.vibrate) navigator.vibrate(6);
+                                                      const v = Math.max(0, (set.rir ?? 2) - 1);
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                    className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                    aria-label="Decrease RIR"
+                                                  >
+                                                    <Minus size={14} className="stroke-[3px]" />
+                                                  </button>
+                                                  <Input
+                                                    inputMode="numeric" type="number" min={0} max={10}
+                                                    className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                    value={set.rir ?? 2}
+                                                    onChange={e => {
+                                                      const v = Math.min(10, Math.max(0, Number(e.target.value)));
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                  />
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      if (navigator.vibrate) navigator.vibrate(6);
+                                                      const v = Math.min(10, (set.rir ?? 2) + 1);
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                    className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                    aria-label="Increase RIR"
+                                                  >
+                                                    <Plus size={14} className="stroke-[3px]" />
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
+                                      );
+                                    }
+
+                                    // ─── Case 3: Future Uncompleted Set (Collapsed) ───
+                                    return (
+                                      <div
+                                        key={set.id}
+                                        onClick={() => setManualActiveSetIdx(prev => ({ ...prev, [workoutExercise.id]: setIndex }))}
+                                        className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface/30 border border-surface-border text-xs text-zinc-750 transition-all select-none hover:bg-surface/50 cursor-pointer min-h-[44px]"
+                                      >
+                                        <span className="font-bold text-zinc-555 shrink-0">#{setIndex + 1}</span>
+                                        {set.isDropSet && (
+                                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
+                                        )}
+                                        <span className="flex-1 text-left font-medium truncate">
+                                          Target {displayReps}{isTimeBased ? "s" : " reps"} · {displayWeight === 0 ? "bodyweight" : `${displayWeight} ${exUnit}`}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void handleCompleteSet(set.id, set.completed);
+                                          }}
+                                          className="h-11 px-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
+                                        >
+                                          <Check size={15} className="stroke-[3px]" />
+                                          Check
+                                        </button>
                                       </div>
                                     );
-                                  }
-
-                                  // ─── Case 3: Future Uncompleted Set (Collapsed) ───
-                                  return (
-                                    <div
-                                      key={set.id}
-                                      onClick={() => setManualActiveSetIdx(prev => ({ ...prev, [workoutExercise.id]: setIndex }))}
-                                      className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface/30 border border-surface-border text-xs text-zinc-750 transition-all select-none hover:bg-surface/50 cursor-pointer min-h-[44px]"
-                                    >
-                                      <span className="font-bold text-zinc-555 shrink-0">#{setIndex + 1}</span>
-                                      {set.isDropSet && (
-                                        <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
-                                      )}
-                                      <span className="flex-1 text-left font-medium truncate">
-                                        Target {displayReps}{isTimeBased ? "s" : " reps"} · {displayWeight === 0 ? "bodyweight" : `${displayWeight} ${exUnit}`}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          void handleCompleteSet(set.id, set.completed);
-                                        }}
-                                        className="h-9 px-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
-                                      >
-                                        <Check size={15} className="stroke-[3px]" />
-                                        Check
-                                      </button>
-                                    </div>
-                                  );
-                                });
-                              })()}
+                                  });
+                                })()}
 
                                 {/* Bottom action bar */}
                                 <div className="mt-2.5 flex gap-2 flex-wrap">

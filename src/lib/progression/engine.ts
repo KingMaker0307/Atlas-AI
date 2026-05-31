@@ -90,7 +90,8 @@ export function getBodyweightSeries(metrics: BodyMetric[]): Array<{ date: string
 
 export function estimateOneRepMax(weight: number, reps: number): number {
   if (!weight || !reps) return 0;
-  return Math.round(weight * (1 + reps / 30));
+  if (reps >= 37) return weight; // prevent divide-by-zero or negative bounds
+  return Math.round(weight * (36 / (37 - reps)));
 }
 
 export function getStrengthSeries(

@@ -696,7 +696,7 @@ export function ProgressScreen() {
                       <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
                       <XAxis dataKey="date" stroke="#71717a" fontSize={10} fontStyle="bold" />
                       <YAxis stroke="#71717a" fontSize={10} fontStyle="bold" />
-                      <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                      <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
                       <Line dataKey="estimated1rm" stroke="#6ee7b7" strokeWidth={3} dot={{ r: 4, stroke: "#10b981", strokeWidth: 1.5, fill: "#fff" }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -721,7 +721,7 @@ export function ProgressScreen() {
                       <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
                       <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
                       <YAxis stroke="#71717a" fontSize={10} />
-                      <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                      <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
                       <Bar dataKey="minutes" name="Cardio Mins" fill="#818cf8" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="calories" name="Calories (kcal)" fill="#f43f5e" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -747,7 +747,7 @@ export function ProgressScreen() {
                       <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
                       <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
                       <YAxis stroke="#71717a" fontSize={10} domain={[0, 10]} />
-                      <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                      <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
                       <Line type="monotone" dataKey="energy" stroke="#facc15" strokeWidth={2} name="Energy" dot={false} />
                       <Line type="monotone" dataKey="soreness" stroke="#ef4444" strokeWidth={2} name="Soreness" dot={false} />
                       <Line type="monotone" dataKey="stress" stroke="#c084fc" strokeWidth={2} name="Stress" dot={false} />
@@ -785,7 +785,7 @@ export function ProgressScreen() {
                           <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
                           <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
                           <YAxis stroke="#71717a" fontSize={10} domain={["dataMin - 3", "dataMax + 3"]} />
-                          <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
                           <Area dataKey="weight" stroke="#c084fc" fill="url(#bodyweightGrad)" strokeWidth={2} name="Weight (lbs)" />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -808,7 +808,7 @@ export function ProgressScreen() {
                           <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
                           <XAxis dataKey="week" stroke="#71717a" fontSize={10} />
                           <YAxis stroke="#71717a" fontSize={10} />
-                          <Tooltip contentStyle={{ background: "#09090b", border: "1px solid rgba(255,255,255,0.08)" }} />
+                          <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
                           <Bar dataKey="volume" fill="#10b981" radius={[4, 4, 0, 0]} name="Volume" />
                         </BarChart>
                       </ResponsiveContainer>

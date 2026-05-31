@@ -72,6 +72,7 @@ export function DashboardScreen() {
     return allWorkouts.filter(w => w.exercises.some(ex => ex.sets.some(s => s.completed)));
   }, [allWorkouts]);
 
+  const nutritionEntries = useAtlasStore((state) => state.nutritionEntries || []);
   const recoveryLogs = useAtlasStore((state) => state.recoveryLogs);
   const bodyMetrics = useAtlasStore((state) => state.bodyMetrics);
   const aiMessages = useAtlasStore((state) => state.aiMessages);
@@ -330,6 +331,62 @@ export function DashboardScreen() {
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
+  const consistencyDays = useMemo(() => {
+    const today = new Date();
+    const todayStr = getLocalDateString(today);
+    
+    // Find the Monday of this week to align columns
+    const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday...
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - daysToMonday);
+
+    // Generate 4 full weeks starting from Monday 3 weeks ago
+    const days = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekMonday = new Date(thisMonday);
+      weekMonday.setDate(thisMonday.getDate() - w * 7);
+      
+      for (let d = 0; d < 7; d++) {
+        const current = new Date(weekMonday);
+        current.setDate(weekMonday.getDate() + d);
+        const dateStr = getLocalDateString(current);
+        const isFuture = dateStr > todayStr;
+        const isToday = dateStr === todayStr;
+
+        // Check if workout completed on this day
+        const hasWorkout = workouts.some(w => {
+          if (!w.completedAt) return false;
+          try {
+            return getLocalDateString(new Date(w.completedAt)) === dateStr;
+          } catch {
+            return false;
+          }
+        });
+
+        // Check if food logged on this day
+        const hasNutrition = (nutritionEntries || []).some(entry => {
+          if (!entry.timestamp) return false;
+          try {
+            return getLocalDateString(new Date(entry.timestamp)) === dateStr;
+          } catch {
+            return false;
+          }
+        });
+
+        days.push({
+          dateStr,
+          isFuture,
+          isToday,
+          hasWorkout,
+          hasNutrition,
+          dayOfWeek: d
+        });
+      }
+    }
+    return days;
+  }, [workouts, nutritionEntries]);
 
   const handleLaunchWorkoutClick = (routine: any) => {
     if (activeWorkout) {
@@ -1195,6 +1252,115 @@ export function DashboardScreen() {
           </AnimatePresence>
         </div>
       </section>
+      )}
+
+      {/* ─── WEEKLY CONSISTENCY STREAKS GRID ─── */}
+      {!guidedMode && (
+        <Card className="p-4 border border-card-border bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-2.5">
+            <Calendar size={16} className="text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Consistency Streaks</h2>
+          </div>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
+            Your combined training and nutrition tracking history. Keep the momentum going by logging workouts and meals daily!
+          </p>
+
+          <div className="mt-4 flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
+            {/* Grid */}
+            <div className="flex flex-col gap-1.5 select-none w-full max-w-[340px] shrink-0">
+              {/* Day of Week Labels */}
+              <div className="grid grid-cols-[36px_1fr] gap-2 items-center">
+                <div /> {/* Spacer for row labels */}
+                <div className="grid grid-cols-7 gap-1.5 text-center">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, idx) => (
+                    <div key={idx} className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rows (4 weeks) */}
+              {[0, 1, 2, 3].map((weekIdx) => {
+                const weekDays = consistencyDays.slice(weekIdx * 7, (weekIdx + 1) * 7);
+                const isCurrentWeek = weekIdx === 3;
+                return (
+                  <div key={weekIdx} className="grid grid-cols-[36px_1fr] gap-2 items-center">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase font-mono">
+                      {isCurrentWeek ? "This" : `W-${3 - weekIdx}`}
+                    </span>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {weekDays.map((day) => {
+                        let cellBgClass = "bg-zinc-150 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-800/60";
+                        let titleText = `${day.dateStr}: Rest Day / No entries`;
+
+                        if (day.isFuture) {
+                          cellBgClass = "bg-zinc-100/50 dark:bg-zinc-900/20 border border-dashed border-zinc-200/30 dark:border-zinc-800/30 opacity-40";
+                          titleText = `${day.dateStr}: Future day`;
+                        } else if (day.hasWorkout && day.hasNutrition) {
+                          cellBgClass = "bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500 text-white shadow-sm shadow-emerald-500/10";
+                          titleText = `${day.dateStr}: Workout + Nutrition logged (Full consistency!)`;
+                        } else if (day.hasWorkout) {
+                          cellBgClass = "bg-teal-500/90 dark:bg-teal-500/70 border border-teal-500/80 text-white shadow-sm shadow-teal-500/10";
+                          titleText = `${day.dateStr}: Workout logged`;
+                        } else if (day.hasNutrition) {
+                          cellBgClass = "bg-amber-500/90 dark:bg-amber-500/70 border border-amber-500/80 text-white shadow-sm shadow-amber-500/10";
+                          titleText = `${day.dateStr}: Nutrition logged`;
+                        }
+
+                        return (
+                          <div
+                            key={day.dateStr}
+                            className={`aspect-square w-full rounded-[6px] relative flex items-center justify-center transition-all duration-150 hover:scale-115 active:scale-95 cursor-help ${cellBgClass}`}
+                            title={titleText}
+                          >
+                            {day.isToday && (
+                              <span className="absolute -inset-0.5 rounded-[8px] border-2 border-indigo-500 dark:border-indigo-400 animate-pulse pointer-events-none" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend / Stats */}
+            <div className="flex flex-col gap-3 justify-center w-full">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
+                  <div className="w-3.5 h-3.5 rounded-[4px] bg-teal-500/90 border border-teal-500" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Workout Logged</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
+                  <div className="w-3.5 h-3.5 rounded-[4px] bg-amber-500/90 border border-amber-500" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Nutrition Logged</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border col-span-2">
+                  <div className="w-3.5 h-3.5 rounded-[4px] bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Full Lockstep (Workout + Diet)</span>
+                </div>
+              </div>
+
+              {/* Minimal metrics text */}
+              <div className="p-2.5 rounded-xl bg-surface border border-surface-border text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                <div className="flex justify-between items-center mb-1">
+                  <span>Workouts completed (28d):</span>
+                  <strong className="text-zinc-850 dark:text-white font-bold font-mono">
+                    {consistencyDays.filter(d => d.hasWorkout && !d.isFuture).length} days
+                  </strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Diet tracked (28d):</span>
+                  <strong className="text-zinc-850 dark:text-white font-bold font-mono">
+                    {consistencyDays.filter(d => d.hasNutrition && !d.isFuture).length} days
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* ─── DYNAMIC BIOMETRICS hub ─── */}

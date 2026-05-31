@@ -271,7 +271,16 @@ export function SettingsScreen() {
   const [selectedType, setSelectedType] = useState<AiProviderSettings["type"]>("openai");
   const [draft, setDraft] = useState<AiProviderSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
-  const [notificationStatus, setNotificationStatus] = useState("Not enabled");
+  const [notificationStatus, setNotificationStatus] = useState("default");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (!("Notification" in window)) {
+        setNotificationStatus("Unsupported");
+      } else {
+        setNotificationStatus(Notification.permission);
+      }
+    }
+  }, []);
   const [showDbStats, setShowDbStats] = useState(false);
 
   const [prevDraftId, setPrevDraftId] = useState<string | null>(null);
