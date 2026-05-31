@@ -248,11 +248,26 @@ export function AtlasApp() {
             <button
               type="button"
               onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+              className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
               title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
               aria-label="Toggle display theme"
             >
-              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={theme}
+                  initial={{ y: 12, rotate: 45, opacity: 0 }}
+                  animate={{ y: 0, rotate: 0, opacity: 1 }}
+                  exit={{ y: -12, rotate: -45, opacity: 0 }}
+                  transition={{ duration: 0.18, ease: "easeInOut" }}
+                  className="shrink-0"
+                >
+                  {theme === "dark" ? (
+                    <Sun size={14} className="text-amber-500" />
+                  ) : (
+                    <Moon size={14} className="text-indigo-500 dark:text-indigo-400" />
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </button>
           </div>
           <InstallPrompt />
@@ -278,11 +293,26 @@ export function AtlasApp() {
               <button
                 type="button"
                 onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
-                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
                 title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                 aria-label="Toggle display theme"
               >
-                {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={theme}
+                    initial={{ y: 12, rotate: 45, opacity: 0 }}
+                    animate={{ y: 0, rotate: 0, opacity: 1 }}
+                    exit={{ y: -12, rotate: -45, opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeInOut" }}
+                    className="shrink-0"
+                  >
+                    {theme === "dark" ? (
+                      <Sun size={14} className="text-amber-500" />
+                    ) : (
+                      <Moon size={14} className="text-indigo-500 dark:text-indigo-400" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </button>
               <OfflineIndicator compact />
               <InstallPrompt compact />

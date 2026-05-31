@@ -29,6 +29,8 @@ import {
   ChevronRight,
   BarChart3,
   Sparkles,
+  Camera,
+  Barcode,
 } from "lucide-react";
 import { Card, Surface } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,6 +70,7 @@ interface WaterLogEntry {
 // Common foods database for quick-add
 interface CommonFoodItem {
   name: string;
+  brand?: string;
   aliases?: string[];
   calories: number;
   protein: number;
@@ -81,6 +84,7 @@ interface CommonFoodItem {
   calcium: number;
   iron: number;
   servingUnit: string;
+  servingWeight?: number;
 }
 
 const COMMON_FOODS: CommonFoodItem[] = [
@@ -247,17 +251,112 @@ const MicroBadge: FC<{ label: string; value: number; max: number; unit: string; 
   );
 };
 
-// ─── Add Food Modal ──────────────────────────────────────────────
+// Helper to parse serving size text (e.g. "170g", "container (150 g)") to extract weight in grams/ml
+const parseServingWeight = (servingText: string): number => {
+  if (!servingText) return 100;
+  
+  // Look inside parentheses first: "1 container (150 g)" -> "150 g"
+  const parenMatch = servingText.match(/\(([^)]+)\)/);
+  const textToSearch = parenMatch ? parenMatch[1] : servingText;
+  
+  const weightMatch = textToSearch.match(/(\d+(?:\.\d+)?)\s*(g|ml|grams|ml)/i);
+  if (weightMatch) {
+    const val = parseFloat(weightMatch[1]);
+    if (val > 0) return val;
+  }
+  
+  const globalMatch = servingText.match(/(\d+(?:\.\d+)?)\s*(g|ml|grams|ml)/i);
+  if (globalMatch) {
+    const val = parseFloat(globalMatch[1]);
+    if (val > 0) return val;
+  }
+  
+  const numOnlyMatch = servingText.match(/(\d+(?:\.\d+)?)/);
+  if (numOnlyMatch) {
+    const val = parseFloat(numOnlyMatch[1]);
+    if (val > 0) return val;
+  }
+  
+  return 100;
+};
+
+// Map Open Food Facts product structure to our CommonFoodItem shape
+const mapOffProductToFoodItem = (product: any): CommonFoodItem => {
+  const name = product.product_name || product.product_name_en || "Unknown Product";
+  const brand = product.brands || undefined;
+  const nutriments = product.nutriments || {};
+  
+  // Nutriments per 100g
+  const cals100 = parseFloat(nutriments["energy-kcal_100g"] ?? nutriments["energy_100g"] ?? 0) || 0;
+  const protein100 = parseFloat(nutriments["proteins_100g"] ?? 0) || 0;
+  const carbs100 = parseFloat(nutriments["carbohydrates_100g"] ?? 0) || 0;
+  const fat100 = parseFloat(nutriments["fat_100g"] ?? 0) || 0;
+  const fiber100 = parseFloat(nutriments["fiber_100g"] ?? 0) || 0;
+  const sugar100 = parseFloat(nutriments["sugars_100g"] ?? 0) || 0;
+  
+  // Minerals in g per 100g, scaled to mg (multiply by 1000)
+  const sodium100 = (parseFloat(nutriments["sodium_100g"] ?? 0) || 0) * 1000;
+  const potassium100 = (parseFloat(nutriments["potassium_100g"] ?? 0) || 0) * 1000;
+  const calcium100 = (parseFloat(nutriments["calcium_100g"] ?? 0) || 0) * 1000;
+  const iron100 = (parseFloat(nutriments["iron_100g"] ?? 0) || 0) * 1000;
+  const vitC100 = (parseFloat(nutriments["vitamin-c_100g"] ?? 0) || 0) * 1000;
+
+  const servingSizeText = product.serving_size || "";
+  const servingWeight = parseServingWeight(servingSizeText);
+  const factor = servingWeight / 100;
+
+  return {
+    name,
+    brand,
+    calories: Math.round(cals100 * factor),
+    protein: parseFloat((protein100 * factor).toFixed(1)),
+    carbs: parseFloat((carbs100 * factor).toFixed(1)),
+    fat: parseFloat((fat100 * factor).toFixed(1)),
+    fiber: parseFloat((fiber100 * factor).toFixed(1)),
+    sugar: parseFloat((sugar100 * factor).toFixed(1)),
+    sodium: Math.round(sodium100 * factor),
+    potassium: Math.round(potassium100 * factor),
+    vitaminC: parseFloat((vitC100 * factor).toFixed(1)),
+    calcium: Math.round(calcium100 * factor),
+    iron: parseFloat((iron100 * factor).toFixed(1)),
+    servingUnit: servingSizeText || "100g",
+    servingWeight,
+  };
+};// ─── Add Food Modal ──────────────────────────────────────────────
 const AddFoodModal: FC<{
-  onAdd: (entry: NutritionEntry) => void;
+  onAdd: (entry: NutritionEntry | NutritionEntry[]) => void;
   onClose: () => void;
   initialMeal: NutritionEntry["meal"];
 }> = ({ onAdd, onClose, initialMeal }) => {
   const [meal, setMeal] = useState<NutritionEntry["meal"]>(initialMeal);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<typeof COMMON_FOODS[0] | null>(null);
+  const [selected, setSelected] = useState<CommonFoodItem | null>(null);
   const [servingQty, setServingQty] = useState(1);
   const [mode, setMode] = useState<"search" | "custom">("search");
+
+  // Search sub-tab toggle ("offline" | "live" | "barcode")
+  const [searchTab, setSearchTab] = useState<"offline" | "live" | "barcode">("offline");
+
+  // Multi-select selected items: Key -> { food: CommonFoodItem, qty: number }
+  const [selectedItems, setSelectedItems] = useState<Record<string, { food: CommonFoodItem; qty: number }>>({});
+  const [isTrayExpanded, setIsTrayExpanded] = useState(false);
+
+  // Suggestions & History states
+  const [suggestions, setSuggestions] = useState<CommonFoodItem[]>([]);
+  const recentSearches = useAtlasStore((s) => s.recentFoodSearches || []) as CommonFoodItem[];
+  const addRecentFoodSearch = useAtlasStore((s) => s.addRecentFoodSearch);
+  const clearRecentFoodSearches = useAtlasStore((s) => s.clearRecentFoodSearches);
+  const removeRecentFoodSearch = useAtlasStore((s) => s.removeRecentFoodSearch);
+
+  // Live brand search state
+  const [liveSearch, setLiveSearch] = useState("");
+  const [liveResults, setLiveResults] = useState<CommonFoodItem[]>([]);
+  const [isLoadingLive, setIsLoadingLive] = useState(false);
+
+  // Barcode search state
+  const [barcodeQuery, setBarcodeQuery] = useState("");
+  const [isBarcodeLoading, setIsBarcodeLoading] = useState(false);
+  const [barcodeError, setBarcodeError] = useState<string | null>(null);
 
   // Custom fields
   const [customName, setCustomName] = useState("");
@@ -272,34 +371,213 @@ const AddFoodModal: FC<{
     (f.aliases && f.aliases.some((alias) => alias.toLowerCase().includes(search.toLowerCase())))
   );
 
-  const handleAdd = () => {
-    const base = selected ?? null;
-    if (mode === "search" && !base) return;
-    if (mode === "custom" && !customName.trim()) return;
+  const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
 
-    const qty = servingQty || 1;
-    const entry: NutritionEntry = {
-      id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      meal,
-      timestamp: new Date().toISOString(),
-      servingSize: qty,
-      servingUnit: base?.servingUnit ?? "serving",
-      name: base?.name ?? customName.trim(),
-      calories: Math.round(((base?.calories ?? parseFloat(customCal)) || 0) * qty),
-      protein: +(((base?.protein ?? parseFloat(customProtein)) || 0) * qty).toFixed(1),
-      carbs: +(((base?.carbs ?? parseFloat(customCarbs)) || 0) * qty).toFixed(1),
-      fat: +(((base?.fat ?? parseFloat(customFat)) || 0) * qty).toFixed(1),
-      fiber: +(((base?.fiber ?? parseFloat(customFiber)) || 0) * qty).toFixed(1),
-      sugar: +((base?.sugar ?? 0) * qty).toFixed(1),
-      sodium: +((base?.sodium ?? 0) * qty).toFixed(0),
-      potassium: +((base?.potassium ?? 0) * qty).toFixed(0),
-      vitaminC: +((base?.vitaminC ?? 0) * qty).toFixed(1),
-      calcium: +((base?.calcium ?? 0) * qty).toFixed(0),
-      iron: +((base?.iron ?? 0) * qty).toFixed(1),
+  // Generate dynamic suggestions on mount or when meal changes
+  useEffect(() => {
+    const getSuggestionsForMeal = (entries: NutritionEntry[], mealSlot: NutritionEntry["meal"]): CommonFoodItem[] => {
+      const mealEntries = entries.filter((e) => e.meal === mealSlot);
+      const targetEntries = mealEntries.length > 0 ? mealEntries : entries;
+
+      const counts: Record<string, { entry: NutritionEntry; count: number }> = {};
+      for (const entry of targetEntries) {
+        const key = `${entry.name.toLowerCase()}`;
+        if (!counts[key]) {
+          counts[key] = { entry, count: 0 };
+        }
+        counts[key].count += 1;
+      }
+
+      const sorted = Object.values(counts).sort((a, b) => b.count - a.count);
+      const list: CommonFoodItem[] = sorted.slice(0, 5).map(({ entry }) => {
+        const size = entry.servingSize || 1;
+        return {
+          name: entry.name,
+          calories: Math.round(entry.calories / size),
+          protein: parseFloat((entry.protein / size).toFixed(1)),
+          carbs: parseFloat((entry.carbs / size).toFixed(1)),
+          fat: parseFloat((entry.fat / size).toFixed(1)),
+          fiber: parseFloat((entry.fiber / size).toFixed(1)),
+          sugar: parseFloat((entry.sugar / size).toFixed(1)),
+          sodium: Math.round(entry.sodium / size),
+          potassium: Math.round(entry.potassium / size),
+          vitaminC: parseFloat((entry.vitaminC / size).toFixed(1)),
+          calcium: Math.round(entry.calcium / size),
+          iron: parseFloat((entry.iron / size).toFixed(1)),
+          servingUnit: entry.servingUnit || "serving",
+        };
+      });
+
+      // Pad with staples if list is small
+      if (list.length < 3) {
+        const staples = ["Chicken Breast (cooked)", "Whole Egg", "Banana", "Greek Yogurt (0% fat)", "Oats (dry)"];
+        for (const name of staples) {
+          if (list.length >= 5) break;
+          const food = COMMON_FOODS.find((f) => f.name === name);
+          if (food && !list.some((s) => s.name.toLowerCase() === food.name.toLowerCase())) {
+            list.push(food);
+          }
+        }
+      }
+
+      return list;
     };
-    onAdd(entry);
-    onClose();
+
+    setSuggestions(getSuggestionsForMeal(nutritionEntries, meal));
+  }, [nutritionEntries, meal]);
+
+  const getItemKey = (food: CommonFoodItem) => {
+    return `${food.name.toLowerCase()}_${(food.brand || "").toLowerCase()}`;
   };
+
+  const toggleItemSelection = (food: CommonFoodItem) => {
+    const key = getItemKey(food);
+    setSelectedItems((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+      } else {
+        next[key] = { food, qty: 1 };
+        void addRecentFoodSearch(food);
+      }
+      return next;
+    });
+  };
+
+  // Debounced search for Open Food Facts
+  useEffect(() => {
+    if (searchTab !== "live" || !liveSearch.trim()) {
+      setLiveResults([]);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setIsLoadingLive(true);
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(liveSearch)}&search_simple=1&action=process&json=1&page_size=20`;
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "User-Agent": "AtlasAI - WebClient - 1.0"
+          }
+        });
+        if (!res.ok) throw new Error("API call failed");
+        const data = await res.json();
+        const products = data.products || [];
+        const mapped = products.map((p: any) => mapOffProductToFoodItem(p));
+        setLiveResults(mapped);
+      } catch (err) {
+        console.error("Live search failed:", err);
+      } finally {
+        setIsLoadingLive(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [liveSearch, searchTab]);
+
+  const handleBarcodeSearch = async (barcode: string) => {
+    if (!barcode.trim()) return;
+    setIsBarcodeLoading(true);
+    setBarcodeError(null);
+    setSelected(null);
+    try {
+      const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode.trim())}.json`;
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": "AtlasAI - WebClient - 1.0"
+        }
+      });
+      if (!res.ok) throw new Error("Barcode lookup failed");
+      const data = await res.json();
+      if (data.status === 1 && data.product) {
+        const item = mapOffProductToFoodItem(data.product);
+        setSelected(item);
+        setBarcodeQuery(barcode);
+        // Automatically check/select barcode lookup result
+        toggleItemSelection(item);
+      } else {
+        setBarcodeError("Product not found. Try another barcode or scan a sample.");
+      }
+    } catch (err) {
+      console.error("Barcode search failed:", err);
+      setBarcodeError("Network error. Please try again.");
+    } finally {
+      setIsBarcodeLoading(false);
+    }
+  };
+
+  const handleAdd = () => {
+    if (mode === "custom") {
+      if (!customName.trim() || !customCal) return;
+      const qty = servingQty || 1;
+      const entry: NutritionEntry = {
+        id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        meal,
+        timestamp: new Date().toISOString(),
+        servingSize: qty,
+        servingUnit: "serving",
+        name: customName.trim(),
+        calories: Math.round(parseFloat(customCal) * qty),
+        protein: +((parseFloat(customProtein) || 0) * qty).toFixed(1),
+        carbs: +((parseFloat(customCarbs) || 0) * qty).toFixed(1),
+        fat: +((parseFloat(customFat) || 0) * qty).toFixed(1),
+        fiber: +((parseFloat(customFiber) || 0) * qty).toFixed(1),
+        sugar: 0,
+        sodium: 0,
+        potassium: 0,
+        vitaminC: 0,
+        calcium: 0,
+        iron: 0,
+      };
+      onAdd(entry);
+      onClose();
+    } else {
+      // Batch log selected items
+      const itemsArray = Object.values(selectedItems);
+      if (itemsArray.length === 0) return;
+
+      const entries: NutritionEntry[] = itemsArray.map(({ food, qty }) => {
+        const finalName = food.brand ? `${food.brand} - ${food.name}` : food.name;
+        return {
+          id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`,
+          meal,
+          timestamp: new Date().toISOString(),
+          servingSize: qty,
+          servingUnit: food.servingUnit,
+          name: finalName,
+          calories: Math.round(food.calories * qty),
+          protein: +((food.protein * qty).toFixed(1)),
+          carbs: +((food.carbs * qty).toFixed(1)),
+          fat: +((food.fat * qty).toFixed(1)),
+          fiber: +((food.fiber * qty).toFixed(1)),
+          sugar: +((food.sugar * qty).toFixed(1)),
+          sodium: +((food.sodium * qty).toFixed(0)),
+          potassium: +((food.potassium * qty).toFixed(0)),
+          vitaminC: +((food.vitaminC * qty).toFixed(1)),
+          calcium: +((food.calcium * qty).toFixed(0)),
+          iron: +((food.iron * qty).toFixed(1)),
+        };
+      });
+
+      onAdd(entries);
+      onClose();
+    }
+  };
+
+  const selectedCount = Object.keys(selectedItems).length;
+
+  const trayTotals = useMemo(() => {
+    const items = Object.values(selectedItems);
+    return items.reduce(
+      (acc, curr) => ({
+        calories: acc.calories + Math.round(curr.food.calories * curr.qty),
+        protein: acc.protein + parseFloat((curr.food.protein * curr.qty).toFixed(1)),
+        carbs: acc.carbs + parseFloat((curr.food.carbs * curr.qty).toFixed(1)),
+        fat: acc.fat + parseFloat((curr.food.fat * curr.qty).toFixed(1)),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+  }, [selectedItems]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Add food log item">
@@ -308,7 +586,7 @@ const AddFoodModal: FC<{
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         className="w-full sm:max-w-md bg-card border border-card-border rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
-        style={{ maxHeight: "90dvh" }}
+        style={{ maxHeight: "95dvh" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-card-border">
@@ -318,7 +596,7 @@ const AddFoodModal: FC<{
           </button>
         </div>
 
-        <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(90dvh - 60px)" }}>
+        <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(95dvh - 120px)" }}>
           {/* Meal selector */}
           <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Select meal slot">
             {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([key, cfg]) => {
@@ -351,103 +629,458 @@ const AddFoodModal: FC<{
 
           {mode === "search" ? (
             <>
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-350" aria-hidden="true" />
-                <input
-                  aria-label="Search quick-add database"
-                  className="w-full h-9 pl-8 pr-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder:text-zinc-600 dark:placeholder:text-zinc-350"
-                  placeholder="Search foods..."
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
-                />
+              {/* Search sub-tab selectors */}
+              <div className="flex gap-1 p-1 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800" role="tablist" aria-label="Search Source">
+                <button
+                  role="tab"
+                  aria-selected={searchTab === "offline"}
+                  onClick={() => { setSearchTab("offline"); setSelected(null); }}
+                  className={cn(
+                    "flex-1 py-1 text-[11px] font-bold rounded-lg transition focus:outline-none",
+                    searchTab === "offline"
+                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                      : "text-zinc-650 dark:text-zinc-400 hover:text-foreground"
+                  )}
+                >
+                  Common Foods
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={searchTab === "live"}
+                  onClick={() => { setSearchTab("live"); setSelected(null); }}
+                  className={cn(
+                    "flex-1 py-1 text-[11px] font-bold rounded-lg transition focus:outline-none",
+                    searchTab === "live"
+                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                      : "text-zinc-650 dark:text-zinc-400 hover:text-foreground"
+                  )}
+                >
+                  Branded Search
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={searchTab === "barcode"}
+                  onClick={() => { setSearchTab("barcode"); setSelected(null); }}
+                  className={cn(
+                    "flex-1 py-1 text-[11px] font-bold rounded-lg transition focus:outline-none",
+                    searchTab === "barcode"
+                      ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm"
+                      : "text-zinc-650 dark:text-zinc-400 hover:text-foreground"
+                  )}
+                >
+                  Barcode Lookup
+                </button>
               </div>
 
-              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                {filtered.map((food) => (
-                  <button
-                    key={food.name}
-                    onClick={() => setSelected(food)}
-                    className={cn(
-                      "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                      selected?.name === food.name
-                        ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10"
-                        : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/65"
-                    )}
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-white">{food.name}</p>
-                      <p className="text-[10px] text-zinc-700 dark:text-zinc-300 font-mono">{food.servingUnit}</p>
-                    </div>
-                    <div className="text-right flex items-center gap-1.5">
-                      <div>
-                        <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
-                        <p className="text-[10px] text-zinc-700 dark:text-zinc-350">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
-                      </div>
-                      {selected?.name === food.name && <Check size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {selected && (
-                <div className="space-y-2 select-none">
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">Servings ({selected.servingUnit} each)</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setServingQty(Math.max(0.1, +(servingQty - 1).toFixed(2)))}
-                      className="h-8 px-2.5 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
-                    >
-                      -1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setServingQty(Math.max(0.1, +(servingQty - 0.5).toFixed(2)))}
-                      className="h-8 px-2 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
-                    >
-                      -0.5
-                    </button>
+              {searchTab === "offline" && (
+                <>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-350" aria-hidden="true" />
                     <input
-                      type="number"
-                      min="0.05"
-                      step="0.05"
-                      aria-label="Serving quantity"
-                      className="w-14 h-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-mono font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      value={servingQty || ""}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        setServingQty(isNaN(val) ? 0 : val);
-                      }}
+                      aria-label="Search quick-add database"
+                      className="w-full h-9 pl-8 pr-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder:text-zinc-600 dark:placeholder:text-zinc-350"
+                      placeholder="Search common foods..."
+                      value={search}
+                      onChange={(e) => { setSearch(e.target.value); setSelected(null); }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setServingQty(+(servingQty + 0.5).toFixed(2))}
-                      className="h-8 px-2 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
-                    >
-                      +0.5
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setServingQty(+(servingQty + 1).toFixed(2))}
-                      className="h-8 px-2.5 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
-                    >
-                      +1
-                    </button>
                   </div>
-                  <Surface className="p-3 grid grid-cols-4 gap-2 text-center bg-zinc-50/50 dark:bg-zinc-900/60">
-                    {[
-                      { l: "Calories", v: Math.round(selected.calories * servingQty), u: "kcal", c: "text-orange-700 dark:text-orange-400" },
-                      { l: "Protein", v: (selected.protein * servingQty).toFixed(1), u: "g", c: "text-blue-700 dark:text-blue-400" },
-                      { l: "Carbs", v: (selected.carbs * servingQty).toFixed(1), u: "g", c: "text-amber-700 dark:text-amber-400" },
-                      { l: "Fat", v: (selected.fat * servingQty).toFixed(1), u: "g", c: "text-rose-700 dark:text-rose-500" },
-                    ].map((m) => (
-                      <div key={m.l}>
-                        <p className={cn("text-sm font-black", m.c)}>{m.v}</p>
-                        <p className="text-[9px] text-zinc-700 dark:text-zinc-300 font-mono">{m.u}</p>
-                        <p className="text-[9px] text-zinc-600 dark:text-zinc-300 font-medium">{m.l}</p>
-                      </div>
-                    ))}
-                  </Surface>
+
+                  {search.trim() ? (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {filtered.map((food) => {
+                        const isChecked = !!selectedItems[getItemKey(food)];
+                        return (
+                          <button
+                            key={food.name}
+                            type="button"
+                            onClick={() => toggleItemSelection(food)}
+                            className={cn(
+                              "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                              isChecked
+                                ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10"
+                                : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/65"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 max-w-[70%]">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {}}
+                                className="h-3.5 w-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 shrink-0 pointer-events-none"
+                              />
+                              <div className="truncate">
+                                <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
+                                <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono mt-0.5">{food.servingUnit}</p>
+                              </div>
+                            </div>
+                            <div className="text-right flex items-center gap-1.5 shrink-0">
+                              <div>
+                                <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {filtered.length === 0 && (
+                        <p className="text-xs text-center text-zinc-500 py-4">No matching common foods found. Try "Branded Search".</p>
+                      )}
+                    </div>
+                  ) : (
+                    /* Suggestions & History display when search query is empty */
+                    <div className="space-y-4 pt-1">
+                      {suggestions.length > 0 && (
+                        <div className="space-y-1.5">
+                          <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                            <Sparkles size={11} className="text-emerald-500" /> Suggested for {MEAL_LABELS[meal].label}
+                          </h4>
+                          <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                            {suggestions.map((food) => {
+                              const isChecked = !!selectedItems[getItemKey(food)];
+                              return (
+                                <button
+                                  key={`suggested-${food.name}`}
+                                  type="button"
+                                  onClick={() => toggleItemSelection(food)}
+                                  className={cn(
+                                    "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                                    isChecked
+                                      ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10"
+                                      : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/65"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2 max-w-[70%]">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {}}
+                                      className="h-3.5 w-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 shrink-0 pointer-events-none"
+                                    />
+                                    <div className="truncate">
+                                      <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono mt-0.5">{food.servingUnit}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right flex items-center gap-1.5 shrink-0">
+                                    <div>
+                                      <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {recentSearches.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                              <Activity size={11} className="text-zinc-500" /> Recent Searches
+                            </h4>
+                            <button type="button" onClick={() => void clearRecentFoodSearches()} className="text-[9px] font-bold text-rose-600 dark:text-rose-455 hover:underline">
+                              Clear History
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                            {recentSearches.map((food) => {
+                              const isChecked = !!selectedItems[getItemKey(food)];
+                              return (
+                                <div
+                                  key={`recent-${food.name}-${food.brand}`}
+                                  className={cn(
+                                    "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition bg-zinc-50 dark:bg-zinc-900/65",
+                                    isChecked ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10" : "border-zinc-200 dark:border-zinc-800"
+                                  )}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleItemSelection(food)}
+                                    className="flex-1 flex items-center gap-2 max-w-[85%] text-left"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {}}
+                                      className="h-3.5 w-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 shrink-0 pointer-events-none"
+                                    />
+                                    <div className="truncate">
+                                      <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        {food.brand && (
+                                          <span className="text-[9px] bg-zinc-150 dark:bg-zinc-800 text-zinc-755 dark:text-zinc-300 px-1 py-0.25 rounded font-bold shrink-0">
+                                            {food.brand}
+                                          </span>
+                                        )}
+                                        <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate font-mono">
+                                          {food.servingUnit}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <div className="text-right">
+                                      <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => void removeRecentFoodSearch(food)}
+                                      aria-label="Remove search history item"
+                                      className="p-1 text-zinc-600 hover:text-rose-500 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded transition shrink-0"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {searchTab === "live" && (
+                <>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 dark:text-zinc-350" aria-hidden="true" />
+                    <input
+                      aria-label="Search Open Food Facts"
+                      className="w-full h-9 pl-8 pr-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder:text-zinc-600 dark:placeholder:text-zinc-350"
+                      placeholder="Search millions of products (e.g. Chobani)..."
+                      value={liveSearch}
+                      onChange={(e) => { setLiveSearch(e.target.value); setSelected(null); }}
+                    />
+                  </div>
+
+                  {liveSearch.trim() ? (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {isLoadingLive ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-2">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                          <p className="text-xs text-zinc-500">Searching brand databases...</p>
+                        </div>
+                      ) : (
+                        <>
+                          {liveResults.map((food) => {
+                            const isChecked = !!selectedItems[getItemKey(food)];
+                            return (
+                              <button
+                                key={`${food.name}-${food.brand}`}
+                                type="button"
+                                onClick={() => toggleItemSelection(food)}
+                                className={cn(
+                                  "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                                  isChecked
+                                    ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10"
+                                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/65"
+                                )}
+                              >
+                                <div className="flex items-center gap-2 max-w-[70%]">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {}}
+                                    className="h-3.5 w-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 shrink-0 pointer-events-none"
+                                  />
+                                  <div className="truncate">
+                                    <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                      {food.brand && (
+                                        <span className="text-[9px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1 py-0.5 rounded font-bold shrink-0">
+                                          {food.brand}
+                                        </span>
+                                      )}
+                                      <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate font-mono">
+                                        {food.servingUnit}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right flex items-center gap-1.5 shrink-0">
+                                  <div>
+                                    <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                    <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                          {liveResults.length === 0 && (
+                            <p className="text-xs text-center text-zinc-500 py-4">No branded products found. Try typing another query.</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    /* Suggestions & History display when search query is empty */
+                    <div className="space-y-4 pt-1">
+                      {recentSearches.length > 0 ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                              <Activity size={11} className="text-zinc-500" /> Recent Searches
+                            </h4>
+                            <button type="button" onClick={() => void clearRecentFoodSearches()} className="text-[9px] font-bold text-rose-600 dark:text-rose-455 hover:underline">
+                              Clear History
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                            {recentSearches.map((food) => {
+                              const isChecked = !!selectedItems[getItemKey(food)];
+                              return (
+                                <div
+                                  key={`recent-live-${food.name}-${food.brand}`}
+                                  className={cn(
+                                    "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition bg-zinc-50 dark:bg-zinc-900/65",
+                                    isChecked ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10" : "border-zinc-200 dark:border-zinc-800"
+                                  )}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleItemSelection(food)}
+                                    className="flex-1 flex items-center gap-2 max-w-[85%] text-left"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={() => {}}
+                                      className="h-3.5 w-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500 shrink-0 pointer-events-none"
+                                    />
+                                    <div className="truncate">
+                                      <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        {food.brand && (
+                                          <span className="text-[9px] bg-zinc-150 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1 py-0.25 rounded font-bold shrink-0">
+                                            {food.brand}
+                                          </span>
+                                        )}
+                                        <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate font-mono">
+                                          {food.servingUnit}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </button>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <div className="text-right">
+                                      <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => void removeRecentFoodSearch(food)}
+                                      aria-label="Remove search history item"
+                                      className="p-1 text-zinc-600 hover:text-rose-500 hover:bg-zinc-150 dark:hover:bg-zinc-800 rounded transition shrink-0"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center bg-zinc-50/50 dark:bg-zinc-900/30 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
+                          <Search size={22} className="text-zinc-650 dark:text-zinc-450 mb-1.5" />
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white">Search Brand Directory</p>
+                          <p className="text-[10px] text-zinc-700 dark:text-zinc-350 px-6 mt-0.5">Type in the search bar above to look up branded items worldwide.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {searchTab === "barcode" && (
+                <div className="space-y-3">
+                  {/* Scanning UI Box */}
+                  <div className="relative w-full h-28 bg-zinc-950 rounded-2xl border border-zinc-800 overflow-hidden flex flex-col items-center justify-center select-none">
+                    <motion.div
+                      className="absolute left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
+                      animate={{ top: ["10%", "90%", "10%"] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    <div className="absolute top-2.5 left-2.5 w-2.5 h-2.5 border-t-2 border-l-2 border-emerald-500 rounded-tl" />
+                    <div className="absolute top-2.5 right-2.5 w-2.5 h-2.5 border-t-2 border-r-2 border-emerald-500 rounded-tr" />
+                    <div className="absolute bottom-2.5 left-2.5 w-2.5 h-2.5 border-b-2 border-l-2 border-emerald-500 rounded-bl" />
+                    <div className="absolute bottom-2.5 right-2.5 w-2.5 h-2.5 border-b-2 border-r-2 border-emerald-500 rounded-br" />
+                    
+                    <div className="z-10 flex flex-col items-center gap-1 text-center px-4">
+                      {isBarcodeLoading ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+                          <p className="text-[10px] text-emerald-400 font-bold mt-1">Retrieving product facts...</p>
+                        </>
+                      ) : selected ? (
+                        <>
+                          <Check size={16} className="text-emerald-500 animate-bounce" />
+                          <p className="text-[11px] text-emerald-400 font-bold truncate max-w-[240px]">{selected.name}</p>
+                          <p className="text-[9px] text-zinc-400 truncate max-w-[200px]">{selected.brand || "Verified Generic"}</p>
+                        </>
+                      ) : (
+                        <>
+                          <Barcode size={22} className="text-zinc-650 dark:text-zinc-450" />
+                          <p className="text-xs font-bold text-zinc-450">EAN/UPC Scanner Active</p>
+                          <p className="text-[9px] text-zinc-550">Fetch global nutrition facts instantly</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Manual Barcode Input */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        aria-label="Enter EAN/UPC barcode number"
+                        className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono placeholder:font-sans placeholder:text-zinc-550"
+                        placeholder="Enter barcode..."
+                        value={barcodeQuery}
+                        onChange={(e) => setBarcodeQuery(e.target.value.replace(/[^0-9]/g, ""))}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleBarcodeSearch(barcodeQuery); }}
+                      />
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleBarcodeSearch(barcodeQuery)}
+                      disabled={!barcodeQuery.trim() || isBarcodeLoading}
+                      className="h-9 px-3 text-xs font-bold shrink-0"
+                    >
+                      Lookup
+                    </Button>
+                  </div>
+
+                  {barcodeError && (
+                    <p className="text-[10px] font-bold text-rose-600 dark:text-rose-450 text-center">{barcodeError}</p>
+                  )}
+
+                  {/* Simulator samples */}
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-bold text-zinc-700 dark:text-zinc-400 uppercase tracking-wider block">Scan Simulation Samples</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {[
+                        { label: "Chobani Yogurt", code: "0894700010137" },
+                        { label: "Kirkland Protein Bar", code: "0096619266308" },
+                        { label: "Coca Cola Classic Can", code: "5449000000996" },
+                        { label: "Quaker Rolled Oats", code: "0030000012001" },
+                      ].map((s) => (
+                        <button
+                          key={s.code}
+                          type="button"
+                          onClick={() => handleBarcodeSearch(s.code)}
+                          className="p-1.5 border border-zinc-200 dark:border-zinc-800 rounded-lg text-[9px] font-medium text-left hover:bg-zinc-100 dark:hover:bg-zinc-900 active:scale-95 transition bg-zinc-50/50 dark:bg-zinc-900/40 truncate"
+                        >
+                          <p className="font-bold text-zinc-900 dark:text-white truncate">{s.label}</p>
+                          <p className="font-mono text-zinc-700 dark:text-zinc-455 mt-0.5">{s.code}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </>
@@ -474,15 +1107,136 @@ const AddFoodModal: FC<{
             </div>
           )}
 
-          <Button
-            variant="primary"
-            className="w-full mt-2"
-            disabled={mode === "search" ? !selected : !customName.trim() || !customCal}
-            onClick={handleAdd}
-          >
-            <Plus size={15} /> Add to {MEAL_LABELS[meal].label}
-          </Button>
+          {/* Render standard single Add button for Custom Entry mode only */}
+          {mode === "custom" && (
+            <Button
+              variant="primary"
+              className="w-full mt-2"
+              disabled={!customName.trim() || !customCal}
+              onClick={handleAdd}
+            >
+              <Plus size={15} /> Add to {MEAL_LABELS[meal].label}
+            </Button>
+          )}
         </div>
+
+        {/* Pinned Selection Tray at the bottom of the modal */}
+        {selectedCount > 0 && mode === "search" && (
+          <Surface className="border-t border-card-border p-3 space-y-2.5 bg-zinc-50 dark:bg-zinc-950">
+            <button
+              type="button"
+              onClick={() => setIsTrayExpanded(!isTrayExpanded)}
+              className="w-full flex items-center justify-between text-xs font-bold text-zinc-900 dark:text-white"
+            >
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-450 text-[10px] font-black">
+                  {selectedCount}
+                </span>
+                <span>Selected Food Tray</span>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 font-mono">
+                <span>{trayTotals.calories} kcal</span>
+                <ChevronDown size={14} className={cn("transition-transform duration-200", isTrayExpanded && "rotate-180")} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isTrayExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden space-y-2 max-h-48 overflow-y-auto pr-1 pt-1"
+                >
+                  {Object.entries(selectedItems).map(([key, { food, qty }]) => (
+                    <div key={key} className="flex items-center justify-between p-2 rounded-xl bg-card border border-card-border text-xs">
+                      <div className="max-w-[50%]">
+                        <p className="font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
+                        {food.brand && (
+                          <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold truncate mt-0.5">{food.brand}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 select-none">
+                        <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedItems(prev => {
+                                const next = { ...prev };
+                                if (next[key]) {
+                                  next[key].qty = Math.max(0.1, +(next[key].qty - 0.5).toFixed(2));
+                                }
+                                return next;
+                              });
+                            }}
+                            className="h-5 w-5 flex items-center justify-center rounded text-[10px] font-bold text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
+                          >
+                            -
+                          </button>
+                          <span className="w-7 text-center font-mono font-bold text-[10px] text-foreground">
+                            {qty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedItems(prev => {
+                                const next = { ...prev };
+                                if (next[key]) {
+                                  next[key].qty = +(next[key].qty + 0.5).toFixed(2);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="h-5 w-5 flex items-center justify-center rounded text-[10px] font-bold text-zinc-700 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="font-mono font-bold w-12 text-right shrink-0">
+                          {Math.round(food.calories * qty)} kcal
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedItems(prev => {
+                              const next = { ...prev };
+                              delete next[key];
+                              return next;
+                            });
+                          }}
+                          className="p-1 text-zinc-600 hover:text-rose-500 transition rounded"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <Surface className="p-2 grid grid-cols-4 gap-1 text-center bg-zinc-150/40 dark:bg-zinc-900/40">
+                    {[
+                      { l: "Cal", v: trayTotals.calories, u: "kcal", c: "text-orange-700 dark:text-orange-400" },
+                      { l: "Prot", v: trayTotals.protein.toFixed(1), u: "g", c: "text-blue-700 dark:text-blue-400" },
+                      { l: "Carb", v: trayTotals.carbs.toFixed(1), u: "g", c: "text-amber-700 dark:text-amber-400" },
+                      { l: "Fat", v: trayTotals.fat.toFixed(1), u: "g", c: "text-rose-700 dark:text-rose-550" },
+                    ].map((m) => (
+                      <div key={m.l}>
+                        <p className={cn("text-xs font-bold leading-tight", m.c)}>{m.v}</p>
+                        <p className="text-[8px] text-zinc-600 dark:text-zinc-350 leading-tight">{m.l}</p>
+                      </div>
+                    ))}
+                  </Surface>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <Button
+              variant="primary"
+              className="w-full h-9 text-xs font-bold"
+              onClick={handleAdd}
+            >
+              <Plus size={14} /> Add Selection ({selectedCount} item{selectedCount > 1 ? "s" : ""}) to {MEAL_LABELS[meal].label}
+            </Button>
+          </Surface>
+        )}
       </motion.div>
     </div>
   );
@@ -571,6 +1325,7 @@ export function NutritionTracker() {
   const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
   const waterLogs = useAtlasStore((s) => s.waterLogs || []);
   const addNutritionEntryAction = useAtlasStore((s) => s.addNutritionEntry);
+  const addNutritionEntriesAction = useAtlasStore((s) => s.addNutritionEntries);
   const deleteNutritionEntryAction = useAtlasStore((s) => s.deleteNutritionEntry);
   const addWaterLogAction = useAtlasStore((s) => s.addWaterLog);
   const deleteWaterLogAction = useAtlasStore((s) => s.deleteWaterLog);
@@ -1044,11 +1799,16 @@ Do NOT include any markdown code blocks, explanation text, or wrapping objects. 
   };
 
   // Add food entry stamped with currently selected date
-  const handleAddEntry = (entry: NutritionEntry) => {
+  const handleAddEntry = (entry: NutritionEntry | NutritionEntry[]) => {
     const targetDate = new Date(selectedDate);
     targetDate.setHours(12, 0, 0, 0); // avoid UTC shifts
-    const finalEntry = { ...entry, timestamp: targetDate.toISOString() };
-    void addNutritionEntryAction(finalEntry);
+    if (Array.isArray(entry)) {
+      const finalEntries = entry.map(e => ({ ...e, timestamp: targetDate.toISOString() }));
+      void addNutritionEntriesAction(finalEntries);
+    } else {
+      const finalEntry = { ...entry, timestamp: targetDate.toISOString() };
+      void addNutritionEntryAction(finalEntry);
+    }
   };
 
   // Remove food entry

@@ -248,6 +248,7 @@ export interface AtlasSnapshot {
   deviceSecret?: string;
   nutritionEntries?: NutritionEntry[];
   waterLogs?: WaterLogEntry[];
+  recentFoodSearches?: CommonFoodItem[];
 }
 
 export interface NutritionEntry {
@@ -274,4 +275,23 @@ export interface WaterLogEntry {
   id: string;
   amount: number;    // ml
   timestamp: string;
+}
+
+export interface CommonFoodItem {
+  name: string;
+  brand?: string;
+  aliases?: string[];
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  potassium: number;
+  vitaminC: number;
+  calcium: number;
+  iron: number;
+  servingUnit: string;
+  servingWeight?: number;
 }

@@ -513,7 +513,7 @@ export function DashboardScreen() {
             <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Atlas Bio-Telemetry</p>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-955 dark:text-white">
-            Welcome back, {profile?.name ?? "Athlete"}
+            Welcome, {profile?.name ?? "Athlete"}
           </h1>
           <p className="text-xs text-zinc-555 dark:text-zinc-500 flex items-center gap-1.5 pt-0.5">
             <Calendar size={14} className="text-zinc-555 dark:text-zinc-500" />

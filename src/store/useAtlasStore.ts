@@ -37,6 +37,7 @@ import type {
   EncryptedSecret,
   NutritionEntry,
   WaterLogEntry,
+  CommonFoodItem,
 } from "@/types/domain";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
@@ -90,6 +91,7 @@ interface AtlasState {
   exercises: Exercise[];
   nutritionEntries: NutritionEntry[];
   waterLogs: WaterLogEntry[];
+  recentFoodSearches: CommonFoodItem[];
   theme: ThemeMode;
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
@@ -127,9 +129,13 @@ interface AtlasState {
   logRecovery: (log: RecoveryLog) => Promise<void>;
   logBodyMetric: (metric: BodyMetric) => Promise<void>;
   addNutritionEntry: (entry: NutritionEntry) => Promise<void>;
+  addNutritionEntries: (entries: NutritionEntry[]) => Promise<void>;
   deleteNutritionEntry: (id: string) => Promise<void>;
   addWaterLog: (log: WaterLogEntry) => Promise<void>;
   deleteWaterLog: (id: string) => Promise<void>;
+  addRecentFoodSearch: (item: CommonFoodItem) => Promise<void>;
+  clearRecentFoodSearches: () => Promise<void>;
+  removeRecentFoodSearch: (item: CommonFoodItem) => Promise<void>;
   startWorkout: (routine: Routine) => Promise<void>;
   addSet: (workoutExerciseId: string) => Promise<void>;
   updateSet: (
@@ -167,6 +173,7 @@ type StoredSnapshot = AtlasSnapshot & {
   exercises: Exercise[]; 
   nutritionEntries: NutritionEntry[];
   waterLogs: WaterLogEntry[];
+  recentFoodSearches: CommonFoodItem[];
   startupChoice: StartupChoice; 
   activeSubScreen: SubScreen; 
   editingWorkoutPlanId: string | null; 
@@ -192,6 +199,7 @@ function freshSnapshot(): StoredSnapshot {
     exercises: staticExercises,
     nutritionEntries: [],
     waterLogs: [],
+    recentFoodSearches: [],
     theme: "system",
     weightUnit: "lbs",
     heightUnit: "in",
@@ -236,6 +244,7 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     exercises: state.exercises,
     nutritionEntries: state.nutritionEntries || [],
     waterLogs: state.waterLogs || [],
+    recentFoodSearches: state.recentFoodSearches || [],
     theme: state.theme,
     weightUnit: state.weightUnit,
     heightUnit: state.heightUnit,
@@ -1728,6 +1737,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     set({ nutritionEntries: [...(get().nutritionEntries || []), entry] });
     await persistState(get());
   },
+  addNutritionEntries: async (entries) => {
+    set({ nutritionEntries: [...(get().nutritionEntries || []), ...entries] });
+    await persistState(get());
+  },
   deleteNutritionEntry: async (id) => {
     set({ nutritionEntries: (get().nutritionEntries || []).filter((e) => e.id !== id) });
     await persistState(get());
@@ -1738,6 +1751,27 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   },
   deleteWaterLog: async (id) => {
     set({ waterLogs: (get().waterLogs || []).filter((w) => w.id !== id) });
+    await persistState(get());
+  },
+  addRecentFoodSearch: async (item) => {
+    const prev = get().recentFoodSearches || [];
+    const filtered = prev.filter(
+      (p) => !(p.name.toLowerCase() === item.name.toLowerCase() && p.brand === item.brand)
+    );
+    const updated = [item, ...filtered].slice(0, 10);
+    set({ recentFoodSearches: updated });
+    await persistState(get());
+  },
+  clearRecentFoodSearches: async () => {
+    set({ recentFoodSearches: [] });
+    await persistState(get());
+  },
+  removeRecentFoodSearch: async (item) => {
+    const prev = get().recentFoodSearches || [];
+    const updated = prev.filter(
+      (p) => !(p.name.toLowerCase() === item.name.toLowerCase() && p.brand === item.brand)
+    );
+    set({ recentFoodSearches: updated });
     await persistState(get());
   },
   resetLocalData: async () => {

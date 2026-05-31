@@ -1234,7 +1234,7 @@ export function WelcomeScreen() {
                   </div>
                   <h3 className="text-sm font-black text-zinc-900 dark:text-white">Profile Restored!</h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed font-medium">
-                    Welcome back! Your workouts, routines, and settings have been restored to this device.
+                    Welcome! Your workouts, routines, and settings have been restored to this device.
                   </p>
                   <Button
                     className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-955 font-bold"
