@@ -1223,88 +1223,74 @@ export function WorkoutScreen() {
       className="space-y-4 pb-32 pt-2"
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
-      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 px-3 py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
-        <div className="flex flex-wrap items-center justify-between gap-2 max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 min-w-0">
+      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 px-2 py-1.5 sm:px-3 sm:py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
+        <div className="flex items-center justify-between gap-1.5 max-w-5xl mx-auto flex-nowrap">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg"
+              className="h-8 w-8 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg"
               onClick={() => setActiveSubScreen(null)}
               aria-label="Back to plans"
             >
               <ArrowLeft size={16} />
             </Button>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-foreground truncate max-w-[100px] sm:max-w-[240px] leading-tight capitalize">
+              <h1 className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[90px] sm:max-w-[240px] leading-tight capitalize">
                 {activeWorkout.name}
               </h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-none mt-0.5 font-medium">
+              <p className="text-[10px] sm:text-xs text-zinc-555 leading-none mt-0.5 font-medium">
                 {completedSets}/{totalSets} sets done
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 shrink-0 justify-end flex-nowrap">
             {/* Hands-Free Voice Logger Button */}
             <Button
               size="icon"
-              className={`h-8 w-8 sm:h-9 sm:w-9 rounded-lg shrink-0 transition-all ${isListening
-                  ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35"
-                  : "bg-transparent text-zinc-555 hover:text-zinc-955 border border-surface-border hover:bg-surface"
-                }`}
+              className={cn(
+                "h-8 w-8 rounded-lg shrink-0 transition-all border border-surface-border",
+                isListening
+                  ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
+                  : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
+              )}
               onClick={toggleListening}
               aria-label="Voice command logger"
               title="Voice command logging"
             >
-              {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
+              {isListening ? <Mic size={14} className="text-rose-500 animate-pulse" /> : <MicOff size={14} />}
             </Button>
 
-            {/* Active Timer badge */}
-            <div className="text-right">
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono leading-none">
-                {formatDuration(elapsedWorkoutTime)}
-              </p>
-              <p className="text-xs uppercase tracking-widest text-zinc-500 leading-none mt-0.5">
-                Active
-              </p>
+            {/* Active Timer badge (Inline space-saving) */}
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] sm:text-xs font-bold select-none h-8 shrink-0">
+              <Timer size={13} className="shrink-0" />
+              <span>{formatDuration(elapsedWorkoutTime)}</span>
             </div>
 
-            {/* Rest state container */}
+            {/* Rest state container (Interactive space-saving) */}
             <div
-              className={`px-2 py-1 rounded-lg border text-center transition-all duration-300 ${remaining > 0
-                  ? "bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-300 animate-pulse"
-                  : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-300"
-                }`}
-            >
-              <p className="text-xs sm:text-xs font-mono font-bold leading-none">
-                {remaining > 0 ? formatTimer(remaining) : "Ready"}
-              </p>
-              <p className="text-[9px] sm:text-xs uppercase tracking-wider text-zinc-550 mt-0.5 leading-none">
-                Rest
-              </p>
-            </div>
-
-            {/* Quick Discard Button - icon-only on xs */}
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-xs font-semibold shrink-0 bg-transparent text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 border border-rose-500/20"
               onClick={() => {
-                if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
-                  void discardWorkout();
-                }
+                if (remaining > 0) void stopRestTimer();
+                else void startRestTimer(60);
               }}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-lg border font-mono text-[11px] sm:text-xs font-bold select-none h-8 shrink-0 cursor-pointer transition-all",
+                remaining > 0
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-300 animate-pulse"
+                  : "bg-surface border-surface-border text-zinc-555 hover:bg-surface/80"
+              )}
+              title={remaining > 0 ? "Tap to stop rest" : "Tap to start quick 60s rest"}
             >
-              <span className="hidden sm:inline">Discard</span>
-              <Trash2 size={15} className="sm:hidden" />
-            </Button>
+              <Clock3 size={13} className="shrink-0" />
+              <span>{remaining > 0 ? formatTimer(remaining) : "Rest"}</span>
+            </div>
 
             {/* Quick Finish Button */}
             <Button
               size="sm"
               variant="primary"
-              className="h-7 sm:h-8 px-2.5 sm:px-3 text-xs sm:text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400"
+              className="h-8 px-2.5 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1"
               onClick={handleFinishSessionClick}
             >
               Finish
@@ -1314,8 +1300,8 @@ export function WorkoutScreen() {
 
         {/* Voice Logger Transcription Feedback Alert Banner */}
         {speechFeedback && (
-          <div className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
-            <Sparkles size={14} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+          <div className="mt-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
+            <Sparkles size={13} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
             <span>{speechFeedback}</span>
           </div>
         )}
@@ -1756,7 +1742,7 @@ export function WorkoutScreen() {
                                             </Button>
                                           </div>
                                         </div>
-                                        <div className="grid grid-cols-4 gap-2 text-left">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-left">
                                           {[
                                             { label: "Min", value: displayMin, onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(v * 60) }), max: 999, step: "any" },
                                             { label: "Dist (mi)", value: displayDist, onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { distance: v }), max: 999, step: "any" },
@@ -2022,7 +2008,7 @@ export function WorkoutScreen() {
                                   return (
                                     <div className="mt-2 p-3 rounded-xl bg-surface/40 border border-surface-border space-y-2 text-xs">
                                       {platesList && platesList.length > 0 && (
-                                        <div className="flex items-center justify-between gap-2 border-b border-card-border pb-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-card-border pb-2">
                                           <div className="flex items-center gap-1.5 text-zinc-750 font-medium">
                                             <Dumbbell size={13} className="text-emerald-450 shrink-0" />
                                             <span>Plates/side ({activeWeight} {exUnit}):</span>
@@ -2088,6 +2074,20 @@ export function WorkoutScreen() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-8 mb-12 flex justify-center px-4">
+        <Button
+          variant="secondary"
+          className="w-full max-w-md border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-350 py-2.5 h-11 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm cursor-pointer"
+          onClick={() => {
+            if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
+              void discardWorkout();
+            }
+          }}
+        >
+          Discard Workout Session
+        </Button>
       </div>
 
       {activeSwapExercise && originalEx && (
