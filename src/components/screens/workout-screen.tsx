@@ -2080,7 +2080,7 @@ export function WorkoutScreen() {
                                           className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
                                         >
                                           <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 min-w-0">
                                               <span className="text-xs font-black text-emerald-500 tracking-wider">
                                                 SET #{setIndex + 1} (ACTIVE)
                                               </span>
@@ -2113,7 +2113,7 @@ export function WorkoutScreen() {
                                               </Button>
                                             </div>
                                           </div>
-                                          <div className="grid grid-cols-3 gap-3 text-left">
+                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
                                             {(() => {
                                               const repStep = isTimeBased ? 5 : 1;
                                               const maxRepVal = isTimeBased ? 999 : 100;

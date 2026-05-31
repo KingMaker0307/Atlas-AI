@@ -787,7 +787,7 @@ export function DashboardScreen() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="keep-dark relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/40 to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
+          className="relative overflow-hidden rounded-2xl border border-violet-500/30 dark:border-violet-500/30 bg-gradient-to-br from-violet-50 to-violet-100/80 dark:from-violet-950/60 dark:via-fuchsia-950/40 dark:to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.08)] dark:shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
         >
           {/* Ambient glow orb */}
           <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-violet-500/20 blur-[60px] pointer-events-none" />
@@ -813,15 +813,15 @@ export function DashboardScreen() {
                   Cooking
                 </span>
               </div>
-              <p className="text-sm font-bold text-white-keep leading-snug">
+              <p className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
                 Something amazing is being crafted for you.
               </p>
-              <p className="text-xs text-zinc-400 leading-relaxed">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Your AI Coach is designing a clinical-grade, personalised training program based on your biometrics and goals. This usually takes 15–30 seconds — grab a sip of water! 💧
               </p>
 
               {/* Shimmer progress bar */}
-              <div className="h-1.5 w-full rounded-full bg-violet-950/60 border border-violet-500/20 overflow-hidden mt-1">
+              <div className="h-1.5 w-full rounded-full bg-violet-200 dark:bg-violet-950/60 border border-violet-300/40 dark:border-violet-500/20 overflow-hidden mt-1">
                 <motion.div
                   className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-violet-500 rounded-full"
                   initial={{ x: "-100%" }}
@@ -1881,7 +1881,7 @@ export function DashboardScreen() {
 
             {/* AI BUSY OVERLAY — shown instead of options when AI is generating */}
             {coachBusy ? (
-              <div className="keep-dark relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/50 to-zinc-950/80 p-5 space-y-3">
+              <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-50 to-fuchsia-50/80 dark:from-violet-950/60 dark:via-fuchsia-950/50 dark:to-zinc-950/80 p-5 space-y-3">
                 {/* Ambient glow */}
                 <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-violet-500/20 blur-[50px] pointer-events-none" />
                 <div className="flex items-center gap-3">
@@ -1902,14 +1902,14 @@ export function DashboardScreen() {
                         Cooking
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-white-keep mt-0.5">Your plan is being generated!</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-white mt-0.5">Your plan is being generated!</p>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-300 leading-relaxed">
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
                   Your AI Coach is working hard to build a personalised, clinical-grade program for you. Other plan creation options are temporarily unavailable while generation is in progress.
                 </p>
                 {/* Shimmer bar */}
-                <div className="h-1.5 w-full rounded-full bg-violet-950/60 border border-violet-500/20 overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-violet-200 dark:bg-violet-950/60 border border-violet-300/40 dark:border-violet-500/20 overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-violet-500 rounded-full"
                     initial={{ x: "-100%" }}

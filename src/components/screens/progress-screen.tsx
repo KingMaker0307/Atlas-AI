@@ -431,7 +431,7 @@ export function ProgressScreen() {
         </div>
       </section>
 
-      <Surface className="p-3.5 bg-emerald-950/10 border border-emerald-500/10 text-zinc-300 rounded-xl flex gap-3 items-start select-none no-print">
+      <Surface className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-500/10 text-zinc-700 dark:text-zinc-300 rounded-xl flex gap-3 items-start select-none no-print">
         <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
         <p className="text-xs leading-normal">
           This is where your achievements are tracked. Once you log a workout, your strength progression charts and streak stats will update here automatically.
@@ -441,7 +441,7 @@ export function ProgressScreen() {
       {/* ─── BIOLOGICAL READINESS & ANNUAL SUMMARY CONSOLE ─── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Readiness Dial Card */}
-        <Card className="p-4 sm:p-5 bg-gradient-to-br from-violet-950/15 via-zinc-900 to-zinc-950 border border-violet-500/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[180px] sm:min-h-[220px]">
+        <Card className="p-4 sm:p-5 bg-surface border border-violet-500/15 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[180px] sm:min-h-[220px]">
           <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-violet-600/5 blur-3xl pointer-events-none" />
           
           <div className="flex items-start justify-between">
@@ -483,13 +483,13 @@ export function ProgressScreen() {
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/5 space-y-1.5">
-            <p className="text-xs leading-relaxed text-zinc-300 font-medium">{recoveryMessage}</p>
+          <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-white/5 space-y-1.5">
+            <p className="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300 font-medium">{recoveryMessage}</p>
           </div>
         </Card>
 
         {/* Active Plan Dials Card */}
-        <Card className="p-4 sm:p-5 bg-gradient-to-br from-emerald-950/15 via-zinc-900 to-zinc-950 border border-emerald-500/10 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[180px] sm:min-h-[220px] md:col-span-2">
+        <Card className="p-4 sm:p-5 bg-surface border border-emerald-500/15 shadow-xl relative overflow-hidden flex flex-col justify-between min-h-[180px] sm:min-h-[220px] md:col-span-2">
           <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-600/5 blur-3xl pointer-events-none" />
           
           {activePlan ? (
@@ -503,9 +503,9 @@ export function ProgressScreen() {
                   <p className="text-zinc-400 text-xs font-medium truncate mt-1 max-w-[280px]">{activePlan.goal}</p>
                 </div>
                 {activePlan.targetDate && (
-                  <div className="shrink-0 bg-white/[0.02] px-2.5 py-1 rounded-xl border border-white/5 text-left sm:text-right">
+                  <div className="shrink-0 bg-zinc-100 dark:bg-white/[0.02] px-2.5 py-1 rounded-xl border border-zinc-200 dark:border-white/5 text-left sm:text-right">
                     <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider font-mono">Target Date</p>
-                    <p className="text-xs font-extrabold text-zinc-300 mt-0.5">{activePlan.targetDate}</p>
+                    <p className="text-xs font-extrabold text-zinc-700 dark:text-zinc-300 mt-0.5">{activePlan.targetDate}</p>
                   </div>
                 )}
               </div>
