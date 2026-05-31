@@ -32,6 +32,7 @@ import type {
   WeightUnit,
   Workout,
   WorkoutSet,
+  WorkoutExercise,
   WorkoutPlan,
   EncryptedSecret,
 } from "@/types/domain";
@@ -129,6 +130,7 @@ interface AtlasState {
     patch: Partial<WorkoutSet>,
   ) => Promise<void>;
   deleteSet: (workoutExerciseId: string, setId: string) => Promise<void>;
+  updateExerciseUnit: (workoutExerciseId: string, unit: WeightUnit) => Promise<void>;
   finishWorkout: (fatigueRating?: number, notes?: string) => Promise<void>;
   discardWorkout: () => Promise<void>;
   swapWorkoutExercise: (workoutExerciseId: string, newExerciseId: string) => Promise<void>;
@@ -1076,6 +1078,21 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     });
     await persistState(get());
   },
+  updateExerciseUnit: async (workoutExerciseId, unit) => {
+    const activeWorkout = get().activeWorkout;
+    if (!activeWorkout) return;
+    set({
+      activeWorkout: {
+        ...activeWorkout,
+        exercises: activeWorkout.exercises.map((exercise) => {
+          if (exercise.id !== workoutExerciseId) return exercise;
+          return { ...exercise, weightUnit: unit };
+        }),
+      },
+    });
+    await persistState(get());
+  },
+
   finishWorkout: async (fatigueRating = 6, notes) => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;

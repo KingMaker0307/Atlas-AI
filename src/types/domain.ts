@@ -114,7 +114,9 @@ export interface WorkoutExercise {
   notes?: string;
   sets: WorkoutSet[];
   skipped?: boolean;
+  weightUnit?: WeightUnit; // Per-exercise unit override, persisted with workout
 }
+
 
 export interface Workout {
   id: string;
