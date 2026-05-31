@@ -69,6 +69,7 @@ interface WaterLogEntry {
 
 // Common foods database for quick-add
 interface CommonFoodItem {
+  code?: string;
   name: string;
   brand?: string;
   aliases?: string[];
@@ -282,6 +283,7 @@ const parseServingWeight = (servingText: string): number => {
 
 // Map Open Food Facts product structure to our CommonFoodItem shape
 const mapOffProductToFoodItem = (product: any): CommonFoodItem => {
+  const code = product.code || undefined;
   const name = product.product_name || product.product_name_en || "Unknown Product";
   const brand = product.brands || undefined;
   const nutriments = product.nutriments || {};
@@ -306,6 +308,7 @@ const mapOffProductToFoodItem = (product: any): CommonFoodItem => {
   const factor = servingWeight / 100;
 
   return {
+    code,
     name,
     brand,
     calories: Math.round(cals100 * factor),
@@ -490,6 +493,9 @@ const AddFoodModal: FC<{
   }, [nutritionEntries, meal]);
 
   const getItemKey = (food: CommonFoodItem) => {
+    if (food.code) {
+      return `off_${food.code}`;
+    }
     return `${food.name.toLowerCase()}_${(food.brand || "").toLowerCase()}`;
   };
 
@@ -850,11 +856,12 @@ const AddFoodModal: FC<{
                             </button>
                           </div>
                           <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
-                            {recentSearches.map((food) => {
+                            {recentSearches.map((food, index) => {
                               const isChecked = !!selectedItems[getItemKey(food)];
+                              const itemKey = food.code ? `recent-${food.code}` : `recent-${food.name}-${food.brand}-${index}`;
                               return (
                                 <div
-                                  key={`recent-${food.name}-${food.brand}`}
+                                  key={itemKey}
                                   className={cn(
                                     "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition bg-zinc-50 dark:bg-zinc-900/65",
                                     isChecked ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10" : "border-zinc-200 dark:border-zinc-800"
@@ -963,11 +970,12 @@ const AddFoodModal: FC<{
                         </div>
                       ) : (
                         <>
-                          {liveResults.map((food) => {
+                          {liveResults.map((food, index) => {
                             const isChecked = !!selectedItems[getItemKey(food)];
+                            const itemKey = food.code ? `live-${food.code}` : `live-${food.name}-${food.brand}-${index}`;
                             return (
                               <button
-                                key={`${food.name}-${food.brand}`}
+                                key={itemKey}
                                 type="button"
                                 onClick={() => toggleItemSelection(food)}
                                 className={cn(
@@ -1027,11 +1035,12 @@ const AddFoodModal: FC<{
                             </button>
                           </div>
                           <div className="grid grid-cols-1 gap-1.5 max-h-44 overflow-y-auto pr-1">
-                            {recentSearches.map((food) => {
+                            {recentSearches.map((food, index) => {
                               const isChecked = !!selectedItems[getItemKey(food)];
+                              const itemKey = food.code ? `recent-live-${food.code}` : `recent-live-${food.name}-${food.brand}-${index}`;
                               return (
                                 <div
-                                  key={`recent-live-${food.name}-${food.brand}`}
+                                  key={itemKey}
                                   className={cn(
                                     "w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition bg-zinc-50 dark:bg-zinc-900/65",
                                     isChecked ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10" : "border-zinc-200 dark:border-zinc-800"
