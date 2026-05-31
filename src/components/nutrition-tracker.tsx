@@ -390,9 +390,17 @@ export function NutritionTracker() {
   const weightUnit = useAtlasStore((s) => s.weightUnit);
   const heightUnit = useAtlasStore((s) => s.heightUnit);
 
+  const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
+  const waterLogs = useAtlasStore((s) => s.waterLogs || []);
+  const addNutritionEntryAction = useAtlasStore((s) => s.addNutritionEntry);
+  const deleteNutritionEntryAction = useAtlasStore((s) => s.deleteNutritionEntry);
+  const addWaterLogAction = useAtlasStore((s) => s.addWaterLog);
+  const deleteWaterLogAction = useAtlasStore((s) => s.deleteWaterLog);
+
+  // Assign to local variable to avoid renaming throughout the file
+  const entries = nutritionEntries;
+
   // States
-  const [entries, setEntries] = useState<NutritionEntry[]>([]);
-  const [waterLogs, setWaterLogs] = useState<WaterLogEntry[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAddMeal, setSelectedAddMeal] = useState<NutritionEntry["meal"]>("breakfast");
   const [expandedMeal, setExpandedMeal] = useState<NutritionEntry["meal"] | null>("breakfast");
@@ -409,26 +417,6 @@ export function NutritionTracker() {
 
   // Physique guidance toggle
   const [showBmiGuidance, setShowBmiGuidance] = useState(false);
-
-  // Load data from localstorage after mounting (avoid hydration mismatches in Next.js)
-  useEffect(() => {
-    const savedEntries = localStorage.getItem("atlas_nutrition_entries");
-    if (savedEntries) {
-      try {
-        setEntries(JSON.parse(savedEntries));
-      } catch (e) {
-        console.error("Failed to load nutrition entries:", e);
-      }
-    }
-    const savedWater = localStorage.getItem("atlas_water_logs");
-    if (savedWater) {
-      try {
-        setWaterLogs(JSON.parse(savedWater));
-      } catch (e) {
-        console.error("Failed to load water logs:", e);
-      }
-    }
-  }, []);
 
   // Compute targets via the centralized Mifflin-St Jeor engine in @/lib/calculators.
   // This correctly handles: gender (BMR constant), activityLevel (PAL multiplier),
@@ -744,20 +732,12 @@ export function NutritionTracker() {
     const targetDate = new Date(selectedDate);
     targetDate.setHours(12, 0, 0, 0); // avoid UTC shifts
     const finalEntry = { ...entry, timestamp: targetDate.toISOString() };
-    setEntries((prev) => {
-      const next = [...prev, finalEntry];
-      localStorage.setItem("atlas_nutrition_entries", JSON.stringify(next));
-      return next;
-    });
+    void addNutritionEntryAction(finalEntry);
   };
 
   // Remove food entry
   const removeEntry = (id: string) => {
-    setEntries((prev) => {
-      const next = prev.filter((e) => e.id !== id);
-      localStorage.setItem("atlas_nutrition_entries", JSON.stringify(next));
-      return next;
-    });
+    void deleteNutritionEntryAction(id);
   };
 
   // Add water log stamped with selected date
@@ -770,20 +750,12 @@ export function NutritionTracker() {
       amount,
       timestamp: targetDate.toISOString(),
     };
-    setWaterLogs((prev) => {
-      const next = [...prev, log];
-      localStorage.setItem("atlas_water_logs", JSON.stringify(next));
-      return next;
-    });
+    void addWaterLogAction(log);
   };
 
   // Delete water log
   const removeWaterLog = (id: string) => {
-    setWaterLogs((prev) => {
-      const next = prev.filter((w) => w.id !== id);
-      localStorage.setItem("atlas_water_logs", JSON.stringify(next));
-      return next;
-    });
+    void deleteWaterLogAction(id);
   };
 
   const mealEntries = (meal: NutritionEntry["meal"]) => activeEntries.filter((e) => e.meal === meal);

@@ -35,6 +35,8 @@ import type {
   WorkoutExercise,
   WorkoutPlan,
   EncryptedSecret,
+  NutritionEntry,
+  WaterLogEntry,
 } from "@/types/domain";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
@@ -86,6 +88,8 @@ interface AtlasState {
   activeProviderId?: string;
   workoutPlans: WorkoutPlan[];
   exercises: Exercise[];
+  nutritionEntries: NutritionEntry[];
+  waterLogs: WaterLogEntry[];
   theme: ThemeMode;
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
@@ -97,22 +101,22 @@ interface AtlasState {
   tokenCount: number; // New state for token count
   startupChoice: StartupChoice;
   activeWorkoutPlanId: string | null;
-   blocked: boolean;
+  blocked: boolean;
   lastSyncedAt: string | null;
   workoutTab: "plans" | "nutrition";
   setBlocked: (blocked: boolean) => void;
+  setWorkoutTab: (tab: "plans" | "nutrition") => void;
+  setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
+  setEditingWorkoutPlanId: (id: string | null) => void;
+  setEditingRoutineId: (id: string | null) => void;
+  setRoutineBuilderDefaultDay: (day: string | null) => void;
   setStartupChoice: (choice: StartupChoice) => void;
   setActiveWorkoutPlanId: (id: string | null) => Promise<void>;
   checkAndAutoStopActiveWorkout: () => Promise<void>;
   setActiveTab: (tab: AtlasTab) => void;
   setActiveSubScreen: (subScreen: SubScreen) => void;
-  setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
-  setEditingWorkoutPlanId: (id: string | null) => void;
-  setEditingRoutineId: (id: string | null) => void;
-  setRoutineBuilderDefaultDay: (day: string | null) => void;
-  setWorkoutTab: (tab: "plans" | "nutrition") => void;
   hydrate: () => Promise<void>;
-  pullCloudUpdate: () => Promise<void>;
+  pullCloudUpdate: () => Promise<boolean>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
   finalizeRestore: (choice: StartupChoice) => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
@@ -122,6 +126,10 @@ interface AtlasState {
   setGuidedMode: (guidedMode: boolean) => Promise<void>;
   logRecovery: (log: RecoveryLog) => Promise<void>;
   logBodyMetric: (metric: BodyMetric) => Promise<void>;
+  addNutritionEntry: (entry: NutritionEntry) => Promise<void>;
+  deleteNutritionEntry: (id: string) => Promise<void>;
+  addWaterLog: (log: WaterLogEntry) => Promise<void>;
+  deleteWaterLog: (id: string) => Promise<void>;
   startWorkout: (routine: Routine) => Promise<void>;
   addSet: (workoutExerciseId: string) => Promise<void>;
   updateSet: (
@@ -157,6 +165,8 @@ interface AtlasState {
 
 type StoredSnapshot = AtlasSnapshot & { 
   exercises: Exercise[]; 
+  nutritionEntries: NutritionEntry[];
+  waterLogs: WaterLogEntry[];
   startupChoice: StartupChoice; 
   activeSubScreen: SubScreen; 
   editingWorkoutPlanId: string | null; 
@@ -180,6 +190,8 @@ function freshSnapshot(): StoredSnapshot {
     activeProviderId: undefined,
     workoutPlans: [],
     exercises: staticExercises,
+    nutritionEntries: [],
+    waterLogs: [],
     theme: "system",
     weightUnit: "lbs",
     heightUnit: "in",
@@ -222,6 +234,8 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     activeProviderId: state.activeProviderId,
     workoutPlans: state.workoutPlans,
     exercises: state.exercises,
+    nutritionEntries: state.nutritionEntries || [],
+    waterLogs: state.waterLogs || [],
     theme: state.theme,
     weightUnit: state.weightUnit,
     heightUnit: state.heightUnit,
@@ -242,12 +256,47 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
   };
 }
 
+// Same-browser multi-tab synchronization channel
+let syncChannel: BroadcastChannel | null = null;
+
+if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+  syncChannel = new BroadcastChannel("atlas-sync-channel");
+  syncChannel.onmessage = (event) => {
+    const remoteSnapshot = event.data;
+    if (remoteSnapshot && remoteSnapshot.profile?.id) {
+      console.log("[Broadcast Sync] Received state update from other tab. Applying...");
+      const activeStartupChoice = useAtlasStore.getState().startupChoice || "local";
+      const restoredSnapshot = { ...remoteSnapshot };
+      if (restoredSnapshot.profile) {
+        restoredSnapshot.profile = migrateProfile(restoredSnapshot.profile);
+      }
+      
+      // Update in-memory Zustand store instantly!
+      useAtlasStore.setState({
+        ...freshSnapshot(),
+        ...restoredSnapshot,
+        hasOnboarded: true,
+        startupChoice: activeStartupChoice,
+        hydrated: true,
+        coachBusy: false,
+        providerBusy: false,
+      });
+    }
+  };
+}
+
 async function persistState(state: AtlasState): Promise<void> {
   console.log("persistState: Starting...");
   const snapshot = snapshotFromState(state);
   try {
     await saveSnapshot(snapshot);
     console.log("persistState: saveSnapshot successful.");
+    
+    // Broadcast state snapshot to other active browser tabs instantly
+    if (syncChannel) {
+      syncChannel.postMessage(snapshot);
+    }
+
     // Silently sync to Google Drive
     if (typeof window !== "undefined" && navigator.onLine && state.profile?.id) {
       void syncProfileToDrive(state);
@@ -586,6 +635,51 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     });
     snapshot.workoutPlans = migratedPlans;
 
+    // Migrate legacy localstorage nutrition/water entries if they exist
+    let nutritionEntries = snapshot.nutritionEntries || [];
+    let waterLogs = snapshot.waterLogs || [];
+    let needsMigrationSave = false;
+
+    if (typeof window !== "undefined") {
+      const savedEntries = localStorage.getItem("atlas_nutrition_entries");
+      if (savedEntries) {
+        try {
+          const parsed = JSON.parse(savedEntries);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const existingIds = new Set(nutritionEntries.map(e => e.id));
+            const newEntries = parsed.filter(e => !existingIds.has(e.id));
+            if (newEntries.length > 0) {
+              nutritionEntries = [...nutritionEntries, ...newEntries];
+              needsMigrationSave = true;
+            }
+          }
+          localStorage.removeItem("atlas_nutrition_entries");
+        } catch (e) {
+          console.error("Failed to migrate legacy nutrition entries:", e);
+        }
+      }
+
+      const savedWater = localStorage.getItem("atlas_water_logs");
+      if (savedWater) {
+        try {
+          const parsed = JSON.parse(savedWater);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const existingIds = new Set(waterLogs.map(w => w.id));
+            const newWater = parsed.filter(w => !existingIds.has(w.id));
+            if (newWater.length > 0) {
+              waterLogs = [...waterLogs, ...newWater];
+              needsMigrationSave = true;
+            }
+          }
+          localStorage.removeItem("atlas_water_logs");
+        } catch (e) {
+          console.error("Failed to migrate legacy water logs:", e);
+        }
+      }
+    }
+    snapshot.nutritionEntries = nutritionEntries;
+    snapshot.waterLogs = waterLogs;
+
     let activeWorkout = snapshot.activeWorkout;
     let workouts = snapshot.workouts;
     let aiMessages = snapshot.aiMessages;
@@ -636,7 +730,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       providerBusy: false,
     });
     
-    if (snapshot.activeWorkout && !activeWorkout) {
+    if ((snapshot.activeWorkout && !activeWorkout) || needsMigrationSave) {
       await persistState(get());
     }
 
@@ -654,9 +748,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       }
     }
   },
-  pullCloudUpdate: async () => {
+  pullCloudUpdate: async (): Promise<boolean> => {
     const email = get().profile?.email;
-    if (!email || typeof window === "undefined" || !navigator.onLine) return;
+    if (!email || typeof window === "undefined" || !navigator.onLine) return false;
 
     try {
       console.log("[Cloud Sync] Checking for newer snapshot in Google Drive...");
@@ -684,10 +778,13 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           });
           // Save locally to IndexedDB
           await saveSnapshot(snapshotFromState(get()));
+          return true;
         }
       }
+      return false;
     } catch (e) {
       console.error("[Cloud Sync] Background pull failed:", e);
+      return false;
     }
   },
   setActiveWorkoutPlanId: async (id) => {
@@ -1598,6 +1695,22 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     } else {
       throw new Error("Invalid snapshot structure. Unable to restore.");
     }
+  },
+  addNutritionEntry: async (entry) => {
+    set({ nutritionEntries: [...(get().nutritionEntries || []), entry] });
+    await persistState(get());
+  },
+  deleteNutritionEntry: async (id) => {
+    set({ nutritionEntries: (get().nutritionEntries || []).filter((e) => e.id !== id) });
+    await persistState(get());
+  },
+  addWaterLog: async (log) => {
+    set({ waterLogs: [...(get().waterLogs || []), log] });
+    await persistState(get());
+  },
+  deleteWaterLog: async (id) => {
+    set({ waterLogs: (get().waterLogs || []).filter((w) => w.id !== id) });
+    await persistState(get());
   },
   resetLocalData: async () => {
     set({ ...freshSnapshot(), hydrated: true });

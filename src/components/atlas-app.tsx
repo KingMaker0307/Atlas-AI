@@ -46,6 +46,7 @@ export function AtlasApp() {
   const blocked = useAtlasStore((state) => state.blocked);
   const profile = useAtlasStore((state) => state.profile);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
+  const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
 
   const [online, setOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine,
@@ -60,6 +61,53 @@ export function AtlasApp() {
       window.removeEventListener("offline", sync);
     };
   }, []);
+
+  // Background Cloud Synchronization Loop (Option A - Real-Time Multi-Device Sync)
+  useEffect(() => {
+    if (!hydrated || !profile?.email || !online) return;
+
+    // Core helper to perform silent pull check
+    const performSilentPull = async () => {
+      // Typing Guard: pause background sync updates if user is currently entering values
+      const activeElement = document.activeElement;
+      const isTyping = activeElement && (
+        activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.getAttribute("contenteditable") === "true"
+      );
+
+      if (isTyping) {
+        console.log("[Cloud Sync] Keyboard input active. Pausing silent pull to prevent conflicts.");
+        return;
+      }
+
+      try {
+        await pullCloudUpdate();
+      } catch (err) {
+        console.error("[Cloud Sync] Polling silent pull failed:", err);
+      }
+    };
+
+    // 1. Snappy 5-second polling interval for multi-device cross-network updates
+    const interval = setInterval(performSilentPull, 5000);
+
+    // 2. Zero-latency triggers: run pull the exact second the tab gains focus or visibility
+    const handleFocusOrVisibility = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[Cloud Sync] App became visible or active. Pulling cloud updates immediately.");
+        void performSilentPull();
+      }
+    };
+
+    window.addEventListener("focus", handleFocusOrVisibility);
+    document.addEventListener("visibilitychange", handleFocusOrVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocusOrVisibility);
+      document.removeEventListener("visibilitychange", handleFocusOrVisibility);
+    };
+  }, [hydrated, profile?.email, online, pullCloudUpdate]);
 
   useEffect(() => {
     if (!hydrated || !profile?.id || !online) return;
@@ -139,7 +187,7 @@ export function AtlasApp() {
   };
 
   return (
-    <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-950 md:pl-64">
+    <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-955 md:pl-64">
       <PwaRegistrar />
       
       {/* ─── DESKTOP SIDEBAR NAVIGATION PANEL (Hidden on mobile) ─── */}

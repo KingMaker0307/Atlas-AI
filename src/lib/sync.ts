@@ -109,9 +109,13 @@ export async function syncProfile(
           blocked: data.blocked === true,
           mode: data.mode || "drive",
         };
+      } else {
+        console.error("Backend sync responded with non-ok status:", res.status);
+        return { success: false, blocked: false, mode: "drive" };
       }
     } catch (error) {
-      console.error("Backend sync failed, falling back:", error);
+      console.error("Backend sync fetch failed:", error);
+      return { success: false, blocked: false, mode: "drive" };
     }
   }
 

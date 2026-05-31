@@ -245,4 +245,32 @@ export interface AtlasSnapshot {
   apiCallCount: number; // Added to AtlasSnapshot
   tokenCount: number; // Added to AtlasSnapshot
   deviceSecret?: string;
+  nutritionEntries?: NutritionEntry[];
+  waterLogs?: WaterLogEntry[];
+}
+
+export interface NutritionEntry {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;   // g
+  carbs: number;     // g
+  fat: number;       // g
+  fiber: number;     // g
+  sugar: number;     // g
+  sodium: number;    // mg
+  potassium: number; // mg
+  vitaminC: number;  // mg
+  calcium: number;   // mg
+  iron: number;      // mg
+  meal: "breakfast" | "lunch" | "dinner" | "snack";
+  servingSize: number;
+  servingUnit: string;
+  timestamp: string;
+}
+
+export interface WaterLogEntry {
+  id: string;
+  amount: number;    // ml
+  timestamp: string;
 }
