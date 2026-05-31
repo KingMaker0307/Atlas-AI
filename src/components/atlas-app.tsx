@@ -212,11 +212,11 @@ export function AtlasApp() {
       </aside>
 
       {/* ─── MOBILE BRAND TOP HEADER (Hidden on desktop) ─── */}
-      {activeSubScreen !== "active-workout" && (
+      {!(activeTab === "workout" && activeSubScreen === "active-workout") && (
         <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
           <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 font-extrabold text-zinc-950">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 font-extrabold text-zinc-955">
                 A
               </div>
               <div className="min-w-0">
@@ -246,12 +246,12 @@ export function AtlasApp() {
       {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
       <main className={cn(
         "mx-auto w-full max-w-6xl md:pb-8",
-        activeSubScreen === "active-workout"
+        activeTab === "workout" && activeSubScreen === "active-workout"
           ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16"
           : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-[calc(2rem+env(safe-area-inset-top))]"
       )}>
         <AnimatePresence mode="wait">
-          {activeSubScreen ? (
+          {activeTab === "workout" && activeSubScreen ? (
             renderSubScreen()
           ) : (
             <motion.div key={activeTab}>

@@ -1223,7 +1223,7 @@ export function WorkoutScreen() {
       className="space-y-4 pb-32 pt-2"
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
-      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 px-2 py-1.5 sm:px-3 sm:py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
+      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 pt-[calc(env(safe-area-inset-top)+0.375rem)] pb-1.5 px-2 sm:px-3 sm:py-2 md:pt-2 md:pb-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
         <div className="flex items-center justify-between gap-1 max-w-5xl mx-auto flex-nowrap">
           <div className="flex items-center gap-1 min-w-0 flex-1">
             <Button
