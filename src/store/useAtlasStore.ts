@@ -414,13 +414,13 @@ function buildWorkoutFromRoutine(get: AtlasGetState, routine: Routine, parentPla
       const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
 
-      // For steady-state cardio, default to 1 session; for interval cardio, keep targetSets
-      const numSets = isCardio && exerciseData?.category === "steady-state" ? 1 : exercise.targetSets;
+      // For all cardio/steady-state exercises, default to exactly 1 session
+      const numSets = isCardio ? 1 : exercise.targetSets;
 
       return {
         id: createId("workout_exercise"),
         exerciseId: exercise.exerciseId,
-        targetSets: exercise.targetSets,
+        targetSets: isCardio ? 1 : exercise.targetSets,
         targetReps: exercise.targetReps,
         restSeconds: exercise.restSeconds,
         sets: Array.from({ length: numSets }).map(() => isCardio ? ({
@@ -472,10 +472,14 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
     return (
       get().exercises.find((exercise) => {
         const exerciseNormId = exercise.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const hasAliasMatch = exercise.aliases?.some(
+          alias => alias.trim().toLowerCase() === id.trim().toLowerCase()
+        );
         return (
           exercise.id === id ||
           exerciseNormId === normId ||
-          exercise.name.trim().toLowerCase() === id.trim().toLowerCase()
+          exercise.name.trim().toLowerCase() === id.trim().toLowerCase() ||
+          hasAliasMatch
         );
       }) || getStaticExerciseById(id)
     );
@@ -808,11 +812,24 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     await persistState(get());
   },
   saveWorkoutPlan: async (plan: WorkoutPlan) => {
+    // Sanitize exercises in the plan to ensure cardio has targetSets = 1
+    const sanitizedPlan = {
+      ...plan,
+      routines: plan.routines.map(routine => ({
+        ...routine,
+        exercises: routine.exercises.map(ex => {
+          const exerciseData = get().getExerciseById(ex.exerciseId);
+          const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+          return isCardio ? { ...ex, targetSets: 1 } : ex;
+        })
+      }))
+    };
+
     const plans = get().workoutPlans;
-    const existing = plans.find(p => p.id === plan.id);
+    const existing = plans.find(p => p.id === sanitizedPlan.id);
     const nextPlans = existing
-      ? plans.map(p => p.id === plan.id ? plan : p)
-      : [...plans, plan];
+      ? plans.map(p => p.id === sanitizedPlan.id ? sanitizedPlan : p)
+      : [...plans, sanitizedPlan];
 
     let activeId = get().activeWorkoutPlanId;
     if (!activeId || nextPlans.length === 1 || !nextPlans.some(p => p.id === activeId)) {
@@ -855,11 +872,22 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const plans = get().workoutPlans;
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
-    const existing = plan.routines.find(r => r.id === routine.id);
+
+    // Sanitize routine exercises to ensure cardio has targetSets = 1
+    const sanitizedRoutine = {
+      ...routine,
+      exercises: routine.exercises.map(ex => {
+        const exerciseData = get().getExerciseById(ex.exerciseId);
+        const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+        return isCardio ? { ...ex, targetSets: 1 } : ex;
+      })
+    };
+
+    const existing = plan.routines.find(r => r.id === sanitizedRoutine.id);
     if (existing) {
-      plan.routines = plan.routines.map(r => r.id === routine.id ? routine : r);
+      plan.routines = plan.routines.map(r => r.id === sanitizedRoutine.id ? sanitizedRoutine : r);
     } else {
-      plan.routines.push(routine);
+      plan.routines.push(sanitizedRoutine);
     }
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
     await persistState(get());

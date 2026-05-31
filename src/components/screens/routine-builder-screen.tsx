@@ -60,7 +60,8 @@ export function RoutineBuilderScreen() {
   }, [editingWorkoutPlanId, editingRoutineId, workoutPlans]);
 
   const filteredExercises = exercises.filter((exercise) =>
-    exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
+    exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    exercise.aliases?.some(alias => alias.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
 
@@ -69,14 +70,15 @@ export function RoutineBuilderScreen() {
     if (routine.exercises.some((ex) => ex.exerciseId === exercise.id)) {
       return; // Already in routine
     }
+    const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
     setRoutine((prev) => ({
       ...prev,
       exercises: [
         ...prev.exercises,
         {
           exerciseId: exercise.id,
-          targetSets: 3,
-          targetReps: "8-12",
+          targetSets: isCardio ? 1 : 3,
+          targetReps: isCardio ? "30 mins" : "8-12",
           restSeconds: 60,
         },
       ],
@@ -262,16 +264,22 @@ export function RoutineBuilderScreen() {
                   </Button>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
-                  <div>
-                    <Label>Sets</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={ex.targetSets}
-                      onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetSets", Number(e.target.value))}
-                    />
-                  </div>
+                  {(() => {
+                    const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
+                    return (
+                      <div>
+                        <Label>Sets</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          disabled={isCardio}
+                          value={isCardio ? 1 : ex.targetSets}
+                          onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetSets", Number(e.target.value))}
+                        />
+                      </div>
+                    );
+                  })()}
                   <div>
                     <Label>Reps</Label>
                     <Input

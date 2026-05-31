@@ -84,6 +84,7 @@ export interface Exercise {
   progressionTips: string[];
   imageUrl?: string;
   videoUrl?: string;
+  aliases?: string[];
 }
 
 export interface WorkoutSet {

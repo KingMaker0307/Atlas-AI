@@ -37,6 +37,7 @@ export const exercises: Exercise[] = [
       "Add 2.5-5 lb when all target reps land with 1 RIR or better.",
       "Deload 8-12% after two stalled squat sessions.",
     ],
+    aliases: ["squats", "squat", "back squat", "barbell squat"],
   },
   {
     id: "bench-press",
@@ -66,6 +67,7 @@ export const exercises: Exercise[] = [
       "Add 2.5 lb when top-set reps exceed the target range.",
       "Use a back-off set if bar speed slows sharply.",
     ],
+    aliases: ["chest press", "flat bench press", "chest flat press", "bench"],
   },
   {
     id: "deadlift",
@@ -95,6 +97,7 @@ export const exercises: Exercise[] = [
       "Progress slowly because systemic fatigue is high.",
       "Reduce volume if recovery score is below 60.",
     ],
+    aliases: ["deadlift", "dead-lift", "barbell deadlift"],
   },
   {
     id: "pull-up",
@@ -202,6 +205,7 @@ export const exercises: Exercise[] = [
     commonMistakes: ["Shrugging", "Rotating torso", "Using too much momentum"],
     safetyTips: ["Keep neck neutral.", "Use straps if grip steals focus."],
     progressionTips: ["Progress reps first, then load.", "Add a pause when weight jumps are large."],
+    aliases: ["db row", "db rows", "one arm row", "dumbbell row"],
   },
   {
     id: "plank",
@@ -3386,6 +3390,186 @@ export const exercises: Exercise[] = [
       "Track average watts or calories for progressive overload.",
       "Popular class format — can be done solo with a structured protocol."
     ]
+  },
+  {
+    id: "clean-and-jerk",
+    name: "Barbell Clean and Jerk",
+    category: "compound",
+    muscles: ["full body", "shoulders", "quads", "glutes", "core"],
+    equipment: ["barbell"],
+    difficulty: "advanced",
+    setup: [
+      "Approach the bar with a conventional deadlift setup.",
+      "Grip slightly wider than shoulder-width, lats pulled tight."
+    ],
+    instructions: [
+      "Pull the bar explosively, catch in a front squat, and stand up (Clean).",
+      "Dip knees slightly, then drive the bar overhead while splitting legs (Jerk)."
+    ],
+    execution: [
+      "Keep bar close during the triple extension.",
+      "Assertively lock out elbows overhead in the jerk.",
+      "Recover feet together before dropping the bar."
+    ],
+    breathing: "Brace before pulling, exhale after catching the Clean, reset, brace, and exhale on the Jerk lockout.",
+    tempo: "Explosive pull and powerful overhead drive.",
+    commonMistakes: [
+      "Catching with soft elbows in the jerk",
+      "Letting the bar drift forward"
+    ],
+    safetyTips: [
+      "Always use bumper plates on a lifting platform.",
+      "Know how to bail the bar safely in front and behind."
+    ],
+    progressionTips: [
+      "Build technical speed before advancing weight.",
+      "Great for power, coordination, and athletic performance."
+    ],
+    aliases: ["clean and jerk", "clean & jerk", "olympic clean", "power clean"]
+  },
+  {
+    id: "barbell-snatch",
+    name: "Barbell Snatch",
+    category: "compound",
+    muscles: ["full body", "back", "shoulders", "hamstrings", "glutes"],
+    equipment: ["barbell"],
+    difficulty: "advanced",
+    setup: [
+      "Set feet hip-width. Use a very wide grip (inside collar-to-collar).",
+      "Pull shoulder blades back and drop hips low."
+    ],
+    instructions: [
+      "Pull the bar explosively from the floor.",
+      "Extend hips fully, pull yourself under, and catch the bar overhead in a squat."
+    ],
+    execution: [
+      "Ensure rapid under-bar pull speed.",
+      "Active shoulders locking out the barbell overhead.",
+      "Stand up fully to complete the lift."
+    ],
+    breathing: "Deep inhale and brace, pull with speed, exhale at lockout.",
+    tempo: "Maximum explosive velocity.",
+    commonMistakes: [
+      "Bending arms too early",
+      "Soft shoulders at catch"
+    ],
+    safetyTips: [
+      "Lift on a dedicated platform.",
+      "Ensure space behind you to throw the bar if bailing."
+    ],
+    progressionTips: [
+      "Master overhead squat mobility first.",
+      "Focus on aggressive bar path control."
+    ],
+    aliases: ["snatch", "olympic snatch", "power snatch", "barbell snatch"]
+  },
+  {
+    id: "kettlebell-swing",
+    name: "Kettlebell Swing",
+    category: "compound",
+    muscles: ["glutes", "hamstrings", "back", "core"],
+    equipment: ["kettlebell"],
+    difficulty: "intermediate",
+    setup: [
+      "Place kettlebell a foot in front of you.",
+      "Hinge at the hips, grasp handle with both hands, and tilt bell back."
+    ],
+    instructions: [
+      "Hike the kettlebell back between your thighs.",
+      "Snap hips forward explosively, swinging the bell up to chest height."
+    ],
+    execution: [
+      "This is a hip hinge, not a squat.",
+      "Root feet into the floor and brace core at the top.",
+      "Let the bell fall naturally, hinging only when it approaches hips."
+    ],
+    breathing: "Exhale sharply at hip extension snap, inhale on the descent.",
+    tempo: "Dynamic explosive hinge cycle.",
+    commonMistakes: [
+      "Squatting the bell up",
+      "Using arms to pull the weight"
+    ],
+    safetyTips: [
+      "Maintain a flat neutral spine.",
+      "Keep chest open and shoulders packed."
+    ],
+    progressionTips: [
+      "Progress to one-arm swings once two-arm swing is stable.",
+      "Add 4-8 kg when hip drive feels effortless."
+    ],
+    aliases: ["kb swing", "kettlebell swing", "swings"]
+  },
+  {
+    id: "muscle-up",
+    name: "Bar Muscle-Up",
+    category: "compound",
+    muscles: ["back", "chest", "triceps", "biceps", "core"],
+    equipment: ["bodyweight"],
+    difficulty: "advanced",
+    setup: [
+      "Hang from a pull-up bar with a false grip or active overhand grip.",
+      "Create a slight hollow body shape for hollow-to-arch swing."
+    ],
+    instructions: [
+      "Pull yourself up and around the bar using a dynamic chest pull.",
+      "Transition shoulders forward over the bar, then dip up to lockout."
+    ],
+    execution: [
+      "Pull chest to the bar with speed.",
+      "Aggressively lean forward during transition.",
+      "Press fully to straight arms at the top."
+    ],
+    breathing: "Exhale through the pull and transition, inhale at the top lockout.",
+    tempo: "Fast explosive transition and dip.",
+    commonMistakes: [
+      "Transitioning one arm at a time (chicken winging)",
+      "Lack of vertical chest pull height"
+    ],
+    safetyTips: [
+      "Ensure bar is secure.",
+      "Warm up shoulders thoroughly."
+    ],
+    progressionTips: [
+      "Master high pull-ups and straight bar dips first.",
+      "Use resistance bands to learn the transition path."
+    ],
+    aliases: ["muscle up", "muscleup", "bar muscle up", "calisthenics muscle up"]
+  },
+  {
+    id: "ab-wheel-rollout",
+    name: "Ab Wheel Rollout",
+    category: "mobility",
+    muscles: ["core", "back", "shoulders"],
+    equipment: ["other"],
+    difficulty: "intermediate",
+    setup: [
+      "Kneel on a soft pad holding the ab roller handles.",
+      "Stack shoulders over wrists and tuck tailbone (posterior tilt)."
+    ],
+    instructions: [
+      "Roll the wheel forward under control, keeping hips and torso locked.",
+      "Pull yourself back to the starting kneeling position using your core."
+    ],
+    execution: [
+      "Maintain a slight hollow rounded back.",
+      "Avoid letting the low back sag or arch.",
+      "Roll out only as far as you can maintain low back position."
+    ],
+    breathing: "Inhale rolling out, brace, and exhale as you roll back.",
+    tempo: "Slow controlled eccentric, strong concentric.",
+    commonMistakes: [
+      "Hyperextending the lumbar spine",
+      "Pulling back with hips first instead of core"
+    ],
+    safetyTips: [
+      "Regress by rolling toward a wall to limit range.",
+      "Stop immediately if low back discomfort is felt."
+    ],
+    progressionTips: [
+      "Increase rollout distance.",
+      "Progress to standing rollouts for advanced overload."
+    ],
+    aliases: ["ab roller", "ab wheel", "ab rollout", "core rollout"]
   }
 ];
 
@@ -3393,10 +3577,14 @@ export function getExerciseById(id: string): Exercise | undefined {
   const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   return exercises.find((exercise) => {
     const exerciseNormId = exercise.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const hasAliasMatch = exercise.aliases?.some(
+      alias => alias.trim().toLowerCase() === id.trim().toLowerCase()
+    );
     return (
       exercise.id === id ||
       exerciseNormId === normId ||
-      exercise.name.trim().toLowerCase() === id.trim().toLowerCase()
+      exercise.name.trim().toLowerCase() === id.trim().toLowerCase() ||
+      hasAliasMatch
     );
   });
 }

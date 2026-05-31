@@ -303,9 +303,14 @@ export function WorkoutPlanDetailScreen() {
                               </div>
                             </div>
                             
-                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                              {item.targetSets}s x {item.targetReps}
-                            </span>
+                            {(() => {
+                              const isCardio = exDetails?.category === "cardio" || exDetails?.category === "steady-state";
+                              return (
+                                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                                  {isCardio ? item.targetReps : `${item.targetSets}s x ${item.targetReps}`}
+                                </span>
+                              );
+                            })()}
                           </div>
                         );
                       })}
