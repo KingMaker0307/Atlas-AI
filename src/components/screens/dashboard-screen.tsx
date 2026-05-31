@@ -545,16 +545,6 @@ export function DashboardScreen() {
               </button>
             </div>
 
-            {/* Theme Mode Switcher */}
-            <button
-              type="button"
-              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
-              className="flex items-center justify-center h-[38px] w-[38px] rounded-xl border border-surface-border bg-surface text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition duration-200 self-start sm:self-center cursor-pointer shadow-sm active:scale-95 shrink-0"
-              aria-label="Toggle display theme"
-              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            >
-              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
 
             {/* Dynamic Recovery Ring */}
             {!guidedMode && (

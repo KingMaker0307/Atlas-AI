@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, ClipboardList, Home, Settings, ShieldAlert } from "lucide-react";
+import { BarChart3, Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
@@ -41,6 +41,7 @@ export function AtlasApp() {
   const activeSubScreen = useAtlasStore((state) => state.activeSubScreen);
   const hasOnboarded = useAtlasStore((state) => state.hasOnboarded);
   const theme = useAtlasStore((state) => state.theme);
+  const setTheme = useAtlasStore((state) => state.setTheme);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
   const blocked = useAtlasStore((state) => state.blocked);
   const profile = useAtlasStore((state) => state.profile);
@@ -191,9 +192,20 @@ export function AtlasApp() {
 
         {/* Sidebar Telemetry Footer block */}
         <div className="pt-4 border-t border-card-border flex flex-col gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            <OfflineIndicator />
-            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-mono">System Standby</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <OfflineIndicator />
+              <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-mono">System Standby</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+              aria-label="Toggle display theme"
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
           </div>
           <InstallPrompt />
         </div>
@@ -203,7 +215,7 @@ export function AtlasApp() {
       <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
         <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-950">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-955">
               A
             </div>
             <div>
@@ -212,6 +224,15 @@ export function AtlasApp() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+              aria-label="Toggle display theme"
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
             <OfflineIndicator />
             <InstallPrompt />
           </div>
