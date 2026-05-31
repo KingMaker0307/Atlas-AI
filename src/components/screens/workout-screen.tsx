@@ -570,6 +570,33 @@ export function WorkoutScreen() {
     return () => window.clearInterval(interval);
   }, [restTimerEndsAt]);
 
+  // Premium haptic and synthesized audio notification on rest timer finish
+  useEffect(() => {
+    if (restTimerEndsAt && remaining === 0) {
+      if (navigator.vibrate) {
+        navigator.vibrate([150, 100, 150]);
+      }
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const audioCtx = new AudioCtx();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          oscillator.type = "sine";
+          oscillator.frequency.value = 880; // A5 pitch
+          gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+      } catch (err) {
+        console.warn("Web Audio API rest chime bypassed:", err);
+      }
+    }
+  }, [remaining, restTimerEndsAt]);
+
   // Effect for workout duration timer
   useEffect(() => {
     if (!activeWorkout?.startedAt) {
@@ -1227,34 +1254,34 @@ export function WorkoutScreen() {
       className="space-y-4 pb-32 pt-2"
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
-      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 pt-[calc(env(safe-area-inset-top)+0.375rem)] pb-1.5 px-2 sm:px-3 sm:py-2 md:pt-2 md:pb-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
-        <div className="flex items-center justify-between gap-1 max-w-5xl mx-auto flex-nowrap">
-          <div className="flex items-center gap-1 min-w-0 flex-1">
+      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 px-3 sm:px-4 sm:py-3 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
+        <div className="flex items-center justify-between gap-2 max-w-5xl mx-auto flex-nowrap">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg"
+              className="h-9 w-9 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg active:scale-95 transition-all"
               onClick={() => setActiveSubScreen(null)}
               aria-label="Back to plans"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={18} />
             </Button>
             <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[90px] sm:max-w-[240px] leading-tight capitalize">
+              <h1 className="text-sm sm:text-base font-extrabold text-foreground truncate max-w-[130px] sm:max-w-[320px] leading-tight capitalize">
                 {activeWorkout.name}
               </h1>
-              <p className="text-[10px] sm:text-xs text-zinc-555 leading-none mt-0.5 font-medium">
+              <p className="text-[10px] sm:text-xs text-zinc-555 leading-none mt-0.5 font-semibold">
                 {completedSets}/{totalSets} sets done
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end flex-nowrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end flex-nowrap">
             {/* Hands-Free Voice Logger Button */}
             <Button
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center",
+                "h-9 w-9 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center active:scale-95",
                 isListening
                   ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
                   : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
@@ -1263,30 +1290,31 @@ export function WorkoutScreen() {
               aria-label="Voice command logger"
               title="Voice command logging"
             >
-              {isListening ? <Mic size={14} className="text-rose-500 animate-pulse" /> : <MicOff size={14} />}
+              {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
             </Button>
 
             {/* Active Timer badge (Inline space-saving) */}
-            <div className="flex items-center gap-1 px-1.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] sm:text-xs font-bold select-none h-8 shrink-0">
-              <Timer size={13} className="shrink-0" />
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold select-none h-9 shrink-0">
+              <Timer size={15} className="shrink-0" />
               <span>{formatDuration(elapsedWorkoutTime)}</span>
             </div>
 
             {/* Rest state container (Interactive space-saving) */}
             <div
               onClick={() => {
+                if (navigator.vibrate) navigator.vibrate(6);
                 if (remaining > 0) void stopRestTimer();
                 else void startRestTimer(60);
               }}
               className={cn(
-                "flex items-center gap-1 px-1.5 py-1 rounded-lg border font-mono text-[10px] sm:text-xs font-bold select-none h-8 shrink-0 cursor-pointer transition-all",
+                "flex items-center gap-1.5 px-2 py-1 rounded-lg border font-mono text-xs font-bold select-none h-9 shrink-0 cursor-pointer transition-all active:scale-95 shadow-sm",
                 remaining > 0
                   ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-300 animate-pulse"
                   : "bg-surface border-surface-border text-zinc-555 hover:bg-surface/80"
               )}
               title={remaining > 0 ? "Tap to stop rest" : "Tap to start quick 60s rest"}
             >
-              <Clock3 size={13} className="shrink-0" />
+              <Clock3 size={15} className="shrink-0" />
               <span>{remaining > 0 ? formatTimer(remaining) : "Rest"}</span>
             </div>
 
@@ -1294,7 +1322,7 @@ export function WorkoutScreen() {
             <Button
               size="sm"
               variant="primary"
-              className="h-8 px-2 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1"
+              className="h-9 px-3.5 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               onClick={handleFinishSessionClick}
             >
               Finish
@@ -1304,40 +1332,40 @@ export function WorkoutScreen() {
 
         {/* Voice Logger Transcription Feedback Alert Banner */}
         {speechFeedback && (
-          <div className="mt-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
-            <Sparkles size={13} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+          <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-semibold max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse shadow-sm">
+            <Sparkles size={15} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
             <span>{speechFeedback}</span>
           </div>
         )}
 
         {/* Floating rest-timer action controllers */}
         {restTimerEndsAt && remaining > 0 && (
-          <div className="mt-2 pt-2 border-t border-card-border flex items-center justify-between gap-2 max-w-5xl mx-auto">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Adjust Rest:</span>
+          <div className="mt-2.5 pt-2.5 border-t border-card-border flex items-center justify-between gap-2 max-w-5xl mx-auto select-none">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Adjust Rest:</span>
             <div className="flex items-center gap-1.5">
               <Button
-                className="h-6 px-2 text-xs font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(-15)}
               >
                 -15s
               </Button>
               <Button
-                className="h-6 px-2 text-xs font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(15)}
               >
                 +15s
               </Button>
               <Button
-                className="h-6 px-2 text-xs font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(60)}
               >
                 +60s
               </Button>
               <Button
-                className="h-6 px-2 text-xs font-bold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20"
+                className="h-8 px-3 text-xs font-extrabold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20 rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void stopRestTimer()}
               >
@@ -1493,7 +1521,7 @@ export function WorkoutScreen() {
                         : "bg-surface border border-surface-border text-zinc-555"
                     }`}
                   >
-                    {allSetsCompleted ? <Check size={14} className="stroke-[3px]" /> : exerciseIndex + 1}
+                    {allSetsCompleted ? <Check size={16} className="stroke-[3px]" /> : exerciseIndex + 1}
                   </div>
 
                   {/* Name + chips */}
@@ -1503,8 +1531,8 @@ export function WorkoutScreen() {
                         {workoutExercise.targetSets}×{workoutExercise.targetReps}
                       </span>
                       {workoutExercise.supersetGroup && (
-                        <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-sky-500/10 border border-sky-500/25 text-sky-500 text-[10px] font-bold leading-none">
-                          <Layers3 size={9} />
+                        <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 bg-sky-500/10 border border-sky-500/25 text-sky-500 text-[10px] font-bold leading-none select-none">
+                          <Layers3 size={12} />
                           {workoutExercise.supersetGroup}
                         </span>
                       )}
@@ -1532,8 +1560,8 @@ export function WorkoutScreen() {
                   {/* Expand/collapse chevron */}
                   <div className="shrink-0 ml-1">
                     {isExpanded
-                      ? <ChevronUp size={18} className="text-emerald-500" />
-                      : <ChevronDown size={18} className="text-zinc-555" />
+                      ? <ChevronUp size={20} className="text-emerald-500" />
+                      : <ChevronDown size={20} className="text-zinc-555" />
                     }
                   </div>
                 </button>
@@ -1552,84 +1580,84 @@ export function WorkoutScreen() {
                       <div className="px-3.5 sm:px-4 pb-4 space-y-3 border-t border-card-border/60 pt-3">
 
                         {/* Muscle chips + action buttons row */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex flex-wrap gap-1 flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-card-border/60 pb-3">
+                          <div className="flex flex-wrap gap-1 min-w-0">
                             {exercise.muscles.map(muscle => (
                               <span
                                 key={muscle}
-                                className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-surface text-zinc-755 border border-surface-border capitalize leading-none"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface text-zinc-755 border border-surface-border capitalize leading-none"
                               >
                                 {muscle}
                               </span>
                             ))}
                           </div>
 
-                          {/* Action buttons row */}
-                          <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                            {/* kg/lbs toggle pill */}
+                          {/* Action buttons row: scrollable on mobile for premium high-fidelity native feeling, wraps on desktop */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 shrink-0 justify-start sm:justify-end -mx-3.5 px-3.5 sm:mx-0 sm:px-0 select-none w-[calc(100%+1.75rem)] sm:w-auto">
+                            {/* kg/lbs toggle button */}
                             {!isCardio && (
                               <button
+                                type="button"
                                 onClick={handleToggleUnit}
-                                className="h-7 px-2 rounded-lg border border-surface-border bg-surface text-xs font-black text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/5 transition-all flex items-center gap-1"
+                                className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-black text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
                                 title={`Switch to ${exUnit === "kg" ? "lbs" : "kg"}`}
                               >
-                                <Scale size={14} />
-                                {exUnit.toUpperCase()}
+                                <Scale size={15} className="text-zinc-500 dark:text-zinc-400" />
+                                <span>{exUnit.toUpperCase()}</span>
                               </button>
                             )}
 
                             {/* Step-by-Step Info */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-9 w-9 sm:h-7 sm:w-auto sm:px-2 text-xs font-bold text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                            <button
+                              type="button"
                               onClick={() => setSelectedExercise(exercise)}
+                              className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
                               aria-label="View step-by-step instructions"
                             >
-                              <Info size={15} />
-                              <span className="hidden sm:inline">Guide</span>
-                            </Button>
+                              <Info size={15} className="text-zinc-500 dark:text-zinc-400" />
+                              <span>Guide</span>
+                            </button>
 
                             {/* Swap */}
                             {!isSkipped && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-9 w-9 sm:h-7 sm:w-auto sm:px-2 text-xs font-bold text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                              <button
+                                type="button"
                                 onClick={() => { setActiveSwapExercise(workoutExercise); setSwapSearch(""); }}
+                                className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
                                 aria-label="Swap exercise"
                               >
-                                <Shuffle size={15} />
-                                <span className="hidden sm:inline">Swap</span>
-                              </Button>
+                                <Shuffle size={15} className="text-zinc-500 dark:text-zinc-400" />
+                                <span>Swap</span>
+                              </button>
                             )}
 
                             {/* Skip/Resume */}
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className={`h-9 w-9 sm:h-7 sm:w-auto sm:px-2 text-xs font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1 ${
-                                isSkipped ? "text-amber-500" : "text-zinc-750 hover:text-zinc-955"
-                              }`}
+                            <button
+                              type="button"
                               onClick={() => void skipWorkoutExercise(workoutExercise.id)}
+                              className={cn(
+                                "h-9 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer",
+                                isSkipped
+                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15"
+                                  : "bg-surface border-surface-border text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-white/5"
+                              )}
                               aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
                             >
-                              <SkipForward size={15} />
-                              <span className="hidden sm:inline">{isSkipped ? "Resume" : "Skip"}</span>
-                            </Button>
+                              <SkipForward size={15} className={isSkipped ? "text-amber-500 animate-pulse" : "text-zinc-500 dark:text-zinc-400"} />
+                              <span>{isSkipped ? "Resume" : "Skip"}</span>
+                            </button>
 
                             {/* Add Set */}
                             {!isSkipped && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-9 w-9 sm:h-7 sm:w-auto sm:px-2 text-xs font-bold text-emerald-500 hover:text-emerald-600 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
+                              <button
+                                type="button"
                                 onClick={() => void addSet(workoutExercise.id)}
+                                className="h-9 px-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
                                 aria-label="Add set"
                               >
-                                <CirclePlus size={15} />
-                                <span className="hidden sm:inline">Add Set</span>
-                              </Button>
+                                <CirclePlus size={15} className="text-emerald-500" />
+                                <span>Add Set</span>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -1718,7 +1746,7 @@ export function WorkoutScreen() {
                                     return (
                                       <div
                                         key={set.id}
-                                        className="flex flex-col gap-3 p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-sm transition-all"
+                                        className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
                                       >
                                         <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
                                           <div className="flex items-center gap-2">
@@ -1734,37 +1762,95 @@ export function WorkoutScreen() {
                                               size="icon" variant="ghost"
                                               onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                             >
-                                              <Trash2 size={15} />
+                                              <Trash2 size={16} />
                                             </Button>
                                             <Button
                                               aria-label="Complete set"
-                                              className="h-10 px-3.5 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
+                                              className="h-10 px-4 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
                                               onClick={() => void handleCompleteSet(set.id, set.completed)}
                                             >
-                                              <Check size={14} className="stroke-[3px]" />
+                                              <Check size={16} className="stroke-[3px]" />
                                               Check
                                             </Button>
                                           </div>
                                         </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-left">
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
                                           {[
-                                            { label: "Min", value: displayMin, onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(v * 60) }), max: 999, step: "any" },
-                                            { label: "Dist (mi)", value: displayDist, onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { distance: v }), max: 999, step: "any" },
-                                            { label: cardioLabel, value: displayCardioLabel, onChange: (v: number) => void updateSet(workoutExercise.id, set.id, isTreadmill ? { incline: v } : { resistance: v }), max: 100, step: "any" },
-                                            { label: "kcal", value: displayKcal, onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { calories: v }), max: 9999, step: "1" },
+                                            {
+                                              label: "Min",
+                                              value: displayMin,
+                                              step: 1.0,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(v * 60) }),
+                                              max: 999,
+                                              inputMode: "decimal" as const,
+                                              formattedStep: "any"
+                                            },
+                                            {
+                                              label: "Dist (mi)",
+                                              value: displayDist,
+                                              step: 0.1,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { distance: v }),
+                                              max: 999,
+                                              inputMode: "decimal" as const,
+                                              formattedStep: "any"
+                                            },
+                                            {
+                                              label: cardioLabel,
+                                              value: displayCardioLabel,
+                                              step: 1.0,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, isTreadmill ? { incline: v } : { resistance: v }),
+                                              max: 100,
+                                              inputMode: "decimal" as const,
+                                              formattedStep: "any"
+                                            },
+                                            {
+                                              label: "kcal",
+                                              value: displayKcal,
+                                              step: 10.0,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { calories: v }),
+                                              max: 9999,
+                                              inputMode: "numeric" as const,
+                                              formattedStep: "1"
+                                            },
                                           ].map(field => (
                                             <div key={field.label}>
-                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">{field.label}</label>
-                                              <Input
-                                                inputMode={field.step === "1" ? "numeric" : "decimal"}
-                                                type="number"
-                                                min={0}
-                                                max={field.max}
-                                                step={field.step}
-                                                className="h-10 px-1 text-center font-semibold rounded-xl bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                                value={field.value}
-                                                onChange={e => field.onChange(Math.min(field.max, Math.max(0, parseFloat(e.target.value) || 0)))}
-                                              />
+                                              <label className="block text-[10px] font-black uppercase text-zinc-755 tracking-wider mb-1.5">{field.label}</label>
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = parseFloat(Math.max(0, field.value - field.step).toFixed(2));
+                                                    field.onChange(v);
+                                                  }}
+                                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label={`Decrease ${field.label}`}
+                                                >
+                                                  <Minus size={12} className="stroke-[3px]" />
+                                                </button>
+                                                <Input
+                                                  inputMode={field.inputMode}
+                                                  type="number"
+                                                  min={0}
+                                                  max={field.max}
+                                                  step={field.formattedStep}
+                                                  className="h-8 px-1 text-center font-bold bg-transparent border-0 shadow-none text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  value={field.value}
+                                                  onChange={e => field.onChange(Math.min(field.max, Math.max(0, parseFloat(e.target.value) || 0)))}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = parseFloat(Math.min(field.max, field.value + field.step).toFixed(2));
+                                                    field.onChange(v);
+                                                  }}
+                                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label={`Increase ${field.label}`}
+                                                >
+                                                  <Plus size={12} className="stroke-[3px]" />
+                                                </button>
+                                              </div>
                                             </div>
                                           ))}
                                         </div>
@@ -1794,9 +1880,9 @@ export function WorkoutScreen() {
                                           e.stopPropagation();
                                           void handleCompleteSet(set.id, set.completed);
                                         }}
-                                        className="h-8 px-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0"
+                                        className="h-9 px-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
                                       >
-                                        <Check size={13} className="stroke-[3px]" />
+                                        <Check size={15} className="stroke-[3px]" />
                                         Check
                                       </button>
                                     </div>
@@ -1859,7 +1945,7 @@ export function WorkoutScreen() {
                                     return (
                                       <div
                                         key={set.id}
-                                        className="flex flex-col gap-3 p-3.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-sm transition-all text-left"
+                                        className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
                                       >
                                         <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
                                           <div className="flex items-center gap-2">
@@ -1868,7 +1954,7 @@ export function WorkoutScreen() {
                                             </span>
                                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                             {set.isDropSet && (
-                                              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[10px] font-black uppercase tracking-wider text-amber-500">Drop</span>
+                                              <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[10px] font-black uppercase tracking-wider text-amber-500">Drop</span>
                                             )}
                                           </div>
                                           <div className="flex items-center gap-2">
@@ -1878,14 +1964,14 @@ export function WorkoutScreen() {
                                               size="icon" variant="ghost"
                                               onClick={() => void deleteSet(workoutExercise.id, set.id)}
                                             >
-                                              <Trash2 size={15} />
+                                              <Trash2 size={16} />
                                             </Button>
                                             <Button
                                               aria-label="Complete set"
-                                              className="h-10 px-3.5 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
+                                              className="h-10 px-4 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
                                               onClick={() => void handleCompleteSet(set.id, set.completed)}
                                             >
-                                              <Check size={14} className="stroke-[3px]" />
+                                              <Check size={16} className="stroke-[3px]" />
                                               Check
                                             </Button>
                                           </div>
@@ -1893,53 +1979,138 @@ export function WorkoutScreen() {
                                         <div className="grid grid-cols-3 gap-3 text-left">
                                           <div>
                                             <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">Reps</label>
-                                            <Input
-                                              inputMode="numeric" type="number" min={0} max={100}
-                                              className="h-11 px-1 text-center font-semibold rounded-xl bg-surface border-surface-border text-sm w-full text-foreground focus:border-emerald-500/50"
-                                              value={displayReps}
-                                              onChange={e => {
-                                                const v = Math.min(100, Math.max(0, Number(e.target.value)));
-                                                void updateSet(workoutExercise.id, set.id, { reps: v });
-                                              }}
-                                            />
+                                            <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (navigator.vibrate) navigator.vibrate(6);
+                                                  const v = Math.max(0, displayReps - 1);
+                                                  void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                }}
+                                                className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                aria-label="Decrease reps"
+                                              >
+                                                <Minus size={14} className="stroke-[3px]" />
+                                              </button>
+                                              <Input
+                                                inputMode="numeric" type="number" min={0} max={100}
+                                                className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                value={displayReps}
+                                                onChange={e => {
+                                                  const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                                                  void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                }}
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (navigator.vibrate) navigator.vibrate(6);
+                                                  const v = Math.min(100, displayReps + 1);
+                                                  void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                }}
+                                                className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                aria-label="Increase reps"
+                                              >
+                                                <Plus size={14} className="stroke-[3px]" />
+                                              </button>
+                                            </div>
                                           </div>
+                                          
                                           <div>
                                             <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">Load ({exUnit})</label>
-                                            <Input
-                                              inputMode="decimal" type="number" min={0} max={2000} step="any"
-                                              className="h-11 px-1 text-center font-semibold rounded-xl bg-surface border-surface-border text-sm w-full text-foreground focus:border-emerald-500/50"
-                                              value={displayWeight}
-                                              onChange={e => {
-                                                const v = Math.min(2000, Math.max(0, Number(e.target.value)));
-                                                void updateSet(workoutExercise.id, set.id, { weight: v });
-                                              }}
-                                            />
+                                            <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (navigator.vibrate) navigator.vibrate(6);
+                                                  const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                  const v = parseFloat(Math.max(0, displayWeight - step).toFixed(1));
+                                                  void updateSet(workoutExercise.id, set.id, { weight: v });
+                                                }}
+                                                className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                aria-label="Decrease load"
+                                              >
+                                                <Minus size={14} className="stroke-[3px]" />
+                                              </button>
+                                              <Input
+                                                inputMode="decimal" type="number" min={0} max={2000} step="any"
+                                                className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                value={displayWeight}
+                                                onChange={e => {
+                                                  const v = Math.min(2000, Math.max(0, Number(e.target.value)));
+                                                  void updateSet(workoutExercise.id, set.id, { weight: v });
+                                                }}
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  if (navigator.vibrate) navigator.vibrate(6);
+                                                  const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                  const v = parseFloat(Math.min(2000, displayWeight + step).toFixed(1));
+                                                  void updateSet(workoutExercise.id, set.id, { weight: v });
+                                                }}
+                                                className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                aria-label="Increase load"
+                                              >
+                                                <Plus size={14} className="stroke-[3px]" />
+                                              </button>
+                                            </div>
                                           </div>
+                                          
                                           <div>
                                             <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">RIR</label>
                                             {guidedMode ? (
-                                              <Select
-                                                value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
-                                                onChange={e => {
-                                                  const v = e.target.value === "easy" ? 8 : e.target.value === "hard" ? 0 : 4;
-                                                  void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                }}
-                                                className="h-11 py-0.5 px-1 text-center font-semibold rounded-xl bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                              >
-                                                <option value="easy">Easy</option>
-                                                <option value="moderate">Mod</option>
-                                                <option value="hard">Hard</option>
-                                              </Select>
+                                              <div className="bg-surface border border-surface-border rounded-xl overflow-hidden shadow-sm focus-within:border-emerald-500/50">
+                                                <Select
+                                                  value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
+                                                  onChange={e => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = e.target.value === "easy" ? 8 : e.target.value === "hard" ? 0 : 4;
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                  className="h-10 py-0.5 px-2 text-center font-bold bg-transparent border-0 text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                >
+                                                  <option value="easy">Easy (8)</option>
+                                                  <option value="moderate">Mod (4)</option>
+                                                  <option value="hard">Hard (0)</option>
+                                                </Select>
+                                              </div>
                                             ) : (
-                                              <Input
-                                                inputMode="numeric" type="number" min={0} max={10}
-                                                className="h-11 px-1 text-center font-semibold rounded-xl bg-surface border-surface-border text-sm w-full text-foreground focus:border-emerald-500/50"
-                                                value={set.rir ?? 2}
-                                                onChange={e => {
-                                                  const v = Math.min(10, Math.max(0, Number(e.target.value)));
-                                                  void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                }}
-                                              />
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = Math.max(0, (set.rir ?? 2) - 1);
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                  className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Decrease RIR"
+                                                >
+                                                  <Minus size={14} className="stroke-[3px]" />
+                                                </button>
+                                                <Input
+                                                  inputMode="numeric" type="number" min={0} max={10}
+                                                  className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  value={set.rir ?? 2}
+                                                  onChange={e => {
+                                                    const v = Math.min(10, Math.max(0, Number(e.target.value)));
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = Math.min(10, (set.rir ?? 2) + 1);
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                  className="h-9 w-9 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Increase RIR"
+                                                >
+                                                  <Plus size={14} className="stroke-[3px]" />
+                                                </button>
+                                              </div>
                                             )}
                                           </div>
                                         </div>
@@ -1967,9 +2138,9 @@ export function WorkoutScreen() {
                                           e.stopPropagation();
                                           void handleCompleteSet(set.id, set.completed);
                                         }}
-                                        className="h-8 px-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0"
+                                        className="h-9 px-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
                                       >
-                                        <Check size={13} className="stroke-[3px]" />
+                                        <Check size={15} className="stroke-[3px]" />
                                         Check
                                       </button>
                                     </div>
@@ -1977,11 +2148,11 @@ export function WorkoutScreen() {
                                 })}
 
                                 {/* Bottom action bar */}
-                                <div className="mt-2 flex gap-2 flex-wrap">
+                                <div className="mt-2.5 flex gap-2 flex-wrap">
                                   <Button
                                     size="sm" variant="ghost"
-                                    className="text-xs text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-8"
-                                    icon={<Flame size={15} className="text-amber-500" />}
+                                    className="text-xs font-bold text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border active:scale-95 transition-all shadow-sm"
+                                    icon={<Flame size={16} className="text-amber-500 animate-pulse" />}
                                     onClick={() => {
                                       const last = workoutExercise.sets.at(-1);
                                       if (!last) return;
@@ -1992,8 +2163,8 @@ export function WorkoutScreen() {
                                   </Button>
                                   <Button
                                     size="sm" variant="ghost"
-                                    className="text-xs text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-8"
-                                    icon={<Timer size={15} />}
+                                    className="text-xs font-bold text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border active:scale-95 transition-all shadow-sm"
+                                    icon={<Timer size={16} />}
                                     onClick={() => void startRestTimer(workoutExercise.restSeconds)}
                                   >
                                     Rest {Math.round(workoutExercise.restSeconds / 60)}m
@@ -2009,17 +2180,34 @@ export function WorkoutScreen() {
                                   const lastDoneSet = [...workoutExercise.sets].reverse().find(s => s.completed);
                                   const rirVal = lastDoneSet?.rir;
                                   if (!platesList && rirVal === undefined) return null;
+
+                                  const getPlateStyles = (plate: number) => {
+                                    const p = Number(plate);
+                                    if (p >= 45 || p === 25) return "bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30";
+                                    if (p === 35 || p === 20) return "bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30";
+                                    if (p === 25 || p === 15) return "bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30";
+                                    if (p === 10) return "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+                                    if (p === 5) return "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700";
+                                    return "bg-zinc-900/10 dark:bg-white/10 text-zinc-800 dark:text-zinc-200 border-zinc-500/30";
+                                  };
+
                                   return (
-                                    <div className="mt-2 p-3 rounded-xl bg-surface/40 border border-surface-border space-y-2 text-xs">
+                                    <div className="mt-2.5 p-3.5 rounded-xl bg-surface/40 border border-surface-border space-y-3 text-xs select-none">
                                       {platesList && platesList.length > 0 && (
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-card-border pb-2">
-                                          <div className="flex items-center gap-1.5 text-zinc-750 font-medium">
-                                            <Dumbbell size={13} className="text-emerald-450 shrink-0" />
-                                            <span>Plates/side ({activeWeight} {exUnit}):</span>
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-card-border pb-2.5">
+                                          <div className="flex items-center gap-2 text-zinc-755 font-bold">
+                                            <Dumbbell size={15} className="text-emerald-400 shrink-0" />
+                                            <span>Plates per side ({activeWeight} {exUnit}):</span>
                                           </div>
-                                          <div className="flex flex-wrap gap-1">
+                                          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end">
                                             {platesList.map((plate, idx) => (
-                                              <span key={idx} className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-xs font-bold text-foreground font-mono">
+                                              <span
+                                                key={idx}
+                                                className={cn(
+                                                  "inline-flex items-center justify-center h-8 w-8 rounded-full border text-[10px] font-black font-mono shadow-sm transition-all",
+                                                  getPlateStyles(plate)
+                                                )}
+                                              >
                                                 {plate}
                                               </span>
                                             ))}
@@ -2027,13 +2215,23 @@ export function WorkoutScreen() {
                                         </div>
                                       )}
                                       {rirVal !== undefined && (
-                                        <div className="flex items-start gap-2">
-                                          <Sparkles size={13} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                                        <div className={cn(
+                                          "flex items-start gap-2.5 p-2.5 rounded-xl border select-none transition-all duration-300",
+                                          rirVal <= 1
+                                            ? "bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 ring-1 ring-rose-500/10"
+                                            : rirVal >= 4
+                                            ? "bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/20"
+                                            : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
+                                        )}>
+                                          <Sparkles size={14} className={cn(
+                                            "mt-0.5 shrink-0",
+                                            rirVal <= 1 ? "text-rose-500" : rirVal >= 4 ? "text-sky-500" : "text-emerald-500"
+                                          )} />
                                           <div>
-                                            <p className="font-semibold text-foreground leading-tight">
-                                              Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} RIR ({rirVal}):
+                                            <p className="font-extrabold text-foreground leading-tight text-[11px] uppercase tracking-wide">
+                                              Stimulus Advisory (Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} · RIR {rirVal}):
                                             </p>
-                                            <p className="text-zinc-750 leading-relaxed mt-0.5">
+                                            <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
                                               {rirVal <= 1
                                                 ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
                                                 : rirVal >= 4
