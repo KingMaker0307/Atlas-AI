@@ -512,11 +512,11 @@ export function DashboardScreen() {
             </span>
             <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Atlas Bio-Telemetry</p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-955 dark:text-white">
             Welcome back, {profile?.name ?? "Athlete"}
           </h1>
-          <p className="text-xs text-zinc-400 flex items-center gap-1.5 pt-0.5">
-            <Calendar size={14} className="text-zinc-500" />
+          <p className="text-xs text-zinc-555 dark:text-zinc-500 flex items-center gap-1.5 pt-0.5">
+            <Calendar size={14} className="text-zinc-555 dark:text-zinc-500" />
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
@@ -529,7 +529,7 @@ export function DashboardScreen() {
                 type="button"
                 onClick={() => void setGuidedMode(true)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
                 }`}
               >
                 Guided
@@ -538,7 +538,7 @@ export function DashboardScreen() {
                 type="button"
                 onClick={() => void setGuidedMode(false)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
                 }`}
               >
                 Advanced
@@ -566,14 +566,14 @@ export function DashboardScreen() {
                       strokeLinecap="round"
                     />
                   </svg>
-                  <div className="text-center">
-                    <span className="text-lg font-black text-zinc-900 dark:text-white">{recoveryScore}</span>
-                    <span className="text-xs font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+                  <div className="text-center flex items-baseline justify-center">
+                    <span className="text-lg font-black text-zinc-955 dark:text-white leading-none">{recoveryScore}</span>
+                    <span className="text-xs font-bold text-zinc-750 dark:text-zinc-400 leading-none ml-0.5">%</span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
-                  <p className="text-sm font-bold text-zinc-900 dark:text-white leading-tight">{insight.label}</p>
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-750 dark:text-zinc-400">Recovery Score</span>
+                  <p className="text-sm font-bold text-zinc-955 dark:text-white leading-tight">{insight.label}</p>
                   <button 
                     onClick={() => setShowQuickLog(!showQuickLog)}
                     className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
@@ -601,8 +601,8 @@ export function DashboardScreen() {
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
               <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">Security & Sync Upgrade</p>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white">Upgrade to Secure Cloud Backup</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-2xl">
+            <h3 className="text-sm sm:text-base font-bold text-zinc-955 dark:text-white">Upgrade to Secure Cloud Backup</h3>
+            <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
               Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices using high-fidelity naming conventions.
             </p>
           </div>
@@ -778,7 +778,7 @@ export function DashboardScreen() {
         <Card className="p-5 border border-emerald-500/20 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-3 select-none">
             <Sparkles className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={18} />
-            <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">Getting Started Guide</h2>
+            <h2 className="text-base font-bold text-zinc-955 dark:text-white tracking-tight">Getting Started Guide</h2>
           </div>
           
           <div className="space-y-4">
@@ -793,14 +793,14 @@ export function DashboardScreen() {
               </div>
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2 select-none">
-                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-400 dark:text-zinc-500 line-through" : "text-zinc-800 dark:text-zinc-100"}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-555 dark:text-zinc-500 line-through" : "text-zinc-955 dark:text-white"}`}>
                     Activate a Workout Plan
                   </h3>
                   {isStep1Done && <span className="text-xs font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
                 </div>
                 {!isStep1Done && (
                   <>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
                       To start tracking, you need a plan. Choose an option below to set up your routine instantly:
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -832,9 +832,9 @@ export function DashboardScreen() {
                 2
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-zinc-900 dark:text-white font-bold">Start Training Session</span> to log sets.
+                <h3 className="text-xs font-bold text-zinc-955 dark:text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
+                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-zinc-955 dark:text-white font-bold">Start Training Session</span> to log sets.
                 </p>
               </div>
             </div>
@@ -845,8 +845,8 @@ export function DashboardScreen() {
                 3
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                <h3 className="text-xs font-bold text-zinc-955 dark:text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
                   After completing a workout, visit the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("progress")}>Progress</span> tab to watch your strength and consistency charts update.
                 </p>
               </div>
@@ -862,7 +862,7 @@ export function DashboardScreen() {
             <BrainCircuit size={14} className="shrink-0" />
             <span>Biomechanical System Guidance</span>
           </div>
-          <p className="text-zinc-300 leading-normal">{insight.text}</p>
+          <p className="text-zinc-750 dark:text-zinc-300 leading-normal">{insight.text}</p>
         </div>
       )}
 
@@ -873,8 +873,8 @@ export function DashboardScreen() {
             <div className="text-center space-y-4">
               <ClipboardList className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
               <div>
-                <h2 className="text-xl font-bold text-foreground">No Active Plan Established</h2>
-                <p className="text-xs text-zinc-550 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
+                <h2 className="text-xl font-bold text-zinc-955 dark:text-white">No Active Plan Established</h2>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
                   To begin logging metrics, progressive overload cycles, and streaks, create a customized program or let our AI coach build one.
                 </p>
               </div>
@@ -898,10 +898,10 @@ export function DashboardScreen() {
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     Today's Target
                   </span>
-                  <span className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase">{todayRoutine.day}</span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase">{todayRoutine.day}</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-foreground leading-tight tracking-tight">Today's Training &amp; Nutrition Target</h2>
-                <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed max-w-2xl">
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-955 dark:text-white leading-tight tracking-tight">Today's Training &amp; Nutrition Target</h2>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
                   Complete today's workout to build strength, and eat high-quality meals to fuel muscle recovery.
                 </p>
               </div>
@@ -912,11 +912,11 @@ export function DashboardScreen() {
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-mono">Workout Plan</span>
-                    <h3 className="text-sm sm:text-base font-black text-foreground">{todayRoutine.name}</h3>
-                    <p className="text-xs text-zinc-555 dark:text-zinc-450">
-                      Focus: <strong className="text-zinc-850 dark:text-zinc-955 font-bold">{todayRoutine.focus}</strong>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">{todayRoutine.name}</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400">
+                      Focus: <strong className="text-zinc-955 dark:text-white font-bold">{todayRoutine.focus}</strong>
                     </p>
-                    <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase pt-0.5">
                       {todayRoutine.exercises.length} exercises · {todayRoutine.estimatedMinutes} mins
                     </div>
                   </div>
@@ -932,12 +932,12 @@ export function DashboardScreen() {
                 {/* Column 2: Nutrition */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-450 font-mono">Daily Nutrition</span>
-                    <h3 className="text-sm sm:text-base font-black text-foreground">Nutrition &amp; Calories</h3>
-                    <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed">
-                      Target <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.protein}g protein</strong> today.
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-450 font-mono">Daily Nutrition</span>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">Nutrition &amp; Calories</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
+                      Target <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.protein}g protein</strong> today.
                     </p>
-                    <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase pt-0.5">
                       2,500 ml water · Log all meals
                     </div>
                   </div>
@@ -966,10 +966,10 @@ export function DashboardScreen() {
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                     Today's Target
                   </span>
-                  <span className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase">{todayDayName} - Rest Day</span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase">{todayDayName} - Rest Day</span>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-black text-foreground leading-tight tracking-tight">Rest, Recharge &amp; Recovery</h2>
-                <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed max-w-2xl">
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-955 dark:text-white leading-tight tracking-tight">Rest, Recharge &amp; Recovery</h2>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
                   Let your body recover from training, recharge your energy, and hit nutrition goals to stay on track.
                 </p>
               </div>
@@ -980,8 +980,8 @@ export function DashboardScreen() {
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400 font-mono">Recharge &amp; Rest</span>
-                    <h3 className="text-sm sm:text-base font-black text-foreground">Active Recovery</h3>
-                    <p className="text-xs text-zinc-555 dark:text-zinc-450">
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">Active Recovery</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400">
                       Focus on deep sleep, body relaxation, and light stretching.
                     </p>
                     <div className="flex flex-wrap gap-1.5 pt-1">
@@ -1012,12 +1012,12 @@ export function DashboardScreen() {
                 {/* Column 2: Nutrition */}
                 <div className="flex flex-col justify-between gap-4">
                   <div className="space-y-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-450 font-mono">Daily Nutrition</span>
-                    <h3 className="text-sm sm:text-base font-black text-foreground">Nutrition &amp; Energy</h3>
-                    <p className="text-xs text-zinc-555 dark:text-zinc-450 leading-relaxed">
-                      Aim for <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-850 dark:text-zinc-955 font-bold font-mono">{nutritionTargets.protein}g protein</strong> to support recovery.
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-450 font-mono">Daily Nutrition</span>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">Nutrition &amp; Energy</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
+                      Aim for <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.protein}g protein</strong> to support recovery.
                     </p>
-                    <div className="text-[10px] text-zinc-555 dark:text-zinc-450 font-bold font-mono uppercase pt-0.5">
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase pt-0.5">
                       2,500 ml water · Log all meals
                     </div>
                   </div>
@@ -1038,14 +1038,14 @@ export function DashboardScreen() {
       {/* ─── GUIDED TRACKING WALKTHROUGH (Only shown in Guided Mode) ─── */}
       {guidedMode && (
         <Card className="p-5 border border-emerald-500/10 bg-emerald-500/[0.02] space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-955 dark:text-white flex items-center gap-2">
             <ClipboardList className="text-emerald-600 dark:text-emerald-450" size={16} />
             How to Train with Atlas
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div className="space-y-1">
               <span className="font-extrabold text-emerald-600 dark:text-emerald-400">1. Select a Plan</span>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="text-zinc-750 dark:text-zinc-400 leading-relaxed">
                 {activeWorkoutPlanId 
                   ? "✓ Active plan selected. You can view or edit it anytime in the 'Plans' tab."
                   : "Go to 'Plans' or use the checklist above to activate a training plan."}
@@ -1053,13 +1053,13 @@ export function DashboardScreen() {
             </div>
             <div className="space-y-1">
               <span className="font-extrabold text-emerald-600 dark:text-emerald-400">2. Launch Session</span>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="text-zinc-750 dark:text-zinc-400 leading-relaxed">
                 Tap the green <strong>Launch Workout Session</strong> button on today's target card above to start tracking.
               </p>
             </div>
             <div className="space-y-1">
               <span className="font-extrabold text-emerald-600 dark:text-emerald-400">3. Log Sets & Save</span>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="text-zinc-750 dark:text-zinc-400 leading-relaxed">
                 Enter weight and reps for completed sets during your workout, then tap <strong>Finish Workout</strong> to save.
               </p>
             </div>
@@ -1087,7 +1087,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Streak is the count of consecutive plan-routine execution days. Keep consistent pacing to build myofibrillar habit patterns!
               </motion.div>
@@ -1112,7 +1112,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Evaluates the completed workouts against your target profile ({profile?.daysPerWeek ?? 3} days/week). Standard 30-day baseline is critical for athletic progress.
               </motion.div>
@@ -1137,7 +1137,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Total load lifted across all exercises this week (sets * reps * weight). Progressive load volume triggers mechanical tension.
               </motion.div>
@@ -1162,7 +1162,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Nervous system strain mapped from sleep, stress, and soreness variables. AI adjusts load intensities in active routines dynamically.
               </motion.div>
@@ -1187,7 +1187,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Your latest logged sleep. 7.5-9 hours is the critical physiological zone for protein synthesis and tissue restoration.
               </motion.div>
@@ -1211,16 +1211,16 @@ export function DashboardScreen() {
           </div>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-500 font-bold uppercase">Age</span>
-              <p className="font-bold text-zinc-900 dark:text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">yrs</span></p>
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Age</span>
+              <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-750 dark:text-zinc-400">yrs</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-500 font-bold uppercase">Weight</span>
-              <p className="font-bold text-zinc-900 dark:text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">{profile?.weightUnit}</span></p>
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Weight</span>
+              <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-750 dark:text-zinc-400">{profile?.weightUnit}</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-500 font-bold uppercase">Height</span>
-              <p className="font-bold text-zinc-900 dark:text-white text-sm">
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Height</span>
+              <p className="font-bold text-zinc-955 dark:text-white text-sm">
                 {profile?.height
                   ? profile.heightUnit === "in"
                     ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
@@ -1229,14 +1229,14 @@ export function DashboardScreen() {
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-500 font-bold uppercase">Target Physique</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Target Physique</span>
+              <p className="font-bold text-emerald-600 dark:text-emerald-450 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
                 {profile?.targetPhysique ?? "N/A"}
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-500 font-bold uppercase">Protein Target</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-300 text-sm">
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Protein Target</span>
+              <p className="font-bold text-emerald-600 dark:text-emerald-450 text-sm">
                 {nutritionTargets.protein ? `${nutritionTargets.protein} g/day` : "N/A"}
               </p>
             </div>
@@ -1249,15 +1249,15 @@ export function DashboardScreen() {
         <Card className="p-5 border border-card-border bg-card shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-100 dark:border-white/5 pb-4">
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">Bio-Analytics Console</h2>
-              <p className="text-xs text-zinc-400">Biological markers and load volume trendlines</p>
+              <h2 className="text-lg font-bold text-zinc-955 dark:text-white leading-tight">Bio-Analytics Console</h2>
+              <p className="text-xs text-zinc-555 dark:text-zinc-500">Biological markers and load volume trendlines</p>
             </div>
             
             {/* Custom Tabs */}
             <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
               <button
                 onClick={() => setActiveChartTab("weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"}`}
               >
                 <span className="flex items-center gap-1.5">
                   <Weight size={14} />
@@ -1266,7 +1266,7 @@ export function DashboardScreen() {
               </button>
               <button
                 onClick={() => setActiveChartTab("volume")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"}`}
               >
                 <span className="flex items-center gap-1.5">
                   <TrendingUp size={14} />
@@ -1302,7 +1302,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-555 dark:text-zinc-500 italic">
                       Requires at least two bodyweight logs to generate analytical trendlines.
                     </div>
                   )}
@@ -1331,7 +1331,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-555 dark:text-zinc-500 italic">
                       Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
                     </div>
                   )}
@@ -1348,8 +1348,8 @@ export function DashboardScreen() {
           {/* ─── DYNAMIC PLANS COLLECTION ─── */}
           <section className="space-y-3">
             <div className="flex items-center gap-2 px-1">
-              <ClipboardList size={16} className="text-zinc-500" />
-              <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Workout Programs</h2>
+              <ClipboardList size={16} className="text-zinc-555 dark:text-zinc-500" />
+              <h2 className="text-xs font-bold text-zinc-555 dark:text-zinc-500 uppercase tracking-widest">Workout Programs</h2>
             </div>
 
             {workoutPlans.map(plan => {
@@ -1382,14 +1382,14 @@ export function DashboardScreen() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{plan.name}</h3>
+                        <h3 className="text-xl font-bold text-zinc-955 dark:text-white">{plan.name}</h3>
                         {isActive && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                             Active Plan
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
+                      <p className="mt-1 text-xs leading-normal text-zinc-750 dark:text-zinc-400 max-w-sm">{plan.goal}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" aria-label="Edit workout plan" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
@@ -1409,7 +1409,7 @@ export function DashboardScreen() {
 
                   {/* Progress Indicator */}
                   <div className="mt-4 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-zinc-500 font-semibold">
+                    <div className="flex items-center justify-between text-xs text-zinc-750 dark:text-zinc-400 font-semibold">
                       <span>Weekly Routines Progress</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                     </div>
@@ -1449,7 +1449,7 @@ export function DashboardScreen() {
             {coachBusy && (
               <Card className="p-4 border border-card-border bg-card shadow flex items-center justify-center gap-3">
                 <Bot className="h-5 w-5 text-emerald-400 animate-pulse" />
-                <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Coach is designing new program...</span>
+                <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase tracking-wider">Coach is designing new program...</span>
               </Card>
             )}
           </section>
@@ -1459,7 +1459,7 @@ export function DashboardScreen() {
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
               <div className="flex items-center gap-2">
                 <Medal className="text-amber-400" size={16} />
-                <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Recent Personal Records</h2>
+                <h2 className="text-sm font-bold text-zinc-955 dark:text-white uppercase tracking-wider">Recent Personal Records</h2>
               </div>
             </div>
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3">
@@ -1467,8 +1467,8 @@ export function DashboardScreen() {
                 recentPrs.slice(0, 6).map((pr) => (
                   <Surface key={`${pr.exerciseName}-${pr.value}`} className="flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface">
                     <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-white truncate max-w-36">{pr.exerciseName}</p>
-                      <p className="text-xs text-zinc-500">{pr.date}</p>
+                      <p className="text-xs font-bold text-zinc-955 dark:text-white truncate max-w-36">{pr.exerciseName}</p>
+                      <p className="text-xs text-zinc-555 dark:text-zinc-500">{pr.date}</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold border border-amber-500/15">
                       {pr.value}
@@ -1476,7 +1476,7 @@ export function DashboardScreen() {
                   </Surface>
                 ))
               ) : (
-                <div className="col-span-full py-4 text-center text-xs text-zinc-500 italic">
+                <div className="col-span-full py-4 text-center text-xs text-zinc-555 dark:text-zinc-500 italic">
                   Perform sets in your scheduled workouts to register new personal records.
                 </div>
               )}
@@ -1494,10 +1494,10 @@ export function DashboardScreen() {
                   <span className={`text-xs font-black uppercase tracking-widest ${isLastMessageError ? 'text-red-400' : 'text-emerald-500'}`}>
                     {isLastMessageError ? "Central Link Impaired" : "Dynamic Coaching Directive"}
                   </span>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
+                  <h3 className="text-sm font-bold text-zinc-955 dark:text-white leading-snug">
                     {isLastMessageError ? "AI Coach Connection Problem" : "Today's Biomechanical Note"}
                   </h3>
-                  <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-300'}`}>
+                  <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-750 dark:text-zinc-300'}`}>
                     {lastMessage && isWorkoutPlan(lastMessage.content) ? (
                       <div className="space-y-3">
                         {(() => {
@@ -1509,7 +1509,7 @@ export function DashboardScreen() {
                             nonJson = "";
                           }
                           return nonJson ? (
-                            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-400">
+                            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-750 dark:text-zinc-400">
                               {nonJson}
                             </ReactMarkdown>
                           ) : null;
@@ -1556,8 +1556,8 @@ export function DashboardScreen() {
             }}>
               <X size={20} />
             </Button>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">Switch Active Program</h3>
-            <p className="text-zinc-300 text-xs leading-relaxed">
+            <h3 className="text-xl font-bold text-zinc-955 dark:text-white leading-tight">Switch Active Program</h3>
+            <p className="text-zinc-750 dark:text-zinc-300 text-xs leading-relaxed">
               {activeWorkout 
                 ? "Switching active plan: You currently have a workout session in progress. Switching plans now will discard your active session and wipe uncompleted tracking data. Do you want to proceed?"
                 : "Switching active plan: This will recalibrate your training metrics, weekly streaks, and consistency targets to map the new plan schedule."}
@@ -1592,8 +1592,8 @@ export function DashboardScreen() {
             }}>
               <X size={20} />
             </Button>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">Delete Workout Program</h3>
-            <p className="text-zinc-300 text-xs leading-relaxed">
+            <h3 className="text-xl font-bold text-zinc-955 dark:text-white leading-tight">Delete Workout Program</h3>
+            <p className="text-zinc-750 dark:text-zinc-300 text-xs leading-relaxed">
               {activeWorkout && activeWorkout.planId === planToDelete.id
                 ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently discard the active workout and delete this program file.`
                 : `Are you sure you want to delete the plan "${planToDelete.name}"? This action is permanent. All weekly scheduled routines and exercise layouts in this program will be deleted.`}

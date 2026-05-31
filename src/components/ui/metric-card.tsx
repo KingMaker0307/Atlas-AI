@@ -13,11 +13,11 @@ interface MetricCardProps {
 }
 
 const tones = {
-  emerald: "from-emerald-300/18 to-teal-300/5 text-emerald-200",
-  amber: "from-amber-300/18 to-yellow-300/5 text-amber-200",
-  rose: "from-rose-300/18 to-red-300/5 text-rose-200",
-  sky: "from-sky-300/18 to-cyan-300/5 text-sky-200",
-  violet: "from-violet-300/18 to-fuchsia-300/5 text-violet-200",
+  emerald: "from-emerald-500/5 to-teal-500/[0.01] border-emerald-500/15 text-emerald-600 dark:text-emerald-450",
+  amber: "from-amber-500/5 to-yellow-500/[0.01] border-amber-500/15 text-amber-600 dark:text-amber-450",
+  rose: "from-rose-500/5 to-red-500/[0.01] border-rose-500/15 text-rose-600 dark:text-rose-450",
+  sky: "from-sky-500/5 to-cyan-500/[0.01] border-sky-500/15 text-sky-600 dark:text-sky-450",
+  violet: "from-violet-500/5 to-fuchsia-500/[0.01] border-violet-500/15 text-violet-600 dark:text-violet-455",
 };
 
 export function MetricCard({
@@ -30,13 +30,28 @@ export function MetricCard({
   onClick,
 }: MetricCardProps) {
   return (
-    <Surface onClick={onClick} className={cn("bg-gradient-to-br", tones[tone], className)}>
+    <Surface
+      onClick={onClick}
+      className={cn(
+        "bg-gradient-to-br transition-all duration-300",
+        tones[tone],
+        className
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-medium uppercase tracking-[0.12em] text-zinc-500">{label}</span>
-        {icon ? <span className="text-current">{icon}</span> : null}
+        <span className="text-xs font-bold uppercase tracking-[0.08em] text-zinc-750 dark:text-zinc-400">
+          {label}
+        </span>
+        {icon ? <span className="text-current shrink-0">{icon}</span> : null}
       </div>
-      <div className="mt-3 text-xl sm:text-2xl font-semibold tracking-normal text-white">{value}</div>
-      {detail ? <div className="mt-1 text-sm text-zinc-400">{detail}</div> : null}
+      <div className="mt-3 text-xl sm:text-2xl font-black tracking-tight text-zinc-955 dark:text-white">
+        {value}
+      </div>
+      {detail ? (
+        <div className="mt-1.5 text-xs font-medium text-zinc-555 dark:text-zinc-500">
+          {detail}
+        </div>
+      ) : null}
     </Surface>
   );
 }
