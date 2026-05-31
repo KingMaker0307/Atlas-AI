@@ -424,13 +424,20 @@ const AddFoodModal: FC<{
     }
   };
 
-  // Custom fields
+  // Custom macro fields
   const [customName, setCustomName] = useState("");
   const [customCal, setCustomCal] = useState("");
   const [customProtein, setCustomProtein] = useState("");
   const [customCarbs, setCustomCarbs] = useState("");
   const [customFat, setCustomFat] = useState("");
   const [customFiber, setCustomFiber] = useState("");
+  // Custom micronutrient fields
+  const [customSugar, setCustomSugar] = useState("");
+  const [customSodium, setCustomSodium] = useState("");
+  const [customPotassium, setCustomPotassium] = useState("");
+  const [customVitaminC, setCustomVitaminC] = useState("");
+  const [customCalcium, setCustomCalcium] = useState("");
+  const [customIron, setCustomIron] = useState("");
 
   const aiProviders = useAtlasStore((s) => s.aiProviders || []);
   const activeProviderId = useAtlasStore((s) => s.activeProviderId);
@@ -474,25 +481,38 @@ const AddFoodModal: FC<{
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
       const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
 
-      // STRICT system prompt used for both text and image analysis
-      const strictSystemPrompt = `You are a precision clinical nutrition extraction engine.
-Your ONLY job is to return a valid JSON object containing nutritional estimates for a single standard serving of the food described or shown.
+      // STRICT system prompt — full micronutrient extraction + non-food detection
+      const strictSystemPrompt = `You are a precision clinical nutrition AI for a fitness tracking app.
+Your ONLY job: return a valid JSON object with complete nutritional data for the described or shown food.
 
 STRICT RULES:
-1. Return ONLY a raw JSON object — no markdown fences, no prose, no explanation.
-2. All values must be non-negative numbers. Use 0 if a micronutrient is unknown.
-3. Estimate for ONE standard serving (e.g. 1 piece, 1 cup, 1 slice as appropriate).
-4. If the image and name conflict, prioritize what is visually apparent in the image.
-5. If the food is unidentifiable, return: {"error": "unidentifiable"}
+1. Return ONLY a raw JSON object. No markdown fences, no prose, no explanation whatsoever.
+2. All numeric values must be non-negative. Use 0 only if a nutrient is genuinely absent or unknown.
+3. Estimate for ONE standard serving as would appear on a nutrition label (e.g. 1 slice, 1 cup, 100g, 1 medium piece).
+4. If BOTH an image and text description are provided: use the image as primary truth for portion/ingredients, use the text as a label hint only.
+5. For composite dishes (e.g. butter chicken with rice, pad thai, burrito bowl): decompose all visible/described ingredients, estimate each component, sum totals. Do not guess — derive from ingredient analysis.
+6. CRITICAL — If the content is NOT a food or edible beverage (e.g. supplements that are clearly not food, gym equipment, objects, body parts, clothing, text/labels only): return {"error": "not_food", "reason": "<one sentence>"}.
+7. If the food is genuinely unidentifiable even with image+text: return {"error": "unidentifiable"}.
+8. Do NOT invent data. If a micronutrient is unknown, set it to 0.
 
-Required JSON schema (no extra keys):
+Required JSON schema — ALL keys required, no extra keys:
 {
+  "name": string,
+  "serving_note": string,
   "calories": number,
   "protein": number,
   "carbs": number,
   "fat": number,
-  "fiber": number
-}`;
+  "fiber": number,
+  "sugar": number,
+  "sodium": number,
+  "potassium": number,
+  "vitaminC": number,
+  "calcium": number,
+  "iron": number
+}
+
+Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassium/calcium/iron/vitaminC=milligrams.`;
 
       let rawContent: string;
 
@@ -501,8 +521,8 @@ Required JSON schema (no extra keys):
         const base64 = customImageDataUrl.split(",")[1];
         const mime = customImageMime;
         const userText = customName.trim()
-          ? `Analyze the food shown in this image. The user also labeled it: "${customName}". Provide nutritional estimates for one standard serving as described in the system instructions.`
-          : `Analyze the food shown in this image. Provide nutritional estimates for one standard serving as described in the system instructions.`;
+          ? `Analyze the food shown in this image. The user labeled it: "${customName}". Use both the image and label together to determine the food, portion, and all nutritional values. Follow the system instructions exactly.`
+          : `Analyze the food shown in this image. Identify what food it is, estimate the portion size, and return complete nutritional data as specified in the system instructions.`;
 
         if (activeProvider.type === "gemini") {
           const baseUrl = (activeProvider.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
@@ -595,16 +615,60 @@ Required JSON schema (no extra keys):
           rawContent = body.choices?.[0]?.message?.content ?? "";
         }
 
+      } else if (customImageDataUrl && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio")) {
+        // ── Local vision path: Ollama/LM Studio with llava or similar multimodal model ──
+        const base64 = customImageDataUrl.split(",")[1];
+        const mime = customImageMime;
+        const userText = customName.trim()
+          ? `Analyze the food shown in this image. The user labeled it: "${customName}". Return full nutritional JSON as instructed.`
+          : `Analyze the food shown in this image. Return full nutritional JSON as instructed.`;
+        const baseUrl = (activeProvider.baseUrl || "http://localhost:11434").replace(/\/$/, "");
+        // Try Ollama's generate API with images array (works with llava, bakllava, moondream, etc.)
+        const res = await fetch(`${baseUrl}/api/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: activeProvider.model,
+            prompt: `${strictSystemPrompt}\n\nUser: ${userText}`,
+            images: [base64],
+            stream: false,
+            format: "json",
+          }),
+        }).catch(() => null);
+        if (res && res.ok) {
+          const body = await res.json() as { response?: string };
+          rawContent = body.response ?? "";
+        } else {
+          // Fallback: text-only if model doesn't support vision
+          const adapter = getProviderAdapter(activeProvider.type);
+          const { content } = await adapter.chat({
+            provider: activeProvider,
+            apiKey,
+            messages: [{
+              id: `autofill-${Date.now()}`,
+              role: "user",
+              content: customName.trim()
+                ? `Estimate complete nutritional values for: "${customName}". Note: an image was provided but your model may not support vision — estimate from the name only.`
+                : `Cannot analyze image without vision support. Please describe the food.`,
+              createdAt: new Date().toISOString(),
+            }],
+            systemContext: strictSystemPrompt,
+          });
+          rawContent = content;
+        }
       } else {
         // ── Text-only path: use the standard adapter ─────────────────────────
         const adapter = getProviderAdapter(activeProvider.type);
+        const descriptionPrompt = customName.trim()
+          ? `Estimate complete nutritional values for this food: "${customName}". Think carefully about the typical serving size and all nutrient components including micronutrients.`
+          : `Estimate complete nutritional values for a typical serving of food.`;
         const { content } = await adapter.chat({
           provider: activeProvider,
           apiKey,
           messages: [{
             id: `autofill-${Date.now()}`,
             role: "user",
-            content: `Estimate nutritional values for: "${customName}"`,
+            content: descriptionPrompt,
             createdAt: new Date().toISOString(),
           }],
           systemContext: strictSystemPrompt,
@@ -621,15 +685,36 @@ Required JSON schema (no extra keys):
       if (jsonMatch) cleanContent = jsonMatch[0];
 
       const parsed = JSON.parse(cleanContent);
-      if (parsed?.error) {
-        throw new Error("Could not identify the food. Please type a food name or try a clearer image.");
+
+      // Non-food detection
+      if (parsed?.error === "not_food") {
+        const reason = parsed.reason ? ` (${parsed.reason})` : "";
+        throw new Error(`This doesn't appear to be a food item${reason}. Please photograph or describe an actual food or beverage.`);
       }
+      if (parsed?.error) {
+        throw new Error("Could not identify the food. Please type a clearer food name or use a sharper, well-lit image of the food.");
+      }
+
       if (parsed) {
-        if (parsed.calories !== undefined) setCustomCal(String(Math.round(parsed.calories)));
-        if (parsed.protein !== undefined) setCustomProtein(String(Number(parsed.protein).toFixed(1)));
-        if (parsed.carbs !== undefined) setCustomCarbs(String(Number(parsed.carbs).toFixed(1)));
-        if (parsed.fat !== undefined) setCustomFat(String(Number(parsed.fat).toFixed(1)));
-        if (parsed.fiber !== undefined) setCustomFiber(String(Number(parsed.fiber || 0).toFixed(1)));
+        // Auto-fill name if blank and AI returned one
+        if (!customName.trim() && parsed.name) setCustomName(String(parsed.name));
+        // Macros
+        if (parsed.calories !== undefined) setCustomCal(String(Math.round(Math.max(0, parsed.calories))));
+        if (parsed.protein !== undefined) setCustomProtein(String(Math.max(0, Number(parsed.protein)).toFixed(1)));
+        if (parsed.carbs !== undefined) setCustomCarbs(String(Math.max(0, Number(parsed.carbs)).toFixed(1)));
+        if (parsed.fat !== undefined) setCustomFat(String(Math.max(0, Number(parsed.fat)).toFixed(1)));
+        if (parsed.fiber !== undefined) setCustomFiber(String(Math.max(0, Number(parsed.fiber || 0)).toFixed(1)));
+        // Micronutrients
+        if (parsed.sugar !== undefined) setCustomSugar(String(Math.max(0, Number(parsed.sugar || 0)).toFixed(1)));
+        if (parsed.sodium !== undefined) setCustomSodium(String(Math.round(Math.max(0, parsed.sodium || 0))));
+        if (parsed.potassium !== undefined) setCustomPotassium(String(Math.round(Math.max(0, parsed.potassium || 0))));
+        if (parsed.vitaminC !== undefined) setCustomVitaminC(String(Math.max(0, Number(parsed.vitaminC || 0)).toFixed(1)));
+        if (parsed.calcium !== undefined) setCustomCalcium(String(Math.round(Math.max(0, parsed.calcium || 0))));
+        if (parsed.iron !== undefined) setCustomIron(String(Math.max(0, Number(parsed.iron || 0)).toFixed(1)));
+        // Show serving note as a transient hint if present
+        if (parsed.serving_note) {
+          setAutofillError(`ℹ️ ${parsed.serving_note}`);
+        }
       }
     } catch (err: any) {
       console.error("AI Autofill failed:", err);
@@ -800,12 +885,12 @@ Required JSON schema (no extra keys):
         carbs: +((parseFloat(customCarbs) || 0) * qty).toFixed(1),
         fat: +((parseFloat(customFat) || 0) * qty).toFixed(1),
         fiber: +((parseFloat(customFiber) || 0) * qty).toFixed(1),
-        sugar: 0,
-        sodium: 0,
-        potassium: 0,
-        vitaminC: 0,
-        calcium: 0,
-        iron: 0,
+        sugar: +((parseFloat(customSugar) || 0) * qty).toFixed(1),
+        sodium: Math.round((parseFloat(customSodium) || 0) * qty),
+        potassium: Math.round((parseFloat(customPotassium) || 0) * qty),
+        vitaminC: +((parseFloat(customVitaminC) || 0) * qty).toFixed(1),
+        calcium: Math.round((parseFloat(customCalcium) || 0) * qty),
+        iron: +((parseFloat(customIron) || 0) * qty).toFixed(1),
       };
       onAdd(entry);
       onClose();
@@ -1177,7 +1262,23 @@ Required JSON schema (no extra keys):
                         </div>
                       ) : (
                         <>
-                          {liveResults.map((food, index) => {
+                          {/* Deduplicate results: keep the entry with most complete data per name+brand pair */}
+                          {(() => {
+                            const seen = new Map<string, CommonFoodItem>();
+                            for (const food of liveResults) {
+                              const dedupeKey = `${food.name.toLowerCase().trim()}_${(food.brand || "").toLowerCase().trim()}`;
+                              const existing = seen.get(dedupeKey);
+                              if (!existing) {
+                                seen.set(dedupeKey, food);
+                              } else {
+                                // Keep whichever entry has more complete micronutrient data
+                                const existingScore = [existing.sodium, existing.potassium, existing.vitaminC, existing.calcium, existing.iron].filter(v => v > 0).length;
+                                const newScore = [food.sodium, food.potassium, food.vitaminC, food.calcium, food.iron].filter(v => v > 0).length;
+                                if (newScore > existingScore) seen.set(dedupeKey, food);
+                              }
+                            }
+                            const dedupedResults = Array.from(seen.values());
+                            return dedupedResults.map((food, index) => {
                             const isChecked = !!selectedItems[getItemKey(food)];
                             const itemKey = food.code ? `live-${food.code}` : `live-${food.name}-${food.brand}-${index}`;
                             return (
@@ -1221,7 +1322,8 @@ Required JSON schema (no extra keys):
                                 </div>
                               </button>
                             );
-                          })}
+                            });
+                          })()}
                           {liveResults.length === 0 && (
                             <p className="text-xs text-center text-zinc-500 py-4">No branded products found. Try typing another query.</p>
                           )}
@@ -1475,7 +1577,11 @@ Required JSON schema (no extra keys):
                   onChange={(e) => setCustomName(e.target.value)}
                 />
                 {autofillError && (
-                  <p className="mt-1 text-[10px] font-medium text-rose-600 dark:text-rose-455">{autofillError}</p>
+                  <p className={`mt-1 text-[10px] font-medium ${
+                    autofillError.startsWith("ℹ️")
+                      ? "text-blue-600 dark:text-blue-400"
+                      : "text-rose-600 dark:text-rose-455"
+                  }`}>{autofillError}</p>
                 )}
               </div>
 
@@ -1483,9 +1589,9 @@ Required JSON schema (no extra keys):
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { label: "Calories (kcal) *", id: "customCal", value: customCal, set: setCustomCal, placeholder: "e.g. 350" },
-                  { label: "Protein (g) *", id: "customProtein", value: customProtein, set: setCustomProtein, placeholder: "e.g. 30" },
-                  { label: "Carbs (g) *", id: "customCarbs", value: customCarbs, set: setCustomCarbs, placeholder: "e.g. 45" },
-                  { label: "Fat (g) *", id: "customFat", value: customFat, set: setCustomFat, placeholder: "e.g. 12" },
+                  { label: "Protein (g)", id: "customProtein", value: customProtein, set: setCustomProtein, placeholder: "e.g. 30" },
+                  { label: "Carbs (g)", id: "customCarbs", value: customCarbs, set: setCustomCarbs, placeholder: "e.g. 45" },
+                  { label: "Fat (g)", id: "customFat", value: customFat, set: setCustomFat, placeholder: "e.g. 12" },
                   { label: "Fiber (g)", id: "customFiber", value: customFiber, set: setCustomFiber, placeholder: "e.g. 5" },
                 ].map((f) => (
                   <div key={f.id}>
@@ -1494,6 +1600,35 @@ Required JSON schema (no extra keys):
                   </div>
                 ))}
               </div>
+
+              {/* ── Micronutrients (collapsible, auto-opened when AI fills them) ── */}
+              {(() => {
+                const hasMicros = customSugar || customSodium || customPotassium || customVitaminC || customCalcium || customIron;
+                return (
+                  <details open={!!hasMicros} className="group">
+                    <summary className="flex items-center gap-1.5 cursor-pointer list-none select-none py-1">
+                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Advanced Nutrients</span>
+                      <span className="ml-auto text-[9px] font-bold text-emerald-600 dark:text-emerald-400 group-open:hidden">+ Show</span>
+                      <span className="ml-auto text-[9px] font-bold text-zinc-500 hidden group-open:inline">− Hide</span>
+                    </summary>
+                    <div className="grid grid-cols-2 gap-2.5 mt-2">
+                      {[
+                        { label: "Sugar (g)", id: "customSugar", value: customSugar, set: setCustomSugar, placeholder: "e.g. 8" },
+                        { label: "Sodium (mg)", id: "customSodium", value: customSodium, set: setCustomSodium, placeholder: "e.g. 320" },
+                        { label: "Potassium (mg)", id: "customPotassium", value: customPotassium, set: setCustomPotassium, placeholder: "e.g. 400" },
+                        { label: "Vitamin C (mg)", id: "customVitaminC", value: customVitaminC, set: setCustomVitaminC, placeholder: "e.g. 15" },
+                        { label: "Calcium (mg)", id: "customCalcium", value: customCalcium, set: setCustomCalcium, placeholder: "e.g. 200" },
+                        { label: "Iron (mg)", id: "customIron", value: customIron, set: setCustomIron, placeholder: "e.g. 2" },
+                      ].map((f) => (
+                        <div key={f.id}>
+                          <label className="text-[10px] font-bold text-zinc-750 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
+                          <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                );
+              })()}
             </div>
           )}
 
