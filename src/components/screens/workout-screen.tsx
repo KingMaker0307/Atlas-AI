@@ -1220,10 +1220,10 @@ export function WorkoutScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="space-y-4 pb-32 pt-[calc(5.5rem+env(safe-area-inset-top))]"
+      className="space-y-4 pb-32 pt-2"
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
-      <Card className="fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-20 px-3 py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
+      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 px-3 py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-2 max-w-5xl mx-auto">
           <div className="flex items-center gap-2 min-w-0">
             <Button
@@ -1359,7 +1359,7 @@ export function WorkoutScreen() {
       </Card>
 
       {/* Active Workout Exercises mapping — smart accordion flow */}
-      <div className="space-y-3 max-w-2xl mx-auto px-3 sm:px-4">
+      <div className="space-y-3 w-full max-w-5xl mx-auto px-0 sm:px-4">
         {activeWorkout.exercises.map((workoutExercise, exerciseIndex) => {
           const exercise = getExerciseById(workoutExercise.exerciseId);
           if (!exercise) {
@@ -1467,7 +1467,7 @@ export function WorkoutScreen() {
               ref={el => { exerciseCardRefs.current[exerciseIndex] = el; }}
             >
               <Card
-                className={`transition-all duration-300 relative overflow-hidden ${
+                className={`transition-all duration-300 relative overflow-hidden rounded-none sm:rounded-2xl border-x-0 sm:border-x ${
                   isSkipped
                     ? "opacity-50 border-dashed bg-surface/30 border-surface-border"
                     : allSetsCompleted && !isExpanded

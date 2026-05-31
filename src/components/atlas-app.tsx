@@ -212,35 +212,42 @@ export function AtlasApp() {
       </aside>
 
       {/* ─── MOBILE BRAND TOP HEADER (Hidden on desktop) ─── */}
-      <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
-        <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-955">
-              A
+      {activeSubScreen !== "active-workout" && (
+        <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
+          <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-955">
+                A
+              </div>
+              <div>
+                <p className="text-sm font-semibold leading-none text-foreground">Atlas AI Coach</p>
+                <p className="mt-1 text-xs text-zinc-500">Private fitness intelligence</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold leading-none text-foreground">Atlas AI Coach</p>
-              <p className="mt-1 text-xs text-zinc-500">Private fitness intelligence</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                aria-label="Toggle display theme"
+              >
+                {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+              <OfflineIndicator />
+              <InstallPrompt />
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
-              className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
-              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-              aria-label="Toggle display theme"
-            >
-              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
-            <OfflineIndicator />
-            <InstallPrompt />
-          </div>
-        </header>
-      </div>
+          </header>
+        </div>
+      )}
 
       {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
-      <main className="mx-auto w-full max-w-6xl px-4 pt-[calc(5rem+env(safe-area-inset-top))] md:px-8 md:pt-[calc(2rem+env(safe-area-inset-top))] md:pb-8">
+      <main className={cn(
+        "mx-auto w-full max-w-6xl md:pb-8",
+        activeSubScreen === "active-workout"
+          ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16"
+          : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-[calc(2rem+env(safe-area-inset-top))]"
+      )}>
         <AnimatePresence mode="wait">
           {activeSubScreen ? (
             renderSubScreen()
