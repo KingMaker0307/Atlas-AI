@@ -680,25 +680,27 @@ export function DashboardScreen() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="w-full overflow-hidden keep-dark"
+            className="w-full overflow-hidden"
           >
-            <Card className="p-5 border-emerald-500/20 bg-emerald-950/5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <Card className="p-5 border border-emerald-500/25 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-950/10 space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-white/5 pb-2">
                 <div className="flex items-center gap-2">
-                  <Heart size={16} className="text-emerald-450 animate-pulse" />
-                  <h3 className="font-bold text-white-keep text-sm">Bio-Telemetry Recovery Log</h3>
+                  <Heart size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                  <h3 className="font-bold text-zinc-900 dark:text-white text-sm">Bio-Telemetry Recovery Log</h3>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-white" onClick={() => setShowQuickLog(false)}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setShowQuickLog(false)}>
                   <X size={16} />
                 </Button>
               </div>
 
+              {/* Sliders Grid */}
               <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                 {/* Sleep Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Sleep Duration</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSleep} Hours</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Sleep Duration</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logSleep} hrs</span>
                   </div>
                   <input
                     type="range"
@@ -707,15 +709,15 @@ export function DashboardScreen() {
                     step="0.5"
                     value={logSleep}
                     onChange={(e) => setLogSleep(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
                 </div>
 
                 {/* Soreness Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Muscle Soreness</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSoreness}/10 (High = Pain)</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Muscle Soreness</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logSoreness}/10</span>
                   </div>
                   <input
                     type="range"
@@ -724,15 +726,16 @@ export function DashboardScreen() {
                     step="1"
                     value={logSoreness}
                     onChange={(e) => setLogSoreness(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more pain</p>
                 </div>
 
                 {/* Stress Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Systemic Stress</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logStress}/10 (High = Stressed)</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Systemic Stress</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logStress}/10</span>
                   </div>
                   <input
                     type="range"
@@ -741,15 +744,16 @@ export function DashboardScreen() {
                     step="1"
                     value={logStress}
                     onChange={(e) => setLogStress(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more stressed</p>
                 </div>
 
                 {/* Nervous Energy Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Nervous Energy</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logEnergy}/10 (High = Energetic)</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Nervous Energy</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logEnergy}/10</span>
                   </div>
                   <input
                     type="range"
@@ -758,17 +762,19 @@ export function DashboardScreen() {
                     step="1"
                     value={logEnergy}
                     onChange={(e) => setLogEnergy(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more energetic</p>
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
+              {/* Footer */}
+              <div className="flex gap-2 justify-end pt-2 border-t border-emerald-200/60 dark:border-white/5">
                 <Button variant="secondary" size="sm" onClick={() => setShowQuickLog(false)}>
                   Cancel
                 </Button>
-                <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold">
-                  Log Recovery metrics
+                <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white font-bold">
+                  Log Recovery
                 </Button>
               </div>
             </Card>

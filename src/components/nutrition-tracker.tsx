@@ -432,6 +432,213 @@ const AddFoodModal: FC<{
   const [customFat, setCustomFat] = useState("");
   const [customFiber, setCustomFiber] = useState("");
 
+  const aiProviders = useAtlasStore((s) => s.aiProviders || []);
+  const activeProviderId = useAtlasStore((s) => s.activeProviderId);
+
+  const [isAutofilling, setIsAutofilling] = useState(false);
+  const [autofillError, setAutofillError] = useState<string | null>(null);
+  const [customImageDataUrl, setCustomImageDataUrl] = useState<string | null>(null);
+  const [customImageMime, setCustomImageMime] = useState<string>("image/jpeg");
+
+  // ─── Image picker helper ──────────────────────────────────────
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCustomImageMime(file.type || "image/jpeg");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setCustomImageDataUrl(result);
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  };
+
+  // ─── AI Autofill (text + optional image) ─────────────────────
+  const handleAiAutofill = async () => {
+    if (!customName.trim() && !customImageDataUrl) return;
+    setIsAutofilling(true);
+    setAutofillError(null);
+
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const hasAi = activeProvider && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio" || !!activeProvider.apiKey);
+
+    if (!hasAi) {
+      setAutofillError("AI is not configured. Please set up an API provider in Settings.");
+      setIsAutofilling(false);
+      return;
+    }
+
+    try {
+      const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+
+      // STRICT system prompt used for both text and image analysis
+      const strictSystemPrompt = `You are a precision clinical nutrition extraction engine.
+Your ONLY job is to return a valid JSON object containing nutritional estimates for a single standard serving of the food described or shown.
+
+STRICT RULES:
+1. Return ONLY a raw JSON object — no markdown fences, no prose, no explanation.
+2. All values must be non-negative numbers. Use 0 if a micronutrient is unknown.
+3. Estimate for ONE standard serving (e.g. 1 piece, 1 cup, 1 slice as appropriate).
+4. If the image and name conflict, prioritize what is visually apparent in the image.
+5. If the food is unidentifiable, return: {"error": "unidentifiable"}
+
+Required JSON schema (no extra keys):
+{
+  "calories": number,
+  "protein": number,
+  "carbs": number,
+  "fat": number,
+  "fiber": number
+}`;
+
+      let rawContent: string;
+
+      if (customImageDataUrl && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
+        // ── Vision path: call the provider API directly with image inline data ──
+        const base64 = customImageDataUrl.split(",")[1];
+        const mime = customImageMime;
+        const userText = customName.trim()
+          ? `Analyze the food shown in this image. The user also labeled it: "${customName}". Provide nutritional estimates for one standard serving as described in the system instructions.`
+          : `Analyze the food shown in this image. Provide nutritional estimates for one standard serving as described in the system instructions.`;
+
+        if (activeProvider.type === "gemini") {
+          const baseUrl = (activeProvider.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
+          const res = await fetch(
+            `${baseUrl}/models/${activeProvider.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: strictSystemPrompt }] },
+                generationConfig: { temperature: 0.1 },
+                contents: [{
+                  role: "user",
+                  parts: [
+                    { inlineData: { mimeType: mime, data: base64 } },
+                    { text: userText },
+                  ],
+                }],
+              }),
+            }
+          );
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({})) as { error?: { message?: string } };
+            throw new Error(errBody.error?.message || `Gemini Vision error ${res.status}`);
+          }
+          const body = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+          rawContent = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+
+        } else if (activeProvider.type === "anthropic") {
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: activeProvider.model || "claude-3-5-sonnet-latest",
+              max_tokens: 256,
+              system: strictSystemPrompt,
+              messages: [{
+                role: "user",
+                content: [
+                  { type: "image", source: { type: "base64", media_type: mime, data: base64 } },
+                  { type: "text", text: userText },
+                ],
+              }],
+            }),
+          });
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({})) as { error?: { message?: string } };
+            throw new Error(errBody.error?.message || `Anthropic Vision error ${res.status}`);
+          }
+          const body = await res.json() as { content?: Array<{ type: string; text?: string }> };
+          rawContent = body.content?.find((c) => c.type === "text")?.text ?? "";
+
+        } else {
+          // OpenAI / OpenRouter — both use the OpenAI messages format
+          const baseUrl = activeProvider.type === "openrouter"
+            ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
+            : (activeProvider.baseUrl || "https://api.openai.com/v1");
+          const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+              ...(activeProvider.type === "openrouter" ? { "HTTP-Referer": "https://atlas-ai.app" } : {}),
+            },
+            body: JSON.stringify({
+              model: activeProvider.model || "gpt-4o-mini",
+              max_tokens: 256,
+              temperature: 0.1,
+              messages: [
+                { role: "system", content: strictSystemPrompt },
+                {
+                  role: "user",
+                  content: [
+                    { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+                    { type: "text", text: userText },
+                  ],
+                },
+              ],
+            }),
+          });
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({})) as { error?: { message?: string } };
+            throw new Error(errBody.error?.message || `Vision API error ${res.status}`);
+          }
+          const body = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+          rawContent = body.choices?.[0]?.message?.content ?? "";
+        }
+
+      } else {
+        // ── Text-only path: use the standard adapter ─────────────────────────
+        const adapter = getProviderAdapter(activeProvider.type);
+        const { content } = await adapter.chat({
+          provider: activeProvider,
+          apiKey,
+          messages: [{
+            id: `autofill-${Date.now()}`,
+            role: "user",
+            content: `Estimate nutritional values for: "${customName}"`,
+            createdAt: new Date().toISOString(),
+          }],
+          systemContext: strictSystemPrompt,
+        });
+        rawContent = content;
+      }
+
+      // ── Parse the JSON response ───────────────────────────────────────────
+      let cleanContent = rawContent.trim();
+      const fenceMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) cleanContent = fenceMatch[1].trim();
+
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleanContent = jsonMatch[0];
+
+      const parsed = JSON.parse(cleanContent);
+      if (parsed?.error) {
+        throw new Error("Could not identify the food. Please type a food name or try a clearer image.");
+      }
+      if (parsed) {
+        if (parsed.calories !== undefined) setCustomCal(String(Math.round(parsed.calories)));
+        if (parsed.protein !== undefined) setCustomProtein(String(Number(parsed.protein).toFixed(1)));
+        if (parsed.carbs !== undefined) setCustomCarbs(String(Number(parsed.carbs).toFixed(1)));
+        if (parsed.fat !== undefined) setCustomFat(String(Number(parsed.fat).toFixed(1)));
+        if (parsed.fiber !== undefined) setCustomFiber(String(Number(parsed.fiber || 0).toFixed(1)));
+      }
+    } catch (err: any) {
+      console.error("AI Autofill failed:", err);
+      setAutofillError(err.message || "Failed to query AI helper.");
+    } finally {
+      setIsAutofilling(false);
+    }
+  };
+
   const filtered = COMMON_FOODS.filter((f) =>
     f.name.toLowerCase().includes(search.toLowerCase()) ||
     (f.aliases && f.aliases.some((alias) => alias.toLowerCase().includes(search.toLowerCase())))
@@ -1191,10 +1398,88 @@ const AddFoodModal: FC<{
             </>
           ) : (
             <div className="space-y-3">
+              {/* ── Image Upload for AI Vision ─────────────────────────── */}
               <div>
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1 block" htmlFor="customName">Food Name *</label>
-                <input id="customName" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder="e.g. Homemade curry" value={customName} onChange={(e) => setCustomName(e.target.value)} />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Photo (optional)</label>
+                  {customImageDataUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomImageDataUrl(null)}
+                      className="text-[10px] font-bold text-rose-500 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {customImageDataUrl ? (
+                  <div className="relative w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800" style={{ height: 100 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={customImageDataUrl} alt="Food preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                    <div className="absolute bottom-1.5 left-2 flex items-center gap-1">
+                      <Sparkles size={9} className="text-emerald-300" />
+                      <span className="text-[9px] font-bold text-white/90">AI will analyze this image</span>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="customFoodImage"
+                    className="flex flex-col items-center justify-center gap-1.5 w-full h-[72px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all"
+                  >
+                    <Camera size={18} className="text-zinc-400 dark:text-zinc-500" />
+                    <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Upload food photo for AI analysis</span>
+                    <span className="text-[9px] text-zinc-400 dark:text-zinc-500">JPG, PNG, HEIC supported</span>
+                  </label>
+                )}
+                <input
+                  id="customFoodImage"
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={handleImagePick}
+                />
               </div>
+
+              {/* ── Food Name ──────────────────────────────────────────── */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-bold text-zinc-700 dark:text-zinc-200" htmlFor="customName">Food Name {!customImageDataUrl && "*"}</label>
+                  {(customName.trim().length >= 3 || customImageDataUrl) && (
+                    <button
+                      type="button"
+                      disabled={isAutofilling}
+                      onClick={handleAiAutofill}
+                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none"
+                    >
+                      {isAutofilling ? (
+                        <>
+                          <div className="h-2.5 w-2.5 border border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                          <span>{customImageDataUrl ? "Analyzing image..." : "Estimating..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={10} />
+                          <span>{customImageDataUrl ? "Analyze with AI" : "Autofill with AI"}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <input
+                  id="customName"
+                  className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500"
+                  placeholder={customImageDataUrl ? "e.g. Homemade curry (optional)" : "e.g. Homemade curry"}
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                />
+                {autofillError && (
+                  <p className="mt-1 text-[10px] font-medium text-rose-600 dark:text-rose-455">{autofillError}</p>
+                )}
+              </div>
+
+              {/* ── Macro Fields ─────────────────────────────────────── */}
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { label: "Calories (kcal) *", id: "customCal", value: customCal, set: setCustomCal, placeholder: "e.g. 350" },
