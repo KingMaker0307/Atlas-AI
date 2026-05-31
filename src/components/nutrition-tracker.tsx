@@ -35,6 +35,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { calculateNutritionTargets, DEFAULT_TARGETS } from "@/lib/calculators";
+import { decryptString } from "@/lib/security/crypto";
+import { getProviderAdapter } from "@/providers";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface NutritionEntry {
@@ -64,22 +66,88 @@ interface WaterLogEntry {
 }
 
 // Common foods database for quick-add
-const COMMON_FOODS: Omit<NutritionEntry, "id" | "meal" | "timestamp" | "servingSize">[] = [
-  { name: "Chicken Breast (cooked)", calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, potassium: 256, vitaminC: 0, calcium: 15, iron: 1.0, servingUnit: "100g" },
-  { name: "Brown Rice (cooked)", calories: 216, protein: 5, carbs: 45, fat: 1.8, fiber: 3.5, sugar: 0.7, sodium: 10, potassium: 154, vitaminC: 0, calcium: 20, iron: 1.0, servingUnit: "1 cup" },
-  { name: "Whole Egg", calories: 72, protein: 6, carbs: 0.4, fat: 5, fiber: 0, sugar: 0.2, sodium: 71, potassium: 69, vitaminC: 0, calcium: 28, iron: 0.9, servingUnit: "1 large" },
-  { name: "Greek Yogurt (0%)", calories: 100, protein: 17, carbs: 6, fat: 0.7, fiber: 0, sugar: 6, sodium: 55, potassium: 240, vitaminC: 0, calcium: 200, iron: 0.1, servingUnit: "170g" },
-  { name: "Banana", calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1, sugar: 14, sodium: 1, potassium: 422, vitaminC: 10, calcium: 6, iron: 0.3, servingUnit: "1 medium" },
-  { name: "Almonds", calories: 164, protein: 6, carbs: 6, fat: 14, fiber: 3.5, sugar: 1.2, sodium: 0, potassium: 208, vitaminC: 0, calcium: 75, iron: 1.1, servingUnit: "28g" },
-  { name: "Salmon (grilled)", calories: 208, protein: 29, carbs: 0, fat: 9, fiber: 0, sugar: 0, sodium: 59, potassium: 628, vitaminC: 0, calcium: 13, iron: 0.9, servingUnit: "100g" },
-  { name: "Sweet Potato", calories: 103, protein: 2.3, carbs: 24, fat: 0.1, fiber: 3.8, sugar: 7.4, sodium: 41, potassium: 542, vitaminC: 23, calcium: 39, iron: 0.8, servingUnit: "1 medium" },
-  { name: "Oats (dry)", calories: 150, protein: 5, carbs: 27, fat: 3, fiber: 4, sugar: 1, sodium: 0, potassium: 164, vitaminC: 0, calcium: 21, iron: 2.1, servingUnit: "40g" },
-  { name: "Broccoli (steamed)", calories: 55, protein: 3.7, carbs: 11, fat: 0.6, fiber: 5.1, sugar: 2.6, sodium: 64, potassium: 457, vitaminC: 135, calcium: 62, iron: 1.1, servingUnit: "1 cup" },
-  { name: "Cottage Cheese (2%)", calories: 206, protein: 28, carbs: 8, fat: 4.4, fiber: 0, sugar: 6, sodium: 746, potassium: 297, vitaminC: 0, calcium: 187, iron: 0.4, servingUnit: "1 cup" },
-  { name: "Whole Milk", calories: 149, protein: 8, carbs: 12, fat: 8, fiber: 0, sugar: 12, sodium: 105, potassium: 322, vitaminC: 0, calcium: 276, iron: 0.1, servingUnit: "240ml" },
-  { name: "Tuna (canned)", calories: 109, protein: 25, carbs: 0, fat: 0.5, fiber: 0, sugar: 0, sodium: 287, potassium: 267, vitaminC: 0, calcium: 11, iron: 1.3, servingUnit: "100g" },
-  { name: "Avocado", calories: 240, protein: 3, carbs: 13, fat: 22, fiber: 10, sugar: 0.4, sodium: 11, potassium: 975, vitaminC: 15, calcium: 18, iron: 0.8, servingUnit: "1 medium" },
-  { name: "Whey Protein Shake", calories: 120, protein: 25, carbs: 3, fat: 1.5, fiber: 0, sugar: 2, sodium: 130, potassium: 180, vitaminC: 0, calcium: 130, iron: 0.4, servingUnit: "1 scoop" },
+interface CommonFoodItem {
+  name: string;
+  aliases?: string[];
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  potassium: number;
+  vitaminC: number;
+  calcium: number;
+  iron: number;
+  servingUnit: string;
+}
+
+const COMMON_FOODS: CommonFoodItem[] = [
+  // ─── PROTEINS ──────────────────────────────────────────────────
+  { name: "Chicken Breast (cooked)", aliases: ["chicken", "chicken breast", "poultry"], calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, potassium: 256, vitaminC: 0, calcium: 15, iron: 1.0, servingUnit: "100g" },
+  { name: "Turkey Breast (cooked)", aliases: ["turkey", "turkey breast"], calories: 135, protein: 30, carbs: 0, fat: 1.1, fiber: 0, sugar: 0, sodium: 68, potassium: 290, vitaminC: 0, calcium: 18, iron: 1.1, servingUnit: "100g" },
+  { name: "Lean Ground Beef (93/7)", aliases: ["beef", "ground beef", "minced beef"], calories: 172, protein: 26, carbs: 0, fat: 7.6, fiber: 0, sugar: 0, sodium: 66, potassium: 318, vitaminC: 0, calcium: 12, iron: 2.7, servingUnit: "100g" },
+  { name: "Sirloin Steak (grilled)", aliases: ["steak", "beef steak", "sirloin"], calories: 200, protein: 30, carbs: 0, fat: 8.0, fiber: 0, sugar: 0, sodium: 58, potassium: 360, vitaminC: 0, calcium: 24, iron: 2.4, servingUnit: "100g" },
+  { name: "Salmon (grilled)", aliases: ["salmon", "fish", "fatty fish"], calories: 208, protein: 29, carbs: 0, fat: 9.0, fiber: 0, sugar: 0, sodium: 59, potassium: 628, vitaminC: 0, calcium: 13, iron: 0.9, servingUnit: "100g" },
+  { name: "Tuna (canned in water)", aliases: ["tuna", "canned tuna", "tuna fish"], calories: 109, protein: 25, carbs: 0, fat: 0.5, fiber: 0, sugar: 0, sodium: 287, potassium: 267, vitaminC: 0, calcium: 11, iron: 1.3, servingUnit: "100g" },
+  { name: "Cod Fillet (baked)", aliases: ["cod", "white fish", "fish fillet"], calories: 82, protein: 18, carbs: 0, fat: 0.7, fiber: 0, sugar: 0, sodium: 54, potassium: 413, vitaminC: 1.0, calcium: 16, iron: 0.4, servingUnit: "100g" },
+  { name: "Whole Egg", aliases: ["egg", "eggs", "boiled egg", "fried egg"], calories: 72, protein: 6.3, carbs: 0.4, fat: 4.8, fiber: 0, sugar: 0.2, sodium: 71, potassium: 69, vitaminC: 0, calcium: 28, iron: 0.9, servingUnit: "1 large" },
+  { name: "Egg Whites", aliases: ["egg white", "whites", "liquid egg whites"], calories: 17, protein: 3.6, carbs: 0.2, fat: 0.1, fiber: 0, sugar: 0.2, sodium: 55, potassium: 54, vitaminC: 0, calcium: 2.0, iron: 0, servingUnit: "1 large" },
+  { name: "Tofu (firm)", aliases: ["tofu", "soy protein", "bean curd"], calories: 144, protein: 17, carbs: 3.0, fat: 8.0, fiber: 2.0, sugar: 0.5, sodium: 12, potassium: 240, vitaminC: 0, calcium: 683, iron: 2.7, servingUnit: "150g" },
+  { name: "Tempeh", aliases: ["tempeh", "soy"], calories: 193, protein: 19, carbs: 9.0, fat: 11, fiber: 8.0, sugar: 1.0, sodium: 9, potassium: 412, vitaminC: 0, calcium: 111, iron: 2.7, servingUnit: "100g" },
+
+  // ─── CARBS & GRAINS ─────────────────────────────────────────────
+  { name: "Brown Rice (cooked)", aliases: ["rice", "brown rice", "cooked rice"], calories: 216, protein: 5.0, carbs: 45, fat: 1.8, fiber: 3.5, sugar: 0.7, sodium: 10, potassium: 154, vitaminC: 0, calcium: 20, iron: 1.0, servingUnit: "1 cup" },
+  { name: "White Rice (cooked)", aliases: ["white rice", "jasmine rice", "basmati rice"], calories: 205, protein: 4.2, carbs: 44, fat: 0.4, fiber: 0.6, sugar: 0.1, sodium: 5, potassium: 55, vitaminC: 0, calcium: 16, iron: 1.9, servingUnit: "1 cup" },
+  { name: "Oats (dry)", aliases: ["oats", "oatmeal", "porridge", "rolled oats"], calories: 150, protein: 5.0, carbs: 27, fat: 3.0, fiber: 4.0, sugar: 1.0, sodium: 0, potassium: 164, vitaminC: 0, calcium: 21, iron: 2.1, servingUnit: "40g" },
+  { name: "Quinoa (cooked)", aliases: ["quinoa", "grain"], calories: 222, protein: 8.1, carbs: 39, fat: 3.6, fiber: 5.2, sugar: 1.5, sodium: 13, potassium: 318, vitaminC: 0, calcium: 31, iron: 2.8, servingUnit: "1 cup" },
+  { name: "Sweet Potato (baked)", aliases: ["sweet potato", "yam", "baked sweet potato"], calories: 103, protein: 2.3, carbs: 24, fat: 0.1, fiber: 3.8, sugar: 7.4, sodium: 41, potassium: 542, vitaminC: 23, calcium: 39, iron: 0.8, servingUnit: "1 medium" },
+  { name: "Baked Potato", aliases: ["potato", "white potato", "russet potato"], calories: 168, protein: 4.3, carbs: 38, fat: 0.2, fiber: 4.0, sugar: 1.5, sodium: 12, potassium: 926, vitaminC: 16, calcium: 28, iron: 1.9, servingUnit: "1 medium" },
+  { name: "Whole Wheat Bread", aliases: ["bread", "toast", "whole wheat", "wheat bread"], calories: 80, protein: 4.0, carbs: 14, fat: 1.0, fiber: 2.0, sugar: 1.5, sodium: 130, potassium: 75, vitaminC: 0, calcium: 30, iron: 0.8, servingUnit: "1 slice" },
+  { name: "White Bread", aliases: ["white bread", "toast white"], calories: 75, protein: 2.0, carbs: 14, fat: 0.8, fiber: 0.6, sugar: 1.4, sodium: 140, potassium: 25, vitaminC: 0, calcium: 40, iron: 0.9, servingUnit: "1 slice" },
+  { name: "Pasta (cooked)", aliases: ["pasta", "spaghetti", "noodles"], calories: 220, protein: 8.0, carbs: 43, fat: 1.3, fiber: 2.5, sugar: 0.8, sodium: 2, potassium: 86, vitaminC: 0, calcium: 12, iron: 1.6, servingUnit: "1 cup" },
+  { name: "Bagel (plain)", aliases: ["bagel", "bread bagel"], calories: 245, protein: 10, carbs: 48, fat: 1.5, fiber: 2.2, sugar: 6.0, sodium: 430, potassium: 90, vitaminC: 0, calcium: 25, iron: 3.2, servingUnit: "1 plain" },
+  { name: "Tortilla (flour)", aliases: ["tortilla", "flour tortilla", "wrap"], calories: 140, protein: 4.0, carbs: 22, fat: 3.5, fiber: 1.0, sugar: 0.5, sodium: 360, potassium: 45, vitaminC: 0, calcium: 60, iron: 1.4, servingUnit: "1 medium" },
+  { name: "Rice Cake (plain)", aliases: ["rice cake", "rice cakes"], calories: 35, protein: 0.7, carbs: 7.3, fat: 0.3, fiber: 0.4, sugar: 0.1, sodium: 20, potassium: 25, vitaminC: 0, calcium: 1.0, iron: 0.1, servingUnit: "1 cake" },
+
+  // ─── DAIRY & FATS ───────────────────────────────────────────────
+  { name: "Greek Yogurt (0% fat)", aliases: ["yogurt", "greek yogurt", "nonfat yogurt"], calories: 100, protein: 17, carbs: 6.0, fat: 0.7, fiber: 0, sugar: 6.0, sodium: 55, potassium: 240, vitaminC: 0, calcium: 200, iron: 0.1, servingUnit: "170g" },
+  { name: "Cottage Cheese (2%)", aliases: ["cottage cheese", "curds"], calories: 206, protein: 28, carbs: 8.0, fat: 4.4, fiber: 0, sugar: 6.0, sodium: 746, potassium: 297, vitaminC: 0, calcium: 187, iron: 0.4, servingUnit: "1 cup" },
+  { name: "Cheddar Cheese", aliases: ["cheese", "cheddar", "sliced cheese"], calories: 115, protein: 7.0, carbs: 0.4, fat: 9.4, fiber: 0, sugar: 0.1, sodium: 180, potassium: 28, vitaminC: 0, calcium: 200, iron: 0.1, servingUnit: "28g" },
+  { name: "Peanut Butter", aliases: ["pb", "peanut butter", "nut butter"], calories: 188, protein: 8.0, carbs: 6.0, fat: 16, fiber: 1.9, sugar: 3.0, sodium: 152, potassium: 189, vitaminC: 0, calcium: 14, iron: 0.6, servingUnit: "2 tbsp" },
+  { name: "Almonds", aliases: ["almonds", "nuts", "almond"], calories: 164, protein: 6.0, carbs: 6.0, fat: 14, fiber: 3.5, sugar: 1.2, sodium: 0, potassium: 208, vitaminC: 0, calcium: 75, iron: 1.1, servingUnit: "28g" },
+  { name: "Olive Oil", aliases: ["oil", "olive oil", "cooking oil"], calories: 119, protein: 0, carbs: 0, fat: 13.5, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, servingUnit: "1 tbsp" },
+  { name: "Avocado", aliases: ["avocado", "guacamole"], calories: 240, protein: 3.0, carbs: 13, fat: 22, fiber: 10, sugar: 0.4, sodium: 11, potassium: 975, vitaminC: 15, calcium: 18, iron: 0.8, servingUnit: "1 medium" },
+  { name: "Whole Milk", aliases: ["milk", "whole milk", "dairy milk"], calories: 149, protein: 8.0, carbs: 12, fat: 8.0, fiber: 0, sugar: 12, sodium: 105, potassium: 322, vitaminC: 0, calcium: 276, iron: 0.1, servingUnit: "240ml" },
+  { name: "Almond Milk (unsweetened)", aliases: ["almond milk", "nut milk"], calories: 30, protein: 1.0, carbs: 1.0, fat: 2.5, fiber: 0.5, sugar: 0, sodium: 160, potassium: 170, vitaminC: 0, calcium: 450, iron: 0.7, servingUnit: "240ml" },
+  { name: "Butter", aliases: ["butter", "spread"], calories: 102, protein: 0.1, carbs: 0, fat: 11.5, fiber: 0, sugar: 0, sodium: 90, potassium: 3.0, vitaminC: 0, calcium: 3.0, iron: 0, servingUnit: "1 tbsp" },
+
+  // ─── FRUITS ─────────────────────────────────────────────────────
+  { name: "Banana", aliases: ["banana", "bananas"], calories: 105, protein: 1.3, carbs: 27, fat: 0.4, fiber: 3.1, sugar: 14, sodium: 1, potassium: 422, vitaminC: 10, calcium: 6, iron: 0.3, servingUnit: "1 medium" },
+  { name: "Apple", aliases: ["apple", "apples"], calories: 95, protein: 0.5, carbs: 25, fat: 0.3, fiber: 4.4, sugar: 19, sodium: 2, potassium: 195, vitaminC: 8.4, calcium: 11, iron: 0.2, servingUnit: "1 medium" },
+  { name: "Blueberries", aliases: ["blueberries", "berries", "blueberry"], calories: 84, protein: 1.1, carbs: 21, fat: 0.5, fiber: 3.6, sugar: 15, sodium: 1, potassium: 114, vitaminC: 14.4, calcium: 9.0, iron: 0.4, servingUnit: "1 cup" },
+  { name: "Strawberries", aliases: ["strawberries", "strawberry", "berries"], calories: 49, protein: 1.0, carbs: 12, fat: 0.5, fiber: 3.0, sugar: 7.0, sodium: 1, potassium: 233, vitaminC: 89, calcium: 24, iron: 0.6, servingUnit: "1 cup" },
+  { name: "Orange", aliases: ["orange", "oranges", "citrus"], calories: 62, protein: 1.2, carbs: 15, fat: 0.2, fiber: 3.1, sugar: 12, sodium: 0, potassium: 237, vitaminC: 70, calcium: 52, iron: 0.1, servingUnit: "1 medium" },
+
+  // ─── VEGETABLES ─────────────────────────────────────────────────
+  { name: "Broccoli (steamed)", aliases: ["broccoli", "steamed broccoli", "greens"], calories: 55, protein: 3.7, carbs: 11, fat: 0.6, fiber: 5.1, sugar: 2.6, sodium: 64, potassium: 457, vitaminC: 135, calcium: 62, iron: 1.1, servingUnit: "1 cup" },
+  { name: "Spinach (raw)", aliases: ["spinach", "raw spinach", "greens", "leafy greens"], calories: 7, protein: 0.9, carbs: 1.1, fat: 0.1, fiber: 0.7, sugar: 0.1, sodium: 24, potassium: 167, vitaminC: 8.4, calcium: 30, iron: 0.8, servingUnit: "1 cup" },
+  { name: "Asparagus (cooked)", aliases: ["asparagus", "spears"], calories: 40, protein: 4.3, carbs: 7.4, fat: 0.4, fiber: 3.6, sugar: 2.5, sodium: 4.0, potassium: 404, vitaminC: 15, calcium: 45, iron: 1.8, servingUnit: "1 cup" },
+  { name: "Mixed Green Salad", aliases: ["salad", "lettuce", "greens salad"], calories: 15, protein: 1.0, carbs: 3.0, fat: 0.2, fiber: 1.5, sugar: 1.0, sodium: 10, potassium: 120, vitaminC: 10, calcium: 20, iron: 0.5, servingUnit: "2 cups" },
+  { name: "Tomato (raw)", aliases: ["tomato", "tomatoes"], calories: 22, protein: 1.1, carbs: 4.8, fat: 0.2, fiber: 1.5, sugar: 3.2, sodium: 6, potassium: 292, vitaminC: 17, calcium: 12, iron: 0.3, servingUnit: "1 medium" },
+
+  // ─── SUPPLEMENTS & TREATS ───────────────────────────────────────
+  { name: "Whey Protein Shake", aliases: ["protein shake", "whey", "protein powder", "shake"], calories: 120, protein: 25, carbs: 3.0, fat: 1.5, fiber: 0, sugar: 2.0, sodium: 130, potassium: 180, vitaminC: 0, calcium: 130, iron: 0.4, servingUnit: "1 scoop" },
+  { name: "Casein Protein", aliases: ["casein", "night protein", "slow protein"], calories: 120, protein: 24, carbs: 1.0, fat: 1.0, fiber: 0, sugar: 0, sodium: 160, potassium: 90, vitaminC: 0, calcium: 500, iron: 0.2, servingUnit: "1 scoop" },
+  { name: "Protein Bar", aliases: ["protein bar", "snack bar", "bar"], calories: 220, protein: 20, carbs: 24, fat: 7.0, fiber: 6.0, sugar: 2.0, sodium: 210, potassium: 110, vitaminC: 0, calcium: 100, iron: 1.5, servingUnit: "1 bar" },
+  { name: "Dark Chocolate (70%)", aliases: ["chocolate", "dark chocolate", "treat"], calories: 170, protein: 2.0, carbs: 15, fat: 12, fiber: 3.0, sugar: 9.0, sodium: 6, potassium: 228, vitaminC: 0, calcium: 20, iron: 3.4, servingUnit: "30g" },
+  { name: "Black Coffee", aliases: ["coffee", "black coffee", "espresso", "caffeine"], calories: 2, protein: 0.3, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 5, potassium: 116, vitaminC: 0, calcium: 5.0, iron: 0, servingUnit: "1 cup" },
+  { name: "Green Tea", aliases: ["tea", "green tea", "herbal tea"], calories: 2, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 20, vitaminC: 0, calcium: 0, iron: 0, servingUnit: "1 cup" },
+  { name: "Pizza (Cheese)", aliases: ["pizza", "cheese pizza", "slice of pizza"], calories: 285, protein: 12, carbs: 32, fat: 10.4, fiber: 2.5, sugar: 3.8, sodium: 640, potassium: 175, vitaminC: 1.5, calcium: 210, iron: 2.5, servingUnit: "1 slice" },
+  { name: "Hamburger", aliases: ["hamburger", "burger", "beef burger"], calories: 354, protein: 20, carbs: 29, fat: 17, fiber: 1.5, sugar: 5.0, sodium: 520, potassium: 280, vitaminC: 1.0, calcium: 60, iron: 3.0, servingUnit: "1 burger" },
+  { name: "French Fries", aliases: ["fries", "french fries", "chips"], calories: 365, protein: 4.0, carbs: 48, fat: 17, fiber: 4.4, sugar: 0.3, sodium: 290, potassium: 677, vitaminC: 9.7, calcium: 18, iron: 0.9, servingUnit: "1 medium" },
+  { name: "Chicken Caesar Salad", aliases: ["caesar salad", "chicken salad", "salad bowl"], calories: 390, protein: 28, carbs: 12, fat: 26, fiber: 3.0, sugar: 2.0, sodium: 890, potassium: 340, vitaminC: 12, calcium: 150, iron: 1.8, servingUnit: "1 bowl" },
 ];
 
 const MEAL_LABELS: Record<NutritionEntry["meal"], { label: string; icon: FC<any>; color: string; bg: string }> = {
@@ -200,7 +268,8 @@ const AddFoodModal: FC<{
   const [customFiber, setCustomFiber] = useState("");
 
   const filtered = COMMON_FOODS.filter((f) =>
-    f.name.toLowerCase().includes(search.toLowerCase())
+    f.name.toLowerCase().includes(search.toLowerCase()) ||
+    (f.aliases && f.aliases.some((alias) => alias.toLowerCase().includes(search.toLowerCase())))
   );
 
   const handleAdd = () => {
@@ -321,13 +390,49 @@ const AddFoodModal: FC<{
               </div>
 
               {selected && (
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">Servings</span>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setServingQty(Math.max(0.5, servingQty - 0.5))} aria-label="Decrease serving quantity by 0.5" className="h-8 w-8 flex items-center justify-center rounded-full bg-zinc-150 dark:bg-zinc-800 text-foreground font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">−</button>
-                    <span className="text-sm font-black text-foreground w-10 text-center">{servingQty}</span>
-                    <button onClick={() => setServingQty(servingQty + 0.5)} aria-label="Increase serving quantity by 0.5" className="h-8 w-8 flex items-center justify-center rounded-full bg-zinc-150 dark:bg-zinc-800 text-foreground font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">+</button>
-                    <span className="text-xs text-zinc-750 dark:text-zinc-300">{selected.servingUnit} each</span>
+                <div className="space-y-2 select-none">
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 block">Servings ({selected.servingUnit} each)</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setServingQty(Math.max(0.1, +(servingQty - 1).toFixed(2)))}
+                      className="h-8 px-2.5 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
+                    >
+                      -1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServingQty(Math.max(0.1, +(servingQty - 0.5).toFixed(2)))}
+                      className="h-8 px-2 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
+                    >
+                      -0.5
+                    </button>
+                    <input
+                      type="number"
+                      min="0.05"
+                      step="0.05"
+                      aria-label="Serving quantity"
+                      className="w-14 h-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs font-mono font-bold text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={servingQty || ""}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setServingQty(isNaN(val) ? 0 : val);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setServingQty(+(servingQty + 0.5).toFixed(2))}
+                      className="h-8 px-2 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
+                    >
+                      +0.5
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServingQty(+(servingQty + 1).toFixed(2))}
+                      className="h-8 px-2.5 flex items-center justify-center rounded-xl bg-zinc-150 dark:bg-zinc-800 text-foreground text-xs font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition active:scale-95 focus-visible:outline-none"
+                    >
+                      +1
+                    </button>
                   </div>
                   <Surface className="p-3 grid grid-cols-4 gap-2 text-center bg-zinc-50/50 dark:bg-zinc-900/60">
                     {[
@@ -383,6 +488,79 @@ const AddFoodModal: FC<{
   );
 };
 
+// ─── AI Quick Log Helpers ─────────────────────────────────────────
+const getCurrentMealTimeSlot = (): "breakfast" | "lunch" | "dinner" | "snack" => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return "breakfast";
+  if (hour >= 11 && hour < 16) return "lunch";
+  if (hour >= 16 && hour < 21) return "dinner";
+  return "snack";
+};
+
+const parseMealLocally = (text: string): Omit<NutritionEntry, "id" | "meal" | "timestamp">[] => {
+  const items: Omit<NutritionEntry, "id" | "meal" | "timestamp">[] = [];
+  const parts = text.split(/\s+(?:and|with|\+|\bcon\b)\s+|,\s*/i);
+
+  for (const part of parts) {
+    const trimmed = part.trim().toLowerCase();
+    if (!trimmed) continue;
+
+    let qty = 1;
+    const numMatch = trimmed.match(/(\d+(?:\.\d+)?)/);
+    if (numMatch) {
+      qty = parseFloat(numMatch[1]) || 1;
+    } else if (trimmed.startsWith("a ") || trimmed.startsWith("an ")) {
+      qty = 1;
+    }
+
+    const cleanWord = trimmed
+      .replace(/(\d+(?:\.\d+)?)/g, "")
+      .replace(/\b(?:a|an|the|of|cups|cup|large|scoops|scoop|slices|slice|g|ml|servings|serving|cooked|raw|scrambled|fried|boiled)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!cleanWord) continue;
+
+    let matchedFood = COMMON_FOODS.find((f) =>
+      f.name.toLowerCase() === cleanWord
+    );
+
+    if (!matchedFood) {
+      matchedFood = COMMON_FOODS.find((f) =>
+        f.aliases?.some((alias) => alias.toLowerCase() === cleanWord)
+      );
+    }
+
+    if (!matchedFood) {
+      matchedFood = COMMON_FOODS.find((f) =>
+        f.name.toLowerCase().includes(cleanWord) ||
+        f.aliases?.some((alias) => alias.toLowerCase().includes(cleanWord))
+      );
+    }
+
+    if (matchedFood) {
+      items.push({
+        name: matchedFood.name,
+        calories: Math.round(matchedFood.calories * qty),
+        protein: +((matchedFood.protein * qty).toFixed(1)),
+        carbs: +((matchedFood.carbs * qty).toFixed(1)),
+        fat: +((matchedFood.fat * qty).toFixed(1)),
+        fiber: +((matchedFood.fiber * qty).toFixed(1)),
+        sugar: +((matchedFood.sugar * qty).toFixed(1)),
+        sodium: Math.round(matchedFood.sodium * qty),
+        potassium: Math.round(matchedFood.potassium * qty),
+        vitaminC: +((matchedFood.vitaminC * qty).toFixed(1)),
+        calcium: Math.round(matchedFood.calcium * qty),
+        iron: +((matchedFood.iron * qty).toFixed(1)),
+        servingSize: qty,
+        servingUnit: matchedFood.servingUnit,
+      });
+    }
+  }
+
+  return items;
+};
+
 // ─── Main Component ──────────────────────────────────────────────
 export function NutritionTracker() {
   const profile = useAtlasStore((s) => s.profile);
@@ -401,6 +579,13 @@ export function NutritionTracker() {
   const entries = nutritionEntries;
 
   // States
+  const activeProviderId = useAtlasStore((s) => s.activeProviderId);
+  const aiProviders = useAtlasStore((s) => s.aiProviders || []);
+  const [quickLogText, setQuickLogText] = useState("");
+  const [quickLogMeal, setQuickLogMeal] = useState<NutritionEntry["meal"]>(() => getCurrentMealTimeSlot());
+  const [isQuickLogging, setIsQuickLogging] = useState(false);
+  const [quickLogFeedback, setQuickLogFeedback] = useState<string | null>(null);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAddMeal, setSelectedAddMeal] = useState<NutritionEntry["meal"]>("breakfast");
   const [expandedMeal, setExpandedMeal] = useState<NutritionEntry["meal"] | null>("breakfast");
@@ -727,6 +912,137 @@ export function NutritionTracker() {
     };
   }, [entries, waterLogs]);
 
+  const handleQuickLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickLogText.trim()) return;
+
+    setIsQuickLogging(true);
+    setQuickLogFeedback(null);
+
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const hasAi = activeProvider && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio" || !!activeProvider.apiKey);
+
+    try {
+      let parsedItems: Omit<NutritionEntry, "id" | "meal" | "timestamp">[] = [];
+
+      if (hasAi) {
+        const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+        const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+        const adapter = getProviderAdapter(activeProvider.type);
+
+        const systemPrompt = `You are a clinical nutrition assistant. Your task is to parse a user's unstructured food log text into a JSON array of food items.
+Each item in the array MUST match this TypeScript interface:
+interface ParsedMealItem {
+  name: string; // Clean, standard name (e.g., 'Whole Egg')
+  calories: number; // in kcal
+  protein: number; // in grams
+  carbs: number; // in grams
+  fat: number; // in grams
+  fiber: number; // in grams
+  sugar: number; // in grams
+  sodium: number; // in mg
+  potassium: number; // in mg
+  vitaminC: number; // in mg
+  calcium: number; // in mg
+  iron: number; // in mg
+  servingSize: number; // number of servings or quantity (e.g. 3, 1.5, 1)
+  servingUnit: string; // unit of serving (e.g. 'large', 'cup', '100g', 'scoop')
+}
+
+If a food matches any of these standard database items, please use its nutritional stats and scale them by the quantity:
+${JSON.stringify(COMMON_FOODS.map(f => ({ name: f.name, aliases: f.aliases, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat, servingUnit: f.servingUnit })))}
+
+Do NOT include any markdown code blocks, explanation text, or wrapping objects. Return ONLY the raw JSON array. If the query does not contain recognizable food, return an empty array [].`;
+
+        const userPrompt = `Parse the food log: "${quickLogText}"`;
+
+        const { content } = await adapter.chat({
+          provider: activeProvider,
+          apiKey,
+          messages: [{ id: `quick-log-${Date.now()}`, role: "user", content: userPrompt, createdAt: new Date().toISOString() }],
+          systemContext: systemPrompt,
+        });
+
+        let cleanContent = content.trim();
+        if (cleanContent.startsWith("```json")) {
+          cleanContent = cleanContent.replace(/^```json/, "").replace(/```$/, "").trim();
+        } else if (cleanContent.startsWith("```")) {
+          cleanContent = cleanContent.replace(/^```/, "").replace(/```$/, "").trim();
+        }
+
+        const items = JSON.parse(cleanContent);
+        if (Array.isArray(items)) {
+          parsedItems = items.map((item: any) => ({
+            name: item.name || "Custom Food",
+            calories: Math.round(item.calories || 0),
+            protein: +((item.protein || 0).toFixed(1)),
+            carbs: +((item.carbs || 0).toFixed(1)),
+            fat: +((item.fat || 0).toFixed(1)),
+            fiber: +((item.fiber || 0).toFixed(1)),
+            sugar: +((item.sugar || 0).toFixed(1)),
+            sodium: Math.round(item.sodium || 0),
+            potassium: Math.round(item.potassium || 0),
+            vitaminC: +((item.vitaminC || 0).toFixed(1)),
+            calcium: Math.round(item.calcium || 0),
+            iron: +((item.iron || 0).toFixed(1)),
+            servingSize: item.servingSize || 1,
+            servingUnit: item.servingUnit || "serving",
+          }));
+        }
+      }
+
+      // If AI did not return any items or is not configured, fall back to local parser
+      if (parsedItems.length === 0) {
+        parsedItems = parseMealLocally(quickLogText);
+      }
+
+      if (parsedItems.length === 0) {
+        setQuickLogFeedback("Could not recognize any foods. Please try writing it differently (e.g. '3 eggs, 1 banana').");
+      } else {
+        const targetDate = new Date(selectedDate);
+        targetDate.setHours(12, 0, 0, 0);
+
+        for (const item of parsedItems) {
+          const finalEntry: NutritionEntry = {
+            ...item,
+            id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            meal: quickLogMeal,
+            timestamp: targetDate.toISOString(),
+          };
+          await addNutritionEntryAction(finalEntry);
+        }
+
+        setQuickLogText("");
+        setQuickLogFeedback(`Successfully logged ${parsedItems.length} item(s) to ${MEAL_LABELS[quickLogMeal].label}!`);
+        setTimeout(() => setQuickLogFeedback(null), 4000);
+      }
+    } catch (err) {
+      console.error("AI Quick Log failed, trying local fallback:", err);
+      const fallback = parseMealLocally(quickLogText);
+      if (fallback.length > 0) {
+        const targetDate = new Date(selectedDate);
+        targetDate.setHours(12, 0, 0, 0);
+
+        for (const item of fallback) {
+          const finalEntry: NutritionEntry = {
+            ...item,
+            id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            meal: quickLogMeal,
+            timestamp: targetDate.toISOString(),
+          };
+          await addNutritionEntryAction(finalEntry);
+        }
+        setQuickLogText("");
+        setQuickLogFeedback(`Logged ${fallback.length} item(s) to ${MEAL_LABELS[quickLogMeal].label} (using local fallback).`);
+        setTimeout(() => setQuickLogFeedback(null), 4000);
+      } else {
+        setQuickLogFeedback("Failed to parse log. Please check your spelling or use standard logging.");
+      }
+    } finally {
+      setIsQuickLogging(false);
+    }
+  };
+
   // Add food entry stamped with currently selected date
   const handleAddEntry = (entry: NutritionEntry) => {
     const targetDate = new Date(selectedDate);
@@ -894,6 +1210,68 @@ export function NutritionTracker() {
         >
           {nutritionTab === "overview" && (
             <div className="space-y-4">
+              {/* Samsung Health-style Smart Quick Log */}
+              <Card className="p-4 bg-gradient-to-r from-emerald-500/5 via-sky-500/5 to-transparent border border-card-border shadow-sm">
+                <form onSubmit={handleQuickLog} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                        <Sparkles size={13} className="animate-pulse" />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider text-zinc-955 dark:text-white">Smart Quick Log</span>
+                    </div>
+                    {/* Meal selector for quick logging */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-zinc-750 font-bold uppercase">Slot:</span>
+                      <select
+                        aria-label="Select meal slot"
+                        value={quickLogMeal}
+                        onChange={(e) => setQuickLogMeal(e.target.value as any)}
+                        className="h-6 px-1.5 rounded-lg border border-input-border bg-input text-[10px] font-bold text-zinc-955 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">Lunch</option>
+                        <option value="dinner">Dinner</option>
+                        <option value="snack">Snack</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={quickLogText}
+                      onChange={(e) => setQuickLogText(e.target.value)}
+                      placeholder="Type e.g., '3 scrambled eggs, a banana, and coffee'..."
+                      disabled={isQuickLogging}
+                      className="flex-1 h-9 px-3 rounded-xl border border-input-border bg-input text-xs text-zinc-955 placeholder:text-zinc-600 dark:placeholder:text-zinc-350 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isQuickLogging || !quickLogText.trim()}
+                      className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-650 text-white text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 active:scale-95 disabled:active:scale-100"
+                    >
+                      {isQuickLogging ? (
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Sparkles size={13} />
+                          <span>Log</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {quickLogFeedback && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
+                    >
+                      {quickLogFeedback}
+                    </motion.p>
+                  )}
+                </form>
+              </Card>
               <Card className="p-5 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
 
@@ -955,20 +1333,46 @@ export function NutritionTracker() {
 
                   {/* Hydration Tracker Section */}
                   <div className="flex flex-col justify-between pt-6 md:pt-0 md:pl-8 space-y-4">
+                    <style dangerouslySetInnerHTML={{__html: `
+                      @keyframes wave-slide {
+                        0% { transform: translateX(0); }
+                        100% { transform: translateX(-50%); }
+                      }
+                      .animate-wave {
+                        animation: wave-slide 4s linear infinite;
+                      }
+                    `}} />
                     <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
-                      {/* Animated Water bottle visualizer */}
-                      <div className="relative h-20 w-10 bg-sky-500/10 border-2 border-sky-500/20 rounded-2xl overflow-hidden flex flex-col justify-end shadow-inner shrink-0 select-none">
+                      {/* Animated Water Cup with liquid wave */}
+                      <div className="relative h-24 w-16 bg-sky-500/5 dark:bg-sky-950/20 border-2 border-sky-400/35 rounded-2xl overflow-hidden flex flex-col justify-end shadow-inner shrink-0 select-none">
+                        {/* Wave container */}
                         <motion.div
-                          className="w-full bg-gradient-to-t from-sky-500 to-cyan-400 dark:from-sky-600 dark:to-cyan-500 relative"
+                          className="w-full bg-sky-500/80 dark:bg-sky-500/85 relative"
                           style={{ height: `${hydrationRatio * 100}%` }}
                           initial={{ height: 0 }}
                           animate={{ height: `${hydrationRatio * 100}%` }}
-                          transition={{ type: "spring", stiffness: 60, damping: 15 }}
+                          transition={{ type: "spring", stiffness: 65, damping: 15 }}
                         >
-                          <div className="absolute top-0 left-0 right-0 h-1 bg-white/40 animate-pulse pointer-events-none" />
+                          {/* SVG Wave overlay animating on the top boundary */}
+                          {hydrationRatio > 0 && hydrationRatio < 1 && (
+                            <svg
+                              className="absolute left-0 right-0 w-[200%] h-4 -top-3.5 fill-sky-500/80 dark:fill-sky-500/85 animate-wave"
+                              viewBox="0 0 120 28"
+                              preserveAspectRatio="none"
+                              style={{
+                                transform: "translateX(0)",
+                              }}
+                            >
+                              <path d="M0 15 Q 30 0, 60 15 T 120 15 L 120 28 L 0 28 Z" />
+                            </svg>
+                          )}
+                          <div className="absolute inset-x-0 top-1 h-0.5 bg-white/35 blur-[0.5px] pointer-events-none" />
                         </motion.div>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <Droplets size={16} className={hydrationRatio > 0.5 ? "text-white/80" : "text-sky-500/40"} />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+                          <Droplets size={18} className={hydrationRatio > 0.4 ? "text-white drop-shadow-sm" : "text-sky-500/60"} />
+                          <span className={cn("text-[9px] font-black font-mono leading-none mt-1", hydrationRatio > 0.4 ? "text-white" : "text-sky-500")}>
+                            {Math.round(hydrationRatio * 100)}%
+                          </span>
                         </div>
                       </div>
 
@@ -994,15 +1398,48 @@ export function NutritionTracker() {
 
                     {/* Quick Add and Custom Input Actions */}
                     <div className="space-y-3 pt-3 border-t border-card-border">
+                      {/* Stepper adjustment row */}
+                      <div className="flex items-center justify-between gap-2.5 bg-sky-500/5 dark:bg-sky-500/10 p-1.5 rounded-2xl border border-sky-500/10 select-none">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const lastLog = activeWaterLogs[activeWaterLogs.length - 1];
+                            if (lastLog) {
+                              removeWaterLog(lastLog.id);
+                            }
+                          }}
+                          disabled={activeWaterLogs.length === 0}
+                          className="h-8 w-8 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-sky-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition active:scale-90 shadow-sm focus:outline-none"
+                          aria-label="Remove last water log"
+                        >
+                          -
+                        </button>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">Fine Adjust (Last Log)</span>
+                        <button
+                          type="button"
+                          onClick={() => addWater(250)}
+                          className="h-8 w-8 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-sky-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition active:scale-90 shadow-sm focus:outline-none"
+                          aria-label="Add 250ml water"
+                        >
+                          +
+                        </button>
+                      </div>
+
                       {/* Quick-add buttons */}
                       <div className="flex gap-2">
-                        {[250, 500, 750].map((amount) => (
+                        {[
+                          { val: 250, label: "Cup" },
+                          { val: 500, label: "Bottle" },
+                          { val: 750, label: "Shaker" },
+                        ].map(({ val, label }) => (
                           <button
-                            key={amount}
-                            onClick={() => addWater(amount)}
-                            className="flex-1 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-xs font-black tracking-wide text-sky-400 border border-sky-500/20 hover:border-sky-500/40 transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                            key={val}
+                            type="button"
+                            onClick={() => addWater(val)}
+                            className="flex-1 flex flex-col items-center justify-center py-2 rounded-2xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-450 border border-sky-500/20 hover:border-sky-500/40 transition active:scale-[0.97] focus-visible:outline-none"
                           >
-                            +{amount}ml
+                            <span className="text-xs font-black font-mono">+{val}ml</span>
+                            <span className="text-[9px] uppercase font-black text-sky-550/80 dark:text-sky-400/80 mt-0.5">{label}</span>
                           </button>
                         ))}
                       </div>
@@ -1017,7 +1454,7 @@ export function NutritionTracker() {
                             placeholder="Custom amount"
                             value={customWaterInput}
                             onChange={(e) => setCustomWaterInput(e.target.value)}
-                            className="w-full h-10 pl-3.5 pr-10 rounded-xl border border-input-border bg-input text-xs text-zinc-955 font-mono placeholder:text-zinc-750/50 focus:outline-none focus:ring-2 focus:ring-sky-500 transition duration-150"
+                            className="w-full h-10 pl-3.5 pr-10 rounded-xl border border-input-border bg-input text-xs text-zinc-955 font-mono placeholder:text-zinc-600 dark:placeholder:text-zinc-350 focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition duration-150"
                             aria-label="Custom water amount in ml"
                           />
                           <span className="absolute right-3.5 top-3 text-[10px] text-zinc-750 font-black uppercase tracking-wider select-none">
@@ -1025,6 +1462,7 @@ export function NutritionTracker() {
                           </span>
                         </div>
                         <button
+                          type="button"
                           onClick={() => {
                             const val = parseInt(customWaterInput);
                             if (val > 0) {
@@ -1033,7 +1471,7 @@ export function NutritionTracker() {
                             }
                           }}
                           disabled={!customWaterInput || parseInt(customWaterInput) <= 0}
-                          className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition-all active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 shrink-0"
+                          className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none shrink-0"
                         >
                           Log
                         </button>
@@ -1164,6 +1602,9 @@ export function NutritionTracker() {
                   const MealIcon = cfg.icon;
                   const items = mealEntries(meal);
                   const mealCals = items.reduce((s, e) => s + e.calories, 0);
+                  const mealProtein = items.reduce((s, e) => s + e.protein, 0);
+                  const mealCarbs = items.reduce((s, e) => s + e.carbs, 0);
+                  const mealFat = items.reduce((s, e) => s + e.fat, 0);
                   const isExpanded = expandedMeal === meal;
 
                   return (
@@ -1183,9 +1624,18 @@ export function NutritionTracker() {
                             <p className="text-[10px] text-zinc-750 font-mono">{items.length} logged</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-sm font-black text-zinc-955 tabular-nums">{mealCals} <span className="text-[10px] font-normal text-zinc-750">kcal</span></span>
-                          {isExpanded ? <ChevronUp size={15} className="text-zinc-750" /> : <ChevronDown size={15} className="text-zinc-750" />}
+                        <div className="flex items-center gap-1.5 sm:gap-2.5">
+                          {items.length > 0 && (
+                            <div className="flex items-center gap-1 text-[9px] font-mono font-bold select-none mr-0.5 sm:mr-1">
+                              <span className="text-blue-455 bg-blue-500/5 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">P:{Math.round(mealProtein)}g</span>
+                              <span className="text-amber-450 bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">C:{Math.round(mealCarbs)}g</span>
+                              <span className="text-rose-450 bg-rose-500/5 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">F:{Math.round(mealFat)}g</span>
+                            </div>
+                          )}
+                          <span className="text-xs sm:text-sm font-black text-zinc-955 tabular-nums whitespace-nowrap">
+                            {mealCals} <span className="text-[9px] sm:text-[10px] font-normal text-zinc-755">kcal</span>
+                          </span>
+                          {isExpanded ? <ChevronUp size={15} className="text-zinc-750 shrink-0" /> : <ChevronDown size={15} className="text-zinc-750 shrink-0" />}
                         </div>
                       </button>
 
