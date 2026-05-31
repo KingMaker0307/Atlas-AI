@@ -551,6 +551,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           },
         ],
         activeSubScreen: null,
+        workoutTab: "plans",
       });
       await persistState(get());
     }
@@ -987,6 +988,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeWorkoutPlanId: parentPlanId, // Automatically activate starting plan
       activeTab: "workout",
       activeSubScreen: "active-workout",
+      workoutTab: "plans",
     });
 
     console.log("startWorkout: activeWorkout AFTER update (should be new workout):", get().activeWorkout);
@@ -1119,11 +1121,17 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       ],
       activeTab: "dashboard",
       activeSubScreen: null,
+      workoutTab: "plans",
     });
     await persistState(get());
   },
   discardWorkout: async () => {
-    set({ activeWorkout: null, restTimerEndsAt: undefined, activeSubScreen: null });
+    set({
+      activeWorkout: null,
+      restTimerEndsAt: undefined,
+      activeSubScreen: null,
+      workoutTab: "plans",
+    });
     await persistState(get());
   },
   swapWorkoutExercise: async (workoutExerciseId, newExerciseId) => {
