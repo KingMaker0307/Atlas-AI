@@ -215,27 +215,29 @@ export function AtlasApp() {
       {activeSubScreen !== "active-workout" && (
         <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
           <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-300 font-bold text-zinc-955">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 font-extrabold text-zinc-950">
                 A
               </div>
-              <div>
-                <p className="text-sm font-semibold leading-none text-foreground">Atlas AI Coach</p>
-                <p className="mt-1 text-xs text-zinc-500">Private fitness intelligence</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold leading-none text-foreground truncate">Atlas AI Coach</p>
+                <p className="mt-1 text-[10px] text-zinc-500 font-medium leading-none truncate hidden min-[360px]:block">
+                  Private fitness intelligence
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0 justify-end flex-nowrap pl-2">
               <button
                 type="button"
                 onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
-                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
                 title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                 aria-label="Toggle display theme"
               >
                 {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
               </button>
-              <OfflineIndicator />
-              <InstallPrompt />
+              <OfflineIndicator compact />
+              <InstallPrompt compact />
             </div>
           </header>
         </div>
