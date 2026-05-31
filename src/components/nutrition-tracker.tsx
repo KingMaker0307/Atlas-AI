@@ -88,6 +88,33 @@ interface CommonFoodItem {
   servingWeight?: number;
 }
 
+export interface ImageUpload {
+  id: string;
+  dataUrl: string;
+  mimeType: string;
+}
+
+export interface AnalyzedFoodItem {
+  id: string;
+  name: string;
+  serving_note: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  potassium: number;
+  vitaminC: number;
+  calcium: number;
+  iron: number;
+  source: "image" | "text" | "both";
+  quantity: number; // multiplier
+  isMatched?: boolean;
+  matchedProduct?: CommonFoodItem;
+}
+
 const COMMON_FOODS: CommonFoodItem[] = [
   // ─── PROTEINS ──────────────────────────────────────────────────
   { name: "Chicken Breast (cooked)", aliases: ["chicken", "chicken breast", "poultry"], calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0, sodium: 74, potassium: 256, vitaminC: 0, calcium: 15, iron: 1.0, servingUnit: "100g" },
@@ -340,6 +367,531 @@ const COUNTRY_OPTIONS = [
   { code: "br", name: "Brazil", flag: "🇧🇷" },
 ];
 
+// ─── Food Item Confirmation Panel ───────────────────────────────────
+interface FoodItemConfirmationPanelProps {
+  items: AnalyzedFoodItem[];
+  setItems: React.Dispatch<React.SetStateAction<AnalyzedFoodItem[]>>;
+  selectedIds: Record<string, boolean>;
+  setSelectedIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  onLogSeparate: () => void;
+  onLogCombined: () => void;
+  onCancel: () => void;
+  isLogging: boolean;
+  refinementText: string;
+  setRefinementText: (text: string) => void;
+  onRefine: () => void;
+  isRefining: boolean;
+  meal: "breakfast" | "lunch" | "dinner" | "snack";
+  searchCountry: string;
+}
+
+const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
+  items,
+  setItems,
+  selectedIds,
+  setSelectedIds,
+  onLogSeparate,
+  onLogCombined,
+  onCancel,
+  isLogging,
+  refinementText,
+  setRefinementText,
+  onRefine,
+  isRefining,
+  meal,
+  searchCountry,
+}) => {
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [matchingItemId, setMatchingItemId] = useState<string | null>(null);
+  const [matcherSearchQuery, setMatcherSearchQuery] = useState("");
+  const [matcherResults, setMatcherResults] = useState<CommonFoodItem[]>([]);
+  const [isMatchingLoading, setIsMatchingLoading] = useState(false);
+
+  const handleDatabaseSearchForMatch = async (query: string) => {
+    if (!query.trim()) {
+      setMatcherResults([]);
+      return;
+    }
+    setIsMatchingLoading(true);
+    // 1. Search locally in COMMON_FOODS
+    const localMatches = COMMON_FOODS.filter((f) =>
+      f.name.toLowerCase().includes(query.toLowerCase()) ||
+      (f.aliases && f.aliases.some((alias) => alias.toLowerCase().includes(query.toLowerCase())))
+    );
+    
+    // 2. Fetch live Open Food Facts matches
+    const url = `/api/food?search=${encodeURIComponent(query.trim())}&country=${searchCountry}`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const products = data.products || [];
+        const mapped = products.map((p: any) => mapOffProductToFoodItem(p));
+        // Merge local matches and live matches (deduping by name/brand)
+        const combined = [...localMatches];
+        for (const item of mapped) {
+          const exists = combined.some((c) => c.name.toLowerCase() === item.name.toLowerCase() && c.brand?.toLowerCase() === item.brand?.toLowerCase());
+          if (!exists) {
+            combined.push(item);
+          }
+        }
+        setMatcherResults(combined.slice(0, 10));
+      } else {
+        setMatcherResults(localMatches.slice(0, 10));
+      }
+    } catch (err) {
+      console.error("Database match search failed:", err);
+      setMatcherResults(localMatches.slice(0, 10));
+    } finally {
+      setIsMatchingLoading(false);
+    }
+  };
+
+  const handleMatchSelect = (itemId: string, selectedProduct: CommonFoodItem) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
+        return {
+          ...item,
+          name: selectedProduct.brand ? `${selectedProduct.brand} - ${selectedProduct.name}` : selectedProduct.name,
+          calories: selectedProduct.calories,
+          protein: selectedProduct.protein,
+          carbs: selectedProduct.carbs,
+          fat: selectedProduct.fat,
+          fiber: selectedProduct.fiber,
+          sugar: selectedProduct.sugar,
+          sodium: selectedProduct.sodium,
+          potassium: selectedProduct.potassium,
+          vitaminC: selectedProduct.vitaminC,
+          calcium: selectedProduct.calcium,
+          iron: selectedProduct.iron,
+          isMatched: true,
+          matchedProduct: selectedProduct,
+          serving_note: `Matched: ${selectedProduct.servingUnit || "1 serving"}`
+        };
+      })
+    );
+    setMatchingItemId(null);
+  };
+
+  const handleAddBlankItem = () => {
+    const newItemId = `analyzed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const newItem: AnalyzedFoodItem = {
+      id: newItemId,
+      name: "New Food Item",
+      serving_note: "1 serving",
+      calories: 100,
+      protein: 10,
+      carbs: 10,
+      fat: 2,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+      potassium: 0,
+      vitaminC: 0,
+      calcium: 0,
+      iron: 0,
+      source: "text",
+      quantity: 1.0,
+    };
+    setItems((prev) => [...prev, newItem]);
+    setSelectedIds((prev) => ({ ...prev, [newItemId]: true }));
+  };
+
+  // Compute combined totals of selected items
+  const totals = useMemo(() => {
+    let cal = 0, pro = 0, carb = 0, fat = 0, fib = 0, sug = 0, sod = 0, pot = 0, vitC = 0, calc = 0, fe = 0;
+    items.forEach((item) => {
+      if (!selectedIds[item.id]) return;
+      const q = item.quantity;
+      cal += (item.calories || 0) * q;
+      pro += (item.protein || 0) * q;
+      carb += (item.carbs || 0) * q;
+      fat += (item.fat || 0) * q;
+      fib += (item.fiber || 0) * q;
+      sug += (item.sugar || 0) * q;
+      sod += (item.sodium || 0) * q;
+      pot += (item.potassium || 0) * q;
+      vitC += (item.vitaminC || 0) * q;
+      calc += (item.calcium || 0) * q;
+      fe += (item.iron || 0) * q;
+    });
+    return {
+      calories: Math.round(cal),
+      protein: +pro.toFixed(1),
+      carbs: +carb.toFixed(1),
+      fat: +fat.toFixed(1),
+      fiber: +fib.toFixed(1),
+      sugar: +sug.toFixed(1),
+      sodium: Math.round(sod),
+      potassium: Math.round(pot),
+      vitaminC: +vitC.toFixed(1),
+      calcium: Math.round(calc),
+      iron: +fe.toFixed(1),
+    };
+  }, [items, selectedIds]);
+
+  const selectedCount = Object.values(selectedIds).filter(Boolean).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+          <Check size={14} className="text-emerald-500" />
+          <span>Confirm AI Analysis</span>
+        </h4>
+        <button
+          type="button"
+          onClick={handleAddBlankItem}
+          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+        >
+          <Plus size={12} />
+          <span>Add Item</span>
+        </button>
+      </div>
+
+      <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+        {items.map((item) => {
+          const isSelected = !!selectedIds[item.id];
+          const isExpanded = expandedItemId === item.id;
+          const isMatching = matchingItemId === item.id;
+
+          return (
+            <div
+              key={item.id}
+              className={cn(
+                "rounded-xl border transition-all p-3",
+                isSelected
+                  ? "border-emerald-500/35 bg-emerald-500/[0.02] dark:border-emerald-500/20 dark:bg-emerald-500/[0.01]"
+                  : "border-zinc-200 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900/40 opacity-60"
+              )}
+            >
+              {/* Item Header */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${item.name}`}
+                  checked={isSelected}
+                  onChange={(e) => {
+                    setSelectedIds((prev) => ({ ...prev, [item.id]: e.target.checked }));
+                  }}
+                  className="h-3.5 w-3.5 rounded border-zinc-300 dark:border-zinc-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                
+                <input
+                  type="text"
+                  value={item.name}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, name: val } : x)));
+                  }}
+                  className="flex-1 font-semibold text-xs bg-transparent border-b border-dashed border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:outline-none px-1 text-zinc-900 dark:text-white"
+                />
+
+                {item.source === "image" && (
+                  <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded select-none shrink-0">
+                    📸 Image
+                  </span>
+                )}
+                {item.source === "text" && (
+                  <span className="text-[8px] font-black uppercase tracking-wider bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 px-1.5 py-0.5 rounded select-none shrink-0">
+                    ✏️ Text
+                  </span>
+                )}
+                {item.source === "both" && (
+                  <span className="text-[8px] font-black uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950/40 text-indigo-750 dark:text-indigo-400 px-1.5 py-0.5 rounded select-none shrink-0">
+                    🤖 Both
+                  </span>
+                )}
+
+                {/* Steppers */}
+                <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5 select-none shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newQty = Math.max(0.1, +(item.quantity - 0.1).toFixed(1));
+                      setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, quantity: newQty } : x)));
+                    }}
+                    className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-600 transition font-bold text-xs"
+                  >
+                    -
+                  </button>
+                  <span className="text-[10px] font-bold text-zinc-800 dark:text-zinc-200 w-8 text-center">
+                    {item.quantity.toFixed(1)}x
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newQty = +(item.quantity + 0.1).toFixed(1);
+                      setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, quantity: newQty } : x)));
+                    }}
+                    className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-600 transition font-bold text-xs"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setItems((prev) => prev.filter((x) => x.id !== item.id))}
+                  className="h-5 w-5 rounded text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition shrink-0"
+                >
+                  <Trash2 size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                  className="h-5 w-5 rounded text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition shrink-0"
+                >
+                  {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </button>
+              </div>
+
+              {/* Servings info */}
+              <div className="mt-1 text-[10px] text-zinc-500 dark:text-zinc-400 italic pl-5">
+                {item.serving_note || "1 serving"}
+              </div>
+
+              {/* Macros values display */}
+              <div className="mt-2 grid grid-cols-4 gap-1.5 pl-5 select-none">
+                <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
+                  <span className="block text-[8px] font-black uppercase text-zinc-500">Cals</span>
+                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                    {Math.round(item.calories * item.quantity)}
+                  </span>
+                </div>
+                <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
+                  <span className="block text-[8px] font-black uppercase text-zinc-500">Pro</span>
+                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                    {(item.protein * item.quantity).toFixed(1)}g
+                  </span>
+                </div>
+                <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
+                  <span className="block text-[8px] font-black uppercase text-zinc-500">Carb</span>
+                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                    {(item.carbs * item.quantity).toFixed(1)}g
+                  </span>
+                </div>
+                <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
+                  <span className="block text-[8px] font-black uppercase text-zinc-500">Fat</span>
+                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                    {(item.fat * item.quantity).toFixed(1)}g
+                  </span>
+                </div>
+              </div>
+
+              {/* Database Match Action */}
+              <div className="mt-2 pl-5 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMatchingItemId(isMatching ? null : item.id);
+                    setMatcherSearchQuery(item.name);
+                    void handleDatabaseSearchForMatch(item.name);
+                  }}
+                  className={cn(
+                    "text-[10px] font-bold flex items-center gap-1.5 select-none hover:underline",
+                    item.isMatched ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"
+                  )}
+                >
+                  {item.isMatched ? <Check size={11} className="text-emerald-500" /> : <Search size={11} />}
+                  <span>{item.isMatched ? "Matched & Verified" : "Match with Database Product"}</span>
+                </button>
+              </div>
+
+              {/* Embedded Match Panel */}
+              {isMatching && (
+                <div className="mt-3 pl-5 border-t border-zinc-200 dark:border-zinc-800 pt-3 space-y-2">
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={matcherSearchQuery}
+                      onChange={(e) => setMatcherSearchQuery(e.target.value)}
+                      placeholder="Search database..."
+                      className="flex-1 h-7 px-2 bg-zinc-100 dark:bg-zinc-900 text-xs text-zinc-950 dark:text-white rounded border border-zinc-250 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleDatabaseSearchForMatch(matcherSearchQuery)}
+                      className="h-7 px-2.5 bg-zinc-800 dark:bg-zinc-700 text-white rounded text-[10px] font-bold"
+                    >
+                      Search
+                    </button>
+                  </div>
+                  {isMatchingLoading ? (
+                    <div className="flex items-center gap-1.5 py-2 text-[10px] text-zinc-550">
+                      <div className="h-3 w-3 border border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                      <span>Searching database...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 max-h-[140px] overflow-y-auto">
+                      {matcherResults.length === 0 ? (
+                        <p className="text-[10px] text-zinc-500 py-1">No products found. Adjust the search name.</p>
+                      ) : (
+                        matcherResults.map((prod, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleMatchSelect(item.id, prod)}
+                            className="w-full text-left p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-850 rounded flex items-center justify-between text-[10px] transition border border-transparent hover:border-zinc-200 dark:hover:border-zinc-850"
+                          >
+                            <div>
+                              <span className="font-bold text-zinc-800 dark:text-zinc-200">{prod.name}</span>
+                              {prod.brand && <span className="text-[9px] text-zinc-500 ml-1">({prod.brand})</span>}
+                            </div>
+                            <span className="font-black text-zinc-700 dark:text-zinc-300 shrink-0 ml-2">{prod.calories} kcal</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Detailed macro/micro edits */}
+              {isExpanded && (
+                <div className="mt-3 pl-5 border-t border-zinc-200 dark:border-zinc-800 pt-3 grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Base Calories (kcal)", key: "calories", step: 1 },
+                    { label: "Base Protein (g)", key: "protein", step: 0.1 },
+                    { label: "Base Carbs (g)", key: "carbs", step: 0.1 },
+                    { label: "Base Fat (g)", key: "fat", step: 0.1 },
+                    { label: "Base Fiber (g)", key: "fiber", step: 0.1 },
+                    { label: "Base Sugar (g)", key: "sugar", step: 0.1 },
+                    { label: "Base Sodium (mg)", key: "sodium", step: 1 },
+                    { label: "Base Potassium (mg)", key: "potassium", step: 1 },
+                    { label: "Base Vitamin C (mg)", key: "vitaminC", step: 0.1 },
+                    { label: "Base Calcium (mg)", key: "calcium", step: 1 },
+                    { label: "Base Iron (mg)", key: "iron", step: 0.1 },
+                  ].map((field) => (
+                    <div key={field.key}>
+                      <label className="block text-[8px] font-black uppercase text-zinc-550 mb-0.5">
+                        {field.label}
+                      </label>
+                      <input
+                        type="number"
+                        step={field.step}
+                        min="0"
+                        value={(item as any)[field.key]}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setItems((prev) =>
+                            prev.map((x) => (x.id === item.id ? { ...x, [field.key]: val } : x))
+                          );
+                        }}
+                        className="w-full h-7 px-2 text-xs bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded text-zinc-950 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Confirmation Combined totals summary */}
+      {selectedCount > 0 && (
+        <div className="bg-zinc-100/70 dark:bg-zinc-900/60 rounded-xl p-3.5 border border-zinc-200 dark:border-zinc-800 text-zinc-950 dark:text-white space-y-1.5 select-none shadow-inner">
+          <div className="flex justify-between items-center text-xs font-black">
+            <span className="uppercase text-[10px] tracking-wider text-zinc-500">Totals ({selectedCount} items)</span>
+            <span className="text-sm text-emerald-600 dark:text-emerald-400">{totals.calories} kcal</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1 text-center pt-1 border-t border-zinc-250 dark:border-zinc-800">
+            <div>
+              <span className="block text-[8px] uppercase font-black text-zinc-500">Protein</span>
+              <span className="text-xs font-bold">{totals.protein}g</span>
+            </div>
+            <div>
+              <span className="block text-[8px] uppercase font-black text-zinc-500">Carbs</span>
+              <span className="text-xs font-bold">{totals.carbs}g</span>
+            </div>
+            <div>
+              <span className="block text-[8px] uppercase font-black text-zinc-500">Fat</span>
+              <span className="text-xs font-bold">{totals.fat}g</span>
+            </div>
+            <div>
+              <span className="block text-[8px] uppercase font-black text-zinc-500">Fiber</span>
+              <span className="text-xs font-bold">{totals.fiber}g</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Refine comment input */}
+      <div className="border-t border-zinc-250 dark:border-zinc-800 pt-3 space-y-2">
+        <label className="text-[10px] font-bold text-zinc-650 dark:text-zinc-400 uppercase tracking-wider block">
+          Make AI Adjustments / Refinement
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={refinementText}
+            onChange={(e) => setRefinementText(e.target.value)}
+            placeholder="Type e.g., 'the rice was brown, double the steak portion'..."
+            disabled={isRefining}
+            className="flex-1 h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-xs text-zinc-950 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition"
+          />
+          <button
+            type="button"
+            disabled={isRefining || !refinementText.trim()}
+            onClick={onRefine}
+            className="h-9 px-3.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 dark:bg-zinc-700 dark:hover:bg-zinc-650 text-white text-xs font-bold transition flex items-center gap-1 disabled:opacity-40"
+          >
+            {isRefining ? (
+              <div className="h-3 w-3 border border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Sparkles size={11} />
+                <span>Refine</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="pt-2 flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="primary"
+            disabled={selectedCount === 0 || isLogging}
+            onClick={onLogSeparate}
+            className="flex items-center justify-center gap-1 h-9 rounded-xl text-xs"
+          >
+            {isLogging ? (
+              <div className="h-3.5 w-3.5 border border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>Log Separate Items</span>
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={selectedCount === 0 || isLogging}
+            onClick={onLogCombined}
+            className="flex items-center justify-center gap-1 h-9 rounded-xl text-xs border border-zinc-300 dark:border-zinc-750"
+          >
+            {isLogging ? (
+              <div className="h-3.5 w-3.5 border border-zinc-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>Log Combined</span>
+            )}
+          </Button>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={onCancel}
+          disabled={isLogging}
+          className="w-full text-xs h-9 rounded-xl border border-zinc-300 dark:border-zinc-750 hover:bg-zinc-100 dark:hover:bg-zinc-850"
+        >
+          Cancel / Start Over
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 // ─── Add Food Modal ──────────────────────────────────────────────
 const AddFoodModal: FC<{
   onAdd: (entry: NutritionEntry | NutritionEntry[]) => void;
@@ -444,27 +996,41 @@ const AddFoodModal: FC<{
 
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
-  const [customImageDataUrl, setCustomImageDataUrl] = useState<string | null>(null);
-  const [customImageMime, setCustomImageMime] = useState<string>("image/jpeg");
+  
+  const [customImages, setCustomImages] = useState<ImageUpload[]>([]);
+  const [analyzedItems, setAnalyzedItems] = useState<AnalyzedFoodItem[]>([]);
+  const [selectedAnalyzedIds, setSelectedAnalyzedIds] = useState<Record<string, boolean>>({});
+  const [refinementText, setRefinementText] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
 
   // ─── Image picker helper ──────────────────────────────────────
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCustomImageMime(file.type || "image/jpeg");
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setCustomImageDataUrl(result);
-    };
-    reader.readAsDataURL(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    Array.from(files).forEach((file) => {
+      const mime = file.type || "image/jpeg";
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result as string;
+        setCustomImages((prev) => [
+          ...prev,
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, dataUrl: result, mimeType: mime }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
     // Reset input so same file can be re-selected
     e.target.value = "";
   };
 
+  const handleRemoveImage = (id: string) => {
+    setCustomImages((prev) => prev.filter((img) => img.id !== id));
+  };
+
   // ─── AI Autofill (text + optional image) ─────────────────────
   const handleAiAutofill = async () => {
-    if (!customName.trim() && !customImageDataUrl) return;
+    if (!customName.trim() && customImages.length === 0) return;
     setIsAutofilling(true);
     setAutofillError(null);
 
@@ -481,48 +1047,57 @@ const AddFoodModal: FC<{
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
       const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
 
-      // STRICT system prompt — full micronutrient extraction + non-food detection
+      // STRICT system prompt for breakdown
       const strictSystemPrompt = `You are a precision clinical nutrition AI for a fitness tracking app.
-Your ONLY job: return a valid JSON object with complete nutritional data for the described or shown food.
+Your ONLY job: analyze the provided text description and/or any uploaded image(s) to identify all food items and estimate their nutrition.
 
 STRICT RULES:
-1. Return ONLY a raw JSON object. No markdown fences, no prose, no explanation whatsoever.
-2. All numeric values must be non-negative. Use 0 only if a nutrient is genuinely absent or unknown.
-3. Estimate for ONE standard serving as would appear on a nutrition label (e.g. 1 slice, 1 cup, 100g, 1 medium piece).
-4. If BOTH an image and text description are provided: use the image as primary truth for portion/ingredients, use the text as a label hint only.
-5. For composite dishes (e.g. butter chicken with rice, pad thai, burrito bowl): decompose all visible/described ingredients, estimate each component, sum totals. Do not guess — derive from ingredient analysis.
-6. CRITICAL — If the content is NOT a food or edible beverage (e.g. supplements that are clearly not food, gym equipment, objects, body parts, clothing, text/labels only): return {"error": "not_food", "reason": "<one sentence>"}.
-7. If the food is genuinely unidentifiable even with image+text: return {"error": "unidentifiable"}.
-8. Do NOT invent data. If a micronutrient is unknown, set it to 0.
+1. Return ONLY a raw JSON object matching the required schema. No markdown fences, no prose, no explanation.
+2. The user may provide multiple food items in the text, upload multiple images of different items, or a combination. Identify all distinct food items.
+3. For each distinct food item, estimate the nutritional values for ONE standard serving (e.g., 1 slice, 1 cup, 100g, 1 medium piece).
+4. Determine the 'source' of each item:
+   - "image" if the item is only visible in the uploaded image(s) (not mentioned in text).
+   - "text" if the item is only described in the text (not visible in image(s)).
+   - "both" if the item is both visible in the image(s) and mentioned in the text.
+5. If the inputs contain NO edible items (e.g., supplements/pills that aren't real food, gym equipment, objects, clothing, pets, body parts, or text-only descriptions of non-food items): return {"error": "not_food", "reason": "<one sentence explanation>"}.
+6. If the food is completely unidentifiable: return {"error": "unidentifiable"}.
+7. Do NOT invent data. If a nutrient is unknown, set it to 0.
 
 Required JSON schema — ALL keys required, no extra keys:
 {
-  "name": string,
-  "serving_note": string,
-  "calories": number,
-  "protein": number,
-  "carbs": number,
-  "fat": number,
-  "fiber": number,
-  "sugar": number,
-  "sodium": number,
-  "potassium": number,
-  "vitaminC": number,
-  "calcium": number,
-  "iron": number
+  "items": [
+    {
+      "name": "string (clear name of the item)",
+      "serving_note": "string (e.g. 1 medium banana, 150g cooked breast)",
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "fiber": number,
+      "sugar": number,
+      "sodium": number,
+      "potassium": number,
+      "vitaminC": number,
+      "calcium": number,
+      "iron": number,
+      "source": "image" | "text" | "both"
+    }
+  ],
+  "summary": "string (brief summary of findings)"
 }
 
 Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassium/calcium/iron/vitaminC=milligrams.`;
 
       let rawContent: string;
 
-      if (customImageDataUrl && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
-        // ── Vision path: call the provider API directly with image inline data ──
-        const base64 = customImageDataUrl.split(",")[1];
-        const mime = customImageMime;
+      if (customImages.length > 0 && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
+        const imageParts = customImages.map((img) => ({
+          inlineData: { mimeType: img.mimeType, data: img.dataUrl.split(",")[1] }
+        }));
+        
         const userText = customName.trim()
-          ? `Analyze the food shown in this image. The user labeled it: "${customName}". Use both the image and label together to determine the food, portion, and all nutritional values. Follow the system instructions exactly.`
-          : `Analyze the food shown in this image. Identify what food it is, estimate the portion size, and return complete nutritional data as specified in the system instructions.`;
+          ? `Analyze the food in these image(s). The user labeled it: "${customName}". Determine all food items, portions, and nutritional values. Follow system instructions exactly.`
+          : `Analyze the food in these image(s). Identify what foods are present, estimate portion sizes, and return nutritional data.`;
 
         if (activeProvider.type === "gemini") {
           const baseUrl = (activeProvider.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
@@ -537,7 +1112,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 contents: [{
                   role: "user",
                   parts: [
-                    { inlineData: { mimeType: mime, data: base64 } },
+                    ...imageParts.map(p => ({ inlineData: p.inlineData })),
                     { text: userText },
                   ],
                 }],
@@ -549,9 +1124,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
             throw new Error(errBody.error?.message || `Gemini Vision error ${res.status}`);
           }
           const body = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-          rawContent = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+          rawContent = body.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
 
         } else if (activeProvider.type === "anthropic") {
+          const imageBlocks = customImages.map((img) => ({
+            type: "image" as const,
+            source: { type: "base64" as const, media_type: img.mimeType, data: img.dataUrl.split(",")[1] }
+          }));
           const res = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: {
@@ -561,12 +1140,12 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
             },
             body: JSON.stringify({
               model: activeProvider.model || "claude-3-5-sonnet-latest",
-              max_tokens: 256,
+              max_tokens: 512,
               system: strictSystemPrompt,
               messages: [{
                 role: "user",
                 content: [
-                  { type: "image", source: { type: "base64", media_type: mime, data: base64 } },
+                  ...imageBlocks,
                   { type: "text", text: userText },
                 ],
               }],
@@ -577,13 +1156,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
             throw new Error(errBody.error?.message || `Anthropic Vision error ${res.status}`);
           }
           const body = await res.json() as { content?: Array<{ type: string; text?: string }> };
-          rawContent = body.content?.find((c) => c.type === "text")?.text ?? "";
+          rawContent = body.content?.find((c: any) => c.type === "text")?.text ?? "";
 
         } else {
-          // OpenAI / OpenRouter — both use the OpenAI messages format
           const baseUrl = activeProvider.type === "openrouter"
             ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
             : (activeProvider.baseUrl || "https://api.openai.com/v1");
+          const imageBlocks = customImages.map((img) => ({
+            type: "image_url" as const,
+            image_url: { url: img.dataUrl }
+          }));
           const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
             method: "POST",
             headers: {
@@ -593,14 +1175,14 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
             },
             body: JSON.stringify({
               model: activeProvider.model || "gpt-4o-mini",
-              max_tokens: 256,
+              max_tokens: 512,
               temperature: 0.1,
               messages: [
                 { role: "system", content: strictSystemPrompt },
                 {
                   role: "user",
                   content: [
-                    { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+                    ...imageBlocks,
                     { type: "text", text: userText },
                   ],
                 },
@@ -615,22 +1197,19 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           rawContent = body.choices?.[0]?.message?.content ?? "";
         }
 
-      } else if (customImageDataUrl && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio")) {
-        // ── Local vision path: Ollama/LM Studio with llava or similar multimodal model ──
-        const base64 = customImageDataUrl.split(",")[1];
-        const mime = customImageMime;
+      } else if (customImages.length > 0 && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio")) {
+        const imagesBase64 = customImages.map((img) => img.dataUrl.split(",")[1]);
         const userText = customName.trim()
-          ? `Analyze the food shown in this image. The user labeled it: "${customName}". Return full nutritional JSON as instructed.`
-          : `Analyze the food shown in this image. Return full nutritional JSON as instructed.`;
+          ? `Analyze the food in these image(s). The user labeled it: "${customName}". Return full breakdown JSON.`
+          : `Analyze the food in these image(s). Return full breakdown JSON.`;
         const baseUrl = (activeProvider.baseUrl || "http://localhost:11434").replace(/\/$/, "");
-        // Try Ollama's generate API with images array (works with llava, bakllava, moondream, etc.)
         const res = await fetch(`${baseUrl}/api/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: activeProvider.model,
             prompt: `${strictSystemPrompt}\n\nUser: ${userText}`,
-            images: [base64],
+            images: imagesBase64,
             stream: false,
             format: "json",
           }),
@@ -639,7 +1218,6 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           const body = await res.json() as { response?: string };
           rawContent = body.response ?? "";
         } else {
-          // Fallback: text-only if model doesn't support vision
           const adapter = getProviderAdapter(activeProvider.type);
           const { content } = await adapter.chat({
             provider: activeProvider,
@@ -648,8 +1226,8 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               id: `autofill-${Date.now()}`,
               role: "user",
               content: customName.trim()
-                ? `Estimate complete nutritional values for: "${customName}". Note: an image was provided but your model may not support vision — estimate from the name only.`
-                : `Cannot analyze image without vision support. Please describe the food.`,
+                ? `Estimate breakdown values for: "${customName}". Model does not support vision — estimate from name only.`
+                : `Please describe the food.`,
               createdAt: new Date().toISOString(),
             }],
             systemContext: strictSystemPrompt,
@@ -657,11 +1235,10 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           rawContent = content;
         }
       } else {
-        // ── Text-only path: use the standard adapter ─────────────────────────
         const adapter = getProviderAdapter(activeProvider.type);
         const descriptionPrompt = customName.trim()
-          ? `Estimate complete nutritional values for this food: "${customName}". Think carefully about the typical serving size and all nutrient components including micronutrients.`
-          : `Estimate complete nutritional values for a typical serving of food.`;
+          ? `Estimate breakdown values for this: "${customName}".`
+          : `Estimate breakdown values for a typical serving of food.`;
         const { content } = await adapter.chat({
           provider: activeProvider,
           apiKey,
@@ -676,51 +1253,295 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         rawContent = content;
       }
 
-      // ── Parse the JSON response ───────────────────────────────────────────
       let cleanContent = rawContent.trim();
       const fenceMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (fenceMatch) cleanContent = fenceMatch[1].trim();
-
       const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) cleanContent = jsonMatch[0];
 
       const parsed = JSON.parse(cleanContent);
 
-      // Non-food detection
       if (parsed?.error === "not_food") {
         const reason = parsed.reason ? ` (${parsed.reason})` : "";
         throw new Error(`This doesn't appear to be a food item${reason}. Please photograph or describe an actual food or beverage.`);
       }
       if (parsed?.error) {
-        throw new Error("Could not identify the food. Please type a clearer food name or use a sharper, well-lit image of the food.");
+        throw new Error("Could not identify the food. Please type a clearer food name or use a sharper, well-lit image.");
       }
 
-      if (parsed) {
-        // Auto-fill name if blank and AI returned one
-        if (!customName.trim() && parsed.name) setCustomName(String(parsed.name));
-        // Macros
-        if (parsed.calories !== undefined) setCustomCal(String(Math.round(Math.max(0, parsed.calories))));
-        if (parsed.protein !== undefined) setCustomProtein(String(Math.max(0, Number(parsed.protein)).toFixed(1)));
-        if (parsed.carbs !== undefined) setCustomCarbs(String(Math.max(0, Number(parsed.carbs)).toFixed(1)));
-        if (parsed.fat !== undefined) setCustomFat(String(Math.max(0, Number(parsed.fat)).toFixed(1)));
-        if (parsed.fiber !== undefined) setCustomFiber(String(Math.max(0, Number(parsed.fiber || 0)).toFixed(1)));
-        // Micronutrients
-        if (parsed.sugar !== undefined) setCustomSugar(String(Math.max(0, Number(parsed.sugar || 0)).toFixed(1)));
-        if (parsed.sodium !== undefined) setCustomSodium(String(Math.round(Math.max(0, parsed.sodium || 0))));
-        if (parsed.potassium !== undefined) setCustomPotassium(String(Math.round(Math.max(0, parsed.potassium || 0))));
-        if (parsed.vitaminC !== undefined) setCustomVitaminC(String(Math.max(0, Number(parsed.vitaminC || 0)).toFixed(1)));
-        if (parsed.calcium !== undefined) setCustomCalcium(String(Math.round(Math.max(0, parsed.calcium || 0))));
-        if (parsed.iron !== undefined) setCustomIron(String(Math.max(0, Number(parsed.iron || 0)).toFixed(1)));
-        // Show serving note as a transient hint if present
-        if (parsed.serving_note) {
-          setAutofillError(`ℹ️ ${parsed.serving_note}`);
-        }
+      let parsedItemsList: any[] = [];
+      if (parsed && Array.isArray(parsed.items)) {
+        parsedItemsList = parsed.items;
+      } else if (parsed && parsed.calories !== undefined) {
+        parsedItemsList = [{
+          name: parsed.name || customName || "Custom Food",
+          serving_note: parsed.serving_note || "1 serving",
+          calories: parsed.calories,
+          protein: parsed.protein,
+          carbs: parsed.carbs,
+          fat: parsed.fat,
+          fiber: parsed.fiber,
+          sugar: parsed.sugar,
+          sodium: parsed.sodium,
+          potassium: parsed.potassium,
+          vitaminC: parsed.vitaminC,
+          calcium: parsed.calcium,
+          iron: parsed.iron,
+          source: customImages.length > 0 ? (customName.trim() ? "both" : "image") : "text"
+        }];
+      } else {
+        throw new Error("Could not parse AI results. Please clarify the description or photo.");
+      }
+
+      const mapped = mappedAnalyzedFoodItems(parsedItemsList);
+      setAnalyzedItems(mapped);
+
+      const initialSelected: Record<string, boolean> = {};
+      mapped.forEach((item) => {
+        initialSelected[item.id] = true;
+      });
+      setSelectedAnalyzedIds(initialSelected);
+
+      if (parsed.summary) {
+        setAutofillError(`ℹ️ ${parsed.summary}`);
       }
     } catch (err: any) {
       console.error("AI Autofill failed:", err);
       setAutofillError(err.message || "Failed to query AI helper.");
     } finally {
       setIsAutofilling(false);
+    }
+  };
+
+  const mappedAnalyzedFoodItems = (items: any[]): AnalyzedFoodItem[] => {
+    return items.map((item: any, idx: number) => ({
+      id: `analyzed-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}`,
+      name: item.name || "Custom Food",
+      serving_note: item.serving_note || "1 serving",
+      calories: Math.round(item.calories || 0),
+      protein: +((item.protein || 0).toFixed(1)),
+      carbs: +((item.carbs || 0).toFixed(1)),
+      fat: +((item.fat || 0).toFixed(1)),
+      fiber: +((item.fiber || 0).toFixed(1)),
+      sugar: +((item.sugar || 0).toFixed(1)),
+      sodium: Math.round(item.sodium || 0),
+      potassium: Math.round(item.potassium || 0),
+      vitaminC: +((item.vitaminC || 0).toFixed(1)),
+      calcium: Math.round(item.calcium || 0),
+      iron: +((item.iron || 0).toFixed(1)),
+      source: item.source || "text",
+      quantity: 1.0,
+    }));
+  };
+
+  const handleAiRefine = async () => {
+    if (!refinementText.trim() || analyzedItems.length === 0) return;
+    setIsRefining(true);
+    setAutofillError(null);
+
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const hasAi = activeProvider && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio" || !!activeProvider.apiKey);
+
+    if (!hasAi) {
+      setAutofillError("AI is not configured. Please set up an API provider in Settings.");
+      setIsRefining(false);
+      return;
+    }
+
+    try {
+      const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+
+      const currentItemsJson = JSON.stringify(analyzedItems.map(item => ({
+        name: item.name,
+        serving_note: item.serving_note,
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        fiber: item.fiber,
+        sugar: item.sugar,
+        sodium: item.sodium,
+        potassium: item.potassium,
+        vitaminC: item.vitaminC,
+        calcium: item.calcium,
+        iron: item.iron,
+        source: item.source
+      })));
+
+      const refinementSystemPrompt = `You are a precision clinical nutrition AI. The user has already analyzed their meal, and you generated a breakdown.
+Now, they are giving you feedback/corrections. Update the breakdown of food items based on their feedback.
+
+Current items breakdown:
+${currentItemsJson}
+
+Refinement Feedback:
+"${refinementText}"
+
+STRICT RULES:
+1. Return ONLY a raw JSON object matching the schema. No markdown fences, no prose.
+2. Update the portion sizes, names, or items based on user feedback. Scale nutritional numbers accordingly.
+3. Keep the "source" property as appropriate.
+4. Retain other items unchanged unless affected by the feedback.
+
+Required JSON schema:
+{
+  "items": [
+    {
+      "name": "string",
+      "serving_note": "string",
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "fiber": number,
+      "sugar": number,
+      "sodium": number,
+      "potassium": number,
+      "vitaminC": number,
+      "calcium": number,
+      "iron": number,
+      "source": "image" | "text" | "both"
+    }
+  ],
+  "summary": "brief summary of updates made"
+}
+
+Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassium/calcium/iron/vitaminC=milligrams.`;
+
+      let rawContent: string;
+
+      if (customImages.length > 0 && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
+        const imageParts = customImages.map((img) => ({
+          inlineData: { mimeType: img.mimeType, data: img.dataUrl.split(",")[1] }
+        }));
+        
+        if (activeProvider.type === "gemini") {
+          const baseUrl = (activeProvider.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
+          const res = await fetch(
+            `${baseUrl}/models/${activeProvider.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: refinementSystemPrompt }] },
+                generationConfig: { temperature: 0.1 },
+                contents: [{
+                  role: "user",
+                  parts: [
+                    ...imageParts.map(p => ({ inlineData: p.inlineData })),
+                    { text: `Apply this feedback to the current list of items: "${refinementText}"` },
+                  ],
+                }],
+              }),
+            }
+          );
+          if (!res.ok) throw new Error("Gemini refinement failed");
+          const body = await res.json();
+          rawContent = body.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+        } else if (activeProvider.type === "anthropic") {
+          const imageBlocks = customImages.map((img) => ({
+            type: "image" as const,
+            source: { type: "base64" as const, media_type: img.mimeType, data: img.dataUrl.split(",")[1] }
+          }));
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: activeProvider.model || "claude-3-5-sonnet-latest",
+              max_tokens: 512,
+              system: refinementSystemPrompt,
+              messages: [{
+                role: "user",
+                content: [
+                  ...imageBlocks,
+                  { type: "text", text: `Apply this feedback to the current list of items: "${refinementText}"` },
+                ],
+              }],
+            }),
+          });
+          if (!res.ok) throw new Error("Anthropic refinement failed");
+          const body = await res.json();
+          rawContent = body.content?.find((c: any) => c.type === "text")?.text ?? "";
+        } else {
+          const baseUrl = activeProvider.type === "openrouter"
+            ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
+            : (activeProvider.baseUrl || "https://api.openai.com/v1");
+          const imageBlocks = customImages.map((img) => ({
+            type: "image_url" as const,
+            image_url: { url: img.dataUrl }
+          }));
+          const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: activeProvider.model || "gpt-4o-mini",
+              max_tokens: 512,
+              temperature: 0.1,
+              messages: [
+                { role: "system", content: refinementSystemPrompt },
+                {
+                  role: "user",
+                  content: [
+                    ...imageBlocks,
+                    { type: "text", text: `Apply this feedback to the current list of items: "${refinementText}"` },
+                  ],
+                },
+              ],
+            }),
+          });
+          if (!res.ok) throw new Error("OpenAI refinement failed");
+          const body = await res.json();
+          rawContent = body.choices?.[0]?.message?.content ?? "";
+        }
+      } else {
+        const adapter = getProviderAdapter(activeProvider.type);
+        const { content } = await adapter.chat({
+          provider: activeProvider,
+          apiKey,
+          messages: [{
+            id: `refine-${Date.now()}`,
+            role: "user",
+            content: `Apply this feedback to the current list of items: "${refinementText}"`,
+            createdAt: new Date().toISOString(),
+          }],
+          systemContext: refinementSystemPrompt,
+        });
+        rawContent = content;
+      }
+
+      let cleanContent = rawContent.trim();
+      const fenceMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) cleanContent = fenceMatch[1].trim();
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleanContent = jsonMatch[0];
+
+      const parsed = JSON.parse(cleanContent);
+      if (parsed && Array.isArray(parsed.items)) {
+        const mapped = mappedAnalyzedFoodItems(parsed.items);
+        setAnalyzedItems(mapped);
+        
+        const newSelected: Record<string, boolean> = {};
+        mapped.forEach((x: any) => { newSelected[x.id] = true; });
+        setSelectedAnalyzedIds(newSelected);
+        
+        setRefinementText("");
+        if (parsed.summary) {
+          setAutofillError(`ℹ️ ${parsed.summary}`);
+        }
+      }
+    } catch (err: any) {
+      console.error("AI Refinement failed:", err);
+      setAutofillError(err.message || "Failed to refine with AI.");
+    } finally {
+      setIsRefining(false);
     }
   };
 
@@ -925,6 +1746,97 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
       onAdd(entries);
       onClose();
     }
+  };
+
+  const handleLogSeparate = () => {
+    const selectedList = analyzedItems.filter((item) => selectedAnalyzedIds[item.id]);
+    if (selectedList.length === 0) return;
+
+    const entries: NutritionEntry[] = selectedList.map((item) => {
+      const q = item.quantity;
+      return {
+        id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        meal,
+        timestamp: new Date().toISOString(),
+        servingSize: q,
+        servingUnit: item.serving_note || "serving",
+        name: item.name,
+        calories: Math.round(item.calories * q),
+        protein: +((item.protein * q).toFixed(1)),
+        carbs: +((item.carbs * q).toFixed(1)),
+        fat: +((item.fat * q).toFixed(1)),
+        fiber: +((item.fiber * q).toFixed(1)),
+        sugar: +((item.sugar * q).toFixed(1)),
+        sodium: Math.round(item.sodium * q),
+        potassium: Math.round(item.potassium * q),
+        vitaminC: +((item.vitaminC * q).toFixed(1)),
+        calcium: Math.round(item.calcium * q),
+        iron: +((item.iron * q).toFixed(1)),
+      };
+    });
+
+    onAdd(entries);
+    onClose();
+    setCustomImages([]);
+    setAnalyzedItems([]);
+    setSelectedAnalyzedIds({});
+  };
+
+  const handleLogCombined = () => {
+    const selectedList = analyzedItems.filter((item) => selectedAnalyzedIds[item.id]);
+    if (selectedList.length === 0) return;
+
+    let cal = 0, pro = 0, carb = 0, fat = 0, fib = 0, sug = 0, sod = 0, pot = 0, vitC = 0, calc = 0, fe = 0;
+    selectedList.forEach((item) => {
+      const q = item.quantity;
+      cal += (item.calories || 0) * q;
+      pro += (item.protein || 0) * q;
+      carb += (item.carbs || 0) * q;
+      fat += (item.fat || 0) * q;
+      fib += (item.fiber || 0) * q;
+      sug += (item.sugar || 0) * q;
+      sod += (item.sodium || 0) * q;
+      pot += (item.potassium || 0) * q;
+      vitC += (item.vitaminC || 0) * q;
+      calc += (item.calcium || 0) * q;
+      fe += (item.iron || 0) * q;
+    });
+
+    const combinedName = `Combined: ${selectedList.map(x => x.name).join(", ")}`.slice(0, 100);
+
+    const entry: NutritionEntry = {
+      id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      meal,
+      timestamp: new Date().toISOString(),
+      servingSize: 1,
+      servingUnit: "serving",
+      name: combinedName,
+      calories: Math.round(cal),
+      protein: +pro.toFixed(1),
+      carbs: +carb.toFixed(1),
+      fat: +fat.toFixed(1),
+      fiber: +fib.toFixed(1),
+      sugar: +sug.toFixed(1),
+      sodium: Math.round(sod),
+      potassium: Math.round(pot),
+      vitaminC: +vitC.toFixed(1),
+      calcium: Math.round(calc),
+      iron: +fe.toFixed(1),
+    };
+
+    onAdd(entry);
+    onClose();
+    setCustomImages([]);
+    setAnalyzedItems([]);
+    setSelectedAnalyzedIds({});
+  };
+
+  const handleConfirmationCancel = () => {
+    setAnalyzedItems([]);
+    setSelectedAnalyzedIds({});
+    setCustomImages([]);
+    setRefinementText("");
+    setAutofillError(null);
   };
 
   const selectedCount = Object.keys(selectedItems).length;
@@ -1470,7 +2382,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   </div>
 
                   {barcodeError && (
-                    <p className="text-[10px] font-bold text-rose-600 dark:text-rose-450 text-center">{barcodeError}</p>
+                  <p className="text-[10px] font-bold text-rose-600 dark:text-rose-450 text-center">{barcodeError}</p>
                   )}
 
                   {/* Simulator samples */}
@@ -1500,148 +2412,188 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
             </>
           ) : (
             <div className="space-y-3">
-              {/* ── Image Upload for AI Vision ─────────────────────────── */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Photo (optional)</label>
-                  {customImageDataUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomImageDataUrl(null)}
-                      className="text-[10px] font-bold text-rose-500 hover:underline"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-
-                {customImageDataUrl ? (
-                  <div className="relative w-full rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800" style={{ height: 100 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={customImageDataUrl} alt="Food preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                    <div className="absolute bottom-1.5 left-2 flex items-center gap-1">
-                      <Sparkles size={9} className="text-emerald-300" />
-                      <span className="text-[9px] font-bold text-white/90">AI will analyze this image</span>
-                    </div>
-                  </div>
-                ) : (
-                  <label
-                    htmlFor="customFoodImage"
-                    className="flex flex-col items-center justify-center gap-1.5 w-full h-[72px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all"
-                  >
-                    <Camera size={18} className="text-zinc-400 dark:text-zinc-500" />
-                    <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Upload food photo for AI analysis</span>
-                    <span className="text-[9px] text-zinc-400 dark:text-zinc-500">JPG, PNG, HEIC supported</span>
-                  </label>
-                )}
-                <input
-                  id="customFoodImage"
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handleImagePick}
+              {analyzedItems.length > 0 ? (
+                <FoodItemConfirmationPanel
+                  items={analyzedItems}
+                  setItems={setAnalyzedItems}
+                  selectedIds={selectedAnalyzedIds}
+                  setSelectedIds={setSelectedAnalyzedIds}
+                  onLogSeparate={handleLogSeparate}
+                  onLogCombined={handleLogCombined}
+                  onCancel={handleConfirmationCancel}
+                  isLogging={false}
+                  refinementText={refinementText}
+                  setRefinementText={setRefinementText}
+                  onRefine={handleAiRefine}
+                  isRefining={isRefining}
+                  meal={meal}
+                  searchCountry={searchCountry}
                 />
-              </div>
+              ) : (
+                <>
+                  {/* ── Multiple Image Upload for AI Vision ─────────────────────────── */}
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider block mb-1.5">
+                      Photos ({customImages.length} uploaded)
+                    </label>
 
-              {/* ── Food Name ──────────────────────────────────────────── */}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-bold text-zinc-700 dark:text-zinc-200" htmlFor="customName">Food Name {!customImageDataUrl && "*"}</label>
-                  {(customName.trim().length >= 3 || customImageDataUrl) && (
-                    <button
-                      type="button"
-                      disabled={isAutofilling}
-                      onClick={handleAiAutofill}
-                      className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none"
-                    >
-                      {isAutofilling ? (
-                        <>
-                          <div className="h-2.5 w-2.5 border border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                          <span>{customImageDataUrl ? "Analyzing image..." : "Estimating..."}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={10} />
-                          <span>{customImageDataUrl ? "Analyze with AI" : "Autofill with AI"}</span>
-                        </>
+                    {customImages.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {customImages.map((img) => (
+                          <div key={img.id} className="relative aspect-video rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img.dataUrl} alt="Food thumbnail" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(img.id)}
+                              className="absolute top-1 right-1 h-5 w-5 bg-black/70 hover:bg-rose-600 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                              aria-label="Remove image"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                        {customImages.length < 5 && (
+                          <label
+                            htmlFor="customFoodImageMore"
+                            className="flex flex-col items-center justify-center aspect-video rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 transition"
+                          >
+                            <Camera size={14} className="text-zinc-400" />
+                            <span className="text-[8px] font-semibold text-zinc-500 mt-0.5">+ Add More</span>
+                          </label>
+                        )}
+                      </div>
+                    )}
+
+                    {customImages.length === 0 && (
+                      <label
+                        htmlFor="customFoodImage"
+                        className="flex flex-col items-center justify-center gap-1.5 w-full h-[76px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all mb-1"
+                      >
+                        <Camera size={18} className="text-zinc-400 dark:text-zinc-500" />
+                        <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Upload food photo(s) for AI analysis</span>
+                        <span className="text-[9px] text-zinc-400 dark:text-zinc-500">JPG, PNG, HEIC supported (Up to 5 images)</span>
+                      </label>
+                    )}
+                    
+                    <input
+                      id="customFoodImage"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={handleImagePick}
+                    />
+                    <input
+                      id="customFoodImageMore"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={handleImagePick}
+                    />
+                  </div>
+
+                  {/* ── Food Name ──────────────────────────────────────────── */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-zinc-700 dark:text-zinc-200" htmlFor="customName">Food Description {customImages.length === 0 && "*"}</label>
+                      {(customName.trim().length >= 3 || customImages.length > 0) && (
+                        <button
+                          type="button"
+                          disabled={isAutofilling}
+                          onClick={handleAiAutofill}
+                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none"
+                        >
+                          {isAutofilling ? (
+                            <>
+                              <div className="h-2.5 w-2.5 border border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                              <span>{customImages.length > 0 ? "Analyzing image..." : "Estimating..."}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={10} />
+                              <span>{customImages.length > 0 ? "Analyze with AI" : "Autofill with AI"}</span>
+                            </>
+                          )}
+                        </button>
                       )}
-                    </button>
-                  )}
-                </div>
-                <input
-                  id="customName"
-                  className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500"
-                  placeholder={customImageDataUrl ? "e.g. Homemade curry (optional)" : "e.g. Homemade curry"}
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                />
-                {autofillError && (
-                  <p className={`mt-1 text-[10px] font-medium ${
-                    autofillError.startsWith("ℹ️")
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-rose-600 dark:text-rose-455"
-                  }`}>{autofillError}</p>
-                )}
-              </div>
-
-              {/* ── Macro Fields ─────────────────────────────────────── */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {[
-                  { label: "Calories (kcal) *", id: "customCal", value: customCal, set: setCustomCal, placeholder: "e.g. 350" },
-                  { label: "Protein (g)", id: "customProtein", value: customProtein, set: setCustomProtein, placeholder: "e.g. 30" },
-                  { label: "Carbs (g)", id: "customCarbs", value: customCarbs, set: setCustomCarbs, placeholder: "e.g. 45" },
-                  { label: "Fat (g)", id: "customFat", value: customFat, set: setCustomFat, placeholder: "e.g. 12" },
-                  { label: "Fiber (g)", id: "customFiber", value: customFiber, set: setCustomFiber, placeholder: "e.g. 5" },
-                ].map((f) => (
-                  <div key={f.id}>
-                    <label className="text-[10px] font-bold text-zinc-750 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
-                    <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
-                  </div>
-                ))}
-              </div>
-
-              {/* ── Micronutrients (collapsible, auto-opened when AI fills them) ── */}
-              {(() => {
-                const hasMicros = customSugar || customSodium || customPotassium || customVitaminC || customCalcium || customIron;
-                return (
-                  <details open={!!hasMicros} className="group">
-                    <summary className="flex items-center gap-1.5 cursor-pointer list-none select-none py-1">
-                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Advanced Nutrients</span>
-                      <span className="ml-auto text-[9px] font-bold text-emerald-600 dark:text-emerald-400 group-open:hidden">+ Show</span>
-                      <span className="ml-auto text-[9px] font-bold text-zinc-500 hidden group-open:inline">− Hide</span>
-                    </summary>
-                    <div className="grid grid-cols-2 gap-2.5 mt-2">
-                      {[
-                        { label: "Sugar (g)", id: "customSugar", value: customSugar, set: setCustomSugar, placeholder: "e.g. 8" },
-                        { label: "Sodium (mg)", id: "customSodium", value: customSodium, set: setCustomSodium, placeholder: "e.g. 320" },
-                        { label: "Potassium (mg)", id: "customPotassium", value: customPotassium, set: setCustomPotassium, placeholder: "e.g. 400" },
-                        { label: "Vitamin C (mg)", id: "customVitaminC", value: customVitaminC, set: setCustomVitaminC, placeholder: "e.g. 15" },
-                        { label: "Calcium (mg)", id: "customCalcium", value: customCalcium, set: setCustomCalcium, placeholder: "e.g. 200" },
-                        { label: "Iron (mg)", id: "customIron", value: customIron, set: setCustomIron, placeholder: "e.g. 2" },
-                      ].map((f) => (
-                        <div key={f.id}>
-                          <label className="text-[10px] font-bold text-zinc-750 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
-                          <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
-                        </div>
-                      ))}
                     </div>
-                  </details>
-                );
-              })()}
-            </div>
-          )}
+                    <input
+                      id="customName"
+                      className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500"
+                      placeholder={customImages.length > 0 ? "e.g. Eggs and toast (optional)" : "e.g. Eggs and toast"}
+                      value={customName}
+                      onChange={(e) => setCustomName(e.target.value)}
+                    />
+                    {autofillError && (
+                      <p className={`mt-1 text-[10px] font-medium ${
+                        autofillError.startsWith("ℹ️")
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-rose-600 dark:text-rose-455"
+                      }`}>{autofillError}</p>
+                    )}
+                  </div>
 
-          {/* Render standard single Add button for Custom Entry mode only */}
-          {mode === "custom" && (
-            <Button
-              variant="primary"
-              className="w-full mt-2"
-              disabled={!customName.trim() || !customCal}
-              onClick={handleAdd}
-            >
-              <Plus size={15} /> Add to {MEAL_LABELS[meal].label}
-            </Button>
+                  {/* ── Macro Fields ─────────────────────────────────────── */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {[
+                      { label: "Calories (kcal) *", id: "customCal", value: customCal, set: setCustomCal, placeholder: "e.g. 350" },
+                      { label: "Protein (g)", id: "customProtein", value: customProtein, set: setCustomProtein, placeholder: "e.g. 30" },
+                      { label: "Carbs (g)", id: "customCarbs", value: customCarbs, set: setCustomCarbs, placeholder: "e.g. 45" },
+                      { label: "Fat (g)", id: "customFat", value: customFat, set: setCustomFat, placeholder: "e.g. 12" },
+                      { label: "Fiber (g)", id: "customFiber", value: customFiber, set: setCustomFiber, placeholder: "e.g. 5" },
+                    ].map((f) => (
+                      <div key={f.id}>
+                        <label className="text-[10px] font-bold text-zinc-755 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
+                        <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Micronutrients (collapsible, auto-opened when AI fills them) ── */}
+                  {(() => {
+                    const hasMicros = customSugar || customSodium || customPotassium || customVitaminC || customCalcium || customIron;
+                    return (
+                      <details open={!!hasMicros} className="group">
+                        <summary className="flex items-center gap-1.5 cursor-pointer list-none select-none py-1">
+                          <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Advanced Nutrients</span>
+                          <span className="ml-auto text-[9px] font-bold text-emerald-600 dark:text-emerald-400 group-open:hidden">+ Show</span>
+                          <span className="ml-auto text-[9px] font-bold text-zinc-500 hidden group-open:inline">− Hide</span>
+                        </summary>
+                        <div className="grid grid-cols-2 gap-2.5 mt-2">
+                          {[
+                            { label: "Sugar (g)", id: "customSugar", value: customSugar, set: setCustomSugar, placeholder: "e.g. 8" },
+                            { label: "Sodium (mg)", id: "customSodium", value: customSodium, set: setCustomSodium, placeholder: "e.g. 320" },
+                            { label: "Potassium (mg)", id: "customPotassium", value: customPotassium, set: setCustomPotassium, placeholder: "e.g. 400" },
+                            { label: "Vitamin C (mg)", id: "customVitaminC", value: customVitaminC, set: setCustomVitaminC, placeholder: "e.g. 15" },
+                            { label: "Calcium (mg)", id: "customCalcium", value: customCalcium, set: setCustomCalcium, placeholder: "e.g. 200" },
+                            { label: "Iron (mg)", id: "customIron", value: customIron, set: setCustomIron, placeholder: "e.g. 2" },
+                          ].map((f) => (
+                            <div key={f.id}>
+                              <label className="text-[10px] font-bold text-zinc-755 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
+                              <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    );
+                  })()}
+
+                  {/* Render standard single Add button for Custom Entry mode only */}
+                  {mode === "custom" && (
+                    <Button
+                      variant="primary"
+                      className="w-full mt-2"
+                      disabled={!customName.trim() || !customCal}
+                      onClick={handleAdd}
+                    >
+                      <Plus size={15} /> Add to {MEAL_LABELS[meal].label}
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -1865,6 +2817,28 @@ export function NutritionTracker() {
   const [quickLogMeal, setQuickLogMeal] = useState<NutritionEntry["meal"]>(() => getCurrentMealTimeSlot());
   const [isQuickLogging, setIsQuickLogging] = useState(false);
   const [quickLogFeedback, setQuickLogFeedback] = useState<string | null>(null);
+
+  const [quickLogImages, setQuickLogImages] = useState<ImageUpload[]>([]);
+  const [quickLogAnalyzedItems, setQuickLogAnalyzedItems] = useState<AnalyzedFoodItem[]>([]);
+  const [selectedQuickLogAnalyzedIds, setSelectedQuickLogAnalyzedIds] = useState<Record<string, boolean>>({});
+  const [quickLogRefinementText, setQuickLogRefinementText] = useState("");
+  const [isQuickLogRefining, setIsQuickLogRefining] = useState(false);
+  const [searchCountry, setSearchCountry] = useState("world");
+
+  // Automatically detect country code from browser locale in parent
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.language) {
+      const parts = navigator.language.split("-");
+      if (parts.length > 1) {
+        let country = parts[1].toLowerCase();
+        if (country === "gb") country = "uk";
+        const supported = ["us", "uk", "fr", "in", "ca", "au", "de", "es", "br"];
+        if (supported.includes(country)) {
+          setSearchCountry(country);
+        }
+      }
+    }
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAddMeal, setSelectedAddMeal] = useState<NutritionEntry["meal"]>("breakfast");
@@ -2194,7 +3168,7 @@ export function NutritionTracker() {
 
   const handleQuickLog = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickLogText.trim()) return;
+    if (!quickLogText.trim() && quickLogImages.length === 0) return;
 
     setIsQuickLogging(true);
     setQuickLogFeedback(null);
@@ -2203,124 +3177,644 @@ export function NutritionTracker() {
     const hasAi = activeProvider && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio" || !!activeProvider.apiKey);
 
     try {
-      let parsedItems: Omit<NutritionEntry, "id" | "meal" | "timestamp">[] = [];
+      let parsedItemsList: any[] = [];
 
       if (hasAi) {
         const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
         const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
-        const adapter = getProviderAdapter(activeProvider.type);
 
-        const systemPrompt = `You are a clinical nutrition assistant. Your task is to parse a user's unstructured food log text into a JSON array of food items.
-Each item in the array MUST match this TypeScript interface:
-interface ParsedMealItem {
-  name: string; // Clean, standard name (e.g., 'Whole Egg')
-  calories: number; // in kcal
-  protein: number; // in grams
-  carbs: number; // in grams
-  fat: number; // in grams
-  fiber: number; // in grams
-  sugar: number; // in grams
-  sodium: number; // in mg
-  potassium: number; // in mg
-  vitaminC: number; // in mg
-  calcium: number; // in mg
-  iron: number; // in mg
-  servingSize: number; // number of servings or quantity (e.g. 3, 1.5, 1)
-  servingUnit: string; // unit of serving (e.g. 'large', 'cup', '100g', 'scoop')
+        const strictSystemPrompt = `You are a precision clinical nutrition AI for a fitness tracking app.
+Your ONLY job: analyze the provided text description and/or any uploaded image(s) to identify all food items and estimate their nutrition.
+
+STRICT RULES:
+1. Return ONLY a raw JSON object matching the required schema. No markdown fences, no prose, no explanation.
+2. The user may provide multiple food items in the text, upload multiple images of different items, or a combination. Identify all distinct food items.
+3. For each distinct food item, estimate the nutritional values for ONE standard serving (e.g., 1 slice, 1 cup, 100g, 1 medium piece).
+4. Determine the 'source' of each item:
+   - "image" if the item is only visible in the uploaded image(s) (not mentioned in text).
+   - "text" if the item is only described in the text (not visible in image(s)).
+   - "both" if the item is both visible in the image(s) and mentioned in the text.
+5. If the inputs contain NO edible items (e.g., supplements/pills that aren't real food, gym equipment, objects, clothing, pets, body parts, or text-only descriptions of non-food items): return {"error": "not_food", "reason": "<one sentence explanation>"}.
+6. If the food is completely unidentifiable: return {"error": "unidentifiable"}.
+7. Do NOT invent data. If a nutrient is unknown, set it to 0.
+
+Required JSON schema — ALL keys required, no extra keys:
+{
+  "items": [
+    {
+      "name": "string (clear name of the item)",
+      "serving_note": "string (e.g. 1 medium banana, 150g cooked breast)",
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "fiber": number,
+      "sugar": number,
+      "sodium": number,
+      "potassium": number,
+      "vitaminC": number,
+      "calcium": number,
+      "iron": number,
+      "source": "image" | "text" | "both"
+    }
+  ],
+  "summary": "string (brief summary of findings)"
 }
 
-If a food matches any of these standard database items, please use its nutritional stats and scale them by the quantity:
-${JSON.stringify(COMMON_FOODS.map(f => ({ name: f.name, aliases: f.aliases, calories: f.calories, protein: f.protein, carbs: f.carbs, fat: f.fat, servingUnit: f.servingUnit })))}
+Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassium/calcium/iron/vitaminC=milligrams.`;
 
-Do NOT include any markdown code blocks, explanation text, or wrapping objects. Return ONLY the raw JSON array. If the query does not contain recognizable food, return an empty array [].`;
+        const userText = quickLogText.trim()
+          ? `Analyze these inputs. Text log: "${quickLogText}".`
+          : `Analyze the food in these image(s).`;
 
-        const userPrompt = `Parse the food log: "${quickLogText}"`;
+        let rawContent: string;
 
-        const { content } = await adapter.chat({
-          provider: activeProvider,
-          apiKey,
-          messages: [{ id: `quick-log-${Date.now()}`, role: "user", content: userPrompt, createdAt: new Date().toISOString() }],
-          systemContext: systemPrompt,
-        });
-
-        let cleanContent = content.trim();
-        if (cleanContent.startsWith("```json")) {
-          cleanContent = cleanContent.replace(/^```json/, "").replace(/```$/, "").trim();
-        } else if (cleanContent.startsWith("```")) {
-          cleanContent = cleanContent.replace(/^```/, "").replace(/```$/, "").trim();
-        }
-
-        const items = JSON.parse(cleanContent);
-        if (Array.isArray(items)) {
-          parsedItems = items.map((item: any) => ({
-            name: item.name || "Custom Food",
-            calories: Math.round(item.calories || 0),
-            protein: +((item.protein || 0).toFixed(1)),
-            carbs: +((item.carbs || 0).toFixed(1)),
-            fat: +((item.fat || 0).toFixed(1)),
-            fiber: +((item.fiber || 0).toFixed(1)),
-            sugar: +((item.sugar || 0).toFixed(1)),
-            sodium: Math.round(item.sodium || 0),
-            potassium: Math.round(item.potassium || 0),
-            vitaminC: +((item.vitaminC || 0).toFixed(1)),
-            calcium: Math.round(item.calcium || 0),
-            iron: +((item.iron || 0).toFixed(1)),
-            servingSize: item.servingSize || 1,
-            servingUnit: item.servingUnit || "serving",
+        if (quickLogImages.length > 0 && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
+          const imageParts = quickLogImages.map((img) => ({
+            inlineData: { mimeType: img.mimeType, data: img.dataUrl.split(",")[1] }
           }));
+
+          if (activeProvider.type === "gemini") {
+            const baseUrl = (activeProvider.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
+            const res = await fetch(
+              `${baseUrl}/models/${activeProvider.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  systemInstruction: { parts: [{ text: strictSystemPrompt }] },
+                  generationConfig: { temperature: 0.1 },
+                  contents: [{
+                    role: "user",
+                    parts: [
+                      ...imageParts.map(p => ({ inlineData: p.inlineData })),
+                      { text: userText },
+                    ],
+                  }],
+                }),
+              }
+            );
+            if (!res.ok) throw new Error(`Gemini Vision error ${res.status}`);
+            const body = await res.json();
+            rawContent = body.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+
+          } else if (activeProvider.type === "anthropic") {
+            const imageBlocks = quickLogImages.map((img) => ({
+              type: "image" as const,
+              source: { type: "base64" as const, media_type: img.mimeType, data: img.dataUrl.split(",")[1] }
+            }));
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+              },
+              body: JSON.stringify({
+                model: activeProvider.model || "claude-3-5-sonnet-latest",
+                max_tokens: 512,
+                system: strictSystemPrompt,
+                messages: [{
+                  role: "user",
+                  content: [
+                    ...imageBlocks,
+                    { type: "text", text: userText },
+                  ],
+                }],
+              }),
+            });
+            if (!res.ok) throw new Error(`Anthropic Vision error ${res.status}`);
+            const body = await res.json();
+            rawContent = body.content?.find((c: any) => c.type === "text")?.text ?? "";
+
+          } else {
+            const baseUrl = activeProvider.type === "openrouter"
+              ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
+              : (activeProvider.baseUrl || "https://api.openai.com/v1");
+            const imageBlocks = quickLogImages.map((img) => ({
+              type: "image_url" as const,
+              image_url: { url: img.dataUrl }
+            }));
+            const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model: activeProvider.model || "gpt-4o-mini",
+                max_tokens: 512,
+                temperature: 0.1,
+                messages: [
+                  { role: "system", content: strictSystemPrompt },
+                  {
+                    role: "user",
+                    content: [
+                      ...imageBlocks,
+                      { type: "text", text: userText },
+                    ],
+                  },
+                ],
+              }),
+            });
+            if (!res.ok) throw new Error(`Vision API error ${res.status}`);
+            const body = await res.json();
+            rawContent = body.choices?.[0]?.message?.content ?? "";
+          }
+
+        } else if (quickLogImages.length > 0 && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio")) {
+          const imagesBase64 = quickLogImages.map((img) => img.dataUrl.split(",")[1]);
+          const baseUrl = (activeProvider.baseUrl || "http://localhost:11434").replace(/\/$/, "");
+          const res = await fetch(`${baseUrl}/api/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: activeProvider.model,
+              prompt: `${strictSystemPrompt}\n\nUser: ${userText}`,
+              images: imagesBase64,
+              stream: false,
+              format: "json",
+            }),
+          }).catch(() => null);
+          if (res && res.ok) {
+            const body = await res.json() as { response?: string };
+            rawContent = body.response ?? "";
+          } else {
+            const adapter = getProviderAdapter(activeProvider.type);
+            const { content } = await adapter.chat({
+              provider: activeProvider,
+              apiKey,
+              messages: [{
+                id: `quick-log-${Date.now()}`,
+                role: "user",
+                content: quickLogText.trim()
+                  ? `Estimate breakdown: "${quickLogText}". Model doesn't support vision — estimate from name.`
+                  : `Please describe the food.`,
+                createdAt: new Date().toISOString(),
+              }],
+              systemContext: strictSystemPrompt,
+            });
+            rawContent = content;
+          }
+        } else {
+          const adapter = getProviderAdapter(activeProvider.type);
+          const { content } = await adapter.chat({
+            provider: activeProvider,
+            apiKey,
+            messages: [{
+              id: `quick-log-${Date.now()}`,
+              role: "user",
+              content: `Estimate breakdown: "${quickLogText}"`,
+              createdAt: new Date().toISOString(),
+            }],
+            systemContext: strictSystemPrompt,
+          });
+          rawContent = content;
+        }
+
+        let cleanContent = rawContent.trim();
+        const fenceMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (fenceMatch) cleanContent = fenceMatch[1].trim();
+        const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) cleanContent = jsonMatch[0];
+
+        const parsed = JSON.parse(cleanContent);
+
+        if (parsed?.error === "not_food") {
+          const reason = parsed.reason ? ` (${parsed.reason})` : "";
+          throw new Error(`This doesn't appear to be a food item${reason}. Please photograph or describe an actual food or beverage.`);
+        }
+        if (parsed?.error) {
+          throw new Error("Could not identify the food. Please clarify your description or photo.");
+        }
+
+        if (parsed && Array.isArray(parsed.items)) {
+          parsedItemsList = parsed.items;
+        } else if (parsed && parsed.calories !== undefined) {
+          parsedItemsList = [{
+            name: parsed.name || quickLogText || "Custom Food",
+            serving_note: parsed.serving_note || "1 serving",
+            calories: parsed.calories,
+            protein: parsed.protein,
+            carbs: parsed.carbs,
+            fat: parsed.fat,
+            fiber: parsed.fiber,
+            sugar: parsed.sugar,
+            sodium: parsed.sodium,
+            potassium: parsed.potassium,
+            vitaminC: parsed.vitaminC,
+            calcium: parsed.calcium,
+            iron: parsed.iron,
+            source: quickLogImages.length > 0 ? (quickLogText.trim() ? "both" : "image") : "text"
+          }];
         }
       }
 
-      // If AI did not return any items or is not configured, fall back to local parser
-      if (parsedItems.length === 0) {
-        parsedItems = parseMealLocally(quickLogText);
+      // If AI parsing yielded nothing or AI is not configured, fall back to local parser
+      if (parsedItemsList.length === 0) {
+        const fallbacks = parseMealLocally(quickLogText);
+        parsedItemsList = fallbacks.map((f) => ({
+          ...f,
+          source: "text" as const
+        }));
       }
 
-      if (parsedItems.length === 0) {
+      if (parsedItemsList.length === 0) {
         setQuickLogFeedback("Could not recognize any foods. Please try writing it differently (e.g. '3 eggs, 1 banana').");
       } else {
-        const targetDate = new Date(selectedDate);
-        targetDate.setHours(12, 0, 0, 0);
+        const mapped = parsedItemsList.map((item: any, idx: number) => ({
+          id: `analyzed-ql-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}`,
+          name: item.name || "Custom Food",
+          serving_note: item.serving_note || `${item.servingSize || 1} ${item.servingUnit || "serving"}`,
+          calories: Math.round(item.calories || 0),
+          protein: +((item.protein || 0).toFixed(1)),
+          carbs: +((item.carbs || 0).toFixed(1)),
+          fat: +((item.fat || 0).toFixed(1)),
+          fiber: +((item.fiber || 0).toFixed(1)),
+          sugar: +((item.sugar || 0).toFixed(1)),
+          sodium: Math.round(item.sodium || 0),
+          potassium: Math.round(item.potassium || 0),
+          vitaminC: +((item.vitaminC || 0).toFixed(1)),
+          calcium: Math.round(item.calcium || 0),
+          iron: +((item.iron || 0).toFixed(1)),
+          source: item.source || "text",
+          quantity: 1.0,
+        }));
 
-        for (const item of parsedItems) {
-          const finalEntry: NutritionEntry = {
-            ...item,
-            id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            meal: quickLogMeal,
-            timestamp: targetDate.toISOString(),
-          };
-          await addNutritionEntryAction(finalEntry);
-        }
+        setQuickLogAnalyzedItems(mapped);
 
-        setQuickLogText("");
-        setQuickLogFeedback(`Successfully logged ${parsedItems.length} item(s) to ${MEAL_LABELS[quickLogMeal].label}!`);
-        setTimeout(() => setQuickLogFeedback(null), 4000);
+        const initialSelected: Record<string, boolean> = {};
+        mapped.forEach((item) => {
+          initialSelected[item.id] = true;
+        });
+        setSelectedQuickLogAnalyzedIds(initialSelected);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI Quick Log failed, trying local fallback:", err);
       const fallback = parseMealLocally(quickLogText);
       if (fallback.length > 0) {
-        const targetDate = new Date(selectedDate);
-        targetDate.setHours(12, 0, 0, 0);
+        const mapped = fallback.map((item: any, idx: number) => ({
+          id: `analyzed-ql-fb-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}`,
+          name: item.name || "Custom Food",
+          serving_note: `${item.servingSize || 1} ${item.servingUnit || "serving"}`,
+          calories: Math.round(item.calories || 0),
+          protein: +((item.protein || 0).toFixed(1)),
+          carbs: +((item.carbs || 0).toFixed(1)),
+          fat: +((item.fat || 0).toFixed(1)),
+          fiber: +((item.fiber || 0).toFixed(1)),
+          sugar: +((item.sugar || 0).toFixed(1)),
+          sodium: Math.round(item.sodium || 0),
+          potassium: Math.round(item.potassium || 0),
+          vitaminC: +((item.vitaminC || 0).toFixed(1)),
+          calcium: Math.round(item.calcium || 0),
+          iron: +((item.iron || 0).toFixed(1)),
+          source: "text" as const,
+          quantity: 1.0,
+        }));
+        setQuickLogAnalyzedItems(mapped);
 
-        for (const item of fallback) {
-          const finalEntry: NutritionEntry = {
-            ...item,
-            id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            meal: quickLogMeal,
-            timestamp: targetDate.toISOString(),
-          };
-          await addNutritionEntryAction(finalEntry);
-        }
-        setQuickLogText("");
-        setQuickLogFeedback(`Logged ${fallback.length} item(s) to ${MEAL_LABELS[quickLogMeal].label} (using local fallback).`);
-        setTimeout(() => setQuickLogFeedback(null), 4000);
+        const initialSelected: Record<string, boolean> = {};
+        mapped.forEach((item) => {
+          initialSelected[item.id] = true;
+        });
+        setSelectedQuickLogAnalyzedIds(initialSelected);
       } else {
-        setQuickLogFeedback("Failed to parse log. Please check your spelling or use standard logging.");
+        setQuickLogFeedback(err.message || "Failed to parse log. Please check your spelling or use standard logging.");
       }
     } finally {
       setIsQuickLogging(false);
     }
+  };
+
+  const handleQuickLogRefine = async () => {
+    if (!quickLogRefinementText.trim() || quickLogAnalyzedItems.length === 0) return;
+    setIsQuickLogRefining(true);
+    setQuickLogFeedback(null);
+
+    const activeProvider = aiProviders.find((p) => p.id === activeProviderId);
+    const hasAi = activeProvider && (activeProvider.type === "ollama" || activeProvider.type === "lmstudio" || !!activeProvider.apiKey);
+
+    if (!hasAi) {
+      setQuickLogFeedback("AI is not configured. Please set up an API provider in Settings.");
+      setIsQuickLogRefining(false);
+      return;
+    }
+
+    try {
+      const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+
+      const currentItemsJson = JSON.stringify(quickLogAnalyzedItems.map(item => ({
+        name: item.name,
+        serving_note: item.serving_note,
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        fiber: item.fiber,
+        sugar: item.sugar,
+        sodium: item.sodium,
+        potassium: item.potassium,
+        vitaminC: item.vitaminC,
+        calcium: item.calcium,
+        iron: item.iron,
+        source: item.source
+      })));
+
+      const refinementSystemPrompt = `You are a precision clinical nutrition AI. The user has already analyzed their meal, and you generated a breakdown.
+Now, they are giving you feedback/corrections. Update the breakdown of food items based on their feedback.
+
+Current items breakdown:
+${currentItemsJson}
+
+Refinement Feedback:
+"${quickLogRefinementText}"
+
+STRICT RULES:
+1. Return ONLY a raw JSON object matching the schema. No markdown fences, no prose.
+2. Update the portion sizes, names, or items based on user feedback. Scale nutritional numbers accordingly.
+3. Keep the "source" property as appropriate.
+4. Retain other items unchanged unless affected by the feedback.
+
+Required JSON schema:
+{
+  "items": [
+    {
+      "name": "string",
+      "serving_note": "string",
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "fiber": number,
+      "sugar": number,
+      "sodium": number,
+      "potassium": number,
+      "vitaminC": number,
+      "calcium": number,
+      "iron": number,
+      "source": "image" | "text" | "both"
+    }
+  ],
+  "summary": "brief summary of updates made"
+}
+
+Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassium/calcium/iron/vitaminC=milligrams.`;
+
+      let rawContent: string;
+
+      if (quickLogImages.length > 0 && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
+        const imageParts = quickLogImages.map((img) => ({
+          inlineData: { mimeType: img.mimeType, data: img.dataUrl.split(",")[1] }
+        }));
+        
+        if (activeProvider.type === "gemini") {
+          const baseUrl = (activeProvider.baseUrl || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
+          const res = await fetch(
+            `${baseUrl}/models/${activeProvider.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: refinementSystemPrompt }] },
+                generationConfig: { temperature: 0.1 },
+                contents: [{
+                  role: "user",
+                  parts: [
+                    ...imageParts.map(p => ({ inlineData: p.inlineData })),
+                    { text: `Apply this feedback to the current list of items: "${quickLogRefinementText}"` },
+                  ],
+                }],
+              }),
+            }
+          );
+          if (!res.ok) throw new Error("Gemini refinement failed");
+          const body = await res.json();
+          rawContent = body.candidates?.[0]?.content?.parts?.map((p: any) => p.text ?? "").join("") ?? "";
+        } else if (activeProvider.type === "anthropic") {
+          const imageBlocks = quickLogImages.map((img) => ({
+            type: "image" as const,
+            source: { type: "base64" as const, media_type: img.mimeType, data: img.dataUrl.split(",")[1] }
+          }));
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: activeProvider.model || "claude-3-5-sonnet-latest",
+              max_tokens: 512,
+              system: refinementSystemPrompt,
+              messages: [{
+                role: "user",
+                content: [
+                  ...imageBlocks,
+                  { type: "text", text: `Apply this feedback to the current list of items: "${quickLogRefinementText}"` },
+                ],
+              }],
+            }),
+          });
+          if (!res.ok) throw new Error("Anthropic refinement failed");
+          const body = await res.json();
+          rawContent = body.content?.find((c: any) => c.type === "text")?.text ?? "";
+        } else {
+          const baseUrl = activeProvider.type === "openrouter"
+            ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
+            : (activeProvider.baseUrl || "https://api.openai.com/v1");
+          const imageBlocks = quickLogImages.map((img) => ({
+            type: "image_url" as const,
+            image_url: { url: img.dataUrl }
+          }));
+          const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: activeProvider.model || "gpt-4o-mini",
+              max_tokens: 512,
+              temperature: 0.1,
+              messages: [
+                { role: "system", content: refinementSystemPrompt },
+                {
+                  role: "user",
+                  content: [
+                    ...imageBlocks,
+                    { type: "text", text: `Apply this feedback to the current list of items: "${quickLogRefinementText}"` },
+                  ],
+                },
+              ],
+            }),
+          });
+          if (!res.ok) throw new Error("OpenAI refinement failed");
+          const body = await res.json();
+          rawContent = body.choices?.[0]?.message?.content ?? "";
+        }
+      } else {
+        const adapter = getProviderAdapter(activeProvider.type);
+        const { content } = await adapter.chat({
+          provider: activeProvider,
+          apiKey,
+          messages: [{
+            id: `refine-ql-${Date.now()}`,
+            role: "user",
+            content: `Apply this feedback to the current list of items: "${quickLogRefinementText}"`,
+            createdAt: new Date().toISOString(),
+          }],
+          systemContext: refinementSystemPrompt,
+        });
+        rawContent = content;
+      }
+
+      let cleanContent = rawContent.trim();
+      const fenceMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) cleanContent = fenceMatch[1].trim();
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleanContent = jsonMatch[0];
+
+      const parsed = JSON.parse(cleanContent);
+      if (parsed && Array.isArray(parsed.items)) {
+        const mapped = parsed.items.map((item: any, idx: number) => ({
+          id: `analyzed-ql-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}`,
+          name: item.name || "Custom Food",
+          serving_note: item.serving_note || "1 serving",
+          calories: Math.round(item.calories || 0),
+          protein: +((item.protein || 0).toFixed(1)),
+          carbs: +((item.carbs || 0).toFixed(1)),
+          fat: +((item.fat || 0).toFixed(1)),
+          fiber: +((item.fiber || 0).toFixed(1)),
+          sugar: +((item.sugar || 0).toFixed(1)),
+          sodium: Math.round(item.sodium || 0),
+          potassium: Math.round(item.potassium || 0),
+          vitaminC: +((item.vitaminC || 0).toFixed(1)),
+          calcium: Math.round(item.calcium || 0),
+          iron: +((item.iron || 0).toFixed(1)),
+          source: item.source || "text",
+          quantity: 1.0,
+        }));
+        setQuickLogAnalyzedItems(mapped);
+        
+        const newSelected: Record<string, boolean> = {};
+        mapped.forEach((x: any) => { newSelected[x.id] = true; });
+        setSelectedQuickLogAnalyzedIds(newSelected);
+        
+        setQuickLogRefinementText("");
+        if (parsed.summary) {
+          setQuickLogFeedback(`ℹ️ ${parsed.summary}`);
+        }
+      }
+    } catch (err: any) {
+      console.error("AI Quick Log Refinement failed:", err);
+      setQuickLogFeedback("Failed to refine quick log with AI.");
+    } finally {
+      setIsQuickLogRefining(false);
+    }
+  };
+
+  const handleQuickLogSeparate = () => {
+    const selectedList = quickLogAnalyzedItems.filter((item) => selectedQuickLogAnalyzedIds[item.id]);
+    if (selectedList.length === 0) return;
+
+    const targetDate = new Date(selectedDate);
+    targetDate.setHours(12, 0, 0, 0);
+
+    const entries: NutritionEntry[] = selectedList.map((item) => {
+      const q = item.quantity;
+      return {
+        id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        meal: quickLogMeal,
+        timestamp: targetDate.toISOString(),
+        servingSize: q,
+        servingUnit: item.serving_note || "serving",
+        name: item.name,
+        calories: Math.round(item.calories * q),
+        protein: +((item.protein * q).toFixed(1)),
+        carbs: +((item.carbs * q).toFixed(1)),
+        fat: +((item.fat * q).toFixed(1)),
+        fiber: +((item.fiber * q).toFixed(1)),
+        sugar: +((item.sugar * q).toFixed(1)),
+        sodium: Math.round(item.sodium * q),
+        potassium: Math.round(item.potassium * q),
+        vitaminC: +((item.vitaminC * q).toFixed(1)),
+        calcium: Math.round(item.calcium * q),
+        iron: +((item.iron * q).toFixed(1)),
+      };
+    });
+
+    void addNutritionEntriesAction(entries);
+    
+    setQuickLogImages([]);
+    setQuickLogAnalyzedItems([]);
+    setSelectedQuickLogAnalyzedIds({});
+    setQuickLogText("");
+    setQuickLogFeedback(`Successfully logged ${entries.length} item(s) to ${MEAL_LABELS[quickLogMeal].label}!`);
+    setTimeout(() => setQuickLogFeedback(null), 4000);
+  };
+
+  const handleQuickLogCombined = () => {
+    const selectedList = quickLogAnalyzedItems.filter((item) => selectedQuickLogAnalyzedIds[item.id]);
+    if (selectedList.length === 0) return;
+
+    let cal = 0, pro = 0, carb = 0, fat = 0, fib = 0, sug = 0, sod = 0, pot = 0, vitC = 0, calc = 0, fe = 0;
+    selectedList.forEach((item) => {
+      const q = item.quantity;
+      cal += (item.calories || 0) * q;
+      pro += (item.protein || 0) * q;
+      carb += (item.carbs || 0) * q;
+      fat += (item.fat || 0) * q;
+      fib += (item.fiber || 0) * q;
+      sug += (item.sugar || 0) * q;
+      sod += (item.sodium || 0) * q;
+      pot += (item.potassium || 0) * q;
+      vitC += (item.vitaminC || 0) * q;
+      calc += (item.calcium || 0) * q;
+      fe += (item.iron || 0) * q;
+    });
+
+    const combinedName = `Combined: ${selectedList.map(x => x.name).join(", ")}`.slice(0, 100);
+
+    const targetDate = new Date(selectedDate);
+    targetDate.setHours(12, 0, 0, 0);
+
+    const entry: NutritionEntry = {
+      id: `nutrition-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      meal: quickLogMeal,
+      timestamp: targetDate.toISOString(),
+      servingSize: 1,
+      servingUnit: "serving",
+      name: combinedName,
+      calories: Math.round(cal),
+      protein: +pro.toFixed(1),
+      carbs: +carb.toFixed(1),
+      fat: +fat.toFixed(1),
+      fiber: +fib.toFixed(1),
+      sugar: +sug.toFixed(1),
+      sodium: Math.round(sod),
+      potassium: Math.round(pot),
+      vitaminC: +vitC.toFixed(1),
+      calcium: Math.round(calc),
+      iron: +fe.toFixed(1),
+    };
+
+    void addNutritionEntryAction(entry);
+    
+    setQuickLogImages([]);
+    setQuickLogAnalyzedItems([]);
+    setSelectedQuickLogAnalyzedIds({});
+    setQuickLogText("");
+    setQuickLogFeedback(`Successfully logged combined meal to ${MEAL_LABELS[quickLogMeal].label}!`);
+    setTimeout(() => setQuickLogFeedback(null), 4000);
+  };
+
+  const handleQuickLogCancel = () => {
+    setQuickLogAnalyzedItems([]);
+    setSelectedQuickLogAnalyzedIds({});
+    setQuickLogImages([]);
+    setQuickLogRefinementText("");
+    setQuickLogFeedback(null);
   };
 
   // Add food entry stamped with currently selected date
@@ -2497,7 +3991,7 @@ Do NOT include any markdown code blocks, explanation text, or wrapping objects. 
             <div className="space-y-4">
               {/* Samsung Health-style Smart Quick Log */}
               <Card className="p-4 bg-gradient-to-r from-emerald-500/5 via-sky-500/5 to-transparent border border-card-border shadow-sm">
-                <form onSubmit={handleQuickLog} className="space-y-3">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -2512,7 +4006,7 @@ Do NOT include any markdown code blocks, explanation text, or wrapping objects. 
                         aria-label="Select meal slot"
                         value={quickLogMeal}
                         onChange={(e) => setQuickLogMeal(e.target.value as any)}
-                        className="h-6 px-1.5 rounded-lg border border-input-border bg-input text-[10px] font-bold text-zinc-955 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="h-6 px-1.5 rounded-lg border border-input-border bg-input text-[10px] font-bold text-zinc-955 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-800"
                       >
                         <option value="breakfast">Breakfast</option>
                         <option value="lunch">Lunch</option>
@@ -2522,40 +4016,113 @@ Do NOT include any markdown code blocks, explanation text, or wrapping objects. 
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={quickLogText}
-                      onChange={(e) => setQuickLogText(e.target.value)}
-                      placeholder="Type e.g., '3 scrambled eggs, a banana, and coffee'..."
-                      disabled={isQuickLogging}
-                      className="flex-1 h-9 px-3 rounded-xl border border-input-border bg-input text-xs text-zinc-955 placeholder:text-zinc-600 dark:placeholder:text-zinc-350 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition"
+                  {quickLogAnalyzedItems.length > 0 ? (
+                    <FoodItemConfirmationPanel
+                      items={quickLogAnalyzedItems}
+                      setItems={setQuickLogAnalyzedItems}
+                      selectedIds={selectedQuickLogAnalyzedIds}
+                      setSelectedIds={setSelectedQuickLogAnalyzedIds}
+                      onLogSeparate={handleQuickLogSeparate}
+                      onLogCombined={handleQuickLogCombined}
+                      onCancel={handleQuickLogCancel}
+                      isLogging={false}
+                      refinementText={quickLogRefinementText}
+                      setRefinementText={setQuickLogRefinementText}
+                      onRefine={handleQuickLogRefine}
+                      isRefining={isQuickLogRefining}
+                      meal={quickLogMeal}
+                      searchCountry={searchCountry}
                     />
-                    <button
-                      type="submit"
-                      disabled={isQuickLogging || !quickLogText.trim()}
-                      className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-650 text-white text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 active:scale-95 disabled:active:scale-100"
-                    >
-                      {isQuickLogging ? (
-                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <Sparkles size={13} />
-                          <span>Log</span>
-                        </>
+                  ) : (
+                    <form onSubmit={handleQuickLog} className="space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={quickLogText}
+                          onChange={(e) => setQuickLogText(e.target.value)}
+                          placeholder={quickLogImages.length > 0 ? "Identify these food photos or add description (optional)..." : "Type e.g., '3 scrambled eggs, a banana, and coffee'..."}
+                          disabled={isQuickLogging}
+                          className="flex-1 h-9 px-3 rounded-xl border border-input-border bg-input text-xs text-zinc-955 placeholder:text-zinc-650 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition bg-white dark:bg-zinc-800"
+                        />
+                        <label
+                          htmlFor="quickLogImageInput"
+                          className="h-9 w-9 bg-zinc-150 dark:bg-zinc-800 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center cursor-pointer transition select-none shrink-0"
+                          title="Upload photos"
+                        >
+                          <Camera size={16} className="text-zinc-600 dark:text-zinc-450" />
+                        </label>
+                        <input
+                          id="quickLogImageInput"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="sr-only"
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            Array.from(files).forEach((file) => {
+                              const mime = file.type || "image/jpeg";
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                const result = ev.target?.result as string;
+                                setQuickLogImages((prev) => [
+                                  ...prev,
+                                  { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, dataUrl: result, mimeType: mime }
+                                ]);
+                              };
+                              reader.readAsDataURL(file);
+                            });
+                            e.target.value = "";
+                          }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={isQuickLogging || (!quickLogText.trim() && quickLogImages.length === 0)}
+                          className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-650 text-white text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 active:scale-95 disabled:active:scale-100"
+                        >
+                          {isQuickLogging ? (
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <Sparkles size={13} />
+                              <span>Log</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Quick Log Image Thumbnail Previews */}
+                      {quickLogImages.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {quickLogImages.map((img) => (
+                            <div key={img.id} className="relative h-12 w-20 rounded-lg overflow-hidden border border-zinc-250 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-900 group">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={img.dataUrl} alt="Quick preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setQuickLogImages((prev) => prev.filter((x) => x.id !== img.id))}
+                                className="absolute top-0.5 right-0.5 h-4 w-4 bg-black/75 hover:bg-rose-600 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                                aria-label="Remove image"
+                              >
+                                <X size={8} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </button>
-                  </div>
-                  {quickLogFeedback && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
-                    >
-                      {quickLogFeedback}
-                    </motion.p>
+
+                      {quickLogFeedback && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-[11px] font-medium text-emerald-600 dark:text-emerald-455"
+                        >
+                          {quickLogFeedback}
+                        </motion.p>
+                      )}
+                    </form>
                   )}
-                </form>
+                </div>
               </Card>
               <Card className="p-5 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
