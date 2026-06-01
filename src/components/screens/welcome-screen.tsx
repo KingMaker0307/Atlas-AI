@@ -232,7 +232,7 @@ export function WelcomeScreen() {
       setEmailVerified(true);
       setCapturedProvider("apple");
       if (appleName) setName(appleName.split(" ")[0]);
-      setView("setup");
+      setStartupChoice("local");
       // Clean up URL params
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -358,15 +358,11 @@ export function WelcomeScreen() {
         await finalizeRestore("local");
       } else {
         console.log("[Google Sign-In] No profile found. Directing to onboarding biometrics setup...");
-        if (displayName) setName(displayName.split(" ")[0]);
-        setEmailVerified(true);
-        setView("setup");
+        setStartupChoice("google-drive");
       }
     } catch (e: any) {
       console.warn("[Google Sign-In] Cloud check failed, falling back to manual onboarding setup:", e);
-      if (displayName) setName(displayName.split(" ")[0]);
-      setEmailVerified(true);
-      setView("setup");
+      setStartupChoice("google-drive");
     } finally {
       setGoogleAuthLoading(false);
     }
@@ -618,7 +614,11 @@ export function WelcomeScreen() {
       <div className="absolute top-4 right-4 z-50">
         <button
           type="button"
-          onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+          onClick={() => {
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
+            void setTheme(resolved === "dark" ? "light" : "dark");
+          }}
           className="flex h-9 w-9 items-center justify-center rounded-xl border border-card-border bg-card/80 text-zinc-500 hover:text-foreground shadow-sm transition duration-200 cursor-pointer"
           title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         >
@@ -703,27 +703,7 @@ export function WelcomeScreen() {
                 <button
                   type="button"
                   onClick={() => {
-                    setName("");
-                    setAge(28);
-                    setWeight(165);
-                    setHeight(70);
-                    setExperience("beginner");
-                    setBodyType("mesomorph");
-                    setTargetPhysique("athletic");
-                    setGoal("Build strength and muscle size");
-                    setDaysPerWeek(3);
-                    setWeightUnit("lbs");
-                    setHeightUnit("in");
-                    setSetupAiCoach(true);
-                    setSelectedSyncType("offline");
-                    setEmailInput("");
-                    setEmailVerified(true); // skip separate entry screen, go straight to setup
-                    setOtpSent(false);
-                    setOtpInput("");
-                    setOtpError(null);
-                    setEmailError(null);
-                    setCapturedProvider("email");
-                    setView("setup");
+                    setStartupChoice("local");
                   }}
                   className="flex items-start text-left p-5 rounded-2xl border border-blue-500/15 dark:border-blue-500/20 bg-blue-50/40 dark:bg-blue-500/5 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 hover:border-blue-500/30 dark:hover:border-blue-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
                 >
@@ -1269,12 +1249,7 @@ export function WelcomeScreen() {
                         <button
                           type="button"
                           onClick={() => {
-                            setName(""); setAge(28); setWeight(165); setHeight(70);
-                            setExperience("beginner"); setBodyType("mesomorph");
-                            setTargetPhysique("athletic"); setGoal("Build muscle and strength");
-                            setDaysPerWeek(3); setWeightUnit("lbs"); setHeightUnit("in");
-                            setSetupAiCoach(true); setEmailVerified(true);
-                            setView("setup");
+                            setStartupChoice("google-drive");
                           }}
                           className="px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[10px] font-bold uppercase transition"
                         >

@@ -196,6 +196,7 @@ function getProviderInstructions(provider: string) {
 
 export function Onboarding() {
   const completeOnboarding = useAtlasStore((state) => state.completeOnboarding);
+  const user = useAtlasStore((state) => state.user);
   const [step, setStep] = useState(1);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -239,7 +240,7 @@ export function Onboarding() {
   } = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      name: "",
+      name: user?.name || user?.email?.split("@")[0] || "",
       gender: "male",
       activityLevel: "moderately_active",
       customGoal: "",
@@ -401,10 +402,13 @@ export function Onboarding() {
                   providerType: !setupAiCoach ? "none" : values.providerType,
                 };
                 await completeOnboarding({
-                  id: createId("user"),
+                  id: user?.id || createId("user"),
                   createdAt: new Date().toISOString(),
                   goal: finalValues.customGoal,
                   ...finalValues,
+                  email: user?.email || "",
+                  emailVerified: !!user?.email,
+                  capturedProvider: startupChoice === "google-drive" ? "google" : "email",
                 });
               } catch (e: any) {
                 setSubmitError(e.message || "Failed to initialize provider. Please verify your API key or local model server configuration.");

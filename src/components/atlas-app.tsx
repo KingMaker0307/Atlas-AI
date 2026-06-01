@@ -167,7 +167,11 @@ export function AtlasApp() {
             </div>
             <button
               type="button"
-              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => {
+                const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
+                void setTheme(resolved === "dark" ? "light" : "dark");
+              }}
               className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
               title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
               aria-label="Toggle display theme"
@@ -212,7 +216,11 @@ export function AtlasApp() {
             <div className="flex items-center gap-1.5 shrink-0 justify-end flex-nowrap pl-2">
               <button
                 type="button"
-                onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => {
+                  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                  const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
+                  void setTheme(resolved === "dark" ? "light" : "dark");
+                }}
                 className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
                 title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                 aria-label="Toggle display theme"

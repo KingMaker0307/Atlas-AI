@@ -74,10 +74,12 @@ export class CompositeUserRepository implements UserRepository {
     if (isOnline()) {
       try {
         const profile = await this.remote.getProfile(userId);
-        if (profile) await this.local.saveProfile(userId, profile); // hydrate cache
-        return profile;
-      } catch {
-        return this.local.getProfile(userId);
+        if (profile) {
+          await this.local.saveProfile(userId, profile); // hydrate cache
+          return profile;
+        }
+      } catch (err) {
+        console.warn("[Composite] Remote getProfile failed:", err);
       }
     }
     return this.local.getProfile(userId);

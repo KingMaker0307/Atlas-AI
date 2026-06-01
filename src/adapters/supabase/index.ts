@@ -44,14 +44,37 @@ export class SupabaseUserRepository implements UserRepository {
       .eq("id", userId)
       .single();
     if (error || !data) return null;
-    return data as UserProfile;
+    return {
+      id: data.id,
+      name: data.name,
+      goal: data.goal,
+      experience: data.experience,
+      trainingStyle: data.training_style,
+      daysPerWeek: data.days_per_week,
+      weightUnit: data.weight_unit,
+      heightUnit: data.height_unit,
+      createdAt: data.created_at,
+      age: data.age,
+      height: data.height,
+      weight: data.weight,
+      targetPhysique: data.target_physique,
+      dietaryPreferences: data.dietary_preferences,
+      bodyType: data.body_type,
+      equipment: data.equipment,
+      customGoal: data.custom_goal,
+      injuries: data.injuries,
+      workoutDuration: data.workout_duration,
+      gender: data.gender,
+      activityLevel: data.activity_level,
+      hasOnboarded: data.has_onboarded,
+    } as UserProfile;
   }
 
   async saveProfile(userId: string, profile: UserProfile): Promise<void> {
     const { error } = await this.supabase.from("profiles").upsert(
       {
         id: userId,
-        name: profile.name,
+        name: profile.name ?? "",
         goal: profile.goal,
         experience: profile.experience,
         gender: profile.gender,
@@ -63,6 +86,13 @@ export class SupabaseUserRepository implements UserRepository {
         activity_level: profile.activityLevel,
         dietary_preferences: profile.dietaryPreferences,
         equipment: profile.equipment,
+        training_style: profile.trainingStyle,
+        days_per_week: profile.daysPerWeek,
+        target_physique: profile.targetPhysique,
+        body_type: profile.bodyType,
+        custom_goal: profile.customGoal,
+        injuries: profile.injuries,
+        workout_duration: profile.workoutDuration,
         theme: "system",
         has_onboarded: true,
         updated_at: new Date().toISOString(),

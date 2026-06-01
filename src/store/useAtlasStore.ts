@@ -72,7 +72,7 @@ function migrateProfile(profile: UserProfile | null): UserProfile | null {
 
 interface AtlasState {
   hydrated: boolean;
-  user: { id: string; email: string } | null;
+  user: { id: string; email: string; name?: string } | null;
   activeTab: AtlasTab;
   activeSubScreen: SubScreen;
   activeSettingsTab: "profile" | "ai" | "system" | "subscription";
@@ -606,6 +606,160 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       let activeWorkout = freshSnap.activeWorkout;
       const activeWorkoutPlanId = migratedPlans[0]?.id ?? null;
 
+      const providerType = user.app_metadata?.provider || (user.identities?.[0]?.provider) || "email";
+      const capturedProvider = providerType === "google" ? "google" : "email";
+      const enrichedProfile = profile ? {
+        ...migrateProfile(profile as any),
+        email: user.email ?? "",
+        emailVerified: true,
+        capturedProvider,
+      } : null;
+
+      // ── Step 3.5: Migrate old local/guest user data if this is a new Supabase user ──
+      if (!profile) {
+        try {
+          const { getDb } = await import("@/lib/storage/db");
+          const db = await getDb();
+          const allProfiles = await db.getAll("profiles");
+          const guestProfileRecord = allProfiles.find((p) => p.id !== user.id);
+          
+          if (guestProfileRecord) {
+            const guestId = guestProfileRecord.id;
+            console.log(`[Migration] Found old local user profile (id: ${guestId}). Migrating data to user: ${user.id}...`);
+
+            // 1. Migrate profile
+            const migratedProfile = {
+              ...guestProfileRecord,
+              id: user.id,
+              email: user.email ?? "",
+              emailVerified: true,
+              capturedProvider,
+              hasOnboarded: true,
+            };
+            delete (migratedProfile as any)._userId;
+
+            await registry.save((r, uid) => r.user.saveProfile(uid, migratedProfile as any));
+
+            // 2. Migrate workouts
+            const guestWorkouts = await db.getAll("workouts");
+            for (const w of guestWorkouts) {
+              if (w._userId === guestId) {
+                const migratedWorkout = { ...w, id: w.id };
+                delete (migratedWorkout as any)._userId;
+                await registry.save((r, uid) => r.workout.saveWorkout(uid, migratedWorkout));
+              }
+            }
+
+            // 3. Migrate workout plans
+            const guestPlans = await db.getAll("workout_plans");
+            for (const p of guestPlans) {
+              if (p._userId === guestId) {
+                const migratedPlan = { ...p, id: p.id };
+                delete (migratedPlan as any)._userId;
+                await registry.save((r, uid) => r.plan.savePlan(uid, migratedPlan));
+              }
+            }
+
+            // 4. Migrate nutrition entries
+            const guestNutrition = await db.getAll("nutrition_entries");
+            for (const n of guestNutrition) {
+              if (n._userId === guestId) {
+                const migratedNutrition = { ...n, id: n.id };
+                delete (migratedNutrition as any)._userId;
+                await registry.save((r, uid) => r.nutrition.addEntry(uid, migratedNutrition));
+              }
+            }
+
+            // 5. Migrate water logs
+            const guestWater = await db.getAll("water_logs");
+            for (const wl of guestWater) {
+              if (wl._userId === guestId) {
+                const migratedWater = { ...wl, id: wl.id };
+                delete (migratedWater as any)._userId;
+                await registry.save((r, uid) => r.water.addLog(uid, migratedWater));
+              }
+            }
+
+            // 6. Migrate body metrics
+            const guestMetrics = await db.getAll("body_metrics");
+            for (const bm of guestMetrics) {
+              if (bm._userId === guestId) {
+                const migratedMetric = { ...bm, id: bm.id };
+                delete (migratedMetric as any)._userId;
+                await registry.save((r, uid) => r.body.addMetric(uid, migratedMetric));
+              }
+            }
+
+            // 7. Migrate recovery logs
+            const guestRecovery = await db.getAll("recovery_logs");
+            for (const rl of guestRecovery) {
+              if (rl._userId === guestId) {
+                const migratedRecovery = { ...rl, id: rl.id };
+                delete (migratedRecovery as any)._userId;
+                await registry.save((r, uid) => r.recovery.addLog(uid, migratedRecovery));
+              }
+            }
+
+            // Delete old guest profile so we only run this once
+            await db.delete("profiles", guestId);
+
+            // Re-load everything under the new userId!
+            const [newWorkouts, newPlans, newNutrition, newWater, newBodyMetrics, newRecovery, newProfile] =
+              await Promise.all([
+                registry.load((r, uid) => r.workout.getWorkouts(uid)),
+                registry.load((r, uid) => r.plan.getPlans(uid)),
+                registry.load((r, uid) => r.nutrition.getEntries(uid)),
+                registry.load((r, uid) => r.water.getLogs(uid)),
+                registry.load((r, uid) => r.body.getMetrics(uid)),
+                registry.load((r, uid) => r.recovery.getLogs(uid)),
+                registry.load((r, uid) => r.user.getProfile(uid)),
+              ]);
+
+            const newMigratedPlans = ((newPlans ?? []) as any[]).map((plan: any, i: number) => ({
+              ...plan,
+              creatorType: plan.creatorType || "manual",
+              startDay: plan.startDay || "Monday",
+              routines: (plan.routines || []).map((r: any, idx: number) => ({
+                ...r,
+                day: (!r.day || r.day.startsWith("Day "))
+                  ? ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][idx % 7]
+                  : r.day,
+              })),
+            }));
+
+            set({
+              workouts: newWorkouts ?? [],
+              workoutPlans: newMigratedPlans.length > 0 ? newMigratedPlans : freshSnap.workoutPlans,
+              nutritionEntries: newNutrition ?? [],
+              waterLogs: newWater ?? [],
+              bodyMetrics: newBodyMetrics ?? [],
+              recoveryLogs: newRecovery ?? [],
+              profile: newProfile ? migrateProfile(newProfile as any) : (migratedProfile as any),
+              hasOnboarded: true,
+              activeWorkoutPlanId: newMigratedPlans[0]?.id ?? null,
+              activeWorkout,
+              hydrated: true,
+              startupChoice: "cloud" as const,
+              activeTab: "dashboard",
+              activeSettingsTab: "profile",
+              coachBusy: false,
+              providerBusy: false,
+              user: { 
+                id: user.id, 
+                email: user.email ?? "", 
+                name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
+              },
+            } as any);
+
+            console.log(`[Migration] Successful guest-to-user migration complete for user ${user.id}!`);
+            void drainSyncQueue();
+            return;
+          }
+        } catch (migErr) {
+          console.error("[Migration] Local guest data migration failed:", migErr);
+        }
+      }
+
       set({
         workouts: workouts ?? freshSnap.workouts,
         workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
@@ -613,7 +767,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         waterLogs: water ?? freshSnap.waterLogs,
         bodyMetrics: bodyMetrics ?? freshSnap.bodyMetrics,
         recoveryLogs: recovery ?? freshSnap.recoveryLogs,
-        profile: profile ? migrateProfile(profile as any) : (freshSnap.profile ?? defaultProfile),
+        profile: enrichedProfile || (freshSnap.profile ?? defaultProfile),
         hasOnboarded: !!profile,
         activeWorkoutPlanId,
         activeWorkout,
@@ -624,7 +778,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         activeSettingsTab: "profile",
         coachBusy: false,
         providerBusy: false,
-        user: { id: user.id, email: user.email ?? "" },
+        user: { 
+          id: user.id, 
+          email: user.email ?? "", 
+          name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
+        },
       } as any);
 
       // ── Step 4: Drain any writes queued while offline ─────────────────────

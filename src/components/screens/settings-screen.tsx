@@ -225,6 +225,7 @@ function getProviderInstructions(provider: string) {
 
 export function SettingsScreen() {
   const profile = useAtlasStore((state) => state.profile);
+  const user = useAtlasStore((state) => state.user);
   const theme = useAtlasStore((state) => state.theme);
   const weightUnit = useAtlasStore((state) => state.weightUnit);
   const heightUnit = useAtlasStore((state) => state.heightUnit);
@@ -786,7 +787,7 @@ export function SettingsScreen() {
                         <div>
                           <div className="flex items-center justify-between mb-1.5 select-none">
                             <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">Email Address</Label>
-                            {profile?.emailVerified && (
+                            {(profile?.emailVerified || !!user?.email) && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-sm">
                                 <Check size={10} className="stroke-[3.5]" />
                                 Verified Sync
@@ -796,7 +797,7 @@ export function SettingsScreen() {
                           <div className="relative">
                             <Input
                               type="email"
-                              value={profile?.email || "Not Configured"}
+                              value={profile?.email || user?.email || "Not Configured"}
                               readOnly
                               disabled
                               className="text-xs font-mono font-bold pl-9 bg-zinc-150/50 dark:bg-zinc-900/50 cursor-not-allowed select-all border-zinc-200 dark:border-zinc-800 text-zinc-555 dark:text-zinc-400 opacity-80"
