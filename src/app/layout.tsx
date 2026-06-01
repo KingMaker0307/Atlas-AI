@@ -37,8 +37,6 @@ export const viewport: Viewport = {
   themeColor: "#07080a",
 };
 
-import { QueryProvider } from "@/providers/query-provider";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,7 +54,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full" suppressHydrationWarning={true}>
-        <QueryProvider>{children}</QueryProvider>
+        {children}
       </body>
     </html>
   );

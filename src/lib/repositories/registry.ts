@@ -135,7 +135,7 @@ export async function createProductionContainer(
       CompositeRecoveryRepository, PassthroughAiProviderRepository, PassthroughSubscriptionRepository },
   ] = await Promise.all([
     import("@/adapters/supabase/index"),
-    import("@/lib/storage/db"),
+    import("@/adapters/indexeddb/index"),
     import("@/adapters/composite/index"),
   ]);
 
