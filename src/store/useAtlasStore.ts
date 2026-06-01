@@ -277,15 +277,21 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         capturedProvider,
       } : null;
 
-      if (!profile) {
+      let guestProfileRecord = null;
+      try {
+        const { getDb } = await import("@/lib/storage/db");
+        const db = await getDb();
+        const allProfiles = await db.getAll("profiles");
+        guestProfileRecord = allProfiles.find((p) => p.id !== user.id);
+      } catch (migErr) {
+        console.error("[Migration] Failed to query local profiles:", migErr);
+      }
+
+      if (guestProfileRecord) {
         try {
           const { getDb } = await import("@/lib/storage/db");
           const db = await getDb();
-          const allProfiles = await db.getAll("profiles");
-          const guestProfileRecord = allProfiles.find((p) => p.id !== user.id);
-          
-          if (guestProfileRecord) {
-            const guestId = guestProfileRecord.id;
+          const guestId = guestProfileRecord.id;
             console.log(`[Migration] Found old local user profile (id: ${guestId}). Migrating data to user: ${user.id}...`);
 
             const migratedProfile = {
@@ -406,7 +412,6 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
             console.log(`[Migration] Successful guest-to-user migration complete for user ${user.id}!`);
             void drainSyncQueue();
             return;
-          }
         } catch (migErr) {
           console.error("[Migration] Local guest data migration failed:", migErr);
         }
