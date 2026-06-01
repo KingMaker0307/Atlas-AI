@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
@@ -12,6 +12,8 @@ import { WelcomeScreen } from "@/components/screens/welcome-screen";
 import { RoutineBuilderScreen } from "@/components/screens/routine-builder-screen";
 import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
 import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
+import { AppLoader } from "@/components/ui/app-loader";
+import { HealthDisclaimer } from "@/components/ui/health-disclaimer";
 import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Onboarding } from "@/components/onboarding";
@@ -44,92 +46,9 @@ export function AtlasApp() {
   const setTheme = useAtlasStore((state) => state.setTheme);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
   const blocked = useAtlasStore((state) => state.blocked);
-  const profile = useAtlasStore((state) => state.profile);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
-  const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
 
-  const [online, setOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  );
 
-  useEffect(() => {
-    const sync = () => setOnline(navigator.onLine);
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
-    return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
-    };
-  }, []);
-
-  // Background Cloud Synchronization Loop (Option A - Real-Time Multi-Device Sync)
-  useEffect(() => {
-    if (!hydrated || !profile?.email || !online) return;
-
-    // Core helper to perform silent pull check
-    const performSilentPull = async () => {
-      // Typing Guard: pause background sync updates if user is currently entering values
-      const activeElement = document.activeElement;
-      const isTyping = activeElement && (
-        activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        activeElement.getAttribute("contenteditable") === "true"
-      );
-
-      if (isTyping) {
-        console.log("[Cloud Sync] Keyboard input active. Pausing silent pull to prevent conflicts.");
-        return;
-      }
-
-      try {
-        await pullCloudUpdate();
-      } catch (err) {
-        console.error("[Cloud Sync] Polling silent pull failed:", err);
-      }
-    };
-
-    // 1. Snappy 5-second polling interval for multi-device cross-network updates
-    const interval = setInterval(performSilentPull, 5000);
-
-    // 2. Zero-latency triggers: run pull the exact second the tab gains focus or visibility
-    const handleFocusOrVisibility = () => {
-      if (document.visibilityState === "visible") {
-        console.log("[Cloud Sync] App became visible or active. Pulling cloud updates immediately.");
-        void performSilentPull();
-      }
-    };
-
-    window.addEventListener("focus", handleFocusOrVisibility);
-    document.addEventListener("visibilitychange", handleFocusOrVisibility);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", handleFocusOrVisibility);
-      document.removeEventListener("visibilitychange", handleFocusOrVisibility);
-    };
-  }, [hydrated, profile?.email, online, pullCloudUpdate]);
-
-  useEffect(() => {
-    if (!hydrated || !profile?.id || !online) return;
-
-    const checkBlocked = async () => {
-      try {
-        const res = await fetch(`/api/profile/?userId=${profile.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.blocked) {
-            useAtlasStore.setState({ blocked: true });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to check blocked status:", e);
-      }
-    };
-
-    void checkBlocked();
-    const interval = setInterval(checkBlocked, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, [hydrated, profile?.id, online]);
 
   useEffect(() => {
     void hydrate();
@@ -167,7 +86,7 @@ export function AtlasApp() {
   }, [theme]);
 
   if (blocked) return <BlockedBlockerScreen />;
-  if (!hydrated) return <LoadingApp />;
+  if (!hydrated) return <AppLoader visible={true} />;
   if (!startupChoice) return <WelcomeScreen />;
   if (!hasOnboarded) return <Onboarding />;
 
@@ -189,6 +108,7 @@ export function AtlasApp() {
   return (
     <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-955 md:pl-64">
       <PwaRegistrar />
+      <HealthDisclaimer />
       
       {/* ─── DESKTOP SIDEBAR NAVIGATION PANEL (Hidden on mobile) ─── */}
       <aside
@@ -380,22 +300,6 @@ export function AtlasApp() {
   );
 }
 
-function LoadingApp() {
-  return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-4 text-foreground">
-      <Card className="w-full max-w-sm p-4">
-        <div className="h-5 w-32 animate-pulse rounded bg-foreground/10" />
-        <div className="mt-5 space-y-3">
-          <div className="h-24 animate-pulse rounded-xl bg-foreground/10" />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="h-20 animate-pulse rounded-xl bg-foreground/10" />
-            <div className="h-20 animate-pulse rounded-xl bg-foreground/10" />
-          </div>
-        </div>
-      </Card>
-    </main>
-  );
-}
 
 function OfflineBlockerScreen() {
   // This screen is no longer used — the app works offline for all local-data features.

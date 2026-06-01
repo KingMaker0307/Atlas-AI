@@ -15,9 +15,9 @@ import { buildCoachContext } from "@/lib/coach/context";
 import { createId, minutesBetween } from "@/lib/id";
 import { getProgressionRecommendations } from "@/lib/progression/engine";
 import { decryptExport, decryptString, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
-import { loadSnapshot, saveSnapshot } from "@/lib/storage/db";
+import { readLocalSetting, writeLocalSetting } from "@/lib/storage/db";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
-import { checkBlockedStatus, syncProfile, restoreProfileByEmail } from "@/lib/sync";
+import { registry, createProductionContainer, drainSyncQueue } from "@/lib/repositories/registry";
 import type {
   AiMessage,
   AiProviderSettings,
@@ -72,9 +72,10 @@ function migrateProfile(profile: UserProfile | null): UserProfile | null {
 
 interface AtlasState {
   hydrated: boolean;
+  user: { id: string; email: string } | null;
   activeTab: AtlasTab;
   activeSubScreen: SubScreen;
-  activeSettingsTab: "profile" | "ai" | "system";
+  activeSettingsTab: "profile" | "ai" | "system" | "subscription";
   editingWorkoutPlanId: string | null;
   editingRoutineId: string | null;
   routineBuilderDefaultDay: string | null;
@@ -108,7 +109,7 @@ interface AtlasState {
   workoutTab: "plans" | "nutrition";
   setBlocked: (blocked: boolean) => void;
   setWorkoutTab: (tab: "plans" | "nutrition") => void;
-  setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
+  setActiveSettingsTab: (tab: "profile" | "ai" | "system" | "subscription") => void;
   setEditingWorkoutPlanId: (id: string | null) => void;
   setEditingRoutineId: (id: string | null) => void;
   setRoutineBuilderDefaultDay: (day: string | null) => void;
@@ -294,64 +295,11 @@ if (typeof window !== "undefined" && "BroadcastChannel" in window) {
   };
 }
 
-async function persistState(state: AtlasState): Promise<void> {
-  console.log("persistState: Starting...");
-  const snapshot = snapshotFromState(state);
-  try {
-    await saveSnapshot(snapshot);
-    console.log("persistState: saveSnapshot successful.");
-    
-    // Broadcast state snapshot to other active browser tabs instantly
-    if (syncChannel) {
-      syncChannel.postMessage(snapshot);
-    }
+// ─── Helpers used by BroadcastChannel tab-sync ───────────────────────────────
 
-    // Silently sync to Google Drive
-    if (typeof window !== "undefined" && navigator.onLine && state.profile?.id) {
-      void syncProfileToDrive(state);
-    }
-  } catch (error) {
-    console.error("persistState: saveSnapshot failed:", error);
-    throw error;
-  }
-  console.log("persistState: Finished.");
-}
-
-// Global sync state lock variables to prevent concurrent race conditions or duplicated calls
-let isSyncingToDrive = false;
-let pendingSyncToDrive = false;
-
-async function syncProfileToDrive(state: AtlasState): Promise<void> {
-  const profile = state.profile;
-  if (!profile || !profile.id || profile.id === "default-user") return;
-  
-  if (isSyncingToDrive) {
-    pendingSyncToDrive = true;
-    return;
-  }
-
-  isSyncingToDrive = true;
-  pendingSyncToDrive = false;
-
-  try {
-    const res = await syncProfile(profile.id, snapshotFromState(state));
-    if (res.blocked) {
-      useAtlasStore.setState({ blocked: true });
-    } else if (res.success) {
-      const newSyncTime = new Date().toISOString();
-      useAtlasStore.setState({ lastSyncedAt: newSyncTime });
-      // Guarantee the updated sync timestamp is written back to IndexedDB local database immediately!
-      await saveSnapshot(snapshotFromState(useAtlasStore.getState()));
-    }
-  } catch (error) {
-    console.error("Failed to execute Google Drive silent sync:", error);
-  } finally {
-    isSyncingToDrive = false;
-    // If state changed while a sync was active, trigger a follow-up sync
-    if (pendingSyncToDrive) {
-      const latestState = useAtlasStore.getState();
-      void syncProfileToDrive(latestState);
-    }
+function notifyOtherTabs(snapshot: AtlasSnapshot): void {
+  if (syncChannel) {
+    syncChannel.postMessage(snapshot);
   }
 }
 
@@ -460,6 +408,7 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   ...freshSnapshot(),
   guidedMode: true,
   hydrated: false,
+  user: null,
   activeTab: "dashboard",
   activeSubScreen: null,
   activeSettingsTab: "profile",
@@ -561,7 +510,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           coachBusy: false,
           tokenCount: get().tokenCount + (responseTokenCount ?? 0)
         });
-        await persistState(get());
       } else {
         set({ 
           coachBusy: false,
@@ -578,7 +526,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   },
   setStartupChoice: (choice) => {
     set({ startupChoice: choice });
-    void persistState(get());
+    
   },
   setActiveTab: (tab) => set({ activeTab: tab, activeSubScreen: null }),
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
@@ -615,190 +563,85 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         activeSubScreen: null,
         workoutTab: "plans",
       });
-      await persistState(get());
     }
   },
   hydrate: async () => {
-    const localData = await loadSnapshot();
-    const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
+    // ── Step 1: Auth check ────────────────────────────────────────────────────
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // Migrate user profile for gender and activityLevel
-    if (snapshot.profile) {
-      snapshot.profile = migrateProfile(snapshot.profile);
-    }
-    
-    // Restore device secret to localStorage if it's found in IndexedDB
-    if (snapshot.deviceSecret && typeof window !== "undefined") {
-      setDeviceSecretValue(snapshot.deviceSecret);
-    }
+    if (user) {
+      // ── Step 2: Wire the hexagonal registry ──────────────────────────────
+      const container = await createProductionContainer(supabase, user.id);
+      registry.set(user.id, container);
 
-    // Migrate workout plans to ensure they have creatorType, startDay, and standard week day names
-    const migratedPlans = (snapshot.workoutPlans || []).map(plan => {
-      const creatorType = plan.creatorType || "manual";
-      const startDay = plan.startDay || "Monday";
-      const routines = (plan.routines || []).map((routine, i) => {
-        let day = routine.day;
-        if (!day || day.startsWith("Day ")) {
-          const sequence = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-          day = sequence[i % 7];
-        }
-        return { ...routine, day };
-      });
-      return { ...plan, creatorType, startDay, routines };
-    });
-    snapshot.workoutPlans = migratedPlans;
+      // ── Step 3: Load all data (composite adapter: Supabase→IDB→store) ───
+      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile] =
+        await Promise.all([
+          registry.load((r, uid) => r.workout.getWorkouts(uid)),
+          registry.load((r, uid) => r.plan.getPlans(uid)),
+          registry.load((r, uid) => r.nutrition.getEntries(uid)),
+          registry.load((r, uid) => r.water.getLogs(uid)),
+          registry.load((r, uid) => r.body.getMetrics(uid)),
+          registry.load((r, uid) => r.recovery.getLogs(uid)),
+          registry.load((r, uid) => r.user.getProfile(uid)),
+        ]);
 
-    // Migrate legacy localstorage nutrition/water entries if they exist
-    let nutritionEntries = snapshot.nutritionEntries || [];
-    let waterLogs = snapshot.waterLogs || [];
-    let needsMigrationSave = false;
+      // Migrate plans (ensure creatorType, startDay, standardized day names)
+      const migratedPlans = ((plans ?? []) as any[]).map((plan: any) => ({
+        ...plan,
+        creatorType: plan.creatorType || "manual",
+        startDay: plan.startDay || "Monday",
+        routines: (plan.routines || []).map((r: any, i: number) => ({
+          ...r,
+          day: (!r.day || r.day.startsWith("Day "))
+            ? ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i % 7]
+            : r.day,
+        })),
+      }));
 
-    if (typeof window !== "undefined") {
-      const savedEntries = localStorage.getItem("atlas_nutrition_entries");
-      if (savedEntries) {
-        try {
-          const parsed = JSON.parse(savedEntries);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const existingIds = new Set(nutritionEntries.map(e => e.id));
-            const newEntries = parsed.filter(e => !existingIds.has(e.id));
-            if (newEntries.length > 0) {
-              nutritionEntries = [...nutritionEntries, ...newEntries];
-              needsMigrationSave = true;
-            }
-          }
-          localStorage.removeItem("atlas_nutrition_entries");
-        } catch (e) {
-          console.error("Failed to migrate legacy nutrition entries:", e);
-        }
+      // Auto-expire active workout > 3 hours old
+      const freshSnap = freshSnapshot();
+      let activeWorkout = freshSnap.activeWorkout;
+      const activeWorkoutPlanId = migratedPlans[0]?.id ?? null;
+
+      set({
+        workouts: workouts ?? freshSnap.workouts,
+        workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
+        nutritionEntries: nutrition ?? freshSnap.nutritionEntries,
+        waterLogs: water ?? freshSnap.waterLogs,
+        bodyMetrics: bodyMetrics ?? freshSnap.bodyMetrics,
+        recoveryLogs: recovery ?? freshSnap.recoveryLogs,
+        profile: profile ? migrateProfile(profile as any) : (freshSnap.profile ?? defaultProfile),
+        hasOnboarded: !!profile,
+        activeWorkoutPlanId,
+        activeWorkout,
+        hydrated: true,
+        // Authenticated via Supabase → always "cloud", skip WelcomeScreen
+        startupChoice: "cloud" as const,
+        activeTab: "dashboard",
+        activeSettingsTab: "profile",
+        coachBusy: false,
+        providerBusy: false,
+        user: { id: user.id, email: user.email ?? "" },
+      } as any);
+
+      // ── Step 4: Drain any writes queued while offline ─────────────────────
+      void drainSyncQueue();
+
+      // ── Step 5: Register online event to drain queue on reconnect ─────────
+      if (typeof window !== "undefined") {
+        window.addEventListener("online", () => { void drainSyncQueue(); }, { once: false });
       }
-
-      const savedWater = localStorage.getItem("atlas_water_logs");
-      if (savedWater) {
-        try {
-          const parsed = JSON.parse(savedWater);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const existingIds = new Set(waterLogs.map(w => w.id));
-            const newWater = parsed.filter(w => !existingIds.has(w.id));
-            if (newWater.length > 0) {
-              waterLogs = [...waterLogs, ...newWater];
-              needsMigrationSave = true;
-            }
-          }
-          localStorage.removeItem("atlas_water_logs");
-        } catch (e) {
-          console.error("Failed to migrate legacy water logs:", e);
-        }
-      }
-    }
-    snapshot.nutritionEntries = nutritionEntries;
-    snapshot.waterLogs = waterLogs;
-
-    let activeWorkout = snapshot.activeWorkout;
-    let workouts = snapshot.workouts;
-    let aiMessages = snapshot.aiMessages;
-    let activeSubScreen = snapshot.activeSubScreen;
-    
-    if (activeWorkout) {
-      const elapsedMs = Date.now() - new Date(activeWorkout.startedAt).getTime();
-      const maxMs = 3 * 60 * 60 * 1000;
-      if (elapsedMs >= maxMs) {
-        const forceStoppedAt = new Date(new Date(activeWorkout.startedAt).getTime() + maxMs).toISOString();
-        const completedWorkout = {
-          ...activeWorkout,
-          notes: "Force stopped: Session exceeded maximum limit of 3 hours.",
-          fatigueRating: 5,
-          completedAt: forceStoppedAt,
-          durationMinutes: 180,
-        };
-        workouts = [...workouts, completedWorkout];
-        activeWorkout = null;
-        activeSubScreen = null;
-        aiMessages = [
-          ...aiMessages,
-          {
-            id: createId("assistant"),
-            role: "assistant",
-            createdAt: new Date().toISOString(),
-            content: `The active workout "${completedWorkout.name}" was automatically stopped because it exceeded the 3-hour limit.`,
-          },
-        ];
-      }
-    }
-    
-    const activeWorkoutPlanId = snapshot.activeWorkoutPlanId || snapshot.workoutPlans[0]?.id || null;
-    const startupChoice = snapshot.startupChoice || (snapshot.hasOnboarded ? "local" : null);
-    set({
-      ...snapshot,
-      workouts,
-      activeWorkout,
-      activeSubScreen,
-      aiMessages,
-      activeWorkoutPlanId,
-      startupChoice,
-      guidedMode: snapshot.guidedMode !== undefined ? snapshot.guidedMode : true,
-      hydrated: true,
-      activeTab: "dashboard",
-      activeSettingsTab: "profile",
-      coachBusy: false,
-      providerBusy: false,
-    });
-    
-    if ((snapshot.activeWorkout && !activeWorkout) || needsMigrationSave) {
-      await persistState(get());
-    }
-
-    void get().pullCloudUpdate();
-
-    // Check blocked status if online and onboarded
-    if (typeof window !== "undefined" && navigator.onLine && snapshot.profile?.id) {
-      try {
-        const isBlocked = await checkBlockedStatus(snapshot.profile.id);
-        if (isBlocked) {
-          set({ blocked: true });
-        }
-      } catch (error) {
-        console.error("Failed to check blocked status:", error);
-      }
+    } else {
+      // Not signed in — proxy.ts will redirect; hydrate with empty state
+      set({ hydrated: true, coachBusy: false, providerBusy: false });
     }
   },
   pullCloudUpdate: async (): Promise<boolean> => {
-    const email = get().profile?.email;
-    if (!email || typeof window === "undefined" || !navigator.onLine) return false;
-
-    try {
-      console.log("[Cloud Sync] Checking for newer snapshot in Google Drive...");
-      const res = await restoreProfileByEmail(email);
-      if (res.success && res.snapshot) {
-        const cloudUpdatedAt = res.snapshot.updatedAt;
-        const localLastSyncedAt = get().lastSyncedAt;
-        
-        // If the cloud snapshot is newer, restore it!
-        if (!localLastSyncedAt || (cloudUpdatedAt && new Date(cloudUpdatedAt).getTime() > new Date(localLastSyncedAt).getTime())) {
-          console.log("[Cloud Sync] Found newer cloud snapshot. Restoring silently...");
-          const activeStartupChoice = get().startupChoice || "local";
-          const restoredSnapshot = { ...res.snapshot };
-          if (restoredSnapshot.profile) {
-            restoredSnapshot.profile = migrateProfile(restoredSnapshot.profile);
-          }
-          set({
-            ...freshSnapshot(),
-            ...restoredSnapshot,
-            hasOnboarded: true,
-            startupChoice: activeStartupChoice,
-            hydrated: true,
-            coachBusy: false,
-            providerBusy: false,
-          });
-          // Save locally to IndexedDB
-          await saveSnapshot(snapshotFromState(get()));
-          return true;
-        }
-      }
-      return false;
-    } catch (e) {
-      console.error("[Cloud Sync] Background pull failed:", e);
-      return false;
-    }
+    // No-op: replaced by registry composite adapter (Supabase is always read on hydrate)
+    return false;
   },
   setActiveWorkoutPlanId: async (id) => {
     const activeWorkout = get().activeWorkout;
@@ -818,7 +661,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       restTimerEndsAt: nextRestTimer,
       activeSubScreen: nextSubScreen,
     });
-    await persistState(get());
   },
   saveWorkoutPlan: async (plan: WorkoutPlan) => {
     // Sanitize exercises in the plan to ensure cardio has targetSets = 1
@@ -846,7 +688,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     }
 
     set({ workoutPlans: nextPlans, activeWorkoutPlanId: activeId });
-    await persistState(get());
+    registry.save((r, uid) => r.plan.savePlan(uid, sanitizedPlan));
   },
   deleteWorkoutPlan: async (planId: string) => {
     const nextPlans = get().workoutPlans.filter(p => p.id !== planId);
@@ -875,7 +717,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       restTimerEndsAt: nextRestTimer,
       activeSubScreen: nextSubScreen,
     });
-    await persistState(get());
+    registry.save((r, uid) => r.plan.deletePlan(uid, planId));
   },
   saveRoutine: async (planId: string, routine: Routine) => {
     const plans = get().workoutPlans;
@@ -899,7 +741,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       plan.routines.push(sanitizedRoutine);
     }
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
-    await persistState(get());
   },
   deleteRoutine: async (planId: string, routineId: string) => {
     const plans = get().workoutPlans;
@@ -907,11 +748,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     if (!plan) return;
     plan.routines = plan.routines.filter(r => r.id !== routineId);
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
-    await persistState(get());
   },
   finalizeRestore: async (choice) => {
     set({ hasOnboarded: true, startupChoice: choice });
-    await persistState(get());
   },
   completeOnboarding: async (data) => {
     const { apiKey, providerType, customGoal, ...profile } = data;
@@ -996,14 +835,15 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       set({ aiProviders: [newProvider], activeProviderId: providerId });
     }
 
+    const finalProfile = { ...profile, goal: customGoal ?? profile.goal };
     set({ 
-      profile: { ...profile, goal: customGoal ?? profile.goal }, 
+      profile: finalProfile, 
       weightUnit: profile.weightUnit ?? get().weightUnit,
       heightUnit: profile.heightUnit ?? get().heightUnit,
       hasOnboarded: true, 
       activeTab: "dashboard" 
     });
-    await persistState(get());
+    registry.save((r, uid) => r.user.saveProfile(uid, finalProfile));
   },
   updateProfile: async (patch) => {
     const profile = get().profile;
@@ -1018,11 +858,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const finalPatch = profile.email ? safePatch : patch;
     const updatedProfile = { ...profile, ...finalPatch };
     set({ profile: updatedProfile });
-    await persistState(get());
+    registry.save((r, uid) => r.user.saveProfile(uid, updatedProfile));
   },
   setTheme: async (theme) => {
     set({ theme });
-    await persistState(get());
   },
   setWeightUnit: async (unit) => {
     const currentUnit = get().weightUnit;
@@ -1046,7 +885,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         set({ profile: { ...get().profile!, weightUnit: unit } });
       }
     }
-    await persistState(get());
   },
   setHeightUnit: async (unit) => {
     const currentUnit = get().heightUnit;
@@ -1070,21 +908,19 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         set({ profile: { ...get().profile!, heightUnit: unit } });
       }
     }
-    await persistState(get());
   },
   setGuidedMode: async (guidedMode) => {
     set({ guidedMode });
-    await persistState(get());
   },
   logRecovery: async (log) => {
     const filtered = get().recoveryLogs.filter((item) => item.date !== log.date);
     set({ recoveryLogs: [...filtered, log].sort((a, b) => a.date.localeCompare(b.date)) });
-    await persistState(get());
+    registry.save((r, uid) => r.recovery.addLog(uid, log));
   },
   logBodyMetric: async (metric) => {
     const filtered = get().bodyMetrics.filter((item) => item.date !== metric.date);
     set({ bodyMetrics: [...filtered, metric].sort((a, b) => a.date.localeCompare(b.date)) });
-    await persistState(get());
+    registry.save((r, uid) => r.body.addMetric(uid, metric));
   },
   startWorkout: async (routine) => {
     console.log("startWorkout: Function called.");
@@ -1128,7 +964,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     console.log("startWorkout: activeWorkout AFTER update (should be new workout):", get().activeWorkout);
     console.log("startWorkout: State updated, attempting to persist...");
     try {
-      await persistState(get());
       console.log("startWorkout: Persist successful.");
     } catch (error) {
       console.error("startWorkout: Persist failed:", error);
@@ -1176,7 +1011,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         }),
       },
     });
-    await persistState(get());
   },
   updateSet: async (workoutExerciseId, setId, patch) => {
     const activeWorkout = get().activeWorkout;
@@ -1195,7 +1029,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         }),
       },
     });
-    await persistState(get());
   },
   deleteSet: async (workoutExerciseId, setId) => {
     const activeWorkout = get().activeWorkout;
@@ -1212,7 +1045,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         }),
       },
     });
-    await persistState(get());
   },
   updateExerciseUnit: async (workoutExerciseId, unit) => {
     const activeWorkout = get().activeWorkout;
@@ -1226,7 +1058,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         }),
       },
     });
-    await persistState(get());
   },
 
   finishWorkout: async (fatigueRating = 6, notes) => {
@@ -1257,7 +1088,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeSubScreen: null,
       workoutTab: "plans",
     });
-    await persistState(get());
+    registry.save((r, uid) => r.workout.saveWorkout(uid, completedWorkout));
   },
   discardWorkout: async () => {
     set({
@@ -1266,7 +1097,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeSubScreen: null,
       workoutTab: "plans",
     });
-    await persistState(get());
   },
   swapWorkoutExercise: async (workoutExerciseId, newExerciseId) => {
     const activeWorkout = get().activeWorkout;
@@ -1317,8 +1147,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeWorkout: nextActiveWorkout,
       workoutPlans: nextWorkoutPlans,
     });
-
-    await persistState(get());
   },
   skipWorkoutExercise: async (workoutExerciseId) => {
     const activeWorkout = get().activeWorkout;
@@ -1342,16 +1170,12 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         exercises: updatedExercises,
       },
     });
-
-    await persistState(get());
   },
   startRestTimer: async (seconds) => {
     set({ restTimerEndsAt: new Date(Date.now() + seconds * 1000).toISOString() });
-    await persistState(get());
   },
   stopRestTimer: async () => {
     set({ restTimerEndsAt: undefined });
-    await persistState(get());
   },
   adjustRestTimer: async (seconds) => {
     const currentEndsAt = get().restTimerEndsAt;
@@ -1362,7 +1186,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       // If no timer is active, start one for the given seconds
       set({ restTimerEndsAt: new Date(Date.now() + seconds * 1000).toISOString() });
     }
-    await persistState(get());
   },
   saveProvider: async (provider, apiKeyPlain) => {
     let finalApiKey = provider.apiKey; // Start with existing encrypted key
@@ -1381,7 +1204,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       aiProviders: providers,
       activeProviderId: provider.enabled ? provider.id : get().activeProviderId,
     });
-    await persistState(get());
   },
   setActiveProvider: async (providerId) => {
     set({
@@ -1391,7 +1213,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         enabled: provider.id === providerId,
       })),
     });
-    await persistState(get());
   },
   markProviderKeyStatus: async (providerId, status, errorMessage) => {
     set({
@@ -1406,7 +1227,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           : item,
       ),
     });
-    await persistState(get());
   },
   testProvider: async (providerId) => {
     const provider = get().aiProviders.find((item) => item.id === providerId);
@@ -1446,7 +1266,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         providerBusy: false,
       });
     }
-    await persistState(get());
   },
   sendCoachMessage: async (content, options) => {
     const userMessage: AiMessage = {
@@ -1571,7 +1390,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           }
 
           set(storeUpdate);
-          await persistState(get());
         } else {
           // Incomplete plan: trigger background follow-up, do NOT make the plan accessible yet
           setTimeout(async () => {
@@ -1671,7 +1489,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
 
               set(storeUpdate);
             }
-            await persistState(get());
           }, 50);
         }
       }
@@ -1689,7 +1506,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         coachBusy: false,
       });
     }
-    await persistState(get());
   },
   exportEncryptedProfile: async (passphrase) => {
     return encryptForExport(snapshotFromState(get()), passphrase);
@@ -1710,7 +1526,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         setDeviceSecretValue(mergedSnapshot.deviceSecret);
       }
       set({ ...mergedSnapshot, hydrated: true, coachBusy: false, providerBusy: false });
-      await persistState(get());
     }
   },
   importRawSnapshot: async (snapshot) => {
@@ -1728,30 +1543,29 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         setDeviceSecretValue(mergedSnapshot.deviceSecret);
       }
       set({ ...mergedSnapshot, hydrated: true, coachBusy: false, providerBusy: false });
-      await persistState(get());
     } else {
       throw new Error("Invalid snapshot structure. Unable to restore.");
     }
   },
   addNutritionEntry: async (entry) => {
     set({ nutritionEntries: [...(get().nutritionEntries || []), entry] });
-    await persistState(get());
+    registry.save((r, uid) => r.nutrition.addEntry(uid, entry));
   },
   addNutritionEntries: async (entries) => {
     set({ nutritionEntries: [...(get().nutritionEntries || []), ...entries] });
-    await persistState(get());
+    
   },
   deleteNutritionEntry: async (id) => {
     set({ nutritionEntries: (get().nutritionEntries || []).filter((e) => e.id !== id) });
-    await persistState(get());
+    registry.save((r, uid) => r.nutrition.deleteEntry(uid, id));
   },
   addWaterLog: async (log) => {
     set({ waterLogs: [...(get().waterLogs || []), log] });
-    await persistState(get());
+    registry.save((r, uid) => r.water.addLog(uid, log));
   },
   deleteWaterLog: async (id) => {
     set({ waterLogs: (get().waterLogs || []).filter((w) => w.id !== id) });
-    await persistState(get());
+    registry.save((r, uid) => r.water.deleteLog(uid, id));
   },
   addRecentFoodSearch: async (item) => {
     const prev = get().recentFoodSearches || [];
@@ -1760,11 +1574,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     );
     const updated = [item, ...filtered].slice(0, 10);
     set({ recentFoodSearches: updated });
-    await persistState(get());
   },
   clearRecentFoodSearches: async () => {
     set({ recentFoodSearches: [] });
-    await persistState(get());
   },
   removeRecentFoodSearch: async (item) => {
     const prev = get().recentFoodSearches || [];
@@ -1772,11 +1584,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       (p) => !(p.name.toLowerCase() === item.name.toLowerCase() && p.brand === item.brand)
     );
     set({ recentFoodSearches: updated });
-    await persistState(get());
   },
   resetLocalData: async () => {
     set({ ...freshSnapshot(), hydrated: true });
-    await persistState(get());
   },
 }));
 

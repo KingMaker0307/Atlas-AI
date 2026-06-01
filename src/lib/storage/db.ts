@@ -1,72 +1,297 @@
+/**
+ * IndexedDB Adapter — v2 Schema (Per-Entity Stores)
+ *
+ * Replaces the old single-blob "snapshots" store.
+ * Each entity has its own IDB object store, keyed by record ID.
+ * Implements all port interfaces from @/ports/repositories.
+ *
+ * DB version bumped to 2 — the upgrade handler migrates v1 snapshot data
+ * into the new per-entity stores automatically on first open.
+ */
+
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { AtlasSnapshot } from "@/types/domain";
+import type {
+  UserRepository,
+  WorkoutRepository,
+  WorkoutPlanRepository,
+  NutritionRepository,
+  WaterRepository,
+  BodyMetricRepository,
+  RecoveryRepository,
+} from "@/ports/repositories";
+import type {
+  UserProfile,
+  Workout,
+  WorkoutPlan,
+  NutritionEntry,
+  WaterLogEntry,
+  BodyMetric,
+  RecoveryLog,
+} from "@/types/domain";
+
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
+interface AtlasDbV2 extends DBSchema {
+  profiles: { key: string; value: UserProfile & { _userId: string } };
+  workouts: { key: string; value: Workout & { _userId: string } };
+  workout_plans: { key: string; value: WorkoutPlan & { _userId: string } };
+  nutrition_entries: { key: string; value: NutritionEntry & { _userId: string } };
+  water_logs: { key: string; value: WaterLogEntry & { _userId: string } };
+  body_metrics: { key: string; value: BodyMetric & { _userId: string } };
+  recovery_logs: { key: string; value: RecoveryLog & { _userId: string } };
+  sync_queue: { key: number; value: SyncQueueItem };
+}
+
+export interface SyncQueueItem {
+  id?: number;
+  userId: string;
+  store: keyof Omit<AtlasDbV2, "sync_queue">;
+  operation: "upsert" | "delete";
+  recordId: string;
+  payload?: unknown;
+  createdAt: string;
+  retries: number;
+}
 
 const DB_NAME = "atlas-ai-coach";
-const DB_VERSION = 1;
-const SNAPSHOT_KEY = "profile";
+const DB_VERSION = 2;
+const STORES = [
+  "profiles",
+  "workouts",
+  "workout_plans",
+  "nutrition_entries",
+  "water_logs",
+  "body_metrics",
+  "recovery_logs",
+  "sync_queue",
+] as const;
+
+// ─── Local settings (unchanged — uses localStorage) ───────────────────────────
+
 const SETTINGS_PREFIX = "atlas.settings.";
-
-interface AtlasDb extends DBSchema {
-  snapshots: {
-    key: string;
-    value: AtlasSnapshot;
-  };
-}
-
-let dbPromise: Promise<IDBPDatabase<AtlasDb>> | null = null;
-
-function getDatabase(): Promise<IDBPDatabase<AtlasDb>> {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("IndexedDB is only available in the browser."));
-  }
-
-  dbPromise ??= openDB<AtlasDb>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains("snapshots")) {
-        db.createObjectStore("snapshots");
-      }
-    },
-  });
-
-  return dbPromise;
-}
-
-export async function loadSnapshot(): Promise<AtlasSnapshot | null> {
-  const db = await getDatabase();
-  return (await db.get("snapshots", SNAPSHOT_KEY)) ?? null;
-}
-
-export async function saveSnapshot(snapshot: AtlasSnapshot): Promise<void> {
-  const db = await getDatabase();
-  await db.put(
-    "snapshots",
-    {
-      ...snapshot,
-      updatedAt: new Date().toISOString(),
-    },
-    SNAPSHOT_KEY,
-  );
-}
-
-export async function clearSnapshot(): Promise<void> {
-  const db = await getDatabase();
-  await db.delete("snapshots", SNAPSHOT_KEY);
-}
 
 export function readLocalSetting<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-
   const raw = localStorage.getItem(`${SETTINGS_PREFIX}${key}`);
   if (!raw) return fallback;
-
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
 }
 
 export function writeLocalSetting<T>(key: string, value: T): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(`${SETTINGS_PREFIX}${key}`, JSON.stringify(value));
+}
+
+// ─── DB singleton ─────────────────────────────────────────────────────────────
+
+let _db: Promise<IDBPDatabase<AtlasDbV2>> | null = null;
+
+export function getDb(): Promise<IDBPDatabase<AtlasDbV2>> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("IndexedDB is only available in the browser"));
+  }
+  _db ??= openDB<AtlasDbV2>(DB_NAME, DB_VERSION, {
+    upgrade(db, oldVersion) {
+      // Create all new v2 object stores
+      for (const store of STORES) {
+        if (!db.objectStoreNames.contains(store as any)) {
+          if (store === "sync_queue") {
+            (db as any).createObjectStore(store, { autoIncrement: true, keyPath: "id" });
+          } else {
+            db.createObjectStore(store as any);
+          }
+        }
+      }
+
+      // v1 → v2 migration: the old "snapshots" store may exist
+      // We leave it in place (read-only) — the store's initApp will
+      // attempt a one-time extraction of its data into the new stores.
+      // The old store is intentionally NOT deleted here so we don't
+      // lose data if the upgrade fails mid-way.
+    },
+  });
+  return _db;
+}
+
+// ─── Helper: read all records for a userId ────────────────────────────────────
+
+async function getAll<T extends { _userId: string }>(
+  store: keyof Omit<AtlasDbV2, "sync_queue">,
+  userId: string,
+): Promise<T[]> {
+  const db = await getDb();
+  const all = await (db as any).getAll(store) as T[];
+  return all.filter((r) => r._userId === userId);
+}
+
+// ─── Adapters ─────────────────────────────────────────────────────────────────
+
+export class IndexedDbUserRepository implements UserRepository {
+  async getProfile(userId: string): Promise<UserProfile | null> {
+    const db = await getDb();
+    const record = await (db as any).get("profiles", userId) as (UserProfile & { _userId: string }) | undefined;
+    if (!record) return null;
+    const { _userId: _, ...profile } = record;
+    return profile as UserProfile;
+  }
+
+  async saveProfile(userId: string, profile: UserProfile): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("profiles", { ...profile, _userId: userId }, userId);
+  }
+
+  async deleteProfile(userId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("profiles", userId);
+  }
+}
+
+export class IndexedDbWorkoutRepository implements WorkoutRepository {
+  async getWorkouts(userId: string): Promise<Workout[]> {
+    const records = await getAll<Workout & { _userId: string }>("workouts", userId);
+    return records.map(({ _userId: _, ...w }) => w as Workout)
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+  }
+
+  async saveWorkout(userId: string, workout: Workout): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("workouts", { ...workout, _userId: userId }, workout.id);
+  }
+
+  async deleteWorkout(userId: string, workoutId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("workouts", workoutId);
+  }
+}
+
+export class IndexedDbWorkoutPlanRepository implements WorkoutPlanRepository {
+  async getPlans(userId: string): Promise<WorkoutPlan[]> {
+    const records = await getAll<WorkoutPlan & { _userId: string }>("workout_plans", userId);
+    return records.map(({ _userId: _, ...p }) => p as WorkoutPlan);
+  }
+
+  async savePlan(userId: string, plan: WorkoutPlan): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("workout_plans", { ...plan, _userId: userId }, plan.id);
+  }
+
+  async deletePlan(userId: string, planId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("workout_plans", planId);
+  }
+}
+
+export class IndexedDbNutritionRepository implements NutritionRepository {
+  async getEntries(userId: string, date?: string): Promise<NutritionEntry[]> {
+    const records = await getAll<NutritionEntry & { _userId: string }>("nutrition_entries", userId);
+    let entries = records.map(({ _userId: _, ...e }) => e as NutritionEntry);
+    if (date) {
+      entries = entries.filter((e) => e.timestamp.startsWith(date));
+    }
+    return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async addEntry(userId: string, entry: NutritionEntry): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("nutrition_entries", { ...entry, _userId: userId }, entry.id);
+  }
+
+  async deleteEntry(userId: string, entryId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("nutrition_entries", entryId);
+  }
+
+  async deleteEntriesForDate(userId: string, date: string): Promise<void> {
+    const entries = await this.getEntries(userId, date);
+    const db = await getDb();
+    await Promise.all(entries.map((e) => (db as any).delete("nutrition_entries", e.id)));
+  }
+}
+
+export class IndexedDbWaterRepository implements WaterRepository {
+  async getLogs(userId: string, date?: string): Promise<WaterLogEntry[]> {
+    const records = await getAll<WaterLogEntry & { _userId: string }>("water_logs", userId);
+    let logs = records.map(({ _userId: _, ...l }) => l as WaterLogEntry);
+    if (date) {
+      logs = logs.filter((l) => l.timestamp.startsWith(date));
+    }
+    return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async addLog(userId: string, log: WaterLogEntry): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("water_logs", { ...log, _userId: userId }, log.id);
+  }
+
+  async deleteLog(userId: string, logId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("water_logs", logId);
+  }
+}
+
+export class IndexedDbBodyMetricRepository implements BodyMetricRepository {
+  async getMetrics(userId: string): Promise<BodyMetric[]> {
+    const records = await getAll<BodyMetric & { _userId: string }>("body_metrics", userId);
+    return records.map(({ _userId: _, ...m }) => m as BodyMetric)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async addMetric(userId: string, metric: BodyMetric): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("body_metrics", { ...metric, _userId: userId }, metric.id);
+  }
+
+  async deleteMetric(userId: string, metricId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("body_metrics", metricId);
+  }
+}
+
+export class IndexedDbRecoveryRepository implements RecoveryRepository {
+  async getLogs(userId: string): Promise<RecoveryLog[]> {
+    const records = await getAll<RecoveryLog & { _userId: string }>("recovery_logs", userId);
+    return records.map(({ _userId: _, ...r }) => r as RecoveryLog)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async addLog(userId: string, log: RecoveryLog): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("recovery_logs", { ...log, _userId: userId }, log.id);
+  }
+
+  async deleteLog(userId: string, logId: string): Promise<void> {
+    const db = await getDb();
+    await (db as any).delete("recovery_logs", logId);
+  }
+}
+
+// ─── Sync Queue helpers ────────────────────────────────────────────────────────
+
+export async function enqueueSync(item: Omit<SyncQueueItem, "id" | "retries" | "createdAt">): Promise<void> {
+  const db = await getDb();
+  await (db as any).add("sync_queue", {
+    ...item,
+    retries: 0,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function dequeueAll(): Promise<SyncQueueItem[]> {
+  const db = await getDb();
+  return (db as any).getAll("sync_queue");
+}
+
+export async function removeFromQueue(id: number): Promise<void> {
+  const db = await getDb();
+  await (db as any).delete("sync_queue", id);
+}
+
+export async function incrementQueueRetry(id: number): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("sync_queue" as any, "readwrite");
+  const item = await (tx.store as any).get(id) as SyncQueueItem | undefined;
+  if (item) {
+    await (tx.store as any).put({ ...item, retries: item.retries + 1 });
+  }
+  await tx.done;
 }

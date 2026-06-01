@@ -1,6 +1,8 @@
+/* Google Fonts loaded via <link> in layout.tsx */
 @import "tailwindcss";
 @import "./typography.css";
 @import "./theme.css";
+@import "./auth.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
