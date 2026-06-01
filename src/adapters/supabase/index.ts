@@ -116,13 +116,13 @@ export class SupabaseUserRepository implements UserRepository {
 export class SupabaseWorkoutRepository implements WorkoutRepository {
   constructor(private supabase: SupabaseClient) {}
 
-  async getWorkouts(userId: string, limit = 200): Promise<Workout[]> {
+  async getWorkouts(userId: string, limit = 50): Promise<Workout[]> {
     const { data, error } = await this.supabase
       .from("workouts")
       .select("*")
       .eq("user_id", userId)
       .order("started_at", { ascending: false })
-      .limit(limit);
+      .range(0, limit - 1);
     if (error) throw error;
     return (data || []).map((row) => ({
       id: row.id,
@@ -238,7 +238,7 @@ export class SupabaseNutritionRepository implements NutritionRepository {
         .lt("timestamp", `${date}T23:59:59.999Z`);
     }
 
-    const { data, error } = await query.limit(500);
+    const { data, error } = await query.range(0, 49);
     if (error) throw error;
     return (data || []).map((row) => ({
       id: row.id,
