@@ -12,6 +12,7 @@ import { WelcomeScreen } from "@/components/screens/welcome-screen";
 import { RoutineBuilderScreen } from "@/components/screens/routine-builder-screen";
 import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
 import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
+import { AppLoader } from "@/components/ui/app-loader";
 import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Onboarding } from "@/components/onboarding";
@@ -62,52 +63,7 @@ export function AtlasApp() {
     };
   }, []);
 
-  // Background Cloud Synchronization Loop (Option A - Real-Time Multi-Device Sync)
-  useEffect(() => {
-    if (!hydrated || !profile?.email || !online) return;
-
-    // Core helper to perform silent pull check
-    const performSilentPull = async () => {
-      // Typing Guard: pause background sync updates if user is currently entering values
-      const activeElement = document.activeElement;
-      const isTyping = activeElement && (
-        activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        activeElement.getAttribute("contenteditable") === "true"
-      );
-
-      if (isTyping) {
-        console.log("[Cloud Sync] Keyboard input active. Pausing silent pull to prevent conflicts.");
-        return;
-      }
-
-      try {
-        await pullCloudUpdate();
-      } catch (err) {
-        console.error("[Cloud Sync] Polling silent pull failed:", err);
-      }
-    };
-
-    // 1. Snappy 5-second polling interval for multi-device cross-network updates
-    const interval = setInterval(performSilentPull, 5000);
-
-    // 2. Zero-latency triggers: run pull the exact second the tab gains focus or visibility
-    const handleFocusOrVisibility = () => {
-      if (document.visibilityState === "visible") {
-        console.log("[Cloud Sync] App became visible or active. Pulling cloud updates immediately.");
-        void performSilentPull();
-      }
-    };
-
-    window.addEventListener("focus", handleFocusOrVisibility);
-    document.addEventListener("visibilitychange", handleFocusOrVisibility);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", handleFocusOrVisibility);
-      document.removeEventListener("visibilitychange", handleFocusOrVisibility);
-    };
-  }, [hydrated, profile?.email, online, pullCloudUpdate]);
+  // Removed: Google Drive polling loop (replaced by registry composite adapter)
 
   useEffect(() => {
     if (!hydrated || !profile?.id || !online) return;
@@ -167,8 +123,7 @@ export function AtlasApp() {
   }, [theme]);
 
   if (blocked) return <BlockedBlockerScreen />;
-  if (!hydrated) return <LoadingApp />;
-  if (!startupChoice) return <WelcomeScreen />;
+  if (!hydrated) return <AppLoader visible={true} />;
   if (!hasOnboarded) return <Onboarding />;
 
   const renderSubScreen = () => {
@@ -380,22 +335,6 @@ export function AtlasApp() {
   );
 }
 
-function LoadingApp() {
-  return (
-    <main className="flex min-h-dvh items-center justify-center bg-background p-4 text-foreground">
-      <Card className="w-full max-w-sm p-4">
-        <div className="h-5 w-32 animate-pulse rounded bg-foreground/10" />
-        <div className="mt-5 space-y-3">
-          <div className="h-24 animate-pulse rounded-xl bg-foreground/10" />
-          <div className="grid grid-cols-2 gap-3">
-            <div className="h-20 animate-pulse rounded-xl bg-foreground/10" />
-            <div className="h-20 animate-pulse rounded-xl bg-foreground/10" />
-          </div>
-        </div>
-      </Card>
-    </main>
-  );
-}
 
 function OfflineBlockerScreen() {
   // This screen is no longer used — the app works offline for all local-data features.

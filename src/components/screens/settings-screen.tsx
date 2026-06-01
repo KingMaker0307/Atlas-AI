@@ -28,6 +28,7 @@ import {
   Dumbbell,
   Cloud,
   AlertCircle,
+  Zap,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -661,6 +662,7 @@ export function SettingsScreen() {
           { id: "profile", label: "Profile", icon: <User size={14} /> },
           { id: "ai", label: "AI Engine", icon: <Cpu size={14} /> },
           { id: "system", label: "System", icon: <Server size={14} /> },
+          { id: "subscription", label: "Plan", icon: <Zap size={14} /> },
         ].map((tab) => {
           const active = activeSettingsTab === tab.id;
           return (
@@ -686,6 +688,7 @@ export function SettingsScreen() {
             { id: "profile", label: "Profile & Goals", icon: <User size={16} /> },
             { id: "ai", label: "AI Engine", icon: <Cpu size={16} /> },
             { id: "system", label: "System & Backup", icon: <Server size={16} /> },
+            { id: "subscription", label: "Subscription", icon: <Zap size={16} /> },
           ].map((tab) => {
             const active = activeSettingsTab === tab.id;
             return (
@@ -1489,6 +1492,114 @@ export function SettingsScreen() {
                   )}
                 </div>
               )}
+              {/* ─── SUBSCRIPTION TAB ─── */}
+              {activeSettingsTab === "subscription" && (
+                <div className="space-y-5">
+                  {/* Current Plan Banner */}
+                  <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent p-6">
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+                    <div className="relative flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-black uppercase tracking-widest text-emerald-500 font-mono">Current Plan</p>
+                        <h2 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-white">Free</h2>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Unlimited local tracking. Cloud sync included.</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 shrink-0">
+                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Active</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feature Comparison */}
+                  <Card className="p-5 space-y-4">
+                    <div className="flex items-center gap-2.5 border-b border-card-border pb-3">
+                      <Zap className="text-amber-500 dark:text-amber-400" size={18} />
+                      <h2 className="text-base font-bold text-foreground tracking-tight">What&apos;s included</h2>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {[
+                        { label: "Workout tracking & logging", free: true, pro: true },
+                        { label: "Nutrition & water tracking", free: true, pro: true },
+                        { label: "AI coaching (local models)", free: true, pro: true },
+                        { label: "Body metrics & recovery logs", free: true, pro: true },
+                        { label: "Supabase cloud sync", free: true, pro: true },
+                        { label: "AI coaching (Gemini / GPT-4)", free: true, pro: true },
+                        { label: "Unlimited workout history", free: true, pro: true },
+                        { label: "Priority AI response speed", free: false, pro: true },
+                        { label: "Advanced analytics & trends", free: false, pro: true },
+                        { label: "Custom AI coach persona", free: false, pro: true },
+                        { label: "Export data (CSV / JSON)", free: false, pro: true },
+                        { label: "Priority support", free: false, pro: true },
+                      ].map((feature) => (
+                        <div key={feature.label} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{feature.label}</span>
+                          <div className="flex items-center gap-8">
+                            <span className="w-12 text-center">
+                              {feature.free ? (
+                                <Check size={14} className="mx-auto text-emerald-500" strokeWidth={3} />
+                              ) : (
+                                <span className="text-zinc-300 dark:text-zinc-700 text-xs font-bold">—</span>
+                              )}
+                            </span>
+                            <span className="w-12 text-center">
+                              {feature.pro ? (
+                                <Check size={14} className="mx-auto text-amber-500" strokeWidth={3} />
+                              ) : (
+                                <span className="text-zinc-300 dark:text-zinc-700 text-xs font-bold">—</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end gap-8 pt-1 border-t border-card-border">
+                      <div className="w-12 text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Free</p>
+                      </div>
+                      <div className="w-12 text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pro</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Upgrade CTA */}
+                  <Card className="p-5 space-y-4">
+                    <div className="flex items-center gap-2.5 border-b border-card-border pb-3">
+                      <Zap className="text-amber-500" size={18} />
+                      <h2 className="text-base font-bold text-foreground tracking-tight">Atlas Pro</h2>
+                      <span className="ml-auto text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">Coming Soon</span>
+                    </div>
+
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-4xl font-black tracking-tight text-zinc-900 dark:text-white">$9</span>
+                      <span className="text-zinc-500 text-sm font-medium">/month</span>
+                      <span className="ml-2 text-xs text-zinc-500 font-medium">or $79/year (save 27%)</span>
+                    </div>
+
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed">
+                      Unlock advanced analytics, priority AI, custom coach personas, and data exports.
+                      Your local data always stays yours — Pro adds power-user features on top.
+                    </p>
+
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-sm tracking-wide opacity-50 cursor-not-allowed transition-all"
+                      aria-label="Upgrade to Atlas Pro (coming soon)"
+                    >
+                      Upgrade to Pro — Coming Soon
+                    </button>
+
+                    <p className="text-center text-[10px] text-zinc-500 font-medium">
+                      No credit card required to stay on Free. Cancel anytime.
+                    </p>
+                  </Card>
+                </div>
+              )}
+
             </motion.div>
           </AnimatePresence>
         </div>
