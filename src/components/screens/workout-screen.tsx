@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
+  ChevronUp,
   CirclePlus,
   Clock3,
   Dumbbell,
@@ -33,8 +34,10 @@ import {
   Mic,
   MicOff,
   Upload,
+  Scale,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select, Textarea }
@@ -43,6 +46,8 @@ import { ExerciseDetail } from "@/components/exercise-detail";
 import { exercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise, Routine } from "@/types/domain";
+import { cn } from "@/lib/cn";
+import { NutritionTracker } from "@/components/nutrition-tracker";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 import { PostWorkoutCheckinModal } from "@/components/post-workout-checkin-modal";
 import { FinishSessionModal } from "@/components/finish-session-modal";
@@ -219,7 +224,17 @@ function parseSpeechCommand(text: string) {
 export function WorkoutScreen() {
   const storeExercises = useAtlasStore((state) => state.exercises);
   const getExerciseById = (id: string) => {
-    return storeExercises.find((e) => e.id === id) || getStaticExerciseById(id);
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      storeExercises.find((e) => {
+        const exerciseNormId = e.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        return (
+          e.id === id ||
+          exerciseNormId === normId ||
+          e.name.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+      }) || getStaticExerciseById(id)
+    );
   };
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
@@ -236,6 +251,26 @@ export function WorkoutScreen() {
   const workouts = useMemo(() => {
     return allWorkouts.filter(w => w.exercises.some(ex => ex.sets.some(s => s.completed)));
   }, [allWorkouts]);
+
+  const lastWorkoutForExercise = useMemo(() => {
+    const map: Record<string, Array<{ reps: number; weight: number }>> = {};
+    const completedWorkouts = [...workouts]
+      .filter(w => w.completedAt)
+      .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+    for (const w of completedWorkouts) {
+      for (const ex of w.exercises) {
+        const exerciseKey = ex.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        if (!ex.skipped && !map[exerciseKey]) {
+          const completedSets = ex.sets.filter(s => s.completed);
+          if (completedSets.length > 0) {
+            map[exerciseKey] = completedSets.map(s => ({ reps: s.reps, weight: s.weight }));
+          }
+        }
+      }
+    }
+    return map;
+  }, [workouts]);
+
   const activeSubScreen = useAtlasStore((state) => state.activeSubScreen);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
@@ -248,8 +283,28 @@ export function WorkoutScreen() {
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
   const deleteSet = useAtlasStore((state) => state.deleteSet);
+  const updateExerciseUnit = useAtlasStore((state) => state.updateExerciseUnit);
   const profile = useAtlasStore((state) => state.profile);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
+
+  // ─── Accordion focus state ───────────────────────────────────────────────────
+  // focusedExIdx: which exercise index is currently expanded. -1 = all collapsed.
+  const [focusedExIdx, setFocusedExIdx] = useState<number>(0);
+  const [manualActiveSetIdx, setManualActiveSetIdx] = useState<Record<string, number>>({});
+  // Refs for smooth scrolling to the focused exercise card
+  const exerciseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Reset accordion to first exercise whenever a NEW workout starts and scroll into view
+  useEffect(() => {
+    if (activeWorkout) {
+      setFocusedExIdx(0);
+      setManualActiveSetIdx({});
+      // Smooth scroll to the first active exercise card after mounting
+      setTimeout(() => {
+        exerciseCardRefs.current[0]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 350);
+    }
+  }, [activeWorkout?.id]);
 
   // Daily limit check
   const getLocalDateString = (dateOrStr: Date | string) => {
@@ -368,12 +423,15 @@ export function WorkoutScreen() {
   const [fatigue, setFatigue] = useState(6);
   const [notes, setNotes] = useState("");
   const [remaining, setRemaining] = useState(0);
+  const [timerMaxDuration, setTimerMaxDuration] = useState(60);
   const [elapsedWorkoutTime, setElapsedWorkoutTime] = useState(0);
   const [activeSwapExercise, setActiveSwapExercise] = useState<any | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
 
   const [isListening, setIsListening] = useState(false);
   const [speechFeedback, setSpeechFeedback] = useState<string | null>(null);
+  const planTab = useAtlasStore((state) => state.workoutTab);
+  const setPlanTab = useAtlasStore((state) => state.setWorkoutTab);
 
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -519,7 +577,7 @@ export function WorkoutScreen() {
   const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
 
 
-  // Effect for rest timer
+  // Effect for rest timer countdown
   useEffect(() => {
     const tick = () => {
       if (!restTimerEndsAt) {
@@ -529,9 +587,155 @@ export function WorkoutScreen() {
       setRemaining(Math.max(0, Math.ceil((new Date(restTimerEndsAt).getTime() - Date.now()) / 1000)));
     };
     tick();
+    
     const interval = window.setInterval(tick, 1000);
-    return () => window.clearInterval(interval);
+
+    // Immediately sync the timer whenever the page gains focus or changes visibility
+    const handleSync = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+    };
+    
+    window.addEventListener("focus", handleSync);
+    document.addEventListener("visibilitychange", handleSync);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleSync);
+      document.removeEventListener("visibilitychange", handleSync);
+    };
   }, [restTimerEndsAt]);
+
+  // Auto-request notification permissions when a workout is active
+  useEffect(() => {
+    if (activeWorkout && typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        void Notification.requestPermission();
+      }
+    }
+  }, [activeWorkout]);
+
+  // Track max timer duration for visual progress bar & trigger start notification
+  const lastEndsAtRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (restTimerEndsAt) {
+      const diff = Math.max(0, Math.ceil((new Date(restTimerEndsAt).getTime() - Date.now()) / 1000));
+      if (diff > 0) {
+        setTimerMaxDuration((prev) => Math.max(diff, prev));
+        
+        // Notify on transition or change in rest timer
+        if (restTimerEndsAt !== lastEndsAtRef.current) {
+          // Schedule background notification via Service Worker TimestampTrigger if supported
+          const anyWindow = window as any;
+          if (typeof window !== "undefined" && "serviceWorker" in navigator && "TimestampTrigger" in anyWindow) {
+            navigator.serviceWorker.ready.then((registration) => {
+              try {
+                // Cancel any existing scheduled notification first
+                if (registration.getNotifications) {
+                  registration.getNotifications({ tag: "atlas-rest-timer", includeTriggered: true } as any).then((notifications) => {
+                    notifications.forEach((n) => n.close());
+                  });
+                }
+                const targetTime = new Date(restTimerEndsAt).getTime();
+                const showTrigger = new anyWindow.TimestampTrigger(targetTime);
+                registration.showNotification("Rest Finished! 🏋️", {
+                  body: "Time to start your next set!",
+                  tag: "atlas-rest-timer",
+                  requireInteraction: true,
+                  showTrigger,
+                } as any);
+              } catch (e) {
+                console.warn("Failed to schedule background notification:", e);
+              }
+            });
+          }
+
+          // Trigger "Rest Timer Started" notification only if app is hidden
+          if (diff > 2 && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted" && document.visibilityState === "hidden") {
+            try {
+              new Notification("Rest Timer Started ⏱️", {
+                body: `Rest for ${diff} seconds. Take a breath!`,
+                tag: "atlas-rest-timer",
+                silent: true,
+              });
+            } catch (e) {
+              console.warn("Notification error:", e);
+            }
+          }
+        }
+      }
+    } else {
+      setTimerMaxDuration(60);
+      // Cancel scheduled notifications if restTimerEndsAt is stopped/cleared
+      if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.ready.then((registration) => {
+          try {
+            if (registration.getNotifications) {
+              registration.getNotifications({ tag: "atlas-rest-timer", includeTriggered: true } as any).then((notifications) => {
+                notifications.forEach((n) => n.close());
+              });
+            }
+          } catch (e) {
+            console.warn("Failed to clear scheduled notifications:", e);
+          }
+        });
+      }
+    }
+    lastEndsAtRef.current = restTimerEndsAt;
+  }, [restTimerEndsAt]);
+
+  // Premium haptic, synthesized audio chime, and push notification on rest timer finish
+  const restFinishedNotifiedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (restTimerEndsAt && remaining === 0) {
+      if (!restFinishedNotifiedRef.current) {
+        restFinishedNotifiedRef.current = true;
+        if (navigator.vibrate) {
+          navigator.vibrate([150, 100, 150]);
+        }
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            const audioCtx = new AudioCtx();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.type = "sine";
+            oscillator.frequency.value = 880; // A5 pitch
+            gainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+          }
+        } catch (err) {
+          console.warn("Web Audio API rest chime bypassed:", err);
+        }
+
+        // Trigger finish Web Notification if the app is hidden or out of focus
+        if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+          if (document.visibilityState === "hidden" || !document.hasFocus()) {
+            try {
+              new Notification("Rest Finished! 🏋️", {
+                body: "Time to start your next set!",
+                tag: "atlas-rest-timer",
+                requireInteraction: true,
+              });
+            } catch (e) {
+              console.warn("Notification error:", e);
+            }
+          }
+        }
+
+        // Auto-clear the rest timer in the store so it doesn't trigger again on tab re-focus/re-mount
+        void stopRestTimer();
+      }
+    } else if (restTimerEndsAt && remaining > 0) {
+      // Reset completed trigger flag when timer resets or ticks down
+      restFinishedNotifiedRef.current = false;
+    }
+  }, [remaining, restTimerEndsAt, stopRestTimer]);
 
   // Effect for workout duration timer
   useEffect(() => {
@@ -615,24 +819,60 @@ export function WorkoutScreen() {
         exit={{ opacity: 0, y: -8 }}
         className="space-y-4 pb-28"
       >
+        {/* ─── Header ─── */}
         <section className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Manage and track your plans</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">Plans</h1>
+            <p className="text-sm text-zinc-555">
+              {planTab === "plans" ? "Manage and track your plans" : "Track calories, macros & nutrients"}
+            </p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Plans</h1>
           </div>
-          <Button
-            size="sm"
-            variant="primary"
-            icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
-            disabled={coachBusy}
-            onClick={() => {
-              setEditingWorkoutPlanId(null);
-              setActiveSubScreen("workout-plan-builder");
-            }}
-          >
-            {coachBusy ? "Generating..." : "Create Plan"}
-          </Button>
+          {planTab === "plans" && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+              disabled={coachBusy}
+              onClick={() => {
+                setEditingWorkoutPlanId(null);
+                setActiveSubScreen("workout-plan-builder");
+              }}
+            >
+              {coachBusy ? "Generating..." : "Create Plan"}
+            </Button>
+          )}
         </section>
+
+        {/* ─── Tab Bar ─── */}
+        <div className="flex gap-1 p-1 bg-input border border-input-border rounded-2xl select-none">
+          {([
+            { id: "plans" as const, label: "Workout Plans", emoji: "🏋️" },
+            { id: "nutrition" as const, label: "Nutrition", emoji: "🥗" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              id={`plan-tab-${tab.id}`}
+              role="tab"
+              aria-selected={planTab === tab.id}
+              onClick={() => setPlanTab(tab.id)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 active:scale-[0.98]",
+                planTab === tab.id
+                  ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm shadow-black/10 dark:shadow-black/40"
+                  : "text-zinc-850 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white"
+              )}
+            >
+              <span>{tab.emoji}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── Nutrition Tab ─── */}
+        {planTab === "nutrition" && <NutritionTracker />}
+
+        {/* ─── Plans Tab content (hidden when on nutrition) ─── */}
+        {planTab === "plans" && (<>
 
         {coachBusy && (
           <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
@@ -640,7 +880,7 @@ export function WorkoutScreen() {
               <Bot className="h-5 w-5 text-violet-450 dark:text-violet-400 animate-pulse" />
               <div className="flex-1">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-violet-400">AI Plan Generation in Progress</h4>
-                <p className="text-[11px] text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
+                <p className="text-xs text-zinc-400 mt-0.5 animate-pulse">Hang tight! Something awesome is cooking from your AI Coach... designing your clinical-grade routines.</p>
               </div>
             </div>
             <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden relative">
@@ -682,10 +922,10 @@ export function WorkoutScreen() {
         })()}
 
         {activeWorkout && (
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-sm flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-200 text-sm flex items-center justify-between">
             <div>
               <p className="font-semibold">Workout in Progress</p>
-              <p className="text-zinc-300 text-xs mt-0.5">"{activeWorkout.name}" is currently active in the background.</p>
+              <p className="text-zinc-750 text-xs mt-0.5">"{activeWorkout.name}" is currently active in the background.</p>
             </div>
             <Button size="sm" variant="primary" onClick={() => setActiveSubScreen("active-workout")}>
               Resume Workout
@@ -694,12 +934,12 @@ export function WorkoutScreen() {
         )}
 
         {isLimitReached && !activeWorkout && (
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-sm space-y-2">
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-200 text-sm space-y-2">
             <div className="flex items-center gap-2 font-semibold">
-              <AlertTriangle size={18} className="text-amber-400 shrink-0" />
+              <AlertTriangle size={18} className="text-amber-450 shrink-0" />
               <span>Daily Workout Limit Reached (3/3)</span>
             </div>
-            <p className="text-zinc-300 leading-relaxed">
+            <p className="text-zinc-750 leading-relaxed">
               You've completed 3 workouts today. Logging more than 3 sessions in a single day increases the risk of overtraining syndrome. This causes excessive muscle damage (rhabdomyolysis), central nervous fatigue, joint strain, and elevated cortisol. Give your body the rest it needs to recover and grow.
             </p>
           </div>
@@ -753,14 +993,14 @@ export function WorkoutScreen() {
               const isActive = plan.id === activeWorkoutPlanId;
 
               return (
-                <Card className="p-4 flex flex-col justify-between border border-card-border bg-card shadow hover:border-white/10 transition-all duration-300" key={plan.id}>
+                <Card className="p-4 flex flex-col justify-between border border-card-border bg-card shadow hover:border-card-border transition-all duration-300" key={plan.id}>
                   <div>
-                    <div className="flex items-start justify-between gap-4 border-b border-white/5 pb-3">
+                    <div className="flex items-start justify-between gap-4 border-b border-card-border pb-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-bold text-foreground leading-tight">{plan.name}</h2>
+                          <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">{plan.name}</h2>
                           {isActive && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
                               Active
                             </span>
                           )}
@@ -771,7 +1011,9 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
+                          aria-label="Edit plan"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 disabled:opacity-40"
+                          disabled={coachBusy}
                           onClick={() => {
                             setEditingWorkoutPlanId(plan.id);
                             setActiveSubScreen("workout-plan-builder");
@@ -782,7 +1024,9 @@ export function WorkoutScreen() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500"
+                          aria-label="Delete plan"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500 disabled:opacity-40"
+                          disabled={coachBusy}
                           onClick={() => {
                             setPlanToDelete({ id: plan.id, name: plan.name });
                             setShowDeleteModal(true);
@@ -792,20 +1036,20 @@ export function WorkoutScreen() {
                         </Button>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
-                      <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-300">
+                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
+                      <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-750">
                         {plan.routines.length} {plan.routines.length === 1 ? "Routine" : "Routines"}
                       </span>
                       {plan.targetDate && (
-                        <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-300">
+                        <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-750">
                           Target: {plan.targetDate}
                         </span>
                       )}
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="mt-4 space-y-1.5 border-t border-white/5 pt-3">
-                      <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
+                    <div className="mt-4 space-y-1.5 border-t border-card-border pt-3">
+                      <div className="flex items-center justify-between text-xs text-zinc-750 font-bold uppercase tracking-wider">
                         <span>Weekly Routines Progress</span>
                         <span className="font-bold text-emerald-500 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                       </div>
@@ -819,7 +1063,7 @@ export function WorkoutScreen() {
                   </div>
 
                   <div className="mt-5 flex gap-2">
-                    <Button className="flex-1 text-xs font-bold py-2 shadow" variant="primary" onClick={() => {
+                    <Button className="flex-1 text-xs font-bold py-2 shadow disabled:opacity-40" variant="primary" disabled={coachBusy} onClick={() => {
                       setEditingWorkoutPlanId(plan.id);
                       setActiveSubScreen("workout-plan-detail");
                     }}>
@@ -827,8 +1071,9 @@ export function WorkoutScreen() {
                     </Button>
                     {!isActive && (
                       <Button
-                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground"
+                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground disabled:opacity-40"
                         variant="secondary"
+                        disabled={coachBusy}
                         onClick={() => {
                           setPlanToActivate(plan.id);
                           setShowSwitchModal(true);
@@ -846,15 +1091,15 @@ export function WorkoutScreen() {
 
         {/* ─── CATEGORIZED EXERCISE DATABASE EXPLORER ─── */}
         <Card className="p-5 border border-card-border bg-card shadow-lg">
-          <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
+          <div className="mb-4 flex items-center justify-between border-b border-card-border pb-3">
             <div>
-              <h2 className="text-lg font-bold text-foreground leading-tight">Exercise Database</h2>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">Exercise Database</h2>
               <p className="text-xs text-zinc-550 dark:text-zinc-400">
                 {filteredExercises.length} exercises · Clinical cues, setup guides, and progressive overload tips
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider hidden sm:inline">Explore</span>
+              <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider hidden sm:inline">Explore</span>
               <Layers3 className="text-emerald-600 dark:text-emerald-450" size={18} />
             </div>
           </div>
@@ -946,11 +1191,11 @@ export function WorkoutScreen() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-foreground leading-tight">{cat.label}</p>
-                        <p className="text-[10px] text-zinc-500 mt-0.5 leading-tight">{cat.description}</p>
+                        <p className="text-xs text-zinc-500 mt-0.5 leading-tight">{cat.description}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${c.badge}`}>
+                      <span className={`px-2 py-0.5 rounded-md border text-xs font-black ${c.badge}`}>
                         {categoryExercises.length}
                       </span>
                       <ChevronDown
@@ -967,7 +1212,7 @@ export function WorkoutScreen() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="border-t border-white/5 p-3"
+                      className="border-t border-card-border p-3"
                     >
                       <div className="grid gap-2 sm:grid-cols-2">
                         {categoryExercises.map((exercise) => {
@@ -980,7 +1225,7 @@ export function WorkoutScreen() {
 
                           return (
                             <button
-                              className="rounded-lg border border-zinc-200 dark:border-white/[0.04] bg-zinc-50/50 dark:bg-white/[0.015] p-3 text-left transition hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-100/50 dark:hover:bg-white/[0.03] flex flex-col justify-between gap-2.5 group"
+                              className="rounded-lg border border-surface-border bg-surface/50 p-3 text-left transition hover:border-card-border/80 hover:bg-surface/80 flex flex-col justify-between gap-2.5 group"
                               key={exercise.id}
                               onClick={() => setSelectedExercise(exercise)}
                             >
@@ -989,18 +1234,18 @@ export function WorkoutScreen() {
                                   <p className="text-[13px] font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-snug truncate">
                                     {exercise.name}
                                   </p>
-                                  <p className="mt-0.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wide">
+                                  <p className="mt-0.5 text-xs font-bold text-zinc-555 uppercase tracking-wide">
                                     {exercise.muscles.slice(0, 3).join(" · ")}
                                   </p>
                                 </div>
-                                <ChevronRight size={14} className="text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-600 dark:group-hover:text-white shrink-0 transition-colors self-center" />
+                                <ChevronRight size={14} className="text-zinc-750 group-hover:text-zinc-955 shrink-0 transition-colors self-center" />
                               </div>
-                              <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider flex-wrap">
+                              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider flex-wrap">
                                 <span className={`px-1.5 py-0.5 rounded border ${diffColors[diffText]}`}>
                                   {diffText}
                                 </span>
                                 {exercise.equipment.slice(0, 2).map((eq) => (
-                                  <span key={eq} className="px-1.5 py-0.5 rounded border border-zinc-200 dark:border-white/5 bg-zinc-100 dark:bg-white/[0.03] text-zinc-600 dark:text-zinc-400">
+                                  <span key={eq} className="px-1.5 py-0.5 rounded border border-surface-border bg-surface text-zinc-750">
                                     {eq}
                                   </span>
                                 ))}
@@ -1022,7 +1267,7 @@ export function WorkoutScreen() {
               <Sparkles className="h-8 w-8 text-emerald-450 mx-auto animate-pulse" />
               <div>
                 <h3 className="text-sm font-bold text-foreground leading-tight">Can&apos;t find &quot;{query}&quot;?</h3>
-                <p className="text-[11px] text-zinc-550 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
+                <p className="text-xs text-zinc-550 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
                   Our biomechanics engine can dynamically generate a full clinical-grade exercise profile covering correct setup cues, execution, breathing, mistakes, and safety advice.
                 </p>
               </div>
@@ -1051,6 +1296,9 @@ export function WorkoutScreen() {
 
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
 
+        {/* End of Plans tab content */}
+        </>)}
+
         <PreWorkoutCheckinModal
           isOpen={showPreWorkoutModal}
           onClose={() => setShowPreWorkoutModal(false)}
@@ -1058,16 +1306,16 @@ export function WorkoutScreen() {
         />
 
         {showSwitchModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <Card className="w-full max-w-sm p-6 space-y-4 relative">
-              <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-2xl">
+              <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
                 setShowSwitchModal(false);
                 setPlanToActivate(null);
               }}>
                 <X size={20} />
               </Button>
-              <h2 className="text-xl font-semibold text-foreground">Switch Active Plan</h2>
-              <p className="text-zinc-300 text-sm leading-relaxed">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Switch Active Plan</h2>
+              <p className="text-zinc-750 text-sm leading-relaxed">
                 {activeWorkout
                   ? "Switching Active Plan: You have a workout session in progress. Switching plans will discard your current active workout and reset active tracking. Do you want to continue?"
                   : "Switching Active Plan: This will recalculate your streaks, consistency, and progress metrics for the new plan. Old progress will be saved separately. Do you want to continue?"}
@@ -1094,16 +1342,16 @@ export function WorkoutScreen() {
         )}
 
         {showDeleteModal && planToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <Card className="w-full max-w-sm p-6 space-y-4 relative">
-              <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border shadow-2xl">
+              <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={() => {
                 setShowDeleteModal(false);
                 setPlanToDelete(null);
               }}>
                 <X size={20} />
               </Button>
-              <h2 className="text-xl font-semibold text-foreground">Delete Workout Plan</h2>
-              <p className="text-zinc-300 text-sm leading-relaxed">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Delete Workout Plan</h2>
+              <p className="text-zinc-750 text-sm leading-relaxed">
                 {activeWorkout && activeWorkout.planId === planToDelete.id
                   ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently remove the plan and discard your current active workout.`
                   : `Are you sure you want to delete the plan "${planToDelete.name}"? This action cannot be undone and all routines inside this plan will be lost.`}
@@ -1143,92 +1391,78 @@ export function WorkoutScreen() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="space-y-4 pb-32 pt-[calc(5.5rem+env(safe-area-inset-top))]"
+      className="space-y-4 pb-32 pt-2"
     >
       {/* Sleek space-saving sticky mobile-friendly header */}
-      <Card className="fixed inset-x-0 top-[calc(4rem+env(safe-area-inset-top))] z-20 px-3 py-2 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
-        <div className="flex flex-wrap items-center justify-between gap-2 max-w-5xl mx-auto">
-          <div className="flex items-center gap-2 min-w-0">
+      <Card className="fixed inset-x-0 md:left-64 top-0 z-20 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 px-3 sm:px-4 sm:py-3 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
+        <div className="flex items-center justify-between gap-2 max-w-5xl mx-auto flex-nowrap">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg"
+              className="h-9 w-9 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg active:scale-95 transition-all"
               onClick={() => setActiveSubScreen(null)}
               aria-label="Back to plans"
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={18} />
             </Button>
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-foreground truncate max-w-[100px] sm:max-w-[240px] leading-tight capitalize">
+              <h1 className="text-sm sm:text-base font-extrabold text-foreground truncate max-w-[130px] sm:max-w-[320px] leading-tight capitalize">
                 {activeWorkout.name}
               </h1>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-none mt-0.5 font-medium">
-                {completedSets}/{totalSets} sets done
+              <p className="text-[10px] sm:text-xs text-zinc-555 leading-none mt-0.5 font-semibold">
+                {completedSets}/{totalSets} completed
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end flex-nowrap">
             {/* Hands-Free Voice Logger Button */}
             <Button
               size="icon"
-              variant="ghost"
-              className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg shrink-0 transition-all ${isListening
-                  ? "bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/35"
-                  : "bg-transparent text-zinc-550 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white border border-surface-border dark:border-white/5 hover:bg-zinc-100 dark:hover:bg-white/5"
-                }`}
+              className={cn(
+                "h-9 w-9 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center active:scale-95",
+                isListening
+                  ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
+                  : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
+              )}
               onClick={toggleListening}
               aria-label="Voice command logger"
               title="Voice command logging"
             >
-              {isListening ? <Mic size={14} className="text-rose-500 animate-pulse" /> : <MicOff size={14} />}
+              {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
             </Button>
 
-            {/* Active Timer badge */}
-            <div className="text-right">
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono leading-none">
-                {formatDuration(elapsedWorkoutTime)}
-              </p>
-              <p className="text-[8px] uppercase tracking-widest text-zinc-500 leading-none mt-0.5">
-                Active
-              </p>
+            {/* Active Timer badge (Inline space-saving) */}
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold select-none h-9 shrink-0">
+              <Timer size={15} className="shrink-0" />
+              <span>{formatDuration(elapsedWorkoutTime)}</span>
             </div>
 
-            {/* Rest state container */}
+            {/* Rest state container (Interactive space-saving) */}
             <div
-              className={`px-2 py-1 rounded-lg border text-center transition-all duration-300 ${remaining > 0
-                  ? "bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-300 animate-pulse"
-                  : "bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-300"
-                }`}
-            >
-              <p className="text-[11px] sm:text-xs font-mono font-bold leading-none">
-                {remaining > 0 ? formatTimer(remaining) : "Ready"}
-              </p>
-              <p className="text-[7px] sm:text-[8px] uppercase tracking-wider text-zinc-400 mt-0.5 leading-none">
-                Rest
-              </p>
-            </div>
-
-            {/* Quick Discard Button - icon-only on xs */}
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-7 sm:h-8 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold shrink-0 bg-transparent text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 border border-rose-500/20"
               onClick={() => {
-                if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
-                  void discardWorkout();
-                }
+                if (navigator.vibrate) navigator.vibrate(6);
+                if (remaining > 0) void stopRestTimer();
+                else void startRestTimer(60);
               }}
+              className={cn(
+                "flex items-center gap-1.5 px-2 py-1 rounded-lg border font-mono text-xs font-bold select-none h-9 shrink-0 cursor-pointer transition-all active:scale-95 shadow-sm",
+                remaining > 0
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-300 animate-pulse"
+                  : "bg-surface border-surface-border text-zinc-555 hover:bg-surface/80"
+              )}
+              title={remaining > 0 ? "Tap to stop rest" : "Tap to start quick 60s rest"}
             >
-              <span className="hidden sm:inline">Discard</span>
-              <Trash2 size={13} className="sm:hidden" />
-            </Button>
+              <Clock3 size={15} className="shrink-0" />
+              <span>{remaining > 0 ? formatTimer(remaining) : "Rest"}</span>
+            </div>
 
             {/* Quick Finish Button */}
             <Button
               size="sm"
               variant="primary"
-              className="h-7 sm:h-8 px-2.5 sm:px-3 text-[10px] sm:text-xs font-bold shrink-0 bg-emerald-500 text-zinc-950 hover:bg-emerald-400"
+              className="h-9 px-3.5 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
               onClick={handleFinishSessionClick}
             >
               Finish
@@ -1238,40 +1472,40 @@ export function WorkoutScreen() {
 
         {/* Voice Logger Transcription Feedback Alert Banner */}
         {speechFeedback && (
-          <div className="mt-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-medium max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse">
-            <Sparkles size={12} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
+          <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-semibold max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse shadow-sm">
+            <Sparkles size={15} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
             <span>{speechFeedback}</span>
           </div>
         )}
 
         {/* Floating rest-timer action controllers */}
         {restTimerEndsAt && remaining > 0 && (
-          <div className="mt-2 pt-2 border-t border-card-border flex items-center justify-between gap-2 max-w-5xl mx-auto">
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Adjust Rest:</span>
+          <div className="mt-2.5 pt-2.5 border-t border-card-border flex items-center justify-between gap-2 max-w-5xl mx-auto select-none">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Adjust Rest:</span>
             <div className="flex items-center gap-1.5">
               <Button
-                className="h-6 px-2 text-[9px] font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(-15)}
               >
                 -15s
               </Button>
               <Button
-                className="h-6 px-2 text-[9px] font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(15)}
               >
                 +15s
               </Button>
               <Button
-                className="h-6 px-2 text-[9px] font-semibold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover"
+                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void adjustRestTimer(60)}
               >
                 +60s
               </Button>
               <Button
-                className="h-6 px-2 text-[9px] font-bold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20"
+                className="h-8 px-3 text-xs font-extrabold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20 rounded-lg active:scale-95 transition-all"
                 variant="secondary"
                 onClick={() => void stopRestTimer()}
               >
@@ -1280,10 +1514,19 @@ export function WorkoutScreen() {
             </div>
           </div>
         )}
+        {/* Thin countdown progress bar at the bottom of the card */}
+        {restTimerEndsAt && remaining > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-1000 ease-linear"
+              style={{ width: `${timerMaxDuration > 0 ? (remaining / timerMaxDuration) * 100 : 0}%` }}
+            />
+          </div>
+        )}
       </Card>
 
-      {/* Active Workout Exercises mapping */}
-      <div className="space-y-4 max-w-2xl mx-auto px-4">
+      {/* Active Workout Exercises mapping — smart accordion flow */}
+      <div className="space-y-3 w-full max-w-5xl mx-auto px-0 sm:px-4">
         {activeWorkout.exercises.map((workoutExercise, exerciseIndex) => {
           const exercise = getExerciseById(workoutExercise.exerciseId);
           if (!exercise) {
@@ -1292,760 +1535,977 @@ export function WorkoutScreen() {
           }
 
           const isSkipped = !!workoutExercise.skipped;
+          const isExpanded = exerciseIndex === focusedExIdx;
           const stats = getExerciseStats(workouts, exercise.id, weightUnit);
+          const allSetsCompleted = workoutExercise.sets.length > 0 && workoutExercise.sets.every(s => s.completed);
+          const completedSetsCount = workoutExercise.sets.filter(s => s.completed).length;
+          const totalSetsCount = workoutExercise.sets.length;
+          const firstUncheckedSetIdx = workoutExercise.sets.findIndex(s => !s.completed);
+
+          const defaultActiveSetIdx = firstUncheckedSetIdx === -1 ? Math.max(0, workoutExercise.sets.length - 1) : firstUncheckedSetIdx;
+          const activeSetIdx = manualActiveSetIdx[workoutExercise.id] !== undefined
+            ? manualActiveSetIdx[workoutExercise.id]
+            : defaultActiveSetIdx;
+
+          // Per-exercise unit: persisted in the workout exercise data
+          const exUnit = workoutExercise.weightUnit ?? weightUnit;
+
+          // Helper: handle completing a set with auto-advance and value propagation
+          const handleCompleteSet = async (setId: string, currentlyCompleted: boolean) => {
+            if (navigator.vibrate) navigator.vibrate(currentlyCompleted ? 6 : 14);
+
+            const targetSetIdx = workoutExercise.sets.findIndex(s => s.id === setId);
+            const targetSet = workoutExercise.sets[targetSetIdx];
+            if (targetSet && !currentlyCompleted) {
+              const prevSet = targetSetIdx > 0 ? workoutExercise.sets[targetSetIdx - 1] : null;
+              const isTimeBased = exercise.category === "mobility" || /s\b|sec|min/i.test(workoutExercise.targetReps) || /hold/i.test(exercise.name) || /plank/i.test(exercise.name);
+              const exerciseKey = workoutExercise.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+              const prevSessionSets = lastWorkoutForExercise[exerciseKey];
+              const prevSessionSet = prevSessionSets ? (prevSessionSets[targetSetIdx] || prevSessionSets.at(-1)) : null;
+
+              const defaultReps = isTimeBased ? 30 : 10;
+              const prevReps = prevSessionSet ? prevSessionSet.reps : defaultReps;
+              const prevWeight = prevSessionSet ? prevSessionSet.weight : 0;
+
+              const displayReps = targetSet.reps === 0 ? (prevSet ? (prevSet.reps === 0 ? prevReps : prevSet.reps) : prevReps) : targetSet.reps;
+              const displayWeight = targetSet.weight === 0 ? (prevSet ? (prevSet.weight === 0 ? prevWeight : prevSet.weight) : prevWeight) : targetSet.weight;
+
+              await updateSet(workoutExercise.id, setId, {
+                completed: true,
+                reps: displayReps,
+                weight: displayWeight
+              });
+            } else {
+              await updateSet(workoutExercise.id, setId, { completed: !currentlyCompleted });
+            }
+
+            if (!currentlyCompleted) {
+              void startRestTimer(workoutExercise.restSeconds);
+
+              // Reset manual focus so it naturally falls back to firstUncheckedSetIdx sequentially
+              setManualActiveSetIdx(prev => {
+                const next = { ...prev };
+                delete next[workoutExercise.id];
+                return next;
+              });
+
+              // Copy weight/reps/cardio fields to subsequent uncompleted sets in this exercise
+              const updatedExercise = useAtlasStore.getState().activeWorkout?.exercises[exerciseIndex];
+              if (updatedExercise) {
+                const completedSet = updatedExercise.sets.find(s => s.id === setId);
+                if (completedSet) {
+                  const completedSetIdx = updatedExercise.sets.findIndex(s => s.id === setId);
+                  const nextSetsToUpdate = updatedExercise.sets.slice(completedSetIdx + 1).filter(s => !s.completed);
+                  if (nextSetsToUpdate.length > 0) {
+                    await Promise.all(
+                      nextSetsToUpdate.map(ns => {
+                        const patch: any = {};
+                        if (completedSet.weight !== undefined) patch.weight = completedSet.weight;
+                        if (completedSet.reps !== undefined) patch.reps = completedSet.reps;
+                        if (completedSet.durationSeconds !== undefined) patch.durationSeconds = completedSet.durationSeconds;
+                        if (completedSet.distance !== undefined) patch.distance = completedSet.distance;
+                        if (completedSet.incline !== undefined) patch.incline = completedSet.incline;
+                        if (completedSet.resistance !== undefined) patch.resistance = completedSet.resistance;
+                        if (completedSet.calories !== undefined) patch.calories = completedSet.calories;
+                        return updateSet(workoutExercise.id, ns.id, patch);
+                      })
+                    );
+                  }
+                }
+              }
+
+              // Check if this was the last uncompleted set in this exercise
+              const finalExercise = useAtlasStore.getState().activeWorkout?.exercises[exerciseIndex];
+              if (finalExercise && finalExercise.sets.every(s => s.completed)) {
+                const totalExercises = useAtlasStore.getState().activeWorkout?.exercises.length ?? 0;
+                const nextIdx = exerciseIndex + 1;
+                if (nextIdx < totalExercises) {
+                  setTimeout(() => {
+                    setFocusedExIdx(nextIdx);
+                    setTimeout(() => {
+                      exerciseCardRefs.current[nextIdx]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 150);
+                  }, 400); // brief delay so user sees the ✓ animation
+                }
+              }
+            }
+          };
+
+          // Helper: toggle unit for this exercise
+          const handleToggleUnit = async () => {
+            const next = exUnit === "kg" ? "lbs" : "kg";
+            // Convert all set weights inline
+            const factor = exUnit === "kg" ? 2.20462 : 1 / 2.20462;
+            await Promise.all(
+              workoutExercise.sets.map(s =>
+                updateSet(workoutExercise.id, s.id, {
+                  weight: parseFloat((s.weight * factor).toFixed(1)),
+                })
+              )
+            );
+            await updateExerciseUnit(workoutExercise.id, next);
+          };
+
+          const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
+          const isTreadmill = exercise.equipment.includes("treadmill");
+          const hasResistance = isCardio && (
+            exercise.equipment.some(eq =>
+              ["elliptical", "stationary-bike", "stairclimber", "rowing-machine", "rower"].includes(eq)
+            ) ||
+            exercise.id.includes("row") ||
+            exercise.name.toLowerCase().includes("row")
+          );
+          const cardioLabel = isTreadmill ? "Incline %" : hasResistance ? "Resist" : "Level";
 
           return (
-            <Card
-              className={`p-3 sm:p-4 transition-all duration-300 relative overflow-hidden ${isSkipped
-                  ? "opacity-60 border-dashed bg-surface/30 border-surface-border"
-                  : "shadow-lg hover:shadow-xl"
-                }`}
+            <div
               key={workoutExercise.id}
+              ref={el => { exerciseCardRefs.current[exerciseIndex] = el; }}
             >
-              {/* Target superset overlay highlight bar */}
-              {workoutExercise.supersetGroup && !isSkipped && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-500 to-indigo-500" />
-              )}
+              <Card
+                className={`transition-all duration-300 relative overflow-hidden rounded-none sm:rounded-2xl border-x-0 sm:border-x ${
+                  isSkipped
+                    ? "opacity-50 border-dashed bg-surface/30 border-surface-border"
+                    : allSetsCompleted && !isExpanded
+                    ? "border-emerald-500/30 bg-emerald-500/[0.03] shadow-sm"
+                    : isExpanded
+                    ? "shadow-xl border-emerald-500/20 ring-1 ring-emerald-500/10"
+                    : "shadow-sm hover:shadow-md border-card-border"
+                }`}
+              >
+                {/* Superset top bar */}
+                {workoutExercise.supersetGroup && !isSkipped && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-sky-500 to-indigo-500" />
+                )}
 
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[10px]">
-                    <span className="font-semibold text-emerald-400 uppercase tracking-wider font-mono">
-                      {workoutExercise.targetSets} sets x {workoutExercise.targetReps}
-                    </span>
+                {/* Active exercise left accent pulse */}
+                {isExpanded && !isSkipped && !allSetsCompleted && (
+                  <div className="absolute top-0 left-0 bottom-0 w-0.5 bg-emerald-500 rounded-l-full" />
+                )}
 
-                    {workoutExercise.supersetGroup && (
-                      <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-sky-500/10 border border-sky-500/25 text-sky-400 font-semibold leading-none">
-                        <Layers3 size={8} />
-                        <span>{workoutExercise.supersetGroup}</span>
+                {/* ── Accordion Header (always visible, always tappable) ── */}
+                <button
+                  className="w-full text-left p-3.5 sm:p-4 flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-[inherit] min-h-[64px]"
+                  onClick={() => setFocusedExIdx(isExpanded ? -1 : exerciseIndex)}
+                  aria-expanded={isExpanded}
+                >
+                  {/* Exercise completion badge / number */}
+                  <div
+                    className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center font-black text-sm transition-all duration-300 ${
+                      allSetsCompleted
+                        ? "bg-emerald-500 text-white"
+                        : isExpanded
+                        ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30"
+                        : "bg-surface border border-surface-border text-zinc-555"
+                    }`}
+                  >
+                    {allSetsCompleted ? <Check size={16} className="stroke-[3px]" /> : exerciseIndex + 1}
+                  </div>
+
+                  {/* Name + chips */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                      <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-wider font-mono">
+                        {isCardio ? workoutExercise.targetReps : `${workoutExercise.targetSets}×${workoutExercise.targetReps}`}
                       </span>
+                      {workoutExercise.supersetGroup && (
+                        <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 bg-sky-500/10 border border-sky-500/25 text-sky-500 text-[10px] font-bold leading-none select-none">
+                          <Layers3 size={12} />
+                          {workoutExercise.supersetGroup}
+                        </span>
+                      )}
+                      {isSkipped && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-amber-500 text-[10px] font-bold leading-none uppercase">
+                          Skipped
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-base sm:text-lg font-bold text-foreground leading-snug truncate">
+                      {exercise.name}
+                    </p>
+                    {/* Progress summary when collapsed */}
+                    {!isExpanded && (
+                      <p className="text-xs text-zinc-555 mt-0.5">
+                        {isCardio ? (
+                          allSetsCompleted ? "Session completed ✓" : "Steady state cardio"
+                        ) : allSetsCompleted
+                          ? `All ${totalSetsCount} sets done ✓`
+                          : completedSetsCount > 0
+                          ? `${completedSetsCount}/${totalSetsCount} sets done`
+                          : exercise.muscles.slice(0, 3).join(" · ")}
+                      </p>
                     )}
-
-                    <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 bg-surface border border-surface-border text-zinc-500 dark:text-zinc-400 leading-none">
-                      <Clock3 size={8} className="text-zinc-400 dark:text-zinc-500" />
-                      <span>{exercise.tempo}</span>
-                    </span>
                   </div>
 
-                  <h2 className="text-lg font-bold text-foreground leading-snug tracking-tight truncate pr-2">
-                    {exercise.name}
-                  </h2>
-
-                  {/* Muscle Targets capsules row */}
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {exercise.muscles.map((muscle) => (
-                      <span
-                        key={muscle}
-                        className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-surface text-zinc-600 dark:text-zinc-300 border border-surface-border capitalize leading-none"
-                      >
-                        {muscle}
-                      </span>
-                    ))}
+                  {/* Expand/collapse chevron */}
+                  <div className="shrink-0 ml-1">
+                    {isExpanded
+                      ? <ChevronUp size={20} className="text-emerald-500" />
+                      : <ChevronDown size={20} className="text-zinc-555" />
+                    }
                   </div>
-                </div>
+                </button>
 
-                <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 shrink-0">
-                  {/* Step-by-Step Info Button */}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
-                    onClick={() => setSelectedExercise(exercise)}
-                    aria-label="View step-by-step instructions"
-                  >
-                    <Info size={12} />
-                    <span className="hidden sm:inline">Guide</span>
-                  </Button>
-
-                  {/* Swap Alternatives button */}
-                  {!isSkipped && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
-                      onClick={() => {
-                        setActiveSwapExercise(workoutExercise);
-                        setSwapSearch("");
-                      }}
-                      aria-label="Swap exercise alternative"
+                {/* ── Expanded Content ── */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                      style={{ overflow: "hidden" }}
                     >
-                      <Shuffle size={12} />
-                      <span className="hidden sm:inline">Swap</span>
-                    </Button>
-                  )}
+                      <div className="px-3.5 sm:px-4 pb-4 space-y-3 border-t border-card-border/60 pt-3">
 
-                  {/* Skip toggle button */}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className={`h-7 px-1.5 sm:px-2 text-[10px] font-bold rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors flex items-center gap-1 ${isSkipped ? "text-amber-500" : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-300"
-                      }`}
-                    onClick={() => void skipWorkoutExercise(workoutExercise.id)}
-                    aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
-                  >
-                    <SkipForward size={12} />
-                    <span className="hidden sm:inline">{isSkipped ? "Resume" : "Skip"}</span>
-                  </Button>
-
-                  {/* Add set button */}
-                  {!isSkipped && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-1.5 sm:px-2 text-[10px] font-bold text-emerald-550 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 flex items-center gap-1"
-                      onClick={() => void addSet(workoutExercise.id)}
-                      aria-label="Add logging set"
-                    >
-                      <CirclePlus size={12} />
-                      <span className="hidden sm:inline">Add Set</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* Personal Record & Last Lift Stats indicators */}
-              {!isSkipped && stats && (
-                <div className="mt-3 px-2 py-1.5 bg-surface/50 rounded-xl border border-surface-border flex items-center justify-between text-[10px] text-zinc-600 dark:text-zinc-400 select-none">
-                  <span className="truncate max-w-[70%] leading-none">
-                    <span className="text-zinc-400 dark:text-zinc-500 font-bold">Last logged:</span> {stats.last}
-                  </span>
-                  <span className="shrink-0 font-bold text-amber-600 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/25 leading-none">
-                    PR: {stats.pr}
-                  </span>
-                </div>
-              )}
-
-              {/* Set Logging Container */}
-              {!isSkipped ? (
-                <div className="mt-4 space-y-2">
-                  {(() => {
-                    const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
-                    const isTreadmill = exercise.equipment.includes("treadmill");
-                    const hasResistance = exercise.equipment.some(eq => ["elliptical", "stationary-bike", "stairclimber", "rowing-machine", "rower"].includes(eq));
-                    const cardioLabel = isTreadmill ? "Incline %" : (hasResistance ? "Resist" : "Level");
-
-                    if (isCardio) {
-                      return (
-                        <>
-                          <div className="flex items-center justify-between gap-2 sm:gap-3 mb-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2 sm:p-2.5 rounded-xl border border-purple-500/10 select-none">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Upload size={14} className="text-purple-400 shrink-0" />
-                              <div className="text-left min-w-0">
-                                <p className="text-[10px] sm:text-[11px] font-bold text-foreground leading-tight truncate">GPX Sync</p>
-                                <p className="text-[8px] sm:text-[9px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance, and calories from a .GPX file.</p>
-                              </div>
-                            </div>
-                            <label className="h-6 px-2 sm:px-2.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all select-none shrink-0">
-                              Upload
-                              <input
-                                type="file"
-                                accept=".gpx"
-                                className="hidden"
-                                onChange={(e) => handleGpxUpload(e, workoutExercise.id, workoutExercise.sets)}
-                              />
-                            </label>
+                        {/* Muscle chips + action buttons row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-card-border/60 pb-3">
+                          <div className="flex flex-wrap gap-1 min-w-0">
+                            {exercise.muscles.map(muscle => (
+                              <span
+                                key={muscle}
+                                className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface text-zinc-755 border border-surface-border capitalize leading-none"
+                              >
+                                {muscle}
+                              </span>
+                            ))}
                           </div>
 
-                          <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
-                            <span className="text-left">#</span>
-                            <span>Min</span>
-                            <span>Dist (mi)</span>
-                            <span>{cardioLabel}</span>
-                            <span>kcal</span>
-                            <span />
-                            <span />
-                          </div>
-
-                          {workoutExercise.sets.map((set, setIndex) => (
-                            <div key={set.id} className="space-y-2">
-                              {/* Desktop/Tablet Spreadsheet Row Layout (Shown only on larger screens) */}
-                              <div
-                                className={`hidden sm:grid grid-cols-[1.2rem_1fr_1fr_1fr_1fr_2rem_2rem] items-center gap-2 rounded-xl border p-1.5 transition-all duration-300 ${set.completed
-                                    ? "bg-emerald-500/5 border-emerald-550/20 dark:border-emerald-500/20"
-                                    : "bg-input border-input focus-within:border-card-border"
-                                  }`}
+                          {/* Action buttons row: scrollable on mobile for premium high-fidelity native feeling, wraps on desktop */}
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 shrink-0 justify-start sm:justify-end -mx-3.5 px-3.5 sm:mx-0 sm:px-0 select-none w-[calc(100%+1.75rem)] sm:w-auto">
+                            {/* kg/lbs toggle button */}
+                            {!isCardio && (
+                              <button
+                                type="button"
+                                onClick={handleToggleUnit}
+                                className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-black text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                                title={`Switch to ${exUnit === "kg" ? "lbs" : "kg"}`}
                               >
-                                <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 text-center leading-none">
-                                  {setIndex + 1}
-                                </span>
+                                <Scale size={15} className="text-zinc-500 dark:text-zinc-400" />
+                                <span>{exUnit.toUpperCase()}</span>
+                              </button>
+                            )}
 
-                                {/* Time / Duration in minutes input */}
-                                <Input
-                                  inputMode="decimal"
-                                  type="number"
-                                  min={0}
-                                  max={999}
-                                  step="any"
-                                  className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                  value={set.durationSeconds !== undefined ? parseFloat((set.durationSeconds / 60).toFixed(2)) : 30}
-                                  onChange={(event) => {
-                                    const val = Math.min(999, Math.max(0, parseFloat(event.target.value) || 0));
-                                    void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(val * 60) });
-                                  }}
-                                />
-
-                                {/* Distance in miles input */}
-                                <Input
-                                  inputMode="decimal"
-                                  type="number"
-                                  min={0}
-                                  max={999}
-                                  step="any"
-                                  className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                  value={set.distance ?? 0}
-                                  onChange={(event) => {
-                                    const val = Math.min(999, Math.max(0, parseFloat(event.target.value) || 0));
-                                    void updateSet(workoutExercise.id, set.id, { distance: val });
-                                  }}
-                                />
-
-                                {/* Incline / Resistance Level input */}
-                                <Input
-                                  inputMode="decimal"
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  step="any"
-                                  className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                  value={isTreadmill ? (set.incline ?? 0) : (set.resistance ?? 0)}
-                                  onChange={(event) => {
-                                    const val = Math.min(100, Math.max(0, parseFloat(event.target.value) || 0));
-                                    void updateSet(workoutExercise.id, set.id, isTreadmill ? { incline: val } : { resistance: val });
-                                  }}
-                                />
-
-                                {/* Calories in kcal input */}
-                                <Input
-                                  inputMode="numeric"
-                                  type="number"
-                                  min={0}
-                                  max={9999}
-                                  className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                  value={set.calories ?? 0}
-                                  onChange={(event) => {
-                                    const val = Math.min(9999, Math.max(0, parseInt(event.target.value, 10) || 0));
-                                    void updateSet(workoutExercise.id, set.id, { calories: val });
-                                  }}
-                                />
-
-                                {/* Delete Set Button */}
-                                <Button
-                                  aria-label="Delete set"
-                                  className="h-8 w-8 rounded-lg shrink-0 text-zinc-500 dark:text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => void deleteSet(workoutExercise.id, set.id)}
-                                >
-                                  <Trash2 size={13} />
-                                </Button>
-
-                                {/* Complete Set Check Button */}
-                                <Button
-                                  aria-label="Complete set"
-                                  className={`h-8 w-8 rounded-lg shrink-0 transition-all ${set.completed
-                                      ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
-                                      : "bg-surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
-                                    }`}
-                                  size="icon"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    if (navigator.vibrate) navigator.vibrate(12);
-                                    void updateSet(workoutExercise.id, set.id, { completed: !set.completed });
-                                    if (!set.completed) void startRestTimer(workoutExercise.restSeconds);
-                                  }}
-                                >
-                                  <Check size={14} className={set.completed ? "stroke-[3px]" : "stroke-[2px]"} />
-                                </Button>
-                              </div>
-
-                              {/* Mobile Cardio Set Card (Shown only on small screens) */}
-                              <div
-                                className={`flex flex-col gap-2.5 p-3 rounded-2xl border transition-all duration-300 sm:hidden ${set.completed
-                                    ? "bg-emerald-500/5 border-emerald-500/20"
-                                    : "bg-input border-input-border focus-within:border-card-border"
-                                  }`}
-                              >
-                                {/* Card Header Row */}
-                                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                  <span className="text-xs font-black text-zinc-400">
-                                    SET #{setIndex + 1}
-                                  </span>
-
-                                  <div className="flex items-center gap-2">
-                                    {/* Delete Button */}
-                                    <Button
-                                      aria-label="Delete set"
-                                      className="h-10 w-10 sm:h-8 sm:w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={() => void deleteSet(workoutExercise.id, set.id)}
-                                    >
-                                      <Trash2 size={13} />
-                                    </Button>
-
-                                    {/* Tactical Complete Button */}
-                                    <Button
-                                      aria-label="Complete set"
-                                      className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${set.completed
-                                          ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
-                                          : "bg-surface text-zinc-455 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
-                                        }`}
-                                      variant="ghost"
-                                      onClick={() => {
-                                        if (navigator.vibrate) navigator.vibrate(12);
-                                        void updateSet(workoutExercise.id, set.id, { completed: !set.completed });
-                                        if (!set.completed) void startRestTimer(workoutExercise.restSeconds);
-                                      }}
-                                    >
-                                      {set.completed ? (
-                                        <>
-                                          <Check size={12} className="stroke-[3px]" />
-                                          Done
-                                        </>
-                                      ) : (
-                                        "Check"
-                                      )}
-                                    </Button>
-                                  </div>
-                                </div>
-
-                                {/* Form Inputs Grid (4 columns, touch-friendly pads) */}
-                                <div className="grid grid-cols-4 gap-2 text-left">
-                                  <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Min</label>
-                                    <Input
-                                      inputMode="decimal"
-                                      type="number"
-                                      min={0}
-                                      max={999}
-                                      step="any"
-                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                      value={set.durationSeconds !== undefined ? parseFloat((set.durationSeconds / 60).toFixed(2)) : 30}
-                                      onChange={(event) => {
-                                        const val = Math.min(999, Math.max(0, parseFloat(event.target.value) || 0));
-                                        void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(val * 60) });
-                                      }}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Dist (mi)</label>
-                                    <Input
-                                      inputMode="decimal"
-                                      type="number"
-                                      min={0}
-                                      max={999}
-                                      step="any"
-                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                      value={set.distance ?? 0}
-                                      onChange={(event) => {
-                                        const val = Math.min(999, Math.max(0, parseFloat(event.target.value) || 0));
-                                        void updateSet(workoutExercise.id, set.id, { distance: val });
-                                      }}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1 truncate">{cardioLabel}</label>
-                                    <Input
-                                      inputMode="decimal"
-                                      type="number"
-                                      min={0}
-                                      max={100}
-                                      step="any"
-                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                      value={isTreadmill ? (set.incline ?? 0) : (set.resistance ?? 0)}
-                                      onChange={(event) => {
-                                        const val = Math.min(100, Math.max(0, parseFloat(event.target.value) || 0));
-                                        void updateSet(workoutExercise.id, set.id, isTreadmill ? { incline: val } : { resistance: val });
-                                      }}
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">kcal</label>
-                                    <Input
-                                      inputMode="numeric"
-                                      type="number"
-                                      min={0}
-                                      max={9999}
-                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                      value={set.calories ?? 0}
-                                      onChange={(event) => {
-                                        const val = Math.min(9999, Math.max(0, parseInt(event.target.value, 10) || 0));
-                                        void updateSet(workoutExercise.id, set.id, { calories: val });
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-
-                          <div className="mt-3 flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-xs text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                              icon={<Timer size={13} />}
-                              onClick={() => void startRestTimer(workoutExercise.restSeconds)}
+                            {/* Step-by-Step Info */}
+                            <button
+                              type="button"
+                              onClick={() => setSelectedExercise(exercise)}
+                              className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                              aria-label="View step-by-step instructions"
                             >
-                              Rest {Math.round(workoutExercise.restSeconds / 60)}m
+                              <Info size={15} className="text-zinc-500 dark:text-zinc-400" />
+                              <span>Guide</span>
+                            </button>
+
+                            {/* Swap */}
+                            {!isSkipped && (
+                              <button
+                                type="button"
+                                onClick={() => { setActiveSwapExercise(workoutExercise); setSwapSearch(""); }}
+                                className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                                aria-label="Swap exercise"
+                              >
+                                <Shuffle size={15} className="text-zinc-500 dark:text-zinc-400" />
+                                <span>Swap</span>
+                              </button>
+                            )}
+
+                            {/* Skip/Resume */}
+                            <button
+                              type="button"
+                              onClick={() => void skipWorkoutExercise(workoutExercise.id)}
+                              className={cn(
+                                "h-9 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer",
+                                isSkipped
+                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15"
+                                  : "bg-surface border-surface-border text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-white/5"
+                              )}
+                              aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
+                            >
+                              <SkipForward size={15} className={isSkipped ? "text-amber-500 animate-pulse" : "text-zinc-500 dark:text-zinc-400"} />
+                              <span>{isSkipped ? "Resume" : "Skip"}</span>
+                            </button>
+
+                            {/* Add Set */}
+                            {!isSkipped && !isCardio && (
+                              <button
+                                type="button"
+                                onClick={() => void addSet(workoutExercise.id)}
+                                className="h-9 px-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                                aria-label="Add set"
+                              >
+                                <CirclePlus size={15} className="text-emerald-500" />
+                                <span>Add Set</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* PR / Last Lift row */}
+                        {!isSkipped && stats && (
+                          <div className="px-2.5 py-1.5 bg-surface/50 rounded-xl border border-surface-border flex items-center justify-between text-xs text-zinc-750 select-none">
+                            <span className="truncate max-w-[68%] leading-none">
+                              <span className="text-zinc-455 font-bold">Last:</span> {stats.last}
+                            </span>
+                            <span className="shrink-0 font-bold text-amber-600 dark:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/25 leading-none">
+                              PR: {stats.pr}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Set Logging */}
+                        {!isSkipped ? (
+                          <div className="space-y-2">
+                            {isCardio ? (
+                              <>
+                                {/* GPX upload banner */}
+                                <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2.5 rounded-xl border border-purple-500/10 select-none">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Upload size={14} className="text-purple-400 shrink-0" />
+                                    <div className="text-left min-w-0">
+                                      <p className="text-xs font-bold text-foreground leading-tight">GPX Sync</p>
+                                      <p className="text-xs text-zinc-500 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance & calories from a .GPX file.</p>
+                                    </div>
+                                  </div>
+                                  <label className="h-7 px-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all shrink-0">
+                                    Upload
+                                    <input type="file" accept=".gpx" className="hidden" onChange={e => handleGpxUpload(e, workoutExercise.id, workoutExercise.sets)} />
+                                  </label>
+                                </div>
+
+                                {workoutExercise.sets.map((set, setIndex) => {
+                                  const isActiveSet = setIndex === activeSetIdx;
+                                  const prevSet = setIndex > 0 ? workoutExercise.sets[setIndex - 1] : null;
+
+                                  // ─── Case 1: Completed Set ───
+                                  if (set.completed) {
+                                    return (
+                                      <div
+                                        key={set.id}
+                                        className="flex items-center gap-3 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs text-emerald-700 dark:text-emerald-300 transition-all select-none min-h-[44px]"
+                                      >
+                                        <span className="font-black text-emerald-500 shrink-0">{isCardio ? "CARDIO" : `#${setIndex + 1}`}</span>
+                                        <span className="flex-1 font-semibold truncate text-left">
+                                          {set.durationSeconds !== undefined ? `${Math.round(set.durationSeconds / 60)}min` : "—"}
+                                          {set.distance ? ` · ${set.distance}mi` : ""}
+                                          {set.calories ? ` · ${set.calories}kcal` : ""}
+                                        </span>
+                                        <Check size={16} className="stroke-[3px] text-emerald-500 shrink-0" />
+                                        {!isCardio && (
+                                          <button
+                                            type="button"
+                                            className="text-zinc-455 hover:text-rose-500 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                                            onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                            aria-label="Delete set"
+                                          >
+                                            <Trash2 size={16} />
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="text-emerald-600 dark:text-emerald-400 hover:text-zinc-755 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                                          onClick={() => {
+                                            if (navigator.vibrate) navigator.vibrate(6);
+                                            void updateSet(workoutExercise.id, set.id, { completed: false });
+                                          }}
+                                          aria-label="Undo set completion"
+                                          title="Undo"
+                                        >
+                                          <X size={16} />
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+
+                                  // ─── Case 2: Active Focused Set Card ───
+                                  if (isActiveSet) {
+                                    const displayMin = set.durationSeconds !== undefined ? parseFloat((set.durationSeconds / 60).toFixed(2)) : (prevSet?.durationSeconds !== undefined ? parseFloat((prevSet.durationSeconds / 60).toFixed(2)) : 30);
+                                    const displayDist = set.distance ?? prevSet?.distance ?? 0;
+                                    const displayCardioLabel = isTreadmill ? (set.incline ?? prevSet?.incline ?? 0) : (set.resistance ?? prevSet?.resistance ?? 0);
+                                    const displayKcal = set.calories ?? prevSet?.calories ?? 0;
+
+                                    return (
+                                      <div
+                                        key={set.id}
+                                        className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
+                                      >
+                                        <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs font-black text-emerald-500 tracking-wider">
+                                              {isCardio ? "CARDIO SESSION" : `SET #${setIndex + 1}`} (ACTIVE)
+                                            </span>
+                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {!isCardio && (
+                                              <Button
+                                                aria-label="Delete set"
+                                                className="h-10 w-10 rounded-xl text-zinc-750 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                                size="icon" variant="ghost"
+                                                onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                              >
+                                                <Trash2 size={16} />
+                                              </Button>
+                                            )}
+                                            <Button
+                                              aria-label="Complete set"
+                                              className="h-10 px-4 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
+                                              onClick={() => void handleCompleteSet(set.id, set.completed)}
+                                            >
+                                              <Check size={16} className="stroke-[3px]" />
+                                              Check
+                                            </Button>
+                                          </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                                          {[
+                                            {
+                                              label: "Min",
+                                              value: displayMin,
+                                              step: 1.0,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { durationSeconds: Math.round(v * 60) }),
+                                              max: 999,
+                                              inputMode: "decimal" as const,
+                                              formattedStep: "any"
+                                            },
+                                            {
+                                              label: "Dist (mi)",
+                                              value: displayDist,
+                                              step: 0.1,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { distance: v }),
+                                              max: 999,
+                                              inputMode: "decimal" as const,
+                                              formattedStep: "any"
+                                            },
+                                            {
+                                              label: cardioLabel,
+                                              value: displayCardioLabel,
+                                              step: 1.0,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, isTreadmill ? { incline: v } : { resistance: v }),
+                                              max: 100,
+                                              inputMode: "decimal" as const,
+                                              formattedStep: "any"
+                                            },
+                                            {
+                                              label: "kcal",
+                                              value: displayKcal,
+                                              step: 10.0,
+                                              onChange: (v: number) => void updateSet(workoutExercise.id, set.id, { calories: v }),
+                                              max: 9999,
+                                              inputMode: "numeric" as const,
+                                              formattedStep: "1"
+                                            },
+                                          ].map(field => (
+                                            <div key={field.label}>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-755 tracking-wider mb-1.5">{field.label}</label>
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = parseFloat(Math.max(0, field.value - field.step).toFixed(2));
+                                                    field.onChange(v);
+                                                  }}
+                                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label={`Decrease ${field.label}`}
+                                                >
+                                                  <Minus size={12} className="stroke-[3px]" />
+                                                </button>
+                                                <Input
+                                                  inputMode={field.inputMode}
+                                                  type="number"
+                                                  min={0}
+                                                  max={field.max}
+                                                  step={field.formattedStep}
+                                                  className="h-8 px-1 text-center font-bold bg-transparent border-0 shadow-none text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  value={field.value}
+                                                  onChange={e => field.onChange(Math.min(field.max, Math.max(0, parseFloat(e.target.value) || 0)))}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = parseFloat(Math.min(field.max, field.value + field.step).toFixed(2));
+                                                    field.onChange(v);
+                                                  }}
+                                                  className="h-8 w-8 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label={`Increase ${field.label}`}
+                                                >
+                                                  <Plus size={12} className="stroke-[3px]" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  // ─── Case 3: Future Uncompleted Set (Collapsed) ───
+                                  const displayMin = set.durationSeconds !== undefined ? parseFloat((set.durationSeconds / 60).toFixed(2)) : (prevSet?.durationSeconds !== undefined ? parseFloat((prevSet.durationSeconds / 60).toFixed(2)) : 30);
+                                  const displayDist = set.distance ?? prevSet?.distance ?? 0;
+                                  const displayCardioLabel = isTreadmill ? (set.incline ?? prevSet?.incline ?? 0) : (set.resistance ?? prevSet?.resistance ?? 0);
+                                  const displayKcal = set.calories ?? prevSet?.calories ?? 0;
+
+                                  return (
+                                    <div
+                                      key={set.id}
+                                      onClick={() => setManualActiveSetIdx(prev => ({ ...prev, [workoutExercise.id]: setIndex }))}
+                                      className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface/30 border border-surface-border text-xs text-zinc-750 transition-all select-none hover:bg-surface/50 cursor-pointer min-h-[44px]"
+                                    >
+                                      <span className="font-bold text-zinc-555 shrink-0">CARDIO</span>
+                                      <span className="flex-1 text-left font-medium truncate">
+                                        Target {displayMin}min · {displayDist}mi · {displayCardioLabel} {isTreadmill ? "%" : "Lvl"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void handleCompleteSet(set.id, set.completed);
+                                        }}
+                                        className="h-9 px-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
+                                      >
+                                        <Check size={15} className="stroke-[3px]" />
+                                        Check
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </>
+                            ) : (
+                              /* ── Strength exercises ── */
+                              <>
+                                {(() => {
+                                  const isTimeBased = exercise.category === "mobility" || /s\b|sec|min/i.test(workoutExercise.targetReps) || /hold/i.test(exercise.name) || /plank/i.test(exercise.name);
+                                  const exerciseKey = workoutExercise.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+                                  const prevSessionSets = lastWorkoutForExercise[exerciseKey];
+
+                                  return workoutExercise.sets.map((set, setIndex) => {
+                                    const isActiveSet = setIndex === activeSetIdx;
+                                    const prevSet = setIndex > 0 ? workoutExercise.sets[setIndex - 1] : null;
+
+                                    const prevSessionSet = prevSessionSets ? (prevSessionSets[setIndex] || prevSessionSets.at(-1)) : null;
+                                    const defaultReps = isTimeBased ? 30 : 10;
+                                    const prevReps = prevSessionSet ? prevSessionSet.reps : defaultReps;
+                                    const prevWeight = prevSessionSet ? prevSessionSet.weight : 0;
+
+                                    const displayReps = set.reps === 0 ? (prevSet ? (prevSet.reps === 0 ? prevReps : prevSet.reps) : prevReps) : set.reps;
+                                    const displayWeight = set.weight === 0 ? (prevSet ? (prevSet.weight === 0 ? prevWeight : prevSet.weight) : prevWeight) : set.weight;
+
+                                    // ─── Case 1: Completed Set ───
+                                    if (set.completed) {
+                                      return (
+                                        <div
+                                          key={set.id}
+                                          className="flex items-center gap-3 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs select-none transition-all min-h-[44px]"
+                                        >
+                                          <span className="font-black text-emerald-500 shrink-0">#{setIndex + 1}</span>
+                                          {set.isDropSet && (
+                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
+                                          )}
+                                          <span className="flex-1 font-semibold text-emerald-700 dark:text-emerald-300 truncate text-left">
+                                            {isTimeBased ? `${set.reps}s` : `${set.reps} reps`} · {set.weight === 0 ? "bodyweight" : `${set.weight} ${exUnit}`}
+                                            {set.rir !== undefined ? ` · RIR ${set.rir}` : ""}
+                                          </span>
+                                          <Check size={16} className="stroke-[3px] text-emerald-500 shrink-0" />
+                                          <button
+                                            type="button"
+                                            className="text-zinc-455 hover:text-rose-500 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                                            onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                            aria-label="Delete set"
+                                          >
+                                            <Trash2 size={16} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="text-emerald-600 dark:text-emerald-400 hover:text-zinc-755 transition-colors h-8 w-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer shrink-0"
+                                            onClick={() => {
+                                              if (navigator.vibrate) navigator.vibrate(6);
+                                              void updateSet(workoutExercise.id, set.id, { completed: false });
+                                            }}
+                                            aria-label="Undo set completion"
+                                            title="Undo"
+                                          >
+                                            <X size={16} />
+                                          </button>
+                                        </div>
+                                      );
+                                    }
+
+                                    // ─── Case 2: Active Focused Set Card ───
+                                    if (isActiveSet) {
+                                      return (
+                                        <div
+                                          key={set.id}
+                                          className="flex flex-col gap-3.5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 ring-1 ring-emerald-500/15 shadow-md transition-all text-left"
+                                        >
+                                          <div className="flex items-center justify-between border-b border-card-border/60 pb-2.5">
+                                            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 min-w-0">
+                                              <span className="text-xs font-black text-emerald-500 tracking-wider">
+                                                SET #{setIndex + 1} (ACTIVE)
+                                              </span>
+                                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                              {set.isDropSet && (
+                                                <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[10px] font-black uppercase tracking-wider text-amber-500">Drop</span>
+                                              )}
+                                              {prevSessionSet && (
+                                                <span className="text-[10px] font-black text-zinc-555">
+                                                  Last: {prevSessionSet.weight === 0 ? "BW" : `${prevSessionSet.weight}${exUnit}`} x {prevSessionSet.reps}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Button
+                                                aria-label="Delete set"
+                                                className="h-10 w-10 rounded-xl text-zinc-750 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                                size="icon" variant="ghost"
+                                                onClick={() => void deleteSet(workoutExercise.id, set.id)}
+                                              >
+                                                <Trash2 size={16} />
+                                              </Button>
+                                              <Button
+                                                aria-label="Complete set"
+                                                className="h-11 px-5 rounded-xl font-black uppercase tracking-wider text-xs transition-all flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-transparent hover:bg-emerald-600 active:scale-[0.97] cursor-pointer shadow-sm"
+                                                onClick={() => void handleCompleteSet(set.id, set.completed)}
+                                              >
+                                                <Check size={16} className="stroke-[3px]" />
+                                                Check
+                                              </Button>
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                                            {(() => {
+                                              const repStep = isTimeBased ? 5 : 1;
+                                              const maxRepVal = isTimeBased ? 999 : 100;
+                                              return (
+                                                <div>
+                                                  <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">{isTimeBased ? "Seconds" : "Reps"}</label>
+                                                  <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        if (navigator.vibrate) navigator.vibrate(6);
+                                                        const v = Math.max(0, displayReps - repStep);
+                                                        void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                      }}
+                                                      className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                      aria-label={isTimeBased ? "Decrease seconds" : "Decrease reps"}
+                                                    >
+                                                      <Minus size={14} className="stroke-[3px]" />
+                                                    </button>
+                                                    <Input
+                                                      inputMode="numeric" type="number" min={0} max={maxRepVal}
+                                                      className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                      value={set.reps === 0 ? "" : set.reps}
+                                                      placeholder={String(displayReps)}
+                                                      onChange={e => {
+                                                        const v = Math.min(maxRepVal, Math.max(0, Number(e.target.value)));
+                                                        void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                      }}
+                                                    />
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        if (navigator.vibrate) navigator.vibrate(6);
+                                                        const v = Math.min(maxRepVal, displayReps + repStep);
+                                                        void updateSet(workoutExercise.id, set.id, { reps: v });
+                                                      }}
+                                                      className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                      aria-label={isTimeBased ? "Increase seconds" : "Increase reps"}
+                                                    >
+                                                      <Plus size={14} className="stroke-[3px]" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })()}
+                                            
+                                            <div>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">Load ({exUnit})</label>
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                    const v = parseFloat(Math.max(0, displayWeight - step).toFixed(1));
+                                                    void updateSet(workoutExercise.id, set.id, { weight: v });
+                                                  }}
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Decrease load"
+                                                >
+                                                  <Minus size={14} className="stroke-[3px]" />
+                                                </button>
+                                                <Input
+                                                  inputMode="decimal" type="number" min={0} max={2000} step="any"
+                                                  className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  value={set.weight === 0 ? "" : set.weight}
+                                                  placeholder={String(displayWeight)}
+                                                  onChange={e => {
+                                                    const v = Math.min(2000, Math.max(0, Number(e.target.value)));
+                                                    void updateSet(workoutExercise.id, set.id, { weight: v });
+                                                  }}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                    const v = parseFloat(Math.min(2000, displayWeight + step).toFixed(1));
+                                                    void updateSet(workoutExercise.id, set.id, { weight: v });
+                                                  }}
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Increase load"
+                                                >
+                                                  <Plus size={14} className="stroke-[3px]" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                            
+                                            <div>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">RIR</label>
+                                              {guidedMode ? (
+                                                <div className="bg-surface border border-surface-border rounded-xl overflow-hidden shadow-sm focus-within:border-emerald-500/50 h-11 flex items-center">
+                                                  <Select
+                                                    value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
+                                                    onChange={e => {
+                                                      if (navigator.vibrate) navigator.vibrate(6);
+                                                      const v = e.target.value === "easy" ? 8 : e.target.value === "hard" ? 0 : 4;
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                    className="h-10 py-0.5 px-2 text-center font-bold bg-transparent border-0 text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  >
+                                                    <option value="easy">Easy (8)</option>
+                                                    <option value="moderate">Mod (4)</option>
+                                                    <option value="hard">Hard (0)</option>
+                                                  </Select>
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      if (navigator.vibrate) navigator.vibrate(6);
+                                                      const v = Math.max(0, (set.rir ?? 2) - 1);
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                    className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                    aria-label="Decrease RIR"
+                                                  >
+                                                    <Minus size={14} className="stroke-[3px]" />
+                                                  </button>
+                                                  <Input
+                                                    inputMode="numeric" type="number" min={0} max={10}
+                                                    className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                    value={set.rir ?? 2}
+                                                    onChange={e => {
+                                                      const v = Math.min(10, Math.max(0, Number(e.target.value)));
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                  />
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      if (navigator.vibrate) navigator.vibrate(6);
+                                                      const v = Math.min(10, (set.rir ?? 2) + 1);
+                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                    }}
+                                                    className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                    aria-label="Increase RIR"
+                                                  >
+                                                    <Plus size={14} className="stroke-[3px]" />
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    // ─── Case 3: Future Uncompleted Set (Collapsed) ───
+                                    return (
+                                      <div
+                                        key={set.id}
+                                        onClick={() => setManualActiveSetIdx(prev => ({ ...prev, [workoutExercise.id]: setIndex }))}
+                                        className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface/30 border border-surface-border text-xs text-zinc-750 transition-all select-none hover:bg-surface/50 cursor-pointer min-h-[44px]"
+                                      >
+                                        <span className="font-bold text-zinc-555 shrink-0">#{setIndex + 1}</span>
+                                        {set.isDropSet && (
+                                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
+                                        )}
+                                        <span className="flex-1 text-left font-medium truncate">
+                                          Target {displayReps}{isTimeBased ? "s" : " reps"} · {displayWeight === 0 ? "bodyweight" : `${displayWeight} ${exUnit}`}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void handleCompleteSet(set.id, set.completed);
+                                          }}
+                                          className="h-11 px-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
+                                        >
+                                          <Check size={15} className="stroke-[3px]" />
+                                          Check
+                                        </button>
+                                      </div>
+                                    );
+                                  });
+                                })()}
+
+                                {/* Bottom action bar */}
+                                <div className="mt-2.5 flex gap-2 flex-wrap">
+                                  <Button
+                                    size="sm" variant="ghost"
+                                    className="text-xs font-bold text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border active:scale-95 transition-all shadow-sm"
+                                    icon={<Flame size={16} className="text-amber-500 animate-pulse" />}
+                                    onClick={() => {
+                                      const last = workoutExercise.sets.at(-1);
+                                      if (!last) return;
+                                      void updateSet(workoutExercise.id, last.id, { isDropSet: !last.isDropSet });
+                                    }}
+                                  >
+                                    Dropset
+                                  </Button>
+                                  <Button
+                                    size="sm" variant="ghost"
+                                    className="text-xs font-bold text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border active:scale-95 transition-all shadow-sm"
+                                    icon={<Timer size={16} />}
+                                    onClick={() => void startRestTimer(workoutExercise.restSeconds)}
+                                  >
+                                    Rest {Math.round(workoutExercise.restSeconds / 60)}m
+                                  </Button>
+                                </div>
+
+                                {/* Plate loader + RIR advisor */}
+                                {(() => {
+                                  const isBarbell = exercise.equipment.includes("barbell");
+                                  const activeSet = workoutExercise.sets.find(s => !s.completed) || workoutExercise.sets.at(-1);
+                                  const activeWeight = activeSet?.weight || 0;
+                                  const platesList = isBarbell && activeWeight ? calculatePlates(activeWeight, exUnit) : null;
+                                  const lastDoneSet = [...workoutExercise.sets].reverse().find(s => s.completed);
+                                  const rirVal = lastDoneSet?.rir;
+                                  if (!platesList && rirVal === undefined) return null;
+
+                                  const getPlateStyles = (plate: number) => {
+                                    const p = Number(plate);
+                                    if (p >= 45 || p === 25) return "bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30";
+                                    if (p === 35 || p === 20) return "bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30";
+                                    if (p === 25 || p === 15) return "bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30";
+                                    if (p === 10) return "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+                                    if (p === 5) return "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700";
+                                    return "bg-zinc-900/10 dark:bg-white/10 text-zinc-800 dark:text-zinc-200 border-zinc-500/30";
+                                  };
+
+                                  return (
+                                    <div className="mt-2.5 p-3.5 rounded-xl bg-surface/40 border border-surface-border space-y-3 text-xs select-none">
+                                      {platesList && platesList.length > 0 && (
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-card-border pb-2.5">
+                                          <div className="flex items-center gap-2 text-zinc-755 font-bold">
+                                            <Dumbbell size={15} className="text-emerald-400 shrink-0" />
+                                            <span>Plates per side ({activeWeight} {exUnit}):</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end">
+                                            {platesList.map((plate, idx) => (
+                                              <span
+                                                key={idx}
+                                                className={cn(
+                                                  "inline-flex items-center justify-center h-8 w-8 rounded-full border text-[10px] font-black font-mono shadow-sm transition-all",
+                                                  getPlateStyles(plate)
+                                                )}
+                                              >
+                                                {plate}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {rirVal !== undefined && (
+                                        <div className={cn(
+                                          "flex items-start gap-2.5 p-2.5 rounded-xl border select-none transition-all duration-300",
+                                          rirVal <= 1
+                                            ? "bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 ring-1 ring-rose-500/10"
+                                            : rirVal >= 4
+                                            ? "bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/20"
+                                            : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
+                                        )}>
+                                          <Sparkles size={14} className={cn(
+                                            "mt-0.5 shrink-0",
+                                            rirVal <= 1 ? "text-rose-500" : rirVal >= 4 ? "text-sky-500" : "text-emerald-500"
+                                          )} />
+                                          <div>
+                                            <p className="font-extrabold text-foreground leading-tight text-[11px] uppercase tracking-wide">
+                                              Stimulus Advisory (Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} · RIR {rirVal}):
+                                            </p>
+                                            <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
+                                              {rirVal <= 1
+                                                ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
+                                                : rirVal >= 4
+                                                ? "Low-intensity stimulus. Consider increasing load by 5–10% to target hypertrophy."
+                                                : "Moderate stimulus — perfect sweet spot for safe progressive overload."}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          /* Skipped warning */
+                          <div className="mt-1 p-3 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/15 dark:border-amber-500/20 text-amber-700 dark:text-amber-200 text-xs">
+                            <div className="flex items-center gap-1.5 font-bold mb-1">
+                              <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400" />
+                              <span>Progress Warning: Exercise Skipped</span>
+                            </div>
+                            <p className="text-zinc-750 leading-relaxed text-xs">
+                              No machine or alternative available. Skipping reduces your weekly volume by{" "}
+                              <span className="font-semibold text-zinc-900 dark:text-white">{workoutExercise.targetSets} sets</span> on{" "}
+                              <span className="font-semibold text-zinc-900 dark:text-white capitalize">{exercise.muscles[0]}</span>, slowing adaptation.
+                            </p>
+                            <Button
+                              size="sm" variant="secondary"
+                              className="mt-2 text-xs w-full py-1 h-8 border-amber-500/25 dark:border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-200 hover:bg-amber-500/10"
+                              onClick={() => void skipWorkoutExercise(workoutExercise.id)}
+                            >
+                              Resume Exercise
                             </Button>
                           </div>
-                        </>
-                      );
-                    }
-
-                    return (
-                      <>
-                        <div className="hidden sm:grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] gap-2 px-1 text-[9px] font-bold uppercase tracking-wider text-zinc-500 text-center select-none">
-                          <span className="text-left">#</span>
-                          <span>Reps</span>
-                          <span>Load ({weightUnit})</span>
-                          <span>RIR</span>
-                          <span />
-                          <span />
-                        </div>
-
-                        {workoutExercise.sets.map((set, setIndex) => (
-                          <div key={set.id} className="space-y-2">
-                            {/* Desktop/Tablet Spreadsheet Row Layout (Shown only on larger screens) */}
-                            <div
-                              className={`hidden sm:grid grid-cols-[1.2rem_1fr_1fr_0.8fr_2rem_2rem] items-center gap-2 rounded-xl border p-1.5 transition-all duration-300 ${set.completed
-                                  ? "bg-emerald-500/5 border-emerald-550/20 dark:border-emerald-500/20"
-                                  : "bg-input border-input focus-within:border-card-border"
-                                }`}
-                            >
-                              <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 text-center leading-none">
-                                {setIndex + 1}
-                              </span>
-
-                              {/* Reps selector */}
-                              <Input
-                                inputMode="numeric"
-                                type="number"
-                                min={0}
-                                max={100}
-                                className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                value={set.reps}
-                                onChange={(event) => {
-                                  const val = Math.min(100, Math.max(0, Number(event.target.value)));
-                                  void updateSet(workoutExercise.id, set.id, { reps: val });
-                                }}
-                              />
-
-                              {/* Weight Selector */}
-                              <Input
-                                inputMode="decimal"
-                                type="number"
-                                min={0}
-                                max={2000}
-                                className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                value={set.weight}
-                                onChange={(event) => {
-                                  const val = Math.min(2000, Math.max(0, Number(event.target.value)));
-                                  void updateSet(workoutExercise.id, set.id, { weight: val });
-                                }}
-                              />
-
-                              {/* RIR Input selector */}
-                              {guidedMode ? (
-                                <Select
-                                  value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
-                                  onChange={(event) => {
-                                    const val = event.target.value === "easy" ? 8 : event.target.value === "hard" ? 0 : 4;
-                                    void updateSet(workoutExercise.id, set.id, { rir: val });
-                                  }}
-                                  className="h-8 py-0.5 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                >
-                                  <option value="easy">Easy</option>
-                                  <option value="moderate">Moderate</option>
-                                  <option value="hard">Hard</option>
-                                </Select>
-                              ) : (
-                                <Input
-                                  inputMode="numeric"
-                                  type="number"
-                                  min={0}
-                                  max={10}
-                                  className="h-8 text-center px-1 font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50 focus:ring-0 leading-none"
-                                  value={set.rir ?? 2}
-                                  onChange={(event) => {
-                                    const val = Math.min(10, Math.max(0, Number(event.target.value)));
-                                    void updateSet(workoutExercise.id, set.id, { rir: val });
-                                  }}
-                                />
-                              )}
-
-                              {/* Delete Set Button */}
-                              <Button
-                                aria-label="Delete set"
-                                className="h-8 w-8 rounded-lg shrink-0 text-zinc-500 dark:text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => void deleteSet(workoutExercise.id, set.id)}
-                              >
-                                <Trash2 size={13} />
-                              </Button>
-
-                              {/* Tactile Check Button */}
-                              <Button
-                                aria-label="Complete set"
-                                className={`h-8 w-8 rounded-lg shrink-0 transition-all ${set.completed
-                                    ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
-                                    : "bg-surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
-                                  }`}
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => {
-                                  if (navigator.vibrate) navigator.vibrate(12);
-                                  void updateSet(workoutExercise.id, set.id, { completed: !set.completed });
-                                  if (!set.completed) void startRestTimer(workoutExercise.restSeconds);
-                                }}
-                              >
-                                <Check size={14} className={set.completed ? "stroke-[3px]" : "stroke-[2px]"} />
-                              </Button>
-                            </div>
-
-                            {/* Mobile Strength Set Card (Shown only on small screens) */}
-                            <div
-                              className={`flex flex-col gap-2.5 p-3 rounded-2xl border transition-all duration-300 sm:hidden ${set.completed
-                                  ? "bg-emerald-500/5 border-emerald-500/20"
-                                  : "bg-input border-input-border focus-within:border-card-border"
-                                }`}
-                            >
-                              {/* Card Header Row */}
-                              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-black text-zinc-400">
-                                    SET #{setIndex + 1}
-                                  </span>
-                                  {set.isDropSet && (
-                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[8px] font-black uppercase tracking-wider text-amber-400">
-                                      Dropset
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  {/* Delete Button */}
-                                  <Button
-                                    aria-label="Delete set"
-                                    className="h-10 w-10 sm:h-8 sm:w-8 rounded-xl text-zinc-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={() => void deleteSet(workoutExercise.id, set.id)}
-                                  >
-                                    <Trash2 size={13} />
-                                  </Button>
-
-                                  {/* Tactical Complete Button */}
-                                  <Button
-                                    aria-label="Complete set"
-                                    className={`h-10 w-24 sm:h-8 sm:w-20 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all flex items-center justify-center gap-1 ${set.completed
-                                        ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-400 border-none"
-                                        : "bg-surface text-zinc-400 hover:text-zinc-900 dark:hover:text-white border border-surface-border"
-                                      }`}
-                                    variant="ghost"
-                                    onClick={() => {
-                                      if (navigator.vibrate) navigator.vibrate(12);
-                                      void updateSet(workoutExercise.id, set.id, { completed: !set.completed });
-                                      if (!set.completed) void startRestTimer(workoutExercise.restSeconds);
-                                    }}
-                                  >
-                                    {set.completed ? (
-                                      <>
-                                        <Check size={12} className="stroke-[3px]" />
-                                        Done
-                                      </>
-                                    ) : (
-                                      "Check"
-                                    )}
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {/* Form Inputs Grid (3 columns, touch-friendly pads) */}
-                              <div className="grid grid-cols-3 gap-2.5 text-left">
-                                <div>
-                                  <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Reps</label>
-                                  <Input
-                                    inputMode="numeric"
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                    value={set.reps}
-                                    onChange={(event) => {
-                                      const val = Math.min(100, Math.max(0, Number(event.target.value)));
-                                      void updateSet(workoutExercise.id, set.id, { reps: val });
-                                    }}
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">Load ({weightUnit})</label>
-                                  <Input
-                                    inputMode="decimal"
-                                    type="number"
-                                    min={0}
-                                    max={2000}
-                                    className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                    value={set.weight}
-                                    onChange={(event) => {
-                                      const val = Math.min(2000, Math.max(0, Number(event.target.value)));
-                                      void updateSet(workoutExercise.id, set.id, { weight: val });
-                                    }}
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[8px] font-black uppercase text-zinc-500 tracking-wider mb-1">RIR</label>
-                                  {guidedMode ? (
-                                    <Select
-                                      value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
-                                      onChange={(event) => {
-                                        const val = event.target.value === "easy" ? 8 : event.target.value === "hard" ? 0 : 4;
-                                        void updateSet(workoutExercise.id, set.id, { rir: val });
-                                      }}
-                                      className="h-8 py-0.5 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                    >
-                                      <option value="easy">Easy</option>
-                                      <option value="moderate">Mod</option>
-                                      <option value="hard">Hard</option>
-                                    </Select>
-                                  ) : (
-                                    <Input
-                                      inputMode="numeric"
-                                      type="number"
-                                      min={0}
-                                      max={10}
-                                      className="h-8 px-1 text-center font-semibold rounded-lg bg-surface border-surface-border text-xs w-full text-foreground focus:border-emerald-500/50"
-                                      value={set.rir ?? 2}
-                                      onChange={(event) => {
-                                        const val = Math.min(10, Math.max(0, Number(event.target.value)));
-                                        void updateSet(workoutExercise.id, set.id, { rir: val });
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        <div className="mt-3 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                            icon={<Flame size={13} className="text-amber-500" />}
-                            onClick={() => {
-                              const last = workoutExercise.sets.at(-1);
-                              if (!last) return;
-                              void updateSet(workoutExercise.id, last.id, { isDropSet: !last.isDropSet });
-                            }}
-                          >
-                            Dropset
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground hover:bg-zinc-150/50 dark:hover:bg-white/5 py-1 px-2.5 rounded-lg flex items-center gap-1.5 h-7 leading-none"
-                            icon={<Timer size={13} />}
-                            onClick={() => void startRestTimer(workoutExercise.restSeconds)}
-                          >
-                            Rest {Math.round(workoutExercise.restSeconds / 60)}m
-                          </Button>
-                        </div>
-
-                        {/* Plate Loader Assist & RIR Advisor Panel */}
-                        {(() => {
-                          const isBarbell = exercise.equipment.includes("barbell");
-                          const activeSet = workoutExercise.sets.find((s) => !s.completed) || workoutExercise.sets[workoutExercise.sets.length - 1];
-                          const activeWeight = activeSet?.weight || 0;
-                          const platesList = isBarbell && activeWeight ? calculatePlates(activeWeight, weightUnit) : null;
-                          const lastCompletedSet = [...workoutExercise.sets].reverse().find((s) => s.completed);
-                          const rirVal = lastCompletedSet?.rir;
-
-                          if (!platesList && rirVal === undefined) return null;
-
-                          return (
-                            <div className="mt-3 p-3 rounded-xl bg-surface/40 border border-surface-border space-y-2 text-xs">
-                              {platesList && platesList.length > 0 && (
-                                <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-2">
-                                  <div className="flex items-center gap-1.5 text-zinc-400 font-medium">
-                                    <Dumbbell size={13} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
-                                    <span>Barbell Plates per side ({activeWeight} {weightUnit}):</span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {platesList.map((plate, idx) => (
-                                      <span key={idx} className="px-1.5 py-0.5 rounded bg-surface border border-surface-border text-[10px] font-bold text-foreground font-mono">
-                                        {plate}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {rirVal !== undefined && (
-                                <div className="flex items-start gap-2">
-                                  <Sparkles size={13} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
-                                  <div className="space-y-0.5">
-                                    <p className="font-semibold text-foreground leading-tight">
-                                      Set {workoutExercise.sets.findIndex(s => s.id === lastCompletedSet?.id) + 1} RIR feedback ({rirVal} RIR):
-                                    </p>
-                                    <p className="text-zinc-550 dark:text-zinc-400 text-[11px] leading-relaxed">
-                                      {rirVal <= 1
-                                        ? "Optimal hypertrophy threshold reached! Maintain weight or increase by +2.5% next session."
-                                        : rirVal >= 4
-                                          ? "Low-intensity stimulus. Consider increasing load by 5-10% to target hypertrophy."
-                                          : "Moderate-intensity stimulus. Perfect sweet spot for safe progressive overload."}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                /* Interactive skipped warn card box */
-                <div className="mt-3 p-3 rounded-xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/15 dark:border-amber-500/20 text-amber-700 dark:text-amber-200 text-xs">
-                  <div className="flex items-center gap-1.5 font-bold mb-1">
-                    <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400" />
-                    <span>Progress Warning: Exercise Skipped</span>
-                  </div>
-                  <p className="text-zinc-550 dark:text-zinc-400 leading-relaxed text-[11px]">
-                    No machine or suitable alternative is available. Note: Skipping this movement reduces your target weekly workout volume by <span className="font-semibold text-zinc-900 dark:text-white">{workoutExercise.targetSets} sets</span>. This directly decreases total protein synthesis stimulation for your <span className="font-semibold text-zinc-900 dark:text-white capitalize">{exercise.muscles[0]}</span>, slowing muscle adaptation and progress.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="mt-2 text-xs w-full py-1 h-7 border-amber-500/25 dark:border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-200 hover:bg-amber-500/10 dark:hover:bg-amber-500/15"
-                    onClick={() => void skipWorkoutExercise(workoutExercise.id)}
-                  >
-                    Resume Exercise
-                  </Button>
-                </div>
-              )}
-            </Card>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </div>
           );
         })}
       </div>
 
-      {/* Alternatives selection overlay selector dialog modal */}
+      <div className="mt-8 mb-12 flex justify-center px-4">
+        <Button
+          variant="secondary"
+          className="w-full max-w-md border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-350 py-2.5 h-11 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm cursor-pointer"
+          onClick={() => {
+            if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
+              void discardWorkout();
+            }
+          }}
+        >
+          Discard Workout Session
+        </Button>
+      </div>
+
       {activeSwapExercise && originalEx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 pt-[max(1rem,env(safe-area-inset-top))] supports-[backdrop-filter]:backdrop-blur-md">
-          <Card className="w-full max-w-md p-5 space-y-4 relative flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <Card className="w-full max-w-md p-5 space-y-4 relative flex flex-col max-h-[85vh] overflow-hidden border border-card-border shadow-2xl">
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-2 right-2 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
+              className="absolute top-2 right-2 text-zinc-750 hover:text-zinc-955 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5"
               onClick={() => {
                 setActiveSwapExercise(null);
                 setSwapSearch("");
@@ -2056,24 +2516,24 @@ export function WorkoutScreen() {
             </Button>
 
             <div>
-              <span className="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest leading-none">
+              <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest leading-none">
                 Alternative Selector
               </span>
-              <h2 className="text-xl font-bold text-foreground mt-1 leading-snug">
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white mt-1 leading-snug">
                 Swap "{originalEx.name}"
               </h2>
-              <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-0.5 leading-normal">
-                Choose an equipment-matched movement targeting the same <span className="font-semibold text-emerald-555 dark:text-emerald-400 capitalize">{originalEx.muscles[0]}</span> group to keep your training plan active.
+              <p className="text-zinc-750 text-xs mt-0.5 leading-normal">
+                Choose an equipment-matched movement targeting the same <span className="font-semibold text-emerald-450 capitalize">{originalEx.muscles[0]}</span> group to keep your training plan active.
               </p>
             </div>
 
             {/* Modal search field */}
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-750" />
               <Input
                 maxLength={100}
                 placeholder="Search alternatives by name, equipment..."
-                className="pl-9 h-9 text-xs rounded-xl bg-input border-input text-foreground focus:border-emerald-500"
+                className="pl-9 h-9 text-xs rounded-xl bg-input border-input-border text-foreground focus:border-emerald-500"
                 value={swapSearch}
                 onChange={(e) => setSwapSearch(e.target.value)}
               />
@@ -2097,7 +2557,7 @@ export function WorkoutScreen() {
 
                   return groups.map((g) => (
                     <div key={g.title} className="space-y-1.5">
-                      <h3 className="text-[10px] font-extrabold uppercase tracking-wider text-zinc-500 select-none pl-1">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-500 select-none pl-1">
                         {g.title}
                       </h3>
                       <div className="grid gap-1.5">
@@ -2112,14 +2572,14 @@ export function WorkoutScreen() {
                             }}
                           >
                             <div>
-                              <p className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                              <p className="text-xs font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors">
                                 {alt.name}
                               </p>
-                              <p className="text-[9px] text-zinc-500 dark:text-zinc-400 capitalize mt-0.5">
+                              <p className="text-xs text-zinc-555 capitalize mt-0.5">
                                 {alt.muscles.slice(0, 3).join(", ")} · {alt.equipment.join(", ")}
                               </p>
                             </div>
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-450 bg-emerald-500/10 dark:bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/20 dark:border-emerald-500/10 group-hover:bg-emerald-500/15 transition-all">
+                            <span className="text-xs font-bold text-emerald-450 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 group-hover:bg-emerald-500/15 transition-all">
                               Swap
                             </span>
                           </button>

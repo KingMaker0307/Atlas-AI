@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, Send, User, Info } from "lucide-react";
+import { Bot, Send, User, Info, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ export function CoachScreen() {
   const aiMessages = useAtlasStore((state) => state.aiMessages);
   const sendCoachMessage = useAtlasStore((state) => state.sendCoachMessage);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
+  const cancelCoach = () => useAtlasStore.setState({ coachBusy: false });
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
   const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
@@ -174,20 +175,33 @@ export function CoachScreen() {
           >
             <input
               className="flex-1 rounded-xl border border-input-border bg-input px-4 py-2.5 md:py-2 text-base md:text-sm text-foreground placeholder:text-zinc-500 focus:border-emerald-500/50 focus:outline-none focus:ring-0"
-              placeholder="Ask about your routine, fatigue, or nutrition..."
+              placeholder={coachBusy ? "Waiting for AI response..." : "Ask about your routine, fatigue, or nutrition..."}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               disabled={coachBusy}
             />
-            <Button
-              className="shrink-0"
-              size="icon"
-              variant={draft.trim() ? "primary" : "secondary"}
-              disabled={!draft.trim() || coachBusy}
-              type="submit"
-            >
-              <Send size={18} />
-            </Button>
+            {coachBusy ? (
+              <Button
+                type="button"
+                aria-label="Cancel AI response"
+                className="shrink-0 bg-rose-600 hover:bg-rose-500 text-white"
+                size="icon"
+                onClick={cancelCoach}
+              >
+                <X size={18} />
+              </Button>
+            ) : (
+              <Button
+                className="shrink-0"
+                size="icon"
+                aria-label="Send message"
+                variant={draft.trim() ? "primary" : "secondary"}
+                disabled={!draft.trim() || coachBusy}
+                type="submit"
+              >
+                <Send size={18} />
+              </Button>
+            )}
           </form>
         </div>
       </Card>

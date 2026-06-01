@@ -78,11 +78,11 @@ export function FinishSessionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <Card className="w-full max-w-md p-6 relative">
+      <Card className="w-full max-w-md p-6 relative" role="dialog" aria-modal="true" aria-labelledby="finish-session-title">
         <div className="flex flex-col space-y-1.5 text-center sm:text-left">
-          <h2 className="text-lg font-semibold leading-none tracking-tight text-foreground">Finish Session</h2>
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose}>
-            <X size={20} />
+          <h2 id="finish-session-title" className="text-lg font-semibold leading-none tracking-tight text-foreground">Finish Session</h2>
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose} aria-label="Close modal">
+            <X size={20} aria-hidden="true" />
           </Button>
         </div>
         <div className="grid gap-4 py-4">

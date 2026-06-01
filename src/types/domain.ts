@@ -60,6 +60,11 @@ export interface UserProfile {
   customGoal?: string;
   injuries?: string;
   workoutDuration?: number;
+  gender?: "male" | "female";
+  activityLevel?: "sedentary" | "lightly_active" | "moderately_active" | "very_active" | "extra_active";
+  email?: string;
+  emailVerified?: boolean;
+  capturedProvider?: "google" | "apple" | "email" | null;
 }
 
 export interface Exercise {
@@ -79,6 +84,7 @@ export interface Exercise {
   progressionTips: string[];
   imageUrl?: string;
   videoUrl?: string;
+  aliases?: string[];
 }
 
 export interface WorkoutSet {
@@ -109,7 +115,9 @@ export interface WorkoutExercise {
   notes?: string;
   sets: WorkoutSet[];
   skipped?: boolean;
+  weightUnit?: WeightUnit; // Per-exercise unit override, persisted with workout
 }
+
 
 export interface Workout {
   id: string;
@@ -238,4 +246,52 @@ export interface AtlasSnapshot {
   apiCallCount: number; // Added to AtlasSnapshot
   tokenCount: number; // Added to AtlasSnapshot
   deviceSecret?: string;
+  nutritionEntries?: NutritionEntry[];
+  waterLogs?: WaterLogEntry[];
+  recentFoodSearches?: CommonFoodItem[];
+}
+
+export interface NutritionEntry {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;   // g
+  carbs: number;     // g
+  fat: number;       // g
+  fiber: number;     // g
+  sugar: number;     // g
+  sodium: number;    // mg
+  potassium: number; // mg
+  vitaminC: number;  // mg
+  calcium: number;   // mg
+  iron: number;      // mg
+  meal: "breakfast" | "lunch" | "dinner" | "snack";
+  servingSize: number;
+  servingUnit: string;
+  timestamp: string;
+}
+
+export interface WaterLogEntry {
+  id: string;
+  amount: number;    // ml
+  timestamp: string;
+}
+
+export interface CommonFoodItem {
+  name: string;
+  brand?: string;
+  aliases?: string[];
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  potassium: number;
+  vitaminC: number;
+  calcium: number;
+  iron: number;
+  servingUnit: string;
+  servingWeight?: number;
 }

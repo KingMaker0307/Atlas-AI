@@ -8,6 +8,7 @@ import {
   Flame,
   Medal,
   Moon,
+  Sun,
   TimerReset,
   Pencil,
   Sparkles,
@@ -28,6 +29,12 @@ import {
   BrainCircuit,
   Settings,
   AlertTriangle,
+  Lock,
+  ShieldCheck,
+  Mail,
+  Copy,
+  Check,
+  ArrowLeft,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -50,7 +57,10 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { UserProfile, RecoveryLog } from "@/types/domain";
 import { createId } from "@/lib/id";
+import { validateEmail } from "@/lib/email-validator";
+import { restoreProfileByEmail } from "@/lib/sync";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
+import { calculateNutritionTargets } from "@/lib/calculators";
 
 export function DashboardScreen() {
   const profile = useAtlasStore((state) => state.profile);
@@ -62,6 +72,7 @@ export function DashboardScreen() {
     return allWorkouts.filter(w => w.exercises.some(ex => ex.sets.some(s => s.completed)));
   }, [allWorkouts]);
 
+  const nutritionEntries = useAtlasStore((state) => state.nutritionEntries || []);
   const recoveryLogs = useAtlasStore((state) => state.recoveryLogs);
   const bodyMetrics = useAtlasStore((state) => state.bodyMetrics);
   const aiMessages = useAtlasStore((state) => state.aiMessages);
@@ -80,6 +91,163 @@ export function DashboardScreen() {
   const aiProviders = useAtlasStore((state) => state.aiProviders);
   const activeProviderId = useAtlasStore((state) => state.activeProviderId);
   const setActiveSettingsTab = useAtlasStore((state) => state.setActiveSettingsTab);
+  const updateProfile = useAtlasStore((state) => state.updateProfile);
+  const setWorkoutTab = useAtlasStore((state) => state.setWorkoutTab);
+  const theme = useAtlasStore((state) => state.theme);
+  const setTheme = useAtlasStore((state) => state.setTheme);
+
+  // One-time Cloud Sync Migration States
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [migrationMethod, setMigrationMethod] = useState<"google" | "email">("google");
+  const [migrationEmailInput, setMigrationEmailInput] = useState("");
+  const [migrationEmailError, setMigrationEmailError] = useState<string | null>(null);
+  const [isMigrationSubmitting, setIsMigrationSubmitting] = useState(false);
+  const [migrationSubmitError, setMigrationSubmitError] = useState<string | null>(null);
+  const [showMigrationSuccessAnimation, setShowMigrationSuccessAnimation] = useState(false);
+  const [isMigrationFederatedLoading, setIsMigrationFederatedLoading] = useState(false);
+  const [migrationCapturedProvider, setMigrationCapturedProvider] = useState<"apple" | "google" | null>(null);
+
+  // OTP states for manual migration
+  const [migrationOtpSent, setMigrationOtpSent] = useState(false);
+  const [migrationGeneratedOtp, setMigrationGeneratedOtp] = useState("");
+  const [migrationOtpInput, setMigrationOtpInput] = useState("");
+  const [migrationOtpError, setMigrationOtpError] = useState<string | null>(null);
+  const [isSendingMigrationOtp, setIsSendingMigrationOtp] = useState(false);
+  const [showMigrationSandboxOtp, setShowMigrationSandboxOtp] = useState(false);
+  const [migrationOtpCopied, setMigrationOtpCopied] = useState(false);
+
+  const handleGoogleMigrationSubmit = async () => {
+    setMigrationEmailError(null);
+    setMigrationSubmitError(null);
+    const validation = validateEmail(migrationEmailInput);
+    if (!validation.isValid) {
+      setMigrationEmailError(validation.error || "Invalid email address.");
+      return;
+    }
+
+    setIsMigrationFederatedLoading(true);
+    setMigrationCapturedProvider("google");
+
+    const cleanEmail = migrationEmailInput.toLowerCase().trim();
+
+    try {
+      // Uniqueness check: email must not exist in cloud sync storage
+      const checkRes = await restoreProfileByEmail(cleanEmail);
+      if (checkRes.success && checkRes.snapshot) {
+        setMigrationSubmitError("This email is already associated with an existing profile. To load that profile, please refresh/logout and sign in using Google or email restore on the welcome screen.");
+        setIsMigrationFederatedLoading(false);
+        return;
+      }
+
+      await updateProfile({
+        email: cleanEmail,
+        emailVerified: true,
+      });
+
+      setShowMigrationSuccessAnimation(true);
+      setTimeout(() => {
+        setShowMigrationSuccessAnimation(false);
+        setShowMigrationModal(false);
+        setMigrationEmailInput("");
+        setMigrationEmailError(null);
+      }, 3500);
+    } catch (e: any) {
+      console.error("Google Migration failed:", e);
+      setMigrationSubmitError(e.message || "Failed to upgrade profile. Please verify your connection.");
+    } finally {
+      setIsMigrationFederatedLoading(false);
+    }
+  };
+
+  const handleSendMigrationOtp = async () => {
+    setMigrationEmailError(null);
+    setMigrationOtpError(null);
+    setMigrationSubmitError(null);
+    const validation = validateEmail(migrationEmailInput);
+    if (!validation.isValid) {
+      setMigrationEmailError(validation.error || "Invalid email address.");
+      return;
+    }
+
+    setIsSendingMigrationOtp(true);
+
+    try {
+      // Uniqueness check
+      const checkRes = await restoreProfileByEmail(migrationEmailInput.toLowerCase().trim());
+      if (checkRes.success && checkRes.snapshot) {
+        setMigrationEmailError("This email is already associated with an existing profile. Please use a different email or log out to restore it.");
+        setIsSendingMigrationOtp(false);
+        return;
+      }
+    } catch (e) {
+      console.warn("Migration uniqueness check failed:", e);
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setMigrationGeneratedOtp(code);
+    setMigrationOtpCopied(false);
+
+    try {
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: migrationEmailInput,
+          otp: code,
+          userName: profile?.name || "Athlete"
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setMigrationOtpSent(true);
+        setShowMigrationSandboxOtp(false);
+      } else {
+        setMigrationOtpSent(true);
+        setShowMigrationSandboxOtp(true);
+        console.warn("Falling back to simulated sandbox mailbox:", data.error);
+      }
+    } catch (e) {
+      setMigrationOtpSent(true);
+      setShowMigrationSandboxOtp(true);
+      console.warn("Network error during API dispatch. Falling back to simulated sandbox mailbox.");
+    } finally {
+      setIsSendingMigrationOtp(false);
+    }
+  };
+
+  const handleVerifyMigrationOtp = async () => {
+    setMigrationOtpError(null);
+    setMigrationSubmitError(null);
+    if (migrationOtpInput.trim() !== migrationGeneratedOtp) {
+      setMigrationOtpError("Incorrect 6-digit verification code. Please check your simulated sandbox mailbox and try again.");
+      return;
+    }
+
+    setIsMigrationSubmitting(true);
+    const cleanEmail = migrationEmailInput.toLowerCase().trim();
+
+    try {
+      await updateProfile({
+        email: cleanEmail,
+        emailVerified: true,
+      });
+
+      setShowMigrationSuccessAnimation(true);
+      setTimeout(() => {
+        setShowMigrationSuccessAnimation(false);
+        setShowMigrationModal(false);
+        setMigrationEmailInput("");
+        setMigrationEmailError(null);
+        setMigrationOtpSent(false);
+        setMigrationOtpInput("");
+        setShowMigrationSandboxOtp(false);
+      }, 3500);
+    } catch (e: any) {
+      setMigrationOtpError(e.message || "Failed to verify and update profile.");
+    } finally {
+      setIsMigrationSubmitting(false);
+    }
+  };
 
   // Modal & Edit States
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -153,24 +321,9 @@ export function DashboardScreen() {
     return parseAiWorkoutPlan(content) !== null;
   };
 
-  const calculatedProtein = useMemo(() => {
-    const w = profile?.weight;
-    if (!w) return null;
-
-    const unit = profile?.weightUnit ?? "lbs";
-    const weightInLbs = unit === "lbs" ? w : w * 2.20462;
-    const physique = profile?.targetPhysique || "athletic";
-
-    let multiplier = 1.0;
-    if (physique === "shredded") multiplier = 1.2;
-    else if (physique === "lean") multiplier = 1.1;
-    else if (physique === "athletic") multiplier = 1.0;
-    else if (physique === "toned") multiplier = 0.9;
-    else if (physique === "bulky") multiplier = 1.0;
-
-    const proteinTarget = weightInLbs * multiplier;
-    return Math.round(proteinTarget);
-  }, [profile?.weight, profile?.targetPhysique, profile?.weightUnit]);
+  const nutritionTargets = useMemo(() => {
+    return calculateNutritionTargets(profile);
+  }, [profile]);
 
   const getLocalDateString = (d: Date) => {
     const year = d.getFullYear();
@@ -178,6 +331,62 @@ export function DashboardScreen() {
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
+  const consistencyDays = useMemo(() => {
+    const today = new Date();
+    const todayStr = getLocalDateString(today);
+    
+    // Find the Monday of this week to align columns
+    const currentDay = today.getDay(); // 0 is Sunday, 1 is Monday...
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const thisMonday = new Date(today);
+    thisMonday.setDate(today.getDate() - daysToMonday);
+
+    // Generate 4 full weeks starting from Monday 3 weeks ago
+    const days = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekMonday = new Date(thisMonday);
+      weekMonday.setDate(thisMonday.getDate() - w * 7);
+      
+      for (let d = 0; d < 7; d++) {
+        const current = new Date(weekMonday);
+        current.setDate(weekMonday.getDate() + d);
+        const dateStr = getLocalDateString(current);
+        const isFuture = dateStr > todayStr;
+        const isToday = dateStr === todayStr;
+
+        // Check if workout completed on this day
+        const hasWorkout = workouts.some(w => {
+          if (!w.completedAt) return false;
+          try {
+            return getLocalDateString(new Date(w.completedAt)) === dateStr;
+          } catch {
+            return false;
+          }
+        });
+
+        // Check if food logged on this day
+        const hasNutrition = (nutritionEntries || []).some(entry => {
+          if (!entry.timestamp) return false;
+          try {
+            return getLocalDateString(new Date(entry.timestamp)) === dateStr;
+          } catch {
+            return false;
+          }
+        });
+
+        days.push({
+          dateStr,
+          isFuture,
+          isToday,
+          hasWorkout,
+          hasNutrition,
+          dayOfWeek: d
+        });
+      }
+    }
+    return days;
+  }, [workouts, nutritionEntries]);
 
   const handleLaunchWorkoutClick = (routine: any) => {
     if (activeWorkout) {
@@ -333,7 +542,7 @@ export function DashboardScreen() {
     if (active && payload && payload.length) {
       return (
         <div className="rounded-xl border border-card-border bg-card p-3 shadow-xl backdrop-blur-md">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
+          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
           <p className="mt-1 text-sm font-semibold text-foreground">
             {payload[0].name === "weight" ? `${payload[0].value} lbs` : `${payload[0].value.toLocaleString()} lbs volume`}
           </p>
@@ -344,12 +553,13 @@ export function DashboardScreen() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      className="flex flex-col gap-3 sm:gap-5 pb-28"
-    >
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        className="flex flex-col gap-3 sm:gap-5 pb-28"
+      >
       {/* ─── HEADER ZONE ─── */}
       <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border border-card-border bg-card shadow-lg">
         <div className="space-y-1">
@@ -359,85 +569,225 @@ export function DashboardScreen() {
             </span>
             <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Atlas Bio-Telemetry</p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-            Welcome back, {profile?.name ?? "Athlete"}
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-955 dark:text-white">
+            Welcome, {profile?.name ?? "Athlete"}
           </h1>
-          <p className="text-xs text-zinc-400 flex items-center gap-1.5 pt-0.5">
-            <Calendar size={13} className="text-zinc-500" />
+          <p className="text-xs text-zinc-555 dark:text-zinc-500 flex items-center gap-1.5 pt-0.5">
+            <Calendar size={14} className="text-zinc-555 dark:text-zinc-500" />
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          {/* Experience Mode Toggle */}
-          <div className="flex rounded-xl bg-surface p-1 border border-surface-border self-start sm:self-center select-none">
-            <button
-              type="button"
-              onClick={() => void setGuidedMode(true)}
-              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                guidedMode ? "bg-emerald-500 text-white-keep shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-              }`}
-            >
-              Guided
-            </button>
-            <button
-              type="button"
-              onClick={() => void setGuidedMode(false)}
-              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-200 ${
-                !guidedMode ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
-              }`}
-            >
-              Advanced
-            </button>
-          </div>
+        <div className="flex flex-col gap-3 items-stretch md:items-end w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Experience Mode Toggle */}
+            <div className="flex rounded-xl bg-surface p-1 border border-surface-border self-start sm:self-center select-none">
+              <button
+                type="button"
+                onClick={() => void setGuidedMode(true)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
+                }`}
+              >
+                Guided
+              </button>
+              <button
+                type="button"
+                onClick={() => void setGuidedMode(false)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
+                }`}
+              >
+                Advanced
+              </button>
+            </div>
 
-          {/* Dynamic Recovery Ring */}
-          {!guidedMode && (
-            <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
-              <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
-                <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
-                  <motion.circle
-                    cx="32"
-                    cy="32"
-                    r="28"
-                    fill="none"
-                    stroke={insight.ringColor}
-                    strokeWidth="4.5"
-                    strokeDasharray="176"
-                    initial={{ strokeDashoffset: 176 }}
-                    animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-center">
-                  <span className="text-lg font-black text-white">{recoveryScore}</span>
-                  <span className="text-[8px] font-bold text-zinc-500 block -mt-1 uppercase">%</span>
+
+            {/* Dynamic Recovery Ring */}
+            {!guidedMode && (
+              <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
+                <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
+                  <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
+                    <motion.circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      fill="none"
+                      stroke={insight.ringColor}
+                      strokeWidth="4.5"
+                      strokeDasharray="176"
+                      initial={{ strokeDashoffset: 176 }}
+                      animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="text-center flex items-baseline justify-center">
+                    <span className="text-lg font-black text-zinc-955 dark:text-white leading-none">{recoveryScore}</span>
+                    <span className="text-xs font-bold text-zinc-750 dark:text-zinc-400 leading-none ml-0.5">%</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-750 dark:text-zinc-400">Recovery Score</span>
+                  <p className="text-sm font-bold text-zinc-955 dark:text-white leading-tight">{insight.label}</p>
+                  <button 
+                    onClick={() => setShowQuickLog(!showQuickLog)}
+                    className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
+                  >
+                    <TimerReset size={14} />
+                    Quick-Log Daily Recovery
+                  </button>
                 </div>
               </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Recovery Score</span>
-                <p className="text-sm font-bold text-white leading-tight">{insight.label}</p>
-                <button 
-                  onClick={() => setShowQuickLog(!showQuickLog)}
-                  className="mt-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
-                >
-                  <TimerReset size={12} />
-                  Quick-Log Daily Recovery
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
+
+      {/* ─── SECURE CLOUD BACKUP MIGRATION BANNER ─── */}
+      {profile && !profile.email && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border border-card-border bg-card shadow-lg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        >
+          <div className="absolute -right-16 -top-16 w-36 h-36 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-[50px] pointer-events-none" />
+          <div className="space-y-1 relative z-10 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">Security & Sync Upgrade</p>
+            </div>
+            <h3 className="text-sm sm:text-base font-bold text-zinc-955 dark:text-white">Upgrade to Secure Cloud Backup</h3>
+            <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
+              Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices using high-fidelity naming conventions.
+            </p>
+          </div>
+          <Button
+            onClick={() => setShowMigrationModal(true)}
+            className="sm:shrink-0 font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm h-9 text-xs px-4 rounded-xl relative z-10 flex items-center justify-center gap-1.5 self-start sm:self-center"
+          >
+            <Sparkles size={14} />
+            Secure Profile Now
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Quick-Log Recovery Card in Advanced mode, shown in the main dashboard flow */}
+      <AnimatePresence>
+        {!guidedMode && showQuickLog && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="w-full overflow-hidden"
+          >
+            <Card className="p-5 border border-emerald-500/25 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-950/10 space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-white/5 pb-2">
+                <div className="flex items-center gap-2">
+                  <Heart size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
+                  <h3 className="font-bold text-zinc-900 dark:text-white text-sm">Bio-Telemetry Recovery Log</h3>
+                </div>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setShowQuickLog(false)}>
+                  <X size={16} />
+                </Button>
+              </div>
+
+              {/* Sliders Grid */}
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+                {/* Sleep Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Sleep Duration</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logSleep} hrs</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="4"
+                    max="12"
+                    step="0.5"
+                    value={logSleep}
+                    onChange={(e) => setLogSleep(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
+                  />
+                </div>
+
+                {/* Soreness Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Muscle Soreness</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logSoreness}/10</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={logSoreness}
+                    onChange={(e) => setLogSoreness(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
+                  />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more pain</p>
+                </div>
+
+                {/* Stress Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Systemic Stress</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logStress}/10</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={logStress}
+                    onChange={(e) => setLogStress(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
+                  />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more stressed</p>
+                </div>
+
+                {/* Nervous Energy Input */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Nervous Energy</span>
+                    <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logEnergy}/10</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={logEnergy}
+                    onChange={(e) => setLogEnergy(Number(e.target.value))}
+                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
+                  />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more energetic</p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 justify-end pt-2 border-t border-emerald-200/60 dark:border-white/5">
+                <Button variant="secondary" size="sm" onClick={() => setShowQuickLog(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white font-bold">
+                  Log Recovery
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {coachBusy && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/40 to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
+          className="relative overflow-hidden rounded-2xl border border-violet-500/30 dark:border-violet-500/30 bg-gradient-to-br from-violet-50 to-violet-100/80 dark:from-violet-950/60 dark:via-fuchsia-950/40 dark:to-zinc-950/80 shadow-[0_0_40px_rgba(139,92,246,0.08)] dark:shadow-[0_0_40px_rgba(139,92,246,0.15)] p-5"
         >
           {/* Ambient glow orb */}
           <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-violet-500/20 blur-[60px] pointer-events-none" />
@@ -457,21 +807,21 @@ export function DashboardScreen() {
 
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">AI Coach</span>
-                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
+                <span className="text-xs font-black uppercase tracking-widest text-violet-400">AI Coach</span>
+                <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
                   <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
                   Cooking
                 </span>
               </div>
-              <p className="text-sm font-bold text-white leading-snug">
+              <p className="text-sm font-bold text-zinc-900 dark:text-white leading-snug">
                 Something amazing is being crafted for you.
               </p>
-              <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 Your AI Coach is designing a clinical-grade, personalised training program based on your biometrics and goals. This usually takes 15–30 seconds — grab a sip of water! 💧
               </p>
 
               {/* Shimmer progress bar */}
-              <div className="h-1.5 w-full rounded-full bg-violet-950/60 border border-violet-500/20 overflow-hidden mt-1">
+              <div className="h-1.5 w-full rounded-full bg-violet-200 dark:bg-violet-950/60 border border-violet-300/40 dark:border-violet-500/20 overflow-hidden mt-1">
                 <motion.div
                   className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-violet-500 rounded-full"
                   initial={{ x: "-100%" }}
@@ -491,7 +841,7 @@ export function DashboardScreen() {
         <Card className="p-5 border border-emerald-500/20 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-3 select-none">
             <Sparkles className="text-emerald-500 dark:text-emerald-400 animate-pulse" size={18} />
-            <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">Getting Started Guide</h2>
+            <h2 className="text-base font-bold text-zinc-955 dark:text-white tracking-tight">Getting Started Guide</h2>
           </div>
           
           <div className="space-y-4">
@@ -506,14 +856,14 @@ export function DashboardScreen() {
               </div>
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2 select-none">
-                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-400 dark:text-zinc-500 line-through" : "text-zinc-800 dark:text-zinc-100"}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isStep1Done ? "text-zinc-555 dark:text-zinc-500 line-through" : "text-zinc-955 dark:text-white"}`}>
                     Activate a Workout Plan
                   </h3>
-                  {isStep1Done && <span className="text-[10px] font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
+                  {isStep1Done && <span className="text-xs font-extrabold uppercase font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">Active</span>}
                 </div>
                 {!isStep1Done && (
                   <>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
                       To start tracking, you need a plan. Choose an option below to set up your routine instantly:
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -545,9 +895,9 @@ export function DashboardScreen() {
                 2
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-zinc-900 dark:text-white font-bold">Start Training Session</span> to log sets.
+                <h3 className="text-xs font-bold text-zinc-955 dark:text-zinc-300 uppercase tracking-wider">Start Your First Session</h3>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
+                  Go to the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("workout")}>Plans</span> tab, select today's routine, and tap <span className="text-zinc-955 dark:text-white font-bold">Start Training Session</span> to log sets.
                 </p>
               </div>
             </div>
@@ -558,8 +908,8 @@ export function DashboardScreen() {
                 3
               </div>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                <h3 className="text-xs font-bold text-zinc-955 dark:text-zinc-300 uppercase tracking-wider">Track Strength Progress</h3>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
                   After completing a workout, visit the <span className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer hover:underline" onClick={() => setActiveTab("progress")}>Progress</span> tab to watch your strength and consistency charts update.
                 </p>
               </div>
@@ -568,118 +918,14 @@ export function DashboardScreen() {
         </Card>
       )}
 
-
-      {/* ─── INLINE RECOVERY LOGGER DRAWER ─── */}
-      <AnimatePresence>
-        {showQuickLog && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <Card className="p-5 border-emerald-500/20 bg-emerald-950/5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <div className="flex items-center gap-2">
-                  <Heart size={16} className="text-emerald-450 animate-pulse" />
-                  <h3 className="font-bold text-white text-sm">Bio-Telemetry Recovery Log</h3>
-                </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-400 hover:text-white" onClick={() => setShowQuickLog(false)}>
-                  <X size={16} />
-                </Button>
-              </div>
-
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                {/* Sleep Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Sleep Duration</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSleep} Hours</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="4"
-                    max="12"
-                    step="0.5"
-                    value={logSleep}
-                    onChange={(e) => setLogSleep(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                {/* Soreness Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Muscle Soreness</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logSoreness}/10 (High = Pain)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={logSoreness}
-                    onChange={(e) => setLogSoreness(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                {/* Stress Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Systemic Stress</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logStress}/10 (High = Stressed)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={logStress}
-                    onChange={(e) => setLogStress(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-
-                {/* Nervous Energy Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-300 font-semibold">Nervous Energy</span>
-                    <span className="text-emerald-600 dark:text-emerald-300 font-bold">{logEnergy}/10 (High = Energetic)</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    step="1"
-                    value={logEnergy}
-                    onChange={(e) => setLogEnergy(Number(e.target.value))}
-                    className="w-full h-1 bg-surface border border-surface-border/50 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2 border-t border-white/5">
-                <Button variant="secondary" size="sm" onClick={() => setShowQuickLog(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold">
-                  Save Bio-Recovery Log
-                </Button>
-              </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ─── PHYSIOLOGICAL GUIDANCE BLOCK ─── */}
       {!guidedMode && (
         <div className={`p-4 rounded-xl border text-xs leading-relaxed space-y-1.5 ${insight.color}`}>
-          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-[10px]">
+          <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-xs">
             <BrainCircuit size={14} className="shrink-0" />
             <span>Biomechanical System Guidance</span>
           </div>
-          <p className="text-zinc-300 leading-normal">{insight.text}</p>
+          <p className="text-zinc-750 dark:text-zinc-300 leading-normal">{insight.text}</p>
         </div>
       )}
 
@@ -690,8 +936,8 @@ export function DashboardScreen() {
             <div className="text-center space-y-4">
               <ClipboardList className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
               <div>
-                <h2 className="text-xl font-bold text-foreground">No Active Plan Established</h2>
-                <p className="text-xs text-zinc-550 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
+                <h2 className="text-xl font-bold text-zinc-955 dark:text-white">No Active Plan Established</h2>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
                   To begin logging metrics, progressive overload cycles, and streaks, create a customized program or let our AI coach build one.
                 </p>
               </div>
@@ -703,124 +949,166 @@ export function DashboardScreen() {
           </Card>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
-          <Card className="p-5 border-emerald-500/15 dark:border-emerald-500/20 bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 dark:from-zinc-900 dark:to-emerald-950/20 relative shadow-xl overflow-hidden group">
-            {/* Visual glow element */}
-            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-emerald-500/10 blur-[80px] group-hover:bg-emerald-500/15 transition-all duration-300" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
-              <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  Today's Scheduled Target · {todayRoutine.day}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">{todayRoutine.name}</h2>
-                <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-md leading-relaxed">
-                  {todayRoutine.focus}
-                </p>
-                <div className="flex flex-wrap gap-1.5 pt-1.5">
-                  {todayRoutine.exercises.map((item: any) => (
-                    <span 
-                      key={item.exerciseId}
-                      className="px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-white/5 bg-white/75 dark:bg-white/[0.03] text-[10px] font-medium text-zinc-700 dark:text-zinc-300"
-                    >
-                      {item.exerciseId.split("-").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
-                    </span>
-                  ))}
+          <div className="p-5 sm:p-6 border border-emerald-500/20 dark:border-emerald-500/20 bg-card relative shadow-sm overflow-hidden group rounded-2xl">
+            {/* Ambient glow — theme-safe, pointer-events off */}
+            <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full bg-emerald-500/8 dark:bg-emerald-500/10 blur-[70px] group-hover:bg-emerald-500/12 transition-all duration-500 pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-40 h-40 rounded-full bg-amber-500/6 dark:bg-amber-500/8 blur-[70px] group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
+
+            <div className="relative z-10 space-y-5">
+              {/* Header */}
+              <div className="space-y-1.5 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    Today's Target
+                  </span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase">{todayRoutine.day}</span>
                 </div>
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-955 dark:text-white leading-tight tracking-tight">Today's Training &amp; Nutrition Target</h2>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
+                  Complete today's workout to build strength, and eat high-quality meals to fuel muscle recovery.
+                </p>
               </div>
 
-              <div className="sm:text-right shrink-0 flex flex-col justify-between sm:h-28">
-                <div className="text-zinc-550 dark:text-zinc-400 text-xs font-medium">
-                  <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.exercises.length}</span> exercises · <span className="font-bold text-zinc-800 dark:text-zinc-200">{todayRoutine.estimatedMinutes}</span> mins
+              {/* Two-column grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface-border">
+                {/* Column 1: Workout */}
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-mono">Workout Plan</span>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">{todayRoutine.name}</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400">
+                      Focus: <strong className="text-zinc-955 dark:text-white font-bold">{todayRoutine.focus}</strong>
+                    </p>
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase pt-0.5">
+                      {todayRoutine.exercises.length} exercises · {todayRoutine.estimatedMinutes} mins
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleLaunchWorkoutClick(todayRoutine)}
+                    className="w-full font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(16,185,129,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    <Dumbbell size={14} />
+                    Launch Workout
+                  </Button>
                 </div>
-                <Button 
-                  onClick={() => handleLaunchWorkoutClick(todayRoutine)}
-                  className="mt-4 sm:mt-0 font-bold bg-emerald-500 hover:bg-emerald-450 text-white flex items-center justify-center gap-1.5 px-6 shadow-[0_4px_14px_rgba(16,185,129,0.3)] group-hover:scale-[1.02] transition-transform"
-                >
-                  <Dumbbell size={16} />
-                  Launch Workout Session
-                </Button>
+
+                {/* Column 2: Nutrition */}
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-450 font-mono">Daily Nutrition</span>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">Nutrition &amp; Calories</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
+                      Target <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.protein}g protein</strong> today.
+                    </p>
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase pt-0.5">
+                      2,500 ml water · Log all meals
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => { setWorkoutTab("nutrition"); setActiveTab("workout"); }}
+                    className="w-full font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(245,158,11,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  >
+                    <Flame size={14} />
+                    Log Nutrients
+                  </Button>
+                </div>
               </div>
             </div>
-          </Card>
+          </div>
         ) : (
           /* Rest Day Restorative Hero */
-          <Card className="p-5 border-violet-500/15 dark:border-violet-500/20 bg-gradient-to-br from-violet-50/50 to-violet-100/30 dark:from-zinc-900 dark:to-violet-950/20 relative shadow-xl overflow-hidden group">
-            {/* Visual glow element */}
-            <div className="absolute -right-20 -top-20 w-44 h-44 rounded-full bg-violet-500/10 blur-[80px]" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 relative z-10">
-              <div className="space-y-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
-                  Rest & Recovery Cycle · {todayDayName}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white">Active Muscle Restoration</h2>
-                <p className="text-xs text-zinc-650 dark:text-zinc-400 max-w-md leading-relaxed">
-                  Your plan designates today as a rest day. Muscle hypertrophy and central nervous system repair occur during down cycles, not training volume.
-                </p>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <Activity size={12} />
-                    Light Mobility Flow
+          <div className="p-5 sm:p-6 border border-violet-500/20 dark:border-violet-500/20 bg-card relative shadow-sm overflow-hidden group rounded-2xl">
+            {/* Ambient glow — theme-safe */}
+            <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full bg-violet-500/8 dark:bg-violet-500/10 blur-[70px] group-hover:bg-violet-500/12 transition-all duration-500 pointer-events-none" />
+            <div className="absolute -left-16 -bottom-16 w-40 h-40 rounded-full bg-amber-500/6 dark:bg-amber-500/8 blur-[70px] group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
+
+            <div className="relative z-10 space-y-5">
+              {/* Header */}
+              <div className="space-y-1.5 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                    Today's Target
                   </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <Moon size={12} />
-                    CNS Sleep Focus
-                  </span>
-                  <span className="px-2 py-1 rounded-lg border border-violet-500/20 dark:border-violet-500/10 bg-violet-500/5 dark:bg-violet-500/5 text-[10px] font-semibold text-violet-600 dark:text-violet-300 flex items-center gap-1">
-                    <TimerReset size={12} />
-                    Hydration & Nutrition
-                  </span>
+                  <span className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase">{todayDayName} - Rest Day</span>
                 </div>
+                <h2 className="text-xl sm:text-2xl font-black text-zinc-955 dark:text-white leading-tight tracking-tight">Rest, Recharge &amp; Recovery</h2>
+                <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
+                  Let your body recover from training, recharge your energy, and hit nutrition goals to stay on track.
+                </p>
               </div>
 
-              <div className="shrink-0 sm:text-right flex flex-col justify-between gap-3 sm:min-w-[180px]">
-                <div className="text-zinc-400 font-bold font-mono text-[10px] tracking-widest">
-                  REST DAY CYCLE
-                </div>
-                <div className="flex flex-col gap-2 mt-2 sm:mt-0">
-                  <Button 
+              {/* Two-column grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface-border">
+                {/* Column 1: Active Recovery */}
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400 font-mono">Recharge &amp; Rest</span>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">Active Recovery</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400">
+                      Focus on deep sleep, body relaxation, and light stretching.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                        <Activity size={10} />
+                        Light Stretching
+                      </span>
+                      <span className="px-2 py-0.5 rounded-lg border border-violet-500/20 bg-violet-500/5 text-[9px] font-semibold text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                        <Moon size={10} />
+                        Deep Rest
+                      </span>
+                    </div>
+                  </div>
+                  <Button
                     onClick={() => {
                       if (activePlan) {
                         setEditingWorkoutPlanId(activePlan.id);
                         setActiveSubScreen("workout-plan-detail");
                       }
                     }}
-                    variant="secondary"
-                    className="w-full font-semibold flex items-center justify-center gap-1.5 h-9 text-xs"
+                    className="w-full font-black uppercase tracking-wider bg-violet-600 hover:bg-violet-500 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(124,58,237,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                   >
                     <ClipboardList size={14} />
                     Weekly Schedule
                   </Button>
-                  <Button 
-                    onClick={() => {
-                      if (activePlan) {
-                        setEditingWorkoutPlanId(activePlan.id);
-                        setActiveSubScreen("workout-plan-detail");
-                      }
-                    }}
-                    className="w-full font-bold bg-violet-600 hover:bg-violet-500 dark:bg-violet-600 dark:hover:bg-violet-500 text-white flex items-center justify-center gap-1.5 h-9 text-xs shadow-[0_4px_14px_rgba(124,58,237,0.3)] transition-all"
+                </div>
+
+                {/* Column 2: Nutrition */}
+                <div className="flex flex-col justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-450 font-mono">Daily Nutrition</span>
+                    <h3 className="text-sm sm:text-base font-black text-zinc-955 dark:text-white">Nutrition &amp; Energy</h3>
+                    <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed">
+                      Aim for <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.calories} kcal</strong> and <strong className="text-zinc-955 dark:text-white font-bold font-mono">{nutritionTargets.protein}g protein</strong> to support recovery.
+                    </p>
+                    <div className="text-[10px] text-zinc-555 dark:text-zinc-500 font-bold font-mono uppercase pt-0.5">
+                      2,500 ml water · Log all meals
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => { setWorkoutTab("nutrition"); setActiveTab("workout"); }}
+                    className="w-full font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-400 text-white flex items-center justify-center gap-2 h-10 text-xs shadow-[0_4px_14px_rgba(245,158,11,0.25)] rounded-xl transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                   >
-                    <Activity size={14} />
-                    Active Recovery
+                    <Flame size={14} />
+                    Log Nutrients
                   </Button>
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
         )}
       </section>
 
       {/* ─── GUIDED TRACKING WALKTHROUGH (Only shown in Guided Mode) ─── */}
       {guidedMode && (
         <Card className="p-5 border border-emerald-500/10 bg-emerald-500/[0.02] space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-955 dark:text-white flex items-center gap-2">
             <ClipboardList className="text-emerald-600 dark:text-emerald-450" size={16} />
             How to Train with Atlas
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div className="space-y-1">
               <span className="font-extrabold text-emerald-600 dark:text-emerald-400">1. Select a Plan</span>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="text-zinc-750 dark:text-zinc-400 leading-relaxed">
                 {activeWorkoutPlanId 
                   ? "✓ Active plan selected. You can view or edit it anytime in the 'Plans' tab."
                   : "Go to 'Plans' or use the checklist above to activate a training plan."}
@@ -828,13 +1116,13 @@ export function DashboardScreen() {
             </div>
             <div className="space-y-1">
               <span className="font-extrabold text-emerald-600 dark:text-emerald-400">2. Launch Session</span>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="text-zinc-750 dark:text-zinc-400 leading-relaxed">
                 Tap the green <strong>Launch Workout Session</strong> button on today's target card above to start tracking.
               </p>
             </div>
             <div className="space-y-1">
               <span className="font-extrabold text-emerald-600 dark:text-emerald-400">3. Log Sets & Save</span>
-              <p className="text-zinc-500 leading-relaxed">
+              <p className="text-zinc-750 dark:text-zinc-400 leading-relaxed">
                 Enter weight and reps for completed sets during your workout, then tap <strong>Finish Workout</strong> to save.
               </p>
             </div>
@@ -862,7 +1150,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-[11px] text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Streak is the count of consecutive plan-routine execution days. Keep consistent pacing to build myofibrillar habit patterns!
               </motion.div>
@@ -887,7 +1175,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-[11px] text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Evaluates the completed workouts against your target profile ({profile?.daysPerWeek ?? 3} days/week). Standard 30-day baseline is critical for athletic progress.
               </motion.div>
@@ -912,7 +1200,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-[11px] text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Total load lifted across all exercises this week (sets * reps * weight). Progressive load volume triggers mechanical tension.
               </motion.div>
@@ -937,7 +1225,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-[11px] text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Nervous system strain mapped from sleep, stress, and soreness variables. AI adjusts load intensities in active routines dynamically.
               </motion.div>
@@ -962,7 +1250,7 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-[11px] text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
               >
                 Your latest logged sleep. 7.5-9 hours is the critical physiological zone for protein synthesis and tissue restoration.
               </motion.div>
@@ -972,30 +1260,139 @@ export function DashboardScreen() {
       </section>
       )}
 
+      {/* ─── WEEKLY CONSISTENCY STREAKS GRID ─── */}
+      {!guidedMode && (
+        <Card className="p-4 border border-card-border bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-2.5">
+            <Calendar size={16} className="text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Consistency Streaks</h2>
+          </div>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
+            Your combined training and nutrition tracking history. Keep the momentum going by logging workouts and meals daily!
+          </p>
+
+          <div className="mt-4 flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
+            {/* Grid */}
+            <div className="flex flex-col gap-1.5 select-none w-full max-w-[340px] shrink-0">
+              {/* Day of Week Labels */}
+              <div className="grid grid-cols-[36px_1fr] gap-2 items-center">
+                <div /> {/* Spacer for row labels */}
+                <div className="grid grid-cols-7 gap-1.5 text-center">
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, idx) => (
+                    <div key={idx} className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rows (4 weeks) */}
+              {[0, 1, 2, 3].map((weekIdx) => {
+                const weekDays = consistencyDays.slice(weekIdx * 7, (weekIdx + 1) * 7);
+                const isCurrentWeek = weekIdx === 3;
+                return (
+                  <div key={weekIdx} className="grid grid-cols-[36px_1fr] gap-2 items-center">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase font-mono">
+                      {isCurrentWeek ? "This" : `W-${3 - weekIdx}`}
+                    </span>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {weekDays.map((day) => {
+                        let cellBgClass = "bg-zinc-150 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-800/60";
+                        let titleText = `${day.dateStr}: Rest Day / No entries`;
+
+                        if (day.isFuture) {
+                          cellBgClass = "bg-zinc-100/50 dark:bg-zinc-900/20 border border-dashed border-zinc-200/30 dark:border-zinc-800/30 opacity-40";
+                          titleText = `${day.dateStr}: Future day`;
+                        } else if (day.hasWorkout && day.hasNutrition) {
+                          cellBgClass = "bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500 text-white shadow-sm shadow-emerald-500/10";
+                          titleText = `${day.dateStr}: Workout + Nutrition logged (Full consistency!)`;
+                        } else if (day.hasWorkout) {
+                          cellBgClass = "bg-teal-500/90 dark:bg-teal-500/70 border border-teal-500/80 text-white shadow-sm shadow-teal-500/10";
+                          titleText = `${day.dateStr}: Workout logged`;
+                        } else if (day.hasNutrition) {
+                          cellBgClass = "bg-amber-500/90 dark:bg-amber-500/70 border border-amber-500/80 text-white shadow-sm shadow-amber-500/10";
+                          titleText = `${day.dateStr}: Nutrition logged`;
+                        }
+
+                        return (
+                          <div
+                            key={day.dateStr}
+                            className={`aspect-square w-full rounded-[6px] relative flex items-center justify-center transition-all duration-150 hover:scale-115 active:scale-95 cursor-help ${cellBgClass}`}
+                            title={titleText}
+                          >
+                            {day.isToday && (
+                              <span className="absolute -inset-0.5 rounded-[8px] border-2 border-indigo-500 dark:border-indigo-400 animate-pulse pointer-events-none" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend / Stats */}
+            <div className="flex flex-col gap-3 justify-center w-full">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
+                  <div className="w-3.5 h-3.5 rounded-[4px] bg-teal-500/90 border border-teal-500" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Workout Logged</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
+                  <div className="w-3.5 h-3.5 rounded-[4px] bg-amber-500/90 border border-amber-500" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Nutrition Logged</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border col-span-2">
+                  <div className="w-3.5 h-3.5 rounded-[4px] bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500" />
+                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Full Lockstep (Workout + Diet)</span>
+                </div>
+              </div>
+
+              {/* Minimal metrics text */}
+              <div className="p-2.5 rounded-xl bg-surface border border-surface-border text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                <div className="flex justify-between items-center mb-1">
+                  <span>Workouts completed (28d):</span>
+                  <strong className="text-zinc-850 dark:text-white font-bold font-mono">
+                    {consistencyDays.filter(d => d.hasWorkout && !d.isFuture).length} days
+                  </strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Diet tracked (28d):</span>
+                  <strong className="text-zinc-850 dark:text-white font-bold font-mono">
+                    {consistencyDays.filter(d => d.hasNutrition && !d.isFuture).length} days
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* ─── DYNAMIC BIOMETRICS hub ─── */}
       {!guidedMode && (
         <Card className="p-4 border border-card-border bg-card shadow">
-          <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
             <div className="flex items-center gap-2">
               <User size={16} className="text-emerald-600 dark:text-emerald-400" />
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider">Athlete Biometrics</h2>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Athlete Biometrics</h2>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-white" onClick={() => setActiveTab("settings")}>
+            <Button variant="ghost" size="icon" aria-label="Edit biometrics" className="h-7 w-7 text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setActiveTab("settings")}>
               <Pencil size={14} />
             </Button>
           </div>
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase">Age</span>
-              <p className="font-bold text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-400">yrs</span></p>
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Age</span>
+              <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-750 dark:text-zinc-400">yrs</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase">Weight</span>
-              <p className="font-bold text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-400">{profile?.weightUnit}</span></p>
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Weight</span>
+              <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-750 dark:text-zinc-400">{profile?.weightUnit}</span></p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase">Height</span>
-              <p className="font-bold text-white text-sm">
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Height</span>
+              <p className="font-bold text-zinc-955 dark:text-white text-sm">
                 {profile?.height
                   ? profile.heightUnit === "in"
                     ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
@@ -1004,15 +1401,15 @@ export function DashboardScreen() {
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase">Target Physique</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-300 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Target Physique</span>
+              <p className="font-bold text-emerald-600 dark:text-emerald-450 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
                 {profile?.targetPhysique ?? "N/A"}
               </p>
             </div>
             <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase">Protein Target</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-300 text-sm">
-                {calculatedProtein ? `${calculatedProtein} g/day` : "N/A"}
+              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Protein Target</span>
+              <p className="font-bold text-emerald-600 dark:text-emerald-450 text-sm">
+                {nutritionTargets.protein ? `${nutritionTargets.protein} g/day` : "N/A"}
               </p>
             </div>
           </div>
@@ -1022,29 +1419,29 @@ export function DashboardScreen() {
       {/* ─── HIGH-FIDELITY TABBED TRENDS CONSOLE ─── */}
       {!guidedMode && (
         <Card className="p-5 border border-card-border bg-card shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/5 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-100 dark:border-white/5 pb-4">
             <div>
-              <h2 className="text-lg font-bold text-white leading-tight">Bio-Analytics Console</h2>
-              <p className="text-xs text-zinc-400">Biological markers and load volume trendlines</p>
+              <h2 className="text-lg font-bold text-zinc-955 dark:text-white leading-tight">Bio-Analytics Console</h2>
+              <p className="text-xs text-zinc-555 dark:text-zinc-500">Biological markers and load volume trendlines</p>
             </div>
             
             {/* Custom Tabs */}
             <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
               <button
                 onClick={() => setActiveChartTab("weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"}`}
               >
                 <span className="flex items-center gap-1.5">
-                  <Weight size={13} />
+                  <Weight size={14} />
                   Bodyweight
                 </span>
               </button>
               <button
                 onClick={() => setActiveChartTab("volume")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"}`}
               >
                 <span className="flex items-center gap-1.5">
-                  <TrendingUp size={13} />
+                  <TrendingUp size={14} />
                   Weekly Volume
                 </span>
               </button>
@@ -1077,7 +1474,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-555 dark:text-zinc-500 italic">
                       Requires at least two bodyweight logs to generate analytical trendlines.
                     </div>
                   )}
@@ -1106,7 +1503,7 @@ export function DashboardScreen() {
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-500 italic">
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-555 dark:text-zinc-500 italic">
                       Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
                     </div>
                   )}
@@ -1123,8 +1520,8 @@ export function DashboardScreen() {
           {/* ─── DYNAMIC PLANS COLLECTION ─── */}
           <section className="space-y-3">
             <div className="flex items-center gap-2 px-1">
-              <ClipboardList size={16} className="text-zinc-500" />
-              <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Workout Programs</h2>
+              <ClipboardList size={16} className="text-zinc-555 dark:text-zinc-500" />
+              <h2 className="text-xs font-bold text-zinc-555 dark:text-zinc-500 uppercase tracking-widest">Workout Programs</h2>
             </div>
 
             {workoutPlans.map(plan => {
@@ -1157,17 +1554,17 @@ export function DashboardScreen() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                        <h3 className="text-xl font-bold text-zinc-955 dark:text-white">{plan.name}</h3>
                         {isActive && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                             Active Plan
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs leading-normal text-zinc-400 max-w-sm">{plan.goal}</p>
+                      <p className="mt-1 text-xs leading-normal text-zinc-750 dark:text-zinc-400 max-w-sm">{plan.goal}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
+                      <Button variant="ghost" size="icon" aria-label="Edit workout plan" className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-40" disabled={coachBusy} onClick={() => {
                         setEditingWorkoutPlanId(plan.id);
                         setActiveSubScreen("workout-plan-builder");
                       }}>
@@ -1184,7 +1581,7 @@ export function DashboardScreen() {
 
                   {/* Progress Indicator */}
                   <div className="mt-4 space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] text-zinc-500 font-semibold">
+                    <div className="flex items-center justify-between text-xs text-zinc-750 dark:text-zinc-400 font-semibold">
                       <span>Weekly Routines Progress</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
                     </div>
@@ -1197,7 +1594,7 @@ export function DashboardScreen() {
                   </div>
 
                   <div className="mt-4 flex gap-2">
-                    <Button className="flex-1 text-xs font-semibold py-2" variant="primary" onClick={() => {
+                    <Button className="flex-1 text-xs font-semibold py-2 disabled:opacity-40" variant="primary" disabled={coachBusy} onClick={() => {
                       setEditingWorkoutPlanId(plan.id);
                       setActiveSubScreen("workout-plan-detail");
                     }}>
@@ -1205,8 +1602,9 @@ export function DashboardScreen() {
                     </Button>
                     {!isActive && (
                       <Button 
-                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground"
+                        className="flex-1 text-xs font-semibold py-2 border-btn-secondary-border bg-btn-secondary hover:bg-btn-secondary-hover text-foreground disabled:opacity-40"
                         variant="secondary"
+                        disabled={coachBusy}
                         onClick={() => {
                           setPlanToActivate(plan.id);
                           setShowSwitchModal(true);
@@ -1223,17 +1621,17 @@ export function DashboardScreen() {
             {coachBusy && (
               <Card className="p-4 border border-card-border bg-card shadow flex items-center justify-center gap-3">
                 <Bot className="h-5 w-5 text-emerald-400 animate-pulse" />
-                <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Coach is designing new program...</span>
+                <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase tracking-wider">Coach is designing new program...</span>
               </Card>
             )}
           </section>
 
           {/* ─── PERSONAL RECORDS achievements SHELF ─── */}
           <Card className="p-4 border border-card-border bg-card shadow">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
               <div className="flex items-center gap-2">
                 <Medal className="text-amber-400" size={16} />
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">Recent Personal Records</h2>
+                <h2 className="text-sm font-bold text-zinc-955 dark:text-white uppercase tracking-wider">Recent Personal Records</h2>
               </div>
             </div>
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2 md:grid-cols-3">
@@ -1241,8 +1639,8 @@ export function DashboardScreen() {
                 recentPrs.slice(0, 6).map((pr) => (
                   <Surface key={`${pr.exerciseName}-${pr.value}`} className="flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface">
                     <div>
-                      <p className="text-xs font-bold text-white truncate max-w-36">{pr.exerciseName}</p>
-                      <p className="text-[10px] text-zinc-500">{pr.date}</p>
+                      <p className="text-xs font-bold text-zinc-955 dark:text-white truncate max-w-36">{pr.exerciseName}</p>
+                      <p className="text-xs text-zinc-555 dark:text-zinc-500">{pr.date}</p>
                     </div>
                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold border border-amber-500/15">
                       {pr.value}
@@ -1250,7 +1648,7 @@ export function DashboardScreen() {
                   </Surface>
                 ))
               ) : (
-                <div className="col-span-full py-4 text-center text-xs text-zinc-500 italic">
+                <div className="col-span-full py-4 text-center text-xs text-zinc-555 dark:text-zinc-500 italic">
                   Perform sets in your scheduled workouts to register new personal records.
                 </div>
               )}
@@ -1265,13 +1663,13 @@ export function DashboardScreen() {
                   <Bot size={22} className={isLastMessageError ? 'text-red-400' : 'text-emerald-500'} />
                 </div>
                 <div className="flex-1 space-y-1">
-                  <span className={`text-[9px] font-black uppercase tracking-widest ${isLastMessageError ? 'text-red-400' : 'text-emerald-500'}`}>
+                  <span className={`text-xs font-black uppercase tracking-widest ${isLastMessageError ? 'text-red-400' : 'text-emerald-500'}`}>
                     {isLastMessageError ? "Central Link Impaired" : "Dynamic Coaching Directive"}
                   </span>
-                  <h3 className="text-sm font-bold text-white leading-snug">
+                  <h3 className="text-sm font-bold text-zinc-955 dark:text-white leading-snug">
                     {isLastMessageError ? "AI Coach Connection Problem" : "Today's Biomechanical Note"}
                   </h3>
-                  <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-300'}`}>
+                  <div className={`text-xs leading-relaxed max-w-none pt-1.5 ${isLastMessageError ? 'text-red-300/90' : 'text-zinc-750 dark:text-zinc-300'}`}>
                     {lastMessage && isWorkoutPlan(lastMessage.content) ? (
                       <div className="space-y-3">
                         {(() => {
@@ -1283,7 +1681,7 @@ export function DashboardScreen() {
                             nonJson = "";
                           }
                           return nonJson ? (
-                            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-400">
+                            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:text-emerald-450 max-w-none text-xs text-zinc-750 dark:text-zinc-400">
                               {nonJson}
                             </ReactMarkdown>
                           ) : null;
@@ -1299,12 +1697,12 @@ export function DashboardScreen() {
                   
                   <div className="pt-2 flex justify-start">
                     <Button
-                      className={`text-[11px] font-bold py-1.5 px-3 flex items-center gap-1 border ${isLastMessageError ? 'border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:border-red-500/20 dark:bg-red-950/30 dark:hover:bg-red-900/30 dark:text-red-300' : 'border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-300'}`}
+                      className={`text-xs font-bold py-1.5 px-3 flex items-center gap-1 border ${isLastMessageError ? 'border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:border-red-500/20 dark:bg-red-950/30 dark:hover:bg-red-900/30 dark:text-red-300' : 'border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-300'}`}
                       variant="secondary"
                       onClick={() => setActiveTab("coach")}
                     >
                       Ask Coach Detailed Question
-                      <ArrowUpRight size={13} />
+                      <ArrowUpRight size={15} />
                     </Button>
                   </div>
                 </div>
@@ -1324,14 +1722,14 @@ export function DashboardScreen() {
       {showSwitchModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
               setShowSwitchModal(false);
               setPlanToActivate(null);
             }}>
               <X size={20} />
             </Button>
-            <h3 className="text-xl font-bold text-white leading-tight">Switch Active Program</h3>
-            <p className="text-zinc-300 text-xs leading-relaxed">
+            <h3 className="text-xl font-bold text-zinc-955 dark:text-white leading-tight">Switch Active Program</h3>
+            <p className="text-zinc-750 dark:text-zinc-300 text-xs leading-relaxed">
               {activeWorkout 
                 ? "Switching active plan: You currently have a workout session in progress. Switching plans now will discard your active session and wipe uncompleted tracking data. Do you want to proceed?"
                 : "Switching active plan: This will recalibrate your training metrics, weekly streaks, and consistency targets to map the new plan schedule."}
@@ -1360,14 +1758,14 @@ export function DashboardScreen() {
       {showDeleteModal && planToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 supports-[backdrop-filter]:backdrop-blur-md">
           <Card className="w-full max-w-sm p-6 space-y-4 relative border border-card-border bg-card shadow-2xl">
-            <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-white" onClick={() => {
+            <Button variant="ghost" size="icon" aria-label="Close" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-900 dark:hover:text-white" onClick={() => {
               setShowDeleteModal(false);
               setPlanToDelete(null);
             }}>
               <X size={20} />
             </Button>
-            <h3 className="text-xl font-bold text-white leading-tight">Delete Workout Program</h3>
-            <p className="text-zinc-300 text-xs leading-relaxed">
+            <h3 className="text-xl font-bold text-zinc-955 dark:text-white leading-tight">Delete Workout Program</h3>
+            <p className="text-zinc-750 dark:text-zinc-300 text-xs leading-relaxed">
               {activeWorkout && activeWorkout.planId === planToDelete.id
                 ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently discard the active workout and delete this program file.`
                 : `Are you sure you want to delete the plan "${planToDelete.name}"? This action is permanent. All weekly scheduled routines and exercise layouts in this program will be deleted.`}
@@ -1412,7 +1810,7 @@ export function DashboardScreen() {
                 <AlertTriangle className="text-rose-500 dark:text-rose-400" size={22} />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
+                <p className="text-xs font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
               </div>
@@ -1420,14 +1818,14 @@ export function DashboardScreen() {
 
             {/* Error detail */}
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/[0.07] p-3.5 space-y-1">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
               <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
                 {aiErrorMessage || "An unknown error occurred communicating with the AI provider."}
               </p>
             </div>
 
             {/* Tips */}
-            <div className="space-y-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+            <div className="space-y-1.5 text-xs text-zinc-500 dark:text-zinc-400">
               <p className="font-semibold text-zinc-700 dark:text-zinc-300">Common causes:</p>
               <ul className="list-disc list-inside space-y-1 leading-relaxed">
                 <li>Invalid or expired API key</li>
@@ -1454,7 +1852,7 @@ export function DashboardScreen() {
                 }}
                 className="flex-1 text-xs font-bold"
               >
-                <Settings size={14} className="mr-1.5" />
+                <Settings size={16} />
                 Check AI Settings
               </Button>
             </div>
@@ -1483,7 +1881,7 @@ export function DashboardScreen() {
 
             {/* AI BUSY OVERLAY — shown instead of options when AI is generating */}
             {coachBusy ? (
-              <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/60 via-fuchsia-950/50 to-zinc-950/80 p-5 space-y-3">
+              <div className="relative overflow-hidden rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-50 to-fuchsia-50/80 dark:from-violet-950/60 dark:via-fuchsia-950/50 dark:to-zinc-950/80 p-5 space-y-3">
                 {/* Ambient glow */}
                 <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-violet-500/20 blur-[50px] pointer-events-none" />
                 <div className="flex items-center gap-3">
@@ -1498,20 +1896,20 @@ export function DashboardScreen() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">AI Coach</span>
-                      <span className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
+                      <span className="text-xs font-black uppercase tracking-widest text-violet-400">AI Coach</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-extrabold uppercase tracking-wider bg-violet-500/20 text-violet-300 border border-violet-500/30 px-1.5 py-0.5 rounded-full">
                         <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse" />
                         Cooking
                       </span>
                     </div>
-                    <p className="text-sm font-bold text-white mt-0.5">Your plan is being generated!</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-white mt-0.5">Your plan is being generated!</p>
                   </div>
                 </div>
-                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
                   Your AI Coach is working hard to build a personalised, clinical-grade program for you. Other plan creation options are temporarily unavailable while generation is in progress.
                 </p>
                 {/* Shimmer bar */}
-                <div className="h-1.5 w-full rounded-full bg-violet-950/60 border border-violet-500/20 overflow-hidden">
+                <div className="h-1.5 w-full rounded-full bg-violet-200 dark:bg-violet-950/60 border border-violet-300/40 dark:border-violet-500/20 overflow-hidden">
                   <motion.div
                     className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-violet-500 rounded-full"
                     initial={{ x: "-100%" }}
@@ -1520,7 +1918,7 @@ export function DashboardScreen() {
                     style={{ width: "60%" }}
                   />
                 </div>
-                <p className="text-[10px] text-zinc-500 text-center italic">Switch to the Coach tab to watch the plan arrive in real-time ✨</p>
+                <p className="text-xs text-zinc-500 text-center italic">Switch to the Coach tab to watch the plan arrive in real-time ✨</p>
               </div>
             ) : (
               <div className="space-y-3 pt-2">
@@ -1539,7 +1937,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                       Load 3-Day Seed Plan
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Start tracking immediately with a pre-configured, beginner-friendly full-body template split.
                     </p>
                   </div>
@@ -1560,7 +1958,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       Create Manual Plan
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
                     </p>
                   </div>
@@ -1581,7 +1979,7 @@ export function DashboardScreen() {
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                       Generate with AI Coach
                     </h4>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
                       Have the AI Coach write a personalized plan for you based on your biometrics, target goals, and training experience.
                     </p>
                   </div>
@@ -1591,6 +1989,275 @@ export function DashboardScreen() {
           </Card>
         </div>
       )}
+
+      {/* ─── SECURE BACKUP UPGRADE MODAL ─── */}
+      {showMigrationModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+          <Card className="w-full max-w-md p-6 relative overflow-hidden bg-card/95 border border-card-border shadow-2xl">
+            <div className="absolute -right-20 -top-20 w-40 h-40 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+
+            {!showMigrationSuccessAnimation ? (
+              <>
+                <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-3 mb-5 select-none">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="text-emerald-500" size={20} />
+                    <h3 className="font-bold text-zinc-900 dark:text-white text-base">Secure Cloud Sync Setup</h3>
+                  </div>
+                  {!isMigrationSubmitting && (
+                    <button
+                      onClick={() => {
+                        setShowMigrationModal(false);
+                        setMigrationEmailInput("");
+                        setMigrationSubmitError(null);
+                      }}
+                      className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition"
+                      aria-label="Close sync setup"
+                    >
+                      <X size={18} />
+                    </button>
+                  )}
+                </div>
+
+                {migrationSubmitError && (
+                  <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-455 text-xs">
+                    {migrationSubmitError}
+                  </div>
+                )}
+
+                {/* Tab selector for Google vs Manual Email Sync */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-950/40 border border-zinc-500/10 dark:border-white/5 rounded-xl mb-4 select-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMigrationMethod("google");
+                      setMigrationEmailError(null);
+                      setMigrationSubmitError(null);
+                    }}
+                    className={`py-2 text-[11px] font-bold rounded-lg transition duration-200 cursor-pointer ${
+                      migrationMethod === "google"
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-150 shadow-sm"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200"
+                    }`}
+                    disabled={isMigrationFederatedLoading || isMigrationSubmitting || isSendingMigrationOtp}
+                  >
+                    Google Sign-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMigrationMethod("email");
+                      setMigrationEmailError(null);
+                      setMigrationSubmitError(null);
+                      setMigrationOtpError(null);
+                    }}
+                    className={`py-2 text-[11px] font-bold rounded-lg transition duration-200 cursor-pointer ${
+                      migrationMethod === "email"
+                        ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-150 shadow-sm"
+                        : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200"
+                    }`}
+                    disabled={isMigrationFederatedLoading || isMigrationSubmitting || isSendingMigrationOtp}
+                  >
+                    Manual Email Sync
+                  </button>
+                </div>
+
+                {migrationMethod === "google" ? (
+                  <div className="space-y-4 animate-fadeIn">
+                    {isMigrationFederatedLoading ? (
+                      <div className="py-12 flex flex-col items-center justify-center space-y-4 animate-fadeIn select-none">
+                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent shadow-md" />
+                        <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider font-mono">
+                          Checking sync status...
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="migration-google-email" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Google Email Address</Label>
+                          <div className="relative">
+                            <Input
+                              id="migration-google-email"
+                              type="email"
+                              value={migrationEmailInput}
+                              onChange={(e) => {
+                                setMigrationEmailInput(e.target.value);
+                                setMigrationEmailError(null);
+                              }}
+                              placeholder="e.g. athlete.dev@gmail.com"
+                              className="pl-9 text-xs font-medium focus:ring-2 focus:ring-emerald-450/10"
+                            />
+                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          </div>
+                          {migrationEmailError && (
+                            <p className="text-[10px] text-rose-500 font-medium mt-1">{migrationEmailError}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2.5 pt-2">
+                          <button
+                            type="button"
+                            onClick={handleGoogleMigrationSubmit}
+                            disabled={!migrationEmailInput.trim()}
+                            className="w-full py-2.5 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 hover:border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold transition duration-200 cursor-pointer text-center select-none active:scale-[0.99] disabled:opacity-50"
+                          >
+                            Simulate Google Sign-In (Sandbox Sync)
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4 animate-fadeIn">
+                    {!migrationOtpSent ? (
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="migration-manual-email" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Email Address</Label>
+                          <div className="relative">
+                            <Input
+                              id="migration-manual-email"
+                              type="email"
+                              value={migrationEmailInput}
+                              onChange={(e) => {
+                                setMigrationEmailInput(e.target.value);
+                                setMigrationEmailError(null);
+                              }}
+                              placeholder="e.g. athlete.dev@gmail.com"
+                              className="pl-9 text-xs font-medium focus:ring-2 focus:ring-emerald-450/10"
+                              disabled={isSendingMigrationOtp}
+                            />
+                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                          </div>
+                          {migrationEmailError && (
+                            <p className="text-[10px] text-rose-500 font-medium mt-1">{migrationEmailError}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2.5 pt-2">
+                          <Button
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                            variant="primary"
+                            onClick={handleSendMigrationOtp}
+                            icon={isSendingMigrationOtp ? (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                            ) : (
+                              <Mail size={16} className="text-zinc-955" />
+                            )}
+                            disabled={isSendingMigrationOtp || !migrationEmailInput.trim()}
+                          >
+                            {isSendingMigrationOtp ? "Sending OTP..." : "Send Verification Code"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 animate-fadeIn">
+                        {showMigrationSandboxOtp && (
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3">
+                            <Lock size={14} className="text-emerald-500 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Sandbox Verification Code</p>
+                              <p className="text-[11px] font-mono text-foreground font-bold tracking-widest">{migrationGeneratedOtp}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(migrationGeneratedOtp);
+                                setMigrationOtpCopied(true);
+                                setTimeout(() => setMigrationOtpCopied(false), 2000);
+                              }}
+                              className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2 py-1 rounded hover:bg-emerald-500/10 transition"
+                            >
+                              {migrationOtpCopied ? "Copied" : "Copy"}
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <Label htmlFor="migration-otp" className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">6-Digit Code</Label>
+                          <Input
+                            id="migration-otp"
+                            type="text"
+                            maxLength={6}
+                            value={migrationOtpInput}
+                            onChange={(e) => {
+                              setMigrationOtpInput(e.target.value.replace(/[^0-9]/g, ""));
+                              setMigrationOtpError(null);
+                            }}
+                            placeholder="e.g. 123456"
+                            className="text-xs font-mono font-black text-center tracking-widest focus:ring-2 focus:ring-emerald-450/10"
+                            disabled={isMigrationSubmitting}
+                          />
+                          {migrationOtpError && (
+                            <p className="text-[10px] text-rose-500 font-medium mt-1">{migrationOtpError}</p>
+                          )}
+                        </div>
+
+                        <div className="flex gap-3 border-t border-card-border pt-4 mt-6">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setMigrationOtpSent(false);
+                              setMigrationOtpInput("");
+                              setMigrationOtpError(null);
+                              setShowMigrationSandboxOtp(false);
+                            }}
+                            icon={<ArrowLeft size={16} />}
+                            disabled={isMigrationSubmitting}
+                          >
+                            Change Email
+                          </Button>
+                          <Button
+                            className="ml-auto bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-500 text-zinc-950 font-bold"
+                            variant="primary"
+                            onClick={handleVerifyMigrationOtp}
+                            icon={isMigrationSubmitting ? (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                            ) : (
+                              <Check size={16} className="text-zinc-955 font-bold" />
+                            )}
+                            disabled={isMigrationSubmitting || migrationOtpInput.length !== 6}
+                          >
+                            {isMigrationSubmitting ? "Verifying..." : "Verify & Enable Sync"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="rounded-2xl border border-zinc-500/10 dark:border-white/5 bg-zinc-500/5 p-4 space-y-1.5 mt-4">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                        ⚠️ Crucial Data Warning
+                      </span>
+                      <p className="text-[10px] text-zinc-555 dark:text-zinc-500 leading-relaxed">
+                        If you want to sync your training data seamlessly to any device, pick this option. Otherwise, your training data remains local to this browser session and may be lost if your browser cache is cleared.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Success / Migration animation step */
+              <div className="text-center py-6 space-y-4 select-none">
+                <div className="mx-auto h-16 w-16 bg-emerald-500/20 border border-emerald-500/40 rounded-full flex items-center justify-center text-emerald-400">
+                  <Check className="stroke-[3]" size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-white">Upgrade Successful</h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
+                    A secure email sync record has been verified. Your legacy backing file has been converted to the safe naming format:
+                  </p>
+                  <div className="bg-zinc-950/60 border border-white/5 py-1.5 px-3 rounded-lg font-mono text-[10px] font-bold text-emerald-400 max-w-sm mx-auto select-all break-all">
+                    profile_email_{migrationEmailInput.toLowerCase().trim()}.json
+                  </div>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed max-w-xs mx-auto pt-1">
+                    Your full logs, metrics, plans, and history have been successfully preserved and synced.
+                  </p>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
     </motion.div>
-  );
+  </>
+);
 }

@@ -11,6 +11,8 @@ export const defaultProfile: UserProfile = {
   weightUnit: "lbs",
   heightUnit: "in",
   createdAt: new Date().toISOString(),
+  gender: "male",
+  activityLevel: "moderately_active",
 };
 
 export const sampleWorkouts: Workout[] = [];

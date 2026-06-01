@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import type { Routine, Exercise } from "@/types/domain";
 import { createId } from "@/lib/id";
 import { ArrowLeft, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 const freshRoutine = (): Routine => ({
   id: createId("routine"),
@@ -29,9 +30,12 @@ export function RoutineBuilderScreen() {
   const setEditingRoutineId = useAtlasStore((state) => state.setEditingRoutineId);
   const coachBusy = useAtlasStore((state) => state.coachBusy);
   const generateGlobalExercise = useAtlasStore((state) => state.generateGlobalExercise);
+  const routineBuilderDefaultDay = useAtlasStore((state) => state.routineBuilderDefaultDay);
+  const setRoutineBuilderDefaultDay = useAtlasStore((state) => state.setRoutineBuilderDefaultDay);
 
   const [routine, setRoutine] = useState<Routine>(freshRoutine());
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState<"all" | "chest" | "back" | "legs" | "core">("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,17 +48,45 @@ export function RoutineBuilderScreen() {
     } else {
       const plan = workoutPlans.find(p => p.id === editingWorkoutPlanId);
       const takenDays = new Set(plan?.routines.map(r => r.day) ?? []);
-      const availableDay = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].find(d => !takenDays.has(d)) || "Monday";
+      // Use the pre-selected day from a rest-day card, or fall back to first available
+      const preselectedDay = routineBuilderDefaultDay && !takenDays.has(routineBuilderDefaultDay)
+        ? routineBuilderDefaultDay
+        : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].find(d => !takenDays.has(d)) || "Monday";
       setRoutine({
         ...freshRoutine(),
-        day: availableDay,
+        day: preselectedDay,
       });
+      // Clear the default day after consuming it
+      if (routineBuilderDefaultDay) setRoutineBuilderDefaultDay(null);
     }
   }, [editingWorkoutPlanId, editingRoutineId, workoutPlans]);
 
-  const filteredExercises = exercises.filter((exercise) =>
-    exercise.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredExercises = exercises.filter((exercise) => {
+    // 1. Search term match
+    const matchesSearch = exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exercise.aliases?.some(alias => alias.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+    if (!matchesSearch) return false;
+
+    // 2. Category muscle match
+    if (activeCategory === "all") return true;
+
+    const muscles = exercise.muscles.map(m => m.toLowerCase());
+    if (activeCategory === "chest") {
+      return muscles.some(m => m.includes("chest") || m.includes("pectoral") || m.includes("pecs"));
+    }
+    if (activeCategory === "back") {
+      return muscles.some(m => m.includes("lats") || m.includes("latissimus") || m.includes("traps") || m.includes("trapezius") || m.includes("rhomboids") || m.includes("back") || m.includes("erector"));
+    }
+    if (activeCategory === "legs") {
+      return muscles.some(m => m.includes("quad") || m.includes("hamstring") || m.includes("glute") || m.includes("calf") || m.includes("calves") || m.includes("legs") || m.includes("thigh") || m.includes("adductor"));
+    }
+    if (activeCategory === "core") {
+      return muscles.some(m => m.includes("abs") || m.includes("abdominals") || m.includes("obliques") || m.includes("core") || m.includes("transverse"));
+    }
+
+    return true;
+  });
 
 
 
@@ -62,14 +94,15 @@ export function RoutineBuilderScreen() {
     if (routine.exercises.some((ex) => ex.exerciseId === exercise.id)) {
       return; // Already in routine
     }
+    const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
     setRoutine((prev) => ({
       ...prev,
       exercises: [
         ...prev.exercises,
         {
           exerciseId: exercise.id,
-          targetSets: 3,
-          targetReps: "8-12",
+          targetSets: isCardio ? 1 : 3,
+          targetReps: isCardio ? "30 mins" : "8-12",
           restSeconds: 60,
         },
       ],
@@ -255,16 +288,22 @@ export function RoutineBuilderScreen() {
                   </Button>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
-                  <div>
-                    <Label>Sets</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={ex.targetSets}
-                      onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetSets", Number(e.target.value))}
-                    />
-                  </div>
+                  {(() => {
+                    const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
+                    return (
+                      <div>
+                        <Label>Sets</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          disabled={isCardio}
+                          value={isCardio ? 1 : ex.targetSets}
+                          onChange={(e) => handleExerciseDetailChange(ex.exerciseId, "targetSets", Number(e.target.value))}
+                        />
+                      </div>
+                    );
+                  })()}
                   <div>
                     <Label>Reps</Label>
                     <Input
@@ -298,6 +337,31 @@ export function RoutineBuilderScreen() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+
+        {/* Category Tabs */}
+        <div className="mt-3 flex gap-1.5 p-1 bg-zinc-150 dark:bg-zinc-900 border border-card-border rounded-xl select-none overflow-x-auto scrollbar-none">
+          {([
+            { id: "all" as const, label: "All" },
+            { id: "chest" as const, label: "Chest" },
+            { id: "back" as const, label: "Back" },
+            { id: "legs" as const, label: "Legs" },
+            { id: "core" as const, label: "Core" },
+          ] as const).map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setActiveCategory(cat.id)}
+              className={cn(
+                "flex-1 py-1.5 px-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-155 whitespace-nowrap active:scale-[0.98] min-h-[36px]",
+                activeCategory === cat.id
+                  ? "bg-white dark:bg-zinc-800 text-emerald-650 dark:text-emerald-400 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-850 dark:hover:text-zinc-200"
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
         {searchTerm.trim().length > 2 && (
           <div className="mt-3 flex items-center justify-between p-3 rounded-2xl border border-purple-500/15 dark:border-purple-500/20 bg-purple-500/5 dark:bg-purple-950/10 select-none">
             <div className="min-w-0 pr-2">

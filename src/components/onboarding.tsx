@@ -28,6 +28,8 @@ const providerTypes = [
 
 const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
+  gender: z.enum(["male", "female"]),
+  activityLevel: z.enum(["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"]),
   customGoal: z.string().min(8, "Add a specific goal").max(120, "Goal must be 120 characters or less"),
   bodyType: z.enum(["ectomorph", "mesomorph", "endomorph"]),
   experience: z.enum(["beginner", "intermediate", "advanced"]),
@@ -80,6 +82,14 @@ const targetPhysiqueOptions = [
   { value: "bulky", label: "Bulky", desc: "Maximize size and thickness." },
   { value: "shredded", label: "Shredded", desc: "Ultra-low fat, high definition." },
   { value: "toned", label: "Toned", desc: "Firm muscles, healthy look." },
+] as const;
+
+const activityLevelOptions = [
+  { value: "sedentary", label: "Sedentary", desc: "Desk job, little to no weekly exercise." },
+  { value: "lightly_active", label: "Lightly Active", desc: "Light exercise or sports 1-3 days/week." },
+  { value: "moderately_active", label: "Moderately Active", desc: "Moderate exercise or sports 3-5 days/week." },
+  { value: "very_active", label: "Very Active", desc: "Hard exercise or sports 6-7 days/week." },
+  { value: "extra_active", label: "Extra Active", desc: "Very physical job or athletic training twice/day." },
 ] as const;
 
 const durationOptions = [
@@ -210,6 +220,8 @@ export function Onboarding() {
         equipment: "full gym",
         providerType: "none",
         workoutDuration: 45,
+        gender: "male",
+        activityLevel: "moderately_active",
       });
     } catch (e: any) {
       setSubmitError(e.message || "Failed to skip onboarding.");
@@ -228,6 +240,8 @@ export function Onboarding() {
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       name: "",
+      gender: "male",
+      activityLevel: "moderately_active",
       customGoal: "",
       bodyType: "mesomorph",
       experience: "intermediate",
@@ -266,11 +280,11 @@ export function Onboarding() {
   const nextStep = async () => {
     let fieldsToValidate: Array<keyof OnboardingForm> = [];
     if (step === 1) {
-      fieldsToValidate = ["name", "age", "height", "weight", "heightUnit", "weightUnit"];
+      fieldsToValidate = ["name", "age", "height", "weight", "heightUnit", "weightUnit", "gender"];
     } else if (step === 2) {
       fieldsToValidate = ["customGoal", "trainingStyle", "daysPerWeek", "equipment", "workoutDuration"];
     } else if (step === 3) {
-      fieldsToValidate = ["bodyType", "targetPhysique", "experience", "injuries"];
+      fieldsToValidate = ["bodyType", "targetPhysique", "experience", "injuries", "activityLevel"];
     }
 
     const isValid = await trigger(fieldsToValidate);
@@ -347,7 +361,7 @@ export function Onboarding() {
                   >
                     {isCompleted ? <Check size={14} className="stroke-[3]" /> : s.id}
                   </button>
-                  <span className={`text-[9px] mt-2 font-bold uppercase tracking-wider transition-colors duration-300 ${
+                  <span className={`text-xs mt-2 font-bold uppercase tracking-wider transition-colors duration-300 ${
                     isActive ? "text-emerald-600 dark:text-emerald-400" : isCompleted ? "text-emerald-600 dark:text-emerald-500" : "text-zinc-400 dark:text-zinc-500"
                   }`}>
                     {s.label}
@@ -419,7 +433,7 @@ export function Onboarding() {
 
                   <div>
                     <Label htmlFor="name">Preferred Name</Label>
-                    <p className="text-zinc-500 text-[11px] mb-1.5 leading-relaxed">
+                    <p className="text-zinc-500 text-xs mb-1.5 leading-relaxed">
                       How should Atlas AI address you? (e.g. in greetings, motivation)
                     </p>
                     <Input id="name" maxLength={30} {...register("name")} placeholder="e.g., Jordan" autoComplete="name" />
@@ -428,7 +442,7 @@ export function Onboarding() {
 
                   {/* Unit System Preferences */}
                   <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-3">
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Unit Preferences</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Unit Preferences</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label>Weight Unit</Label>
@@ -515,6 +529,38 @@ export function Onboarding() {
                       </div>
                     </div>
 
+                    {/* Gender */}
+                    <div>
+                      <Label>Biological Sex</Label>
+                      <div className="mt-1.5">
+                        <Controller
+                          name="gender"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="grid grid-cols-2 gap-1 rounded-xl border border-input-border bg-input p-1 h-9 select-none">
+                              {[
+                                { value: "male", label: "Male" },
+                                { value: "female", label: "Female" },
+                              ].map((g) => (
+                                <button
+                                  key={g.value}
+                                  type="button"
+                                  onClick={() => field.onChange(g.value)}
+                                  className={`rounded-lg text-xs font-bold transition cursor-pointer ${
+                                    field.value === g.value
+                                      ? "bg-emerald-500 text-white-keep dark:text-zinc-950 shadow-sm animate-click"
+                                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                                  }`}
+                                >
+                                  {g.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        />
+                      </div>
+                    </div>
+
                     {/* Weight */}
                     <div>
                       <Label htmlFor="weight">Weight ({selectedWeightUnit})</Label>
@@ -590,8 +636,8 @@ export function Onboarding() {
                   <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-1">
-                        <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">AI Coach Assistant</h3>
-                        <p className="text-[11px] text-zinc-500 leading-normal">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">AI Coach Assistant</h3>
+                        <p className="text-xs text-zinc-500 leading-normal">
                           Enable AI Coach to design personalized programs, write custom workout summaries, and answer training questions.
                         </p>
                       </div>
@@ -612,13 +658,13 @@ export function Onboarding() {
                       </div>
                     </div>
                     {setupAiCoach && (
-                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium animate-fadeIn">
+                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-fadeIn">
                         ✨ A dedicated setup step will be added to the end of your onboarding to connect your AI engine (Gemini, OpenAI, Claude, DeepSeek, or local Ollama/LM Studio).
                       </div>
                     )}
                   </div>
 
-                  <p className="text-[10px] text-zinc-500 italic mt-2 leading-relaxed">
+                  <p className="text-xs text-zinc-500 italic mt-2 leading-relaxed">
                     Why we ask: Age, height, and weight are used to establish relative strength ratios and estimate energy expenditure.
                   </p>
                 </motion.div>
@@ -645,7 +691,7 @@ export function Onboarding() {
 
                   <div>
                     <Label htmlFor="customGoal">Your Workout Goal</Label>
-                    <p className="text-zinc-500 text-[11px] mb-1.5 leading-relaxed">
+                    <p className="text-zinc-500 text-xs mb-1.5 leading-relaxed">
                       Be specific! Tell us what you want to achieve (e.g. increase squat, tone up, build core strength).
                     </p>
                     <Textarea
@@ -659,7 +705,7 @@ export function Onboarding() {
 
                   <div>
                     <Label>Training Methodology</Label>
-                    <p className="text-zinc-500 text-[11px] mb-2">
+                    <p className="text-zinc-500 text-xs mb-2">
                       Select how your routine structure and volume parameters should be formatted:
                     </p>
                     <Controller
@@ -678,7 +724,7 @@ export function Onboarding() {
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label htmlFor="daysPerWeek">Weekly Frequency (Days/Week)</Label>
-                      <p className="text-zinc-500 text-[11px] mb-1.5">
+                      <p className="text-zinc-500 text-xs mb-1.5">
                         How many training sessions can you realistically complete each week?
                       </p>
                       <Input id="daysPerWeek" type="number" min={1} max={7} {...register("daysPerWeek")} />
@@ -688,7 +734,7 @@ export function Onboarding() {
 
                   <div>
                     <Label>Equipment Available</Label>
-                    <p className="text-zinc-500 text-[11px] mb-2">
+                    <p className="text-zinc-500 text-xs mb-2">
                       Specify your training environment so the AI coach schedules available movements:
                     </p>
                     <Controller
@@ -706,7 +752,7 @@ export function Onboarding() {
 
                   <div>
                     <Label>Preferred Workout Duration</Label>
-                    <p className="text-zinc-500 text-[11px] mb-2">
+                    <p className="text-zinc-500 text-xs mb-2">
                       How long do you want your routines to take? This affects generated warm-up and accessory allocations.
                     </p>
                     <Controller
@@ -746,7 +792,7 @@ export function Onboarding() {
 
                   <div>
                     <Label>Natural Body Type</Label>
-                    <p className="text-zinc-500 text-[11px] mb-2">
+                    <p className="text-zinc-500 text-xs mb-2">
                       Select the structure that closest matches your skeletal frame and metabolism:
                     </p>
                     <Controller
@@ -764,7 +810,7 @@ export function Onboarding() {
 
                   <div>
                     <Label>Lifting Experience</Label>
-                    <p className="text-zinc-500 text-[11px] mb-2">
+                    <p className="text-zinc-500 text-xs mb-2">
                       Your historical background with consistent weight training:
                     </p>
                     <Controller
@@ -782,7 +828,7 @@ export function Onboarding() {
 
                   <div>
                     <Label>Aesthetic Physique Goal</Label>
-                    <p className="text-zinc-500 text-[11px] mb-2">
+                    <p className="text-zinc-500 text-xs mb-2">
                       Choose the visual body shape direction you are focusing on:
                     </p>
                     <Controller
@@ -800,8 +846,27 @@ export function Onboarding() {
                   </div>
 
                   <div>
+                    <Label>Weekly Activity Level</Label>
+                    <p className="text-zinc-500 text-xs mb-2">
+                      Required to estimate your Daily Energy Expenditure (TDEE):
+                    </p>
+                    <Controller
+                      name="activityLevel"
+                      control={control}
+                      render={({ field }) => (
+                        <CardGridSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          options={activityLevelOptions}
+                          columns={1}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div>
                     <Label htmlFor="injuries">Injuries or Physical Limitations (Optional)</Label>
-                    <p className="text-zinc-500 text-[11px] mb-1.5 leading-relaxed">
+                    <p className="text-zinc-500 text-xs mb-1.5 leading-relaxed">
                       Do you have any joint issues, chronic pain, or areas to safeguard? (e.g. bad knees, lower back herniation)
                     </p>
                     <Input
@@ -867,11 +932,11 @@ export function Onboarding() {
                               <div className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/15 text-emerald-400">
                                 <Sparkles size={11} className="stroke-[2.5]" />
                               </div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
                                 {helper.title} Steps
                               </span>
                             </div>
-                            <ol className="list-decimal pl-4.5 text-[11px] text-zinc-400 space-y-1">
+                            <ol className="list-decimal pl-4.5 text-xs text-zinc-400 space-y-1">
                               {helper.steps.map((st, i) => (
                                 <li key={i} className="leading-relaxed">{st}</li>
                               ))}
@@ -881,7 +946,7 @@ export function Onboarding() {
                                 href={helper.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-block text-[10px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition"
+                                className="inline-block text-xs font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition"
                               >
                                 Go to Console Website →
                               </a>
@@ -917,7 +982,7 @@ export function Onboarding() {
                       <ShieldAlert size={16} className="mt-0.5 text-rose-400 shrink-0" />
                       <div className="space-y-1">
                         <span className="text-xs font-bold uppercase tracking-wider text-rose-400 block">Connection Error</span>
-                        <p className="text-[11px] leading-relaxed text-zinc-300">{submitError}</p>
+                        <p className="text-xs leading-relaxed text-zinc-300">{submitError}</p>
                       </div>
                     </Surface>
                   )}
@@ -1036,16 +1101,16 @@ function CardGridSelector<T extends string>({
             }`}
           >
             <div className="flex justify-between items-center gap-2 mb-1">
-              <span className={`text-[11px] font-bold uppercase tracking-wider ${isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-200"}`}>
+              <span className={`text-xs font-bold uppercase tracking-wider ${isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-700 dark:text-zinc-200"}`}>
                 {opt.label}
               </span>
               {isSelected && (
-                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 dark:bg-emerald-400 flex items-center justify-center text-[9px] text-white-keep dark:text-zinc-950 font-bold shrink-0">
+                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 dark:bg-emerald-400 flex items-center justify-center text-xs text-white-keep dark:text-zinc-950 font-bold shrink-0">
                   ✓
                 </div>
               )}
             </div>
-            <p className="text-[10px] leading-relaxed text-zinc-400">
+            <p className="text-xs leading-relaxed text-zinc-400">
               {opt.desc}
             </p>
           </button>

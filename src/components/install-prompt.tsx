@@ -9,7 +9,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-export function InstallPrompt() {
+export function InstallPrompt({ compact = false }: { compact?: boolean }) {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
@@ -26,15 +26,17 @@ export function InstallPrompt() {
 
   return (
     <Button
-      size="sm"
+      size={compact ? "icon" : "sm"}
       variant="primary"
-      icon={<Download size={16} />}
+      icon={<Download size={14} className="shrink-0" />}
       onClick={async () => {
         await promptEvent.prompt();
         setPromptEvent(null);
       }}
+      className={compact ? "h-8 w-8 rounded-lg" : ""}
+      title="Install App"
     >
-      Install
+      {!compact && "Install"}
     </Button>
   );
 }

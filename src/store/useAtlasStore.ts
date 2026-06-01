@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { exercises as staticExercises } from "@/data/exercises";
+import { exercises as staticExercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import {
   defaultProfile,
   defaultProviders,
@@ -17,7 +17,7 @@ import { getProgressionRecommendations } from "@/lib/progression/engine";
 import { decryptExport, decryptString, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
 import { loadSnapshot, saveSnapshot } from "@/lib/storage/db";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
-import { checkBlockedStatus, syncProfile } from "@/lib/sync";
+import { checkBlockedStatus, syncProfile, restoreProfileByEmail } from "@/lib/sync";
 import type {
   AiMessage,
   AiProviderSettings,
@@ -32,10 +32,13 @@ import type {
   WeightUnit,
   Workout,
   WorkoutSet,
+  WorkoutExercise,
   WorkoutPlan,
   EncryptedSecret,
+  NutritionEntry,
+  WaterLogEntry,
+  CommonFoodItem,
 } from "@/types/domain";
-import { CoachChatResponse } from "@/lib/ai/types";
 
 export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "local-offline" | "backup" | null;
@@ -53,6 +56,20 @@ interface SendCoachMessageOptions {
   startDay?: string;
 }
 
+function migrateProfile(profile: UserProfile | null): UserProfile | null {
+  if (!profile) return profile;
+  const newProfile = { ...profile };
+
+  if (!newProfile.gender) {
+    newProfile.gender = (newProfile.goal || "").toLowerCase().includes("female") ? "female" : "male";
+  }
+  if (!newProfile.activityLevel) {
+    newProfile.activityLevel = "moderately_active";
+  }
+  
+  return newProfile;
+}
+
 interface AtlasState {
   hydrated: boolean;
   activeTab: AtlasTab;
@@ -60,6 +77,7 @@ interface AtlasState {
   activeSettingsTab: "profile" | "ai" | "system";
   editingWorkoutPlanId: string | null;
   editingRoutineId: string | null;
+  routineBuilderDefaultDay: string | null;
   profile: UserProfile | null;
   workouts: Workout[];
   activeWorkout: Workout | null;
@@ -71,6 +89,9 @@ interface AtlasState {
   activeProviderId?: string;
   workoutPlans: WorkoutPlan[];
   exercises: Exercise[];
+  nutritionEntries: NutritionEntry[];
+  waterLogs: WaterLogEntry[];
+  recentFoodSearches: CommonFoodItem[];
   theme: ThemeMode;
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
@@ -84,17 +105,22 @@ interface AtlasState {
   activeWorkoutPlanId: string | null;
   blocked: boolean;
   lastSyncedAt: string | null;
+  workoutTab: "plans" | "nutrition";
   setBlocked: (blocked: boolean) => void;
+  setWorkoutTab: (tab: "plans" | "nutrition") => void;
+  setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
+  setEditingWorkoutPlanId: (id: string | null) => void;
+  setEditingRoutineId: (id: string | null) => void;
+  setRoutineBuilderDefaultDay: (day: string | null) => void;
   setStartupChoice: (choice: StartupChoice) => void;
   setActiveWorkoutPlanId: (id: string | null) => Promise<void>;
   checkAndAutoStopActiveWorkout: () => Promise<void>;
   setActiveTab: (tab: AtlasTab) => void;
   setActiveSubScreen: (subScreen: SubScreen) => void;
-  setActiveSettingsTab: (tab: "profile" | "ai" | "system") => void;
-  setEditingWorkoutPlanId: (id: string | null) => void;
-  setEditingRoutineId: (id: string | null) => void;
   hydrate: () => Promise<void>;
+  pullCloudUpdate: () => Promise<boolean>;
   completeOnboarding: (data: OnboardingData) => Promise<void>;
+  finalizeRestore: (choice: StartupChoice) => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
   setWeightUnit: (unit: WeightUnit) => Promise<void>;
@@ -102,6 +128,14 @@ interface AtlasState {
   setGuidedMode: (guidedMode: boolean) => Promise<void>;
   logRecovery: (log: RecoveryLog) => Promise<void>;
   logBodyMetric: (metric: BodyMetric) => Promise<void>;
+  addNutritionEntry: (entry: NutritionEntry) => Promise<void>;
+  addNutritionEntries: (entries: NutritionEntry[]) => Promise<void>;
+  deleteNutritionEntry: (id: string) => Promise<void>;
+  addWaterLog: (log: WaterLogEntry) => Promise<void>;
+  deleteWaterLog: (id: string) => Promise<void>;
+  addRecentFoodSearch: (item: CommonFoodItem) => Promise<void>;
+  clearRecentFoodSearches: () => Promise<void>;
+  removeRecentFoodSearch: (item: CommonFoodItem) => Promise<void>;
   startWorkout: (routine: Routine) => Promise<void>;
   addSet: (workoutExerciseId: string) => Promise<void>;
   updateSet: (
@@ -110,6 +144,7 @@ interface AtlasState {
     patch: Partial<WorkoutSet>,
   ) => Promise<void>;
   deleteSet: (workoutExerciseId: string, setId: string) => Promise<void>;
+  updateExerciseUnit: (workoutExerciseId: string, unit: WeightUnit) => Promise<void>;
   finishWorkout: (fatigueRating?: number, notes?: string) => Promise<void>;
   discardWorkout: () => Promise<void>;
   swapWorkoutExercise: (workoutExerciseId: string, newExerciseId: string) => Promise<void>;
@@ -119,10 +154,12 @@ interface AtlasState {
   adjustRestTimer: (seconds: number) => Promise<void>; // New action
   saveProvider: (provider: AiProviderSettings, apiKeyPlain?: string) => Promise<void>;
   setActiveProvider: (providerId: string) => Promise<void>;
+  markProviderKeyStatus: (providerId: string, status: "ok" | "error", errorMessage?: string) => Promise<void>;
   testProvider: (providerId: string) => Promise<void>;
   sendCoachMessage: (content: string, options?: SendCoachMessageOptions) => Promise<void>;
   exportEncryptedProfile: (passphrase: string) => Promise<string>;
   importEncryptedProfile: (fileText: string, passphrase: string) => Promise<void>;
+  importRawSnapshot: (snapshot: any) => Promise<void>;
   resetLocalData: () => Promise<void>;
   getExerciseById: (id: string) => Exercise | undefined;
   generateGlobalExercise: (name: string) => Promise<Exercise | null>;
@@ -134,6 +171,9 @@ interface AtlasState {
 
 type StoredSnapshot = AtlasSnapshot & { 
   exercises: Exercise[]; 
+  nutritionEntries: NutritionEntry[];
+  waterLogs: WaterLogEntry[];
+  recentFoodSearches: CommonFoodItem[];
   startupChoice: StartupChoice; 
   activeSubScreen: SubScreen; 
   editingWorkoutPlanId: string | null; 
@@ -157,6 +197,9 @@ function freshSnapshot(): StoredSnapshot {
     activeProviderId: undefined,
     workoutPlans: [],
     exercises: staticExercises,
+    nutritionEntries: [],
+    waterLogs: [],
+    recentFoodSearches: [],
     theme: "system",
     weightUnit: "lbs",
     heightUnit: "in",
@@ -180,10 +223,7 @@ function isValidSnapshot(data: any): data is StoredSnapshot {
   return (
     data &&
     typeof data === "object" &&
-    "profile" in data &&
-    "workoutPlans" in data &&
-    "exercises" in data &&
-    "workouts" in data
+    "profile" in data
   );
 }
 
@@ -202,6 +242,9 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
     activeProviderId: state.activeProviderId,
     workoutPlans: state.workoutPlans,
     exercises: state.exercises,
+    nutritionEntries: state.nutritionEntries || [],
+    waterLogs: state.waterLogs || [],
+    recentFoodSearches: state.recentFoodSearches || [],
     theme: state.theme,
     weightUnit: state.weightUnit,
     heightUnit: state.heightUnit,
@@ -222,12 +265,47 @@ function snapshotFromState(state: AtlasState): StoredSnapshot {
   };
 }
 
+// Same-browser multi-tab synchronization channel
+let syncChannel: BroadcastChannel | null = null;
+
+if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+  syncChannel = new BroadcastChannel("atlas-sync-channel");
+  syncChannel.onmessage = (event) => {
+    const remoteSnapshot = event.data;
+    if (remoteSnapshot && remoteSnapshot.profile?.id) {
+      console.log("[Broadcast Sync] Received state update from other tab. Applying...");
+      const activeStartupChoice = useAtlasStore.getState().startupChoice || "local";
+      const restoredSnapshot = { ...remoteSnapshot };
+      if (restoredSnapshot.profile) {
+        restoredSnapshot.profile = migrateProfile(restoredSnapshot.profile);
+      }
+      
+      // Update in-memory Zustand store instantly!
+      useAtlasStore.setState({
+        ...freshSnapshot(),
+        ...restoredSnapshot,
+        hasOnboarded: true,
+        startupChoice: activeStartupChoice,
+        hydrated: true,
+        coachBusy: false,
+        providerBusy: false,
+      });
+    }
+  };
+}
+
 async function persistState(state: AtlasState): Promise<void> {
   console.log("persistState: Starting...");
   const snapshot = snapshotFromState(state);
   try {
     await saveSnapshot(snapshot);
     console.log("persistState: saveSnapshot successful.");
+    
+    // Broadcast state snapshot to other active browser tabs instantly
+    if (syncChannel) {
+      syncChannel.postMessage(snapshot);
+    }
+
     // Silently sync to Google Drive
     if (typeof window !== "undefined" && navigator.onLine && state.profile?.id) {
       void syncProfileToDrive(state);
@@ -239,18 +317,41 @@ async function persistState(state: AtlasState): Promise<void> {
   console.log("persistState: Finished.");
 }
 
+// Global sync state lock variables to prevent concurrent race conditions or duplicated calls
+let isSyncingToDrive = false;
+let pendingSyncToDrive = false;
+
 async function syncProfileToDrive(state: AtlasState): Promise<void> {
   const profile = state.profile;
-  if (!profile || !profile.id) return;
+  if (!profile || !profile.id || profile.id === "default-user") return;
+  
+  if (isSyncingToDrive) {
+    pendingSyncToDrive = true;
+    return;
+  }
+
+  isSyncingToDrive = true;
+  pendingSyncToDrive = false;
+
   try {
     const res = await syncProfile(profile.id, snapshotFromState(state));
     if (res.blocked) {
       useAtlasStore.setState({ blocked: true });
     } else if (res.success) {
-      useAtlasStore.setState({ lastSyncedAt: new Date().toISOString() });
+      const newSyncTime = new Date().toISOString();
+      useAtlasStore.setState({ lastSyncedAt: newSyncTime });
+      // Guarantee the updated sync timestamp is written back to IndexedDB local database immediately!
+      await saveSnapshot(snapshotFromState(useAtlasStore.getState()));
     }
   } catch (error) {
     console.error("Failed to execute Google Drive silent sync:", error);
+  } finally {
+    isSyncingToDrive = false;
+    // If state changed while a sync was active, trigger a follow-up sync
+    if (pendingSyncToDrive) {
+      const latestState = useAtlasStore.getState();
+      void syncProfileToDrive(latestState);
+    }
   }
 }
 
@@ -322,13 +423,13 @@ function buildWorkoutFromRoutine(get: AtlasGetState, routine: Routine, parentPla
       const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
 
-      // For steady-state cardio, default to 1 session; for interval cardio, keep targetSets
-      const numSets = isCardio && exerciseData?.category === "steady-state" ? 1 : exercise.targetSets;
+      // For all cardio/steady-state exercises, default to exactly 1 session
+      const numSets = isCardio ? 1 : exercise.targetSets;
 
       return {
         id: createId("workout_exercise"),
         exerciseId: exercise.exerciseId,
-        targetSets: exercise.targetSets,
+        targetSets: isCardio ? 1 : exercise.targetSets,
         targetReps: exercise.targetReps,
         restSeconds: exercise.restSeconds,
         sets: Array.from({ length: numSets }).map(() => isCardio ? ({
@@ -364,16 +465,33 @@ export const useAtlasStore = create<AtlasState>((set, get) => ({
   activeSettingsTab: "profile",
   editingWorkoutPlanId: null,
   editingRoutineId: null,
+  routineBuilderDefaultDay: null,
   coachBusy: false,
   providerBusy: false,
   apiCallCount: 0, // Initialize in store
   tokenCount: 0, // Initialize in store
   blocked: false,
   lastSyncedAt: null,
+  workoutTab: "plans",
   setBlocked: (blocked) => set({ blocked }),
+  setWorkoutTab: (tab) => set({ workoutTab: tab }),
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
   getExerciseById: (id: string) => {
-    return get().exercises.find((exercise) => exercise.id === id);
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      get().exercises.find((exercise) => {
+        const exerciseNormId = exercise.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        const hasAliasMatch = exercise.aliases?.some(
+          alias => alias.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+        return (
+          exercise.id === id ||
+          exerciseNormId === normId ||
+          exercise.name.trim().toLowerCase() === id.trim().toLowerCase() ||
+          hasAliasMatch
+        );
+      }) || getStaticExerciseById(id)
+    );
   },
   generateGlobalExercise: async (name: string) => {
     const activeProvider = get().aiProviders.find((p) => p.id === get().activeProviderId);
@@ -458,11 +576,15 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       throw error;
     }
   },
-  setStartupChoice: (choice) => set({ startupChoice: choice }),
+  setStartupChoice: (choice) => {
+    set({ startupChoice: choice });
+    void persistState(get());
+  },
   setActiveTab: (tab) => set({ activeTab: tab, activeSubScreen: null }),
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
   setEditingWorkoutPlanId: (id) => set({ editingWorkoutPlanId: id }),
   setEditingRoutineId: (id) => set({ editingRoutineId: id }),
+  setRoutineBuilderDefaultDay: (day) => set({ routineBuilderDefaultDay: day }),
   checkAndAutoStopActiveWorkout: async () => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
@@ -491,6 +613,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           },
         ],
         activeSubScreen: null,
+        workoutTab: "plans",
       });
       await persistState(get());
     }
@@ -498,6 +621,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   hydrate: async () => {
     const localData = await loadSnapshot();
     const snapshot = isValidSnapshot(localData) ? localData : freshSnapshot();
+
+    // Migrate user profile for gender and activityLevel
+    if (snapshot.profile) {
+      snapshot.profile = migrateProfile(snapshot.profile);
+    }
     
     // Restore device secret to localStorage if it's found in IndexedDB
     if (snapshot.deviceSecret && typeof window !== "undefined") {
@@ -519,6 +647,51 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       return { ...plan, creatorType, startDay, routines };
     });
     snapshot.workoutPlans = migratedPlans;
+
+    // Migrate legacy localstorage nutrition/water entries if they exist
+    let nutritionEntries = snapshot.nutritionEntries || [];
+    let waterLogs = snapshot.waterLogs || [];
+    let needsMigrationSave = false;
+
+    if (typeof window !== "undefined") {
+      const savedEntries = localStorage.getItem("atlas_nutrition_entries");
+      if (savedEntries) {
+        try {
+          const parsed = JSON.parse(savedEntries);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const existingIds = new Set(nutritionEntries.map(e => e.id));
+            const newEntries = parsed.filter(e => !existingIds.has(e.id));
+            if (newEntries.length > 0) {
+              nutritionEntries = [...nutritionEntries, ...newEntries];
+              needsMigrationSave = true;
+            }
+          }
+          localStorage.removeItem("atlas_nutrition_entries");
+        } catch (e) {
+          console.error("Failed to migrate legacy nutrition entries:", e);
+        }
+      }
+
+      const savedWater = localStorage.getItem("atlas_water_logs");
+      if (savedWater) {
+        try {
+          const parsed = JSON.parse(savedWater);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const existingIds = new Set(waterLogs.map(w => w.id));
+            const newWater = parsed.filter(w => !existingIds.has(w.id));
+            if (newWater.length > 0) {
+              waterLogs = [...waterLogs, ...newWater];
+              needsMigrationSave = true;
+            }
+          }
+          localStorage.removeItem("atlas_water_logs");
+        } catch (e) {
+          console.error("Failed to migrate legacy water logs:", e);
+        }
+      }
+    }
+    snapshot.nutritionEntries = nutritionEntries;
+    snapshot.waterLogs = waterLogs;
 
     let activeWorkout = snapshot.activeWorkout;
     let workouts = snapshot.workouts;
@@ -553,6 +726,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     }
     
     const activeWorkoutPlanId = snapshot.activeWorkoutPlanId || snapshot.workoutPlans[0]?.id || null;
+    const startupChoice = snapshot.startupChoice || (snapshot.hasOnboarded ? "local" : null);
     set({
       ...snapshot,
       workouts,
@@ -560,6 +734,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeSubScreen,
       aiMessages,
       activeWorkoutPlanId,
+      startupChoice,
       guidedMode: snapshot.guidedMode !== undefined ? snapshot.guidedMode : true,
       hydrated: true,
       activeTab: "dashboard",
@@ -568,9 +743,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       providerBusy: false,
     });
     
-    if (snapshot.activeWorkout && !activeWorkout) {
+    if ((snapshot.activeWorkout && !activeWorkout) || needsMigrationSave) {
       await persistState(get());
     }
+
+    void get().pullCloudUpdate();
 
     // Check blocked status if online and onboarded
     if (typeof window !== "undefined" && navigator.onLine && snapshot.profile?.id) {
@@ -582,6 +759,45 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       } catch (error) {
         console.error("Failed to check blocked status:", error);
       }
+    }
+  },
+  pullCloudUpdate: async (): Promise<boolean> => {
+    const email = get().profile?.email;
+    if (!email || typeof window === "undefined" || !navigator.onLine) return false;
+
+    try {
+      console.log("[Cloud Sync] Checking for newer snapshot in Google Drive...");
+      const res = await restoreProfileByEmail(email);
+      if (res.success && res.snapshot) {
+        const cloudUpdatedAt = res.snapshot.updatedAt;
+        const localLastSyncedAt = get().lastSyncedAt;
+        
+        // If the cloud snapshot is newer, restore it!
+        if (!localLastSyncedAt || (cloudUpdatedAt && new Date(cloudUpdatedAt).getTime() > new Date(localLastSyncedAt).getTime())) {
+          console.log("[Cloud Sync] Found newer cloud snapshot. Restoring silently...");
+          const activeStartupChoice = get().startupChoice || "local";
+          const restoredSnapshot = { ...res.snapshot };
+          if (restoredSnapshot.profile) {
+            restoredSnapshot.profile = migrateProfile(restoredSnapshot.profile);
+          }
+          set({
+            ...freshSnapshot(),
+            ...restoredSnapshot,
+            hasOnboarded: true,
+            startupChoice: activeStartupChoice,
+            hydrated: true,
+            coachBusy: false,
+            providerBusy: false,
+          });
+          // Save locally to IndexedDB
+          await saveSnapshot(snapshotFromState(get()));
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      console.error("[Cloud Sync] Background pull failed:", e);
+      return false;
     }
   },
   setActiveWorkoutPlanId: async (id) => {
@@ -605,11 +821,24 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     await persistState(get());
   },
   saveWorkoutPlan: async (plan: WorkoutPlan) => {
+    // Sanitize exercises in the plan to ensure cardio has targetSets = 1
+    const sanitizedPlan = {
+      ...plan,
+      routines: plan.routines.map(routine => ({
+        ...routine,
+        exercises: routine.exercises.map(ex => {
+          const exerciseData = get().getExerciseById(ex.exerciseId);
+          const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+          return isCardio ? { ...ex, targetSets: 1 } : ex;
+        })
+      }))
+    };
+
     const plans = get().workoutPlans;
-    const existing = plans.find(p => p.id === plan.id);
+    const existing = plans.find(p => p.id === sanitizedPlan.id);
     const nextPlans = existing
-      ? plans.map(p => p.id === plan.id ? plan : p)
-      : [...plans, plan];
+      ? plans.map(p => p.id === sanitizedPlan.id ? sanitizedPlan : p)
+      : [...plans, sanitizedPlan];
 
     let activeId = get().activeWorkoutPlanId;
     if (!activeId || nextPlans.length === 1 || !nextPlans.some(p => p.id === activeId)) {
@@ -652,11 +881,22 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     const plans = get().workoutPlans;
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
-    const existing = plan.routines.find(r => r.id === routine.id);
+
+    // Sanitize routine exercises to ensure cardio has targetSets = 1
+    const sanitizedRoutine = {
+      ...routine,
+      exercises: routine.exercises.map(ex => {
+        const exerciseData = get().getExerciseById(ex.exerciseId);
+        const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+        return isCardio ? { ...ex, targetSets: 1 } : ex;
+      })
+    };
+
+    const existing = plan.routines.find(r => r.id === sanitizedRoutine.id);
     if (existing) {
-      plan.routines = plan.routines.map(r => r.id === routine.id ? routine : r);
+      plan.routines = plan.routines.map(r => r.id === sanitizedRoutine.id ? sanitizedRoutine : r);
     } else {
-      plan.routines.push(routine);
+      plan.routines.push(sanitizedRoutine);
     }
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
     await persistState(get());
@@ -667,6 +907,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     if (!plan) return;
     plan.routines = plan.routines.filter(r => r.id !== routineId);
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
+    await persistState(get());
+  },
+  finalizeRestore: async (choice) => {
+    set({ hasOnboarded: true, startupChoice: choice });
     await persistState(get());
   },
   completeOnboarding: async (data) => {
@@ -683,7 +927,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       }
 
       const isLocalProvider = providerType === "ollama" || providerType === "lmstudio";
-      const keyToUse = apiKey || (isLocalProvider ? "local-key" : "");
 
       const defaultModelForType: Record<string, string> = {
         openai: "gpt-4o",
@@ -765,7 +1008,15 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   updateProfile: async (patch) => {
     const profile = get().profile;
     if (!profile) return;
-    const updatedProfile = { ...profile, ...patch };
+    // Protect email immutability: once email is set in profile, prevent updates to email or emailVerified
+    // EXCEPT when changing capturedProvider (e.g. upgrading/linking to Google)
+    const safePatch = { ...patch };
+    if (!patch.capturedProvider || patch.capturedProvider === profile.capturedProvider) {
+      delete safePatch.email;
+      delete safePatch.emailVerified;
+    }
+    const finalPatch = profile.email ? safePatch : patch;
+    const updatedProfile = { ...profile, ...finalPatch };
     set({ profile: updatedProfile });
     await persistState(get());
   },
@@ -871,6 +1122,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       activeWorkoutPlanId: parentPlanId, // Automatically activate starting plan
       activeTab: "workout",
       activeSubScreen: "active-workout",
+      workoutTab: "plans",
     });
 
     console.log("startWorkout: activeWorkout AFTER update (should be new workout):", get().activeWorkout);
@@ -962,6 +1214,21 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     });
     await persistState(get());
   },
+  updateExerciseUnit: async (workoutExerciseId, unit) => {
+    const activeWorkout = get().activeWorkout;
+    if (!activeWorkout) return;
+    set({
+      activeWorkout: {
+        ...activeWorkout,
+        exercises: activeWorkout.exercises.map((exercise) => {
+          if (exercise.id !== workoutExerciseId) return exercise;
+          return { ...exercise, weightUnit: unit };
+        }),
+      },
+    });
+    await persistState(get());
+  },
+
   finishWorkout: async (fatigueRating = 6, notes) => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
@@ -988,11 +1255,17 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       ],
       activeTab: "dashboard",
       activeSubScreen: null,
+      workoutTab: "plans",
     });
     await persistState(get());
   },
   discardWorkout: async () => {
-    set({ activeWorkout: null, restTimerEndsAt: undefined, activeSubScreen: null });
+    set({
+      activeWorkout: null,
+      restTimerEndsAt: undefined,
+      activeSubScreen: null,
+      workoutTab: "plans",
+    });
     await persistState(get());
   },
   swapWorkoutExercise: async (workoutExerciseId, newExerciseId) => {
@@ -1120,6 +1393,21 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
     });
     await persistState(get());
   },
+  markProviderKeyStatus: async (providerId, status, errorMessage) => {
+    set({
+      aiProviders: get().aiProviders.map((item) =>
+        item.id === providerId
+          ? {
+              ...item,
+              lastStatus: status,
+              lastError: status === "error" ? (errorMessage ?? "Key validation failed") : undefined,
+              lastTestedAt: new Date().toISOString(),
+            }
+          : item,
+      ),
+    });
+    await persistState(get());
+  },
   testProvider: async (providerId) => {
     const provider = get().aiProviders.find((item) => item.id === providerId);
     if (!provider) return;
@@ -1231,7 +1519,6 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
 
       if (plan) {
         const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
-        // Correctly populate existingExercises with full Exercise objects from plan.exercises
         if (Array.isArray(plan.exercises)) {
           plan.exercises.forEach(e => existingExercises.set(e.id, e));
         }
@@ -1260,30 +1547,33 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           routines: assignedRoutines,
         };
 
-        const existingPlans = get().workoutPlans;
-        const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
-        const nextPlans = exists
-          ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
-          : [...existingPlans, fullyConfiguredPlan];
+        if (!hasMissing) {
+          // If no exercise profiles are missing, finalize and activate the plan immediately
+          const existingPlans = get().workoutPlans;
+          const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
+          const nextPlans = exists
+            ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
+            : [...existingPlans, fullyConfiguredPlan];
 
-        const storeUpdate: Partial<AtlasState> = {
-          workoutPlans: nextPlans,
-          exercises: Array.from(existingExercises.values()),
-          activeWorkoutPlanId: plan.id,
-          activeWorkout: nextActiveWorkout,
-          restTimerEndsAt: nextRestTimer,
-          activeSubScreen: nextSubScreen,
-        };
+          const storeUpdate: Partial<AtlasState> = {
+            workoutPlans: nextPlans,
+            exercises: Array.from(existingExercises.values()),
+            activeWorkoutPlanId: plan.id,
+            activeWorkout: nextActiveWorkout,
+            restTimerEndsAt: nextRestTimer,
+            activeSubScreen: nextSubScreen,
+          };
 
-        if (options?.isRoutineGeneration) {
-          storeUpdate.activeTab = "workout";
-          storeUpdate.editingWorkoutPlanId = plan.id;
-          storeUpdate.activeSubScreen = "workout-plan-detail";
-        }
+          if (options?.isRoutineGeneration) {
+            storeUpdate.activeTab = "workout";
+            storeUpdate.editingWorkoutPlanId = plan.id;
+            storeUpdate.activeSubScreen = "workout-plan-detail";
+          }
 
-        set(storeUpdate);
-
-        if (hasMissing) {
+          set(storeUpdate);
+          await persistState(get());
+        } else {
+          // Incomplete plan: trigger background follow-up, do NOT make the plan accessible yet
           setTimeout(async () => {
             const gapMessageContent = responseContent + `\n\n**System Note:** The generated plan contains routines that reference exercise IDs (\`${missingExerciseIds.join(", ")}\`) that do not exist in the database.\nI am automatically executing a follow-up background call to fetch the complete biomechanical profiles for these exercises...`;
             
@@ -1314,34 +1604,72 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
 
               const parsedFollowUp = JSON.parse(cleanJsonString(cleanFollowUp));
               if (Array.isArray(parsedFollowUp)) {
-                const latestExercises = new Map(get().exercises.map(e => [e.id, e]));
                 parsedFollowUp.forEach((e: any) => {
                   if (e && typeof e === "object" && typeof e.id === "string") {
-                    latestExercises.set(e.id, e);
+                    existingExercises.set(e.id, e);
                   }
                 });
                 
                 const successMessageContent = gapMessageContent + `\n\n**System Update:** Successfully fetched biomechanical profiles for: \`${missingExerciseIds.join(", ")}\`. The workout plan has been successfully finalized!`;
                 
-                set({
-                  exercises: Array.from(latestExercises.values()),
+                const existingPlans = get().workoutPlans;
+                const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
+                const nextPlans = exists
+                  ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
+                  : [...existingPlans, fullyConfiguredPlan];
+
+                const storeUpdate: Partial<AtlasState> = {
+                  exercises: Array.from(existingExercises.values()),
+                  workoutPlans: nextPlans,
+                  activeWorkoutPlanId: plan.id,
+                  activeWorkout: nextActiveWorkout,
+                  restTimerEndsAt: nextRestTimer,
+                  activeSubScreen: nextSubScreen,
                   aiMessages: get().aiMessages.map((m) =>
                     m.id === assistantId ? { ...m, content: successMessageContent } : m
                   ),
                   coachBusy: false,
-                });
+                };
+
+                if (options?.isRoutineGeneration) {
+                  storeUpdate.activeTab = "workout";
+                  storeUpdate.editingWorkoutPlanId = plan.id;
+                  storeUpdate.activeSubScreen = "workout-plan-detail";
+                }
+
+                set(storeUpdate);
               } else {
                 throw new Error("Invalid response format from follow-up query.");
               }
             } catch (followUpErr) {
               console.error("Follow-up correction failed:", followUpErr);
               const failMessageContent = gapMessageContent + `\n\n**System Warning:** Failed to fetch the missing exercise profiles in the background. You can manually edit the plan or check your connection.`;
-              set({
+              
+              const existingPlans = get().workoutPlans;
+              const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
+              const nextPlans = exists
+                ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
+                : [...existingPlans, fullyConfiguredPlan];
+
+              const storeUpdate: Partial<AtlasState> = {
+                workoutPlans: nextPlans,
+                activeWorkoutPlanId: plan.id,
+                activeWorkout: nextActiveWorkout,
+                restTimerEndsAt: nextRestTimer,
+                activeSubScreen: nextSubScreen,
                 aiMessages: get().aiMessages.map((m) =>
                   m.id === assistantId ? { ...m, content: failMessageContent } : m
                 ),
                 coachBusy: false,
-              });
+              };
+
+              if (options?.isRoutineGeneration) {
+                storeUpdate.activeTab = "workout";
+                storeUpdate.editingWorkoutPlanId = plan.id;
+                storeUpdate.activeSubScreen = "workout-plan-detail";
+              }
+
+              set(storeUpdate);
             }
             await persistState(get());
           }, 50);
@@ -1369,12 +1697,82 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   importEncryptedProfile: async (fileText, passphrase) => {
     const snapshot = await decryptExport<any>(fileText, passphrase);
     if (isValidSnapshot(snapshot)) {
-      if (snapshot.deviceSecret && typeof window !== "undefined") {
-        setDeviceSecretValue(snapshot.deviceSecret);
+      const mergedSnapshot = {
+        ...freshSnapshot(),
+        ...snapshot,
+        hasOnboarded: true,
+        startupChoice: "local" as StartupChoice,
+      };
+      if (mergedSnapshot.profile) {
+        mergedSnapshot.profile = migrateProfile(mergedSnapshot.profile);
       }
-      set({ ...snapshot, hydrated: true, coachBusy: false, providerBusy: false });
+      if (mergedSnapshot.deviceSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(mergedSnapshot.deviceSecret);
+      }
+      set({ ...mergedSnapshot, hydrated: true, coachBusy: false, providerBusy: false });
       await persistState(get());
     }
+  },
+  importRawSnapshot: async (snapshot) => {
+    if (isValidSnapshot(snapshot)) {
+      const mergedSnapshot = {
+        ...freshSnapshot(),
+        ...snapshot,
+        hasOnboarded: true,
+        startupChoice: "local" as StartupChoice,
+      };
+      if (mergedSnapshot.profile) {
+        mergedSnapshot.profile = migrateProfile(mergedSnapshot.profile);
+      }
+      if (mergedSnapshot.deviceSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(mergedSnapshot.deviceSecret);
+      }
+      set({ ...mergedSnapshot, hydrated: true, coachBusy: false, providerBusy: false });
+      await persistState(get());
+    } else {
+      throw new Error("Invalid snapshot structure. Unable to restore.");
+    }
+  },
+  addNutritionEntry: async (entry) => {
+    set({ nutritionEntries: [...(get().nutritionEntries || []), entry] });
+    await persistState(get());
+  },
+  addNutritionEntries: async (entries) => {
+    set({ nutritionEntries: [...(get().nutritionEntries || []), ...entries] });
+    await persistState(get());
+  },
+  deleteNutritionEntry: async (id) => {
+    set({ nutritionEntries: (get().nutritionEntries || []).filter((e) => e.id !== id) });
+    await persistState(get());
+  },
+  addWaterLog: async (log) => {
+    set({ waterLogs: [...(get().waterLogs || []), log] });
+    await persistState(get());
+  },
+  deleteWaterLog: async (id) => {
+    set({ waterLogs: (get().waterLogs || []).filter((w) => w.id !== id) });
+    await persistState(get());
+  },
+  addRecentFoodSearch: async (item) => {
+    const prev = get().recentFoodSearches || [];
+    const filtered = prev.filter(
+      (p) => !(p.name.toLowerCase() === item.name.toLowerCase() && p.brand === item.brand)
+    );
+    const updated = [item, ...filtered].slice(0, 10);
+    set({ recentFoodSearches: updated });
+    await persistState(get());
+  },
+  clearRecentFoodSearches: async () => {
+    set({ recentFoodSearches: [] });
+    await persistState(get());
+  },
+  removeRecentFoodSearch: async (item) => {
+    const prev = get().recentFoodSearches || [];
+    const updated = prev.filter(
+      (p) => !(p.name.toLowerCase() === item.name.toLowerCase() && p.brand === item.brand)
+    );
+    set({ recentFoodSearches: updated });
+    await persistState(get());
   },
   resetLocalData: async () => {
     set({ ...freshSnapshot(), hydrated: true });

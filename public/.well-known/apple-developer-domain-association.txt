@@ -1,0 +1,11 @@
+PLACEHOLDER - Replace this file with the actual apple-developer-domain-association.txt content
+that Apple provides in the Apple Developer Portal when you configure your Service ID.
+
+How to get it:
+1. Go to developer.apple.com → Certificates, IDs & Profiles → Identifiers
+2. Click your Service ID → Click "Configure" next to Sign In with Apple
+3. Add your domain and Return URL
+4. Click "Download" next to the domain to get this file
+5. Replace this file's content with the downloaded file content
+6. Deploy your app — Apple will verify by fetching:
+   https://yourdomain.com/.well-known/apple-developer-domain-association.txt

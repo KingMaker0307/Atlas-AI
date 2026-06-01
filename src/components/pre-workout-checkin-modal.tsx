@@ -63,11 +63,11 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <Card className="w-full max-w-sm p-6 space-y-4 relative">
-        <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose}>
-          <X size={20} />
+      <Card className="w-full max-w-sm p-6 space-y-4 relative" role="dialog" aria-modal="true" aria-labelledby="pre-workout-title">
+        <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose} aria-label="Close modal">
+          <X size={20} aria-hidden="true" />
         </Button>
-        <h2 className="text-xl font-semibold text-foreground">Pre-Workout Check-in</h2>
+        <h2 id="pre-workout-title" className="text-xl font-semibold text-foreground">Pre-Workout Check-in</h2>
         <p className="text-zinc-500 dark:text-zinc-400 text-sm">How many hours did you sleep last night?</p>
 
         {/* Workout Limit Notice */}
