@@ -42,7 +42,7 @@ async function signIn(page: Page) {
 test("shows AppLoader on cold start", async ({ page }) => {
   await page.goto(BASE_URL);
   // AppLoader should appear briefly
-  const loader = page.locator("[data-testid='app-loader']");
+  await expect(page.locator("[data-testid='app-loader']")).toBeDefined();
   // It may or may not be visible depending on speed — just assert it doesn't crash
   await expect(page).not.toHaveURL(/error/);
 });

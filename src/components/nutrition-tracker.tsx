@@ -40,6 +40,40 @@ import { calculateNutritionTargets, DEFAULT_TARGETS } from "@/lib/calculators";
 import { decryptString } from "@/lib/security/crypto";
 import { getProviderAdapter } from "@/providers";
 
+async function uploadImageToSupabase(dataUrl: string, userId: string): Promise<string> {
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const fileExt = dataUrl.split(";")[0].split("/")[1]?.split("+")[0] || "jpeg";
+    const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("temporary_photos")
+      .upload(path, blob, { contentType: blob.type, cacheControl: "3600", upsert: true });
+
+    if (error) {
+      console.warn("Supabase storage upload failed, falling back to inline dataUrl:", error);
+      return dataUrl;
+    }
+
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from("temporary_photos")
+      .createSignedUrl(path, 600);
+
+    if (signedError || !signedData?.signedUrl) {
+      console.warn("Failed to sign URL, falling back to inline dataUrl:", signedError);
+      return dataUrl;
+    }
+
+    return signedData.signedUrl;
+  } catch (err) {
+    console.warn("Error uploading image to Supabase, falling back:", err);
+    return dataUrl;
+  }
+}
+
 // ─── Types ──────────────────────────────────────────────────────
 interface NutritionEntry {
   id: string;
@@ -993,6 +1027,7 @@ const AddFoodModal: FC<{
 
   const aiProviders = useAtlasStore((s) => s.aiProviders || []);
   const activeProviderId = useAtlasStore((s) => s.activeProviderId);
+  const user = useAtlasStore((s) => s.user);
 
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [autofillError, setAutofillError] = useState<string | null>(null);
@@ -1046,6 +1081,16 @@ const AddFoodModal: FC<{
     try {
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
       const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+
+      const uploadedImages = await Promise.all(
+        customImages.map(async (img) => {
+          if (user?.id) {
+            const url = await uploadImageToSupabase(img.dataUrl, user.id);
+            return { ...img, cdnUrl: url };
+          }
+          return { ...img, cdnUrl: img.dataUrl };
+        })
+      );
 
       // STRICT system prompt for breakdown
       const strictSystemPrompt = `You are a precision clinical nutrition AI for a fitness tracking app.
@@ -1162,9 +1207,9 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           const baseUrl = activeProvider.type === "openrouter"
             ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
             : (activeProvider.baseUrl || "https://api.openai.com/v1");
-          const imageBlocks = customImages.map((img) => ({
+          const imageBlocks = uploadedImages.map((img) => ({
             type: "image_url" as const,
-            image_url: { url: img.dataUrl }
+            image_url: { url: img.cdnUrl }
           }));
           const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
             method: "POST",
@@ -1352,6 +1397,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
       const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
 
+      const uploadedImages = await Promise.all(
+        customImages.map(async (img) => {
+          if (user?.id) {
+            const url = await uploadImageToSupabase(img.dataUrl, user.id);
+            return { ...img, cdnUrl: url };
+          }
+          return { ...img, cdnUrl: img.dataUrl };
+        })
+      );
+
       const currentItemsJson = JSON.stringify(analyzedItems.map(item => ({
         name: item.name,
         serving_note: item.serving_note,
@@ -1471,9 +1526,9 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           const baseUrl = activeProvider.type === "openrouter"
             ? (activeProvider.baseUrl || "https://openrouter.ai/api/v1")
             : (activeProvider.baseUrl || "https://api.openai.com/v1");
-          const imageBlocks = customImages.map((img) => ({
+          const imageBlocks = uploadedImages.map((img) => ({
             type: "image_url" as const,
-            image_url: { url: img.dataUrl }
+            image_url: { url: img.cdnUrl }
           }));
           const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
             method: "POST",

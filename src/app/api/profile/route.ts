@@ -17,10 +17,7 @@ export async function GET(request: NextRequest) {
   const email = searchParams.get("email");
   const userId = searchParams.get("userId");
 
-  const isLocalhost =
-    request.headers.get("host")?.includes("localhost") ||
-    request.headers.get("host")?.includes("127.0.0.1") ||
-    process.env.NODE_ENV === "development";
+  const isLocalhost = process.env.NODE_ENV === "development";
 
   // If not restoring via email in dev/localhost, enforce security check
   if (!email || !isLocalhost) {
