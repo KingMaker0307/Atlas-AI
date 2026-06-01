@@ -31,6 +31,7 @@ import {
   Cloud,
   AlertCircle,
   Zap,
+  X,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -58,6 +59,14 @@ const providerTypes: AiProviderSettings["type"][] = [
 ];
 
 const physiqueOptions: Physique[] = ["lean", "athletic", "bulky", "shredded", "toned"];
+
+const physiqueLabels: Record<Physique, string> = {
+  lean: "Toned & lean",
+  athletic: "Athletic & fit",
+  bulky: "Big & muscular",
+  shredded: "Very lean & defined",
+  toned: "Toned & healthy",
+};
 
 const genderOptions = [
   { value: "male", label: "Male" },
@@ -223,7 +232,7 @@ function getProviderInstructions(provider: string) {
   }
 }
 
-export function SettingsScreen() {
+export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const profile = useAtlasStore((state) => state.profile);
   const user = useAtlasStore((state) => state.user);
   const theme = useAtlasStore((state) => state.theme);
@@ -270,6 +279,7 @@ export function SettingsScreen() {
   const [upgradeGoogleAuthError, setUpgradeGoogleAuthError] = useState<string | null>(null);
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [upgradeSandboxEmail, setUpgradeSandboxEmail] = useState("");
   const [forceLoadRealGoogleUpgrade, setForceLoadRealGoogleUpgrade] = useState(false);
 
@@ -665,8 +675,8 @@ export function SettingsScreen() {
       <div className="flex md:hidden bg-surface border border-surface-border p-1 rounded-2xl select-none gap-1">
         {[
           { id: "profile", label: "Profile", icon: <User size={14} /> },
-          { id: "ai", label: "AI Engine", icon: <Cpu size={14} /> },
-          { id: "system", label: "System", icon: <Server size={14} /> },
+          { id: "ai", label: "AI Coach", icon: <Cpu size={14} /> },
+          { id: "system", label: "Data & Backup", icon: <Server size={14} /> },
           { id: "subscription", label: "Plan", icon: <Zap size={14} /> },
         ].map((tab) => {
           const active = activeSettingsTab === tab.id;
@@ -691,8 +701,8 @@ export function SettingsScreen() {
         <aside className="hidden md:flex w-56 shrink-0 md:sticky md:top-24 flex-col bg-surface border border-surface-border p-1.5 rounded-2xl select-none gap-1.5">
           {[
             { id: "profile", label: "Profile & Goals", icon: <User size={16} /> },
-            { id: "ai", label: "AI Engine", icon: <Cpu size={16} /> },
-            { id: "system", label: "System & Backup", icon: <Server size={16} /> },
+            { id: "ai", label: "AI Coach", icon: <Cpu size={16} /> },
+            { id: "system", label: "Data & Backup", icon: <Server size={16} /> },
             { id: "subscription", label: "Subscription", icon: <Zap size={16} /> },
           ].map((tab) => {
             const active = activeSettingsTab === tab.id;
@@ -727,18 +737,35 @@ export function SettingsScreen() {
               {activeSettingsTab === "profile" && (
                 <div className="space-y-5">
                   {/* Profile Card Summary */}
-                  <Card className="relative overflow-hidden p-5 flex items-center gap-4 select-none">
-                    <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] shrink-0">
-                      <User size={26} className="text-zinc-950" />
-                      <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                      </span>
+                  <Card className="relative overflow-hidden p-5 flex items-center justify-between gap-4 select-none">
+                    <div className="flex items-center gap-4">
+                      <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
+                      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-400 to-teal-500 text-zinc-950 shadow-[0_8px_20px_rgba(16,185,129,0.2)] shrink-0">
+                        <User size={26} className="text-zinc-950" />
+                        <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                        </span>
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">{profile?.name ?? "Athlete"}</h2>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">{profile?.goal || "Goal not set"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">{profile?.name ?? "Athlete"}</h2>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">{profile?.goal || "Goal not set"}</p>
-                    </div>
+                    <Button
+                      variant="secondary"
+                      className="text-xs font-bold px-3 py-1.5 h-auto self-center shrink-0 border border-zinc-200 dark:border-white/5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white"
+                      onClick={async () => {
+                        try {
+                          const { createClient } = await import("@/lib/supabase/client");
+                          await createClient().auth.signOut();
+                          window.location.href = "/sign-in";
+                        } catch (err) {
+                          console.error("Sign out error:", err);
+                        }
+                      }}
+                    >
+                      Sign Out
+                    </Button>
                   </Card>
 
                   {/* Physical Biometrics Panel */}
@@ -746,7 +773,7 @@ export function SettingsScreen() {
                     <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
                         <Palette className="text-emerald-500 dark:text-emerald-400" size={18} />
-                        <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">Biometric Inputs</h2>
+                        <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">My Body Stats</h2>
                       </div>
                       <div className="flex items-center gap-1.5 select-none">
                         {saveIndicator === "saving" && (
@@ -838,7 +865,7 @@ export function SettingsScreen() {
                           className="text-xs font-bold"
                         >
                           {physiqueOptions.map(option => (
-                            <option key={option} value={option}>{option.charAt(0).toUpperCase() + option.slice(1)}</option>
+                            <option key={option} value={option}>{physiqueLabels[option]}</option>
                           ))}
                         </Select>
                       </Field>
@@ -1047,9 +1074,9 @@ export function SettingsScreen() {
                             onChange={(e) => handleProfileChange("bodyType", e.target.value)}
                             className="text-xs font-bold font-sans"
                           >
-                            <option value="ectomorph">Ectomorph (Naturally lean/narrow)</option>
-                            <option value="mesomorph">Mesomorph (Naturally athletic/muscular)</option>
-                            <option value="endomorph">Endomorph (Broad/sturdy frame)</option>
+                            <option value="ectomorph">Naturally slim / lean</option>
+                            <option value="mesomorph">Naturally athletic / muscular</option>
+                            <option value="endomorph">Naturally bigger / heavier</option>
                           </Select>
                         </Field>
                       </div>
@@ -1356,6 +1383,77 @@ export function SettingsScreen() {
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-2 pt-1 select-none">
+                      {/* Download backup my data */}
+                      <Surface className="flex items-center justify-between gap-4 p-3.5 shadow">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-white text-xs">Download My Data</p>
+                          <p className="text-xs text-zinc-500 mt-1 font-medium">Download your local database as a backup file.</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          aria-label="Download backup data"
+                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 p-0"
+                          onClick={() => {
+                            try {
+                              const storeState = useAtlasStore.getState();
+                              const snapshot = {
+                                profile: storeState.profile,
+                                workouts: storeState.workouts,
+                                recoveryLogs: storeState.recoveryLogs,
+                                nutritionEntries: storeState.nutritionEntries,
+                                waterLogs: storeState.waterLogs,
+                                bodyMetrics: storeState.bodyMetrics,
+                                aiProviders: storeState.aiProviders,
+                                activeProviderId: storeState.activeProviderId,
+                              };
+                              const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `atlas_backup_${new Date().toISOString().split("T")[0]}.json`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                            } catch (err: any) {
+                              alert("Failed to export data: " + err.message);
+                            }
+                          }}
+                        >
+                          <Download size={15} />
+                        </Button>
+                      </Surface>
+
+                      {/* Restore from backup file */}
+                      <Surface className="flex items-center justify-between gap-4 p-3.5 shadow">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-white text-xs">Restore From File</p>
+                           <p className="text-xs text-zinc-500 mt-1 font-medium">Upload a previously downloaded backup file.</p>
+                        </div>
+                        <label className="rounded-xl h-10 w-10 sm:h-8 sm:w-8 p-0 flex items-center justify-center bg-surface border border-surface-border hover:bg-surface-hover cursor-pointer transition active:scale-95">
+                          <Upload size={15} className="text-zinc-555" />
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const text = await file.text();
+                                const parsed = JSON.parse(text);
+                                const importRawSnapshot = useAtlasStore.getState().importRawSnapshot;
+                                await importRawSnapshot(parsed);
+                                alert("Data restored successfully!");
+                              } catch (err: any) {
+                                alert("Failed to restore data: " + err.message);
+                              }
+                            }}
+                          />
+                        </label>
+                      </Surface>
+
                       {/* Notifications permission */}
                       <Surface className="flex items-center justify-between gap-4 p-3.5 shadow">
                         <div>
@@ -1380,43 +1478,19 @@ export function SettingsScreen() {
                         </Button>
                       </Surface>
 
-                      {/* Hard factory reset alert block */}
-                      <Surface className="flex items-center justify-between gap-4 border border-rose-500/20 bg-rose-500/5 p-3.5 rounded-2xl shadow-xl">
-                        <div>
-                          <p className="font-bold text-rose-400 text-xs">Hard Factory Reset</p>
-                          <p className="text-xs text-rose-500/70 mt-1 font-semibold">Irreversible local database loss</p>
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="danger"
-                          aria-label="Reset local data"
-                          className="rounded-xl h-10 w-10 sm:h-8 sm:w-8"
-                          onClick={() => {
-                            const warningMsg = activeWorkout
-                              ? "You have a workout session in progress. Performing a factory reset will discard your active workout and permanently delete all custom workouts, body metrics, and messages. Are you sure you want to proceed?"
-                              : "Are you sure you want to restore original seeded data? All custom workouts, body metrics, and messages will be permanently deleted.";
-                            if (window.confirm(warningMsg)) {
-                              void resetLocalData();
-                            }
-                          }}
-                        >
-                          <RefreshCcw size={15} />
-                        </Button>
-                      </Surface>
                     </div>
                   </Card>
 
-                  {/* ─── GDPR: Delete Account ─── */}
                   <Card className="p-5 space-y-4 border-rose-500/20">
                     <div className="flex items-center gap-2.5 border-b border-rose-500/15 pb-3">
                       <Trash2 className="text-rose-400" size={18} />
-                      <h2 className="text-base font-bold text-rose-400 tracking-tight">Delete Account</h2>
+                      <h2 className="text-base font-bold text-rose-400 tracking-tight">Delete Profile & Data</h2>
                     </div>
 
                     <p className="text-xs text-zinc-500 leading-relaxed">
-                      Permanently delete your Atlas AI account and{" "}
+                      Permanently delete your Atlas AI profile and{" "}
                       <span className="font-semibold text-rose-400">all associated data</span>{" "}
-                      — workouts, nutrition logs, body metrics, AI providers, and your profile.{" "}
+                      — workouts, nutrition logs, body metrics, AI providers, and settings.{" "}
                       <span className="font-bold">This action is irreversible.</span>
                     </p>
 
@@ -1427,17 +1501,26 @@ export function SettingsScreen() {
                       </Surface>
                     )}
 
+                    <div className="space-y-1.5">
+                      <Label htmlFor="delete-confirm" className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Please type <span className="font-bold text-rose-500">DELETE</span> to confirm profile deletion:
+                      </Label>
+                      <Input
+                        id="delete-confirm"
+                        type="text"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="Type DELETE"
+                        className="text-xs font-mono font-bold"
+                      />
+                    </div>
+
                     <Button
                       id="delete-account-btn"
                       variant="danger"
                       className="w-full gap-2"
-                      disabled={deleteAccountLoading}
+                      disabled={deleteAccountLoading || deleteConfirmText !== "DELETE"}
                       onClick={async () => {
-                        const confirmed = window.confirm(
-                          "⚠️ Delete your Atlas AI account?\n\nThis will permanently erase all your data (workouts, nutrition, body metrics, AI providers).\n\nThis action CANNOT be undone.\n\nType your decision carefully."
-                        );
-                        if (!confirmed) return;
-
                         setDeleteAccountLoading(true);
                         setDeleteAccountError(null);
 
@@ -1446,7 +1529,7 @@ export function SettingsScreen() {
                           const json = await res.json();
 
                           if (!res.ok) {
-                            setDeleteAccountError(json.error ?? "Failed to delete account.");
+                            setDeleteAccountError(json.error ?? "Failed to delete profile.");
                             setDeleteAccountLoading(false);
                             return;
                           }
@@ -1462,9 +1545,9 @@ export function SettingsScreen() {
                       }}
                     >
                       {deleteAccountLoading ? (
-                        <><Loader2 size={15} className="animate-spin" /> Deleting account...</>
+                        <><Loader2 size={15} className="animate-spin" /> Deleting profile...</>
                       ) : (
-                        <><Trash2 size={15} /> Permanently Delete My Account</>
+                        <><Trash2 size={15} /> Permanently Delete My Profile & Data</>
                       )}
                     </Button>
                   </Card>

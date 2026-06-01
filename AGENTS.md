@@ -30,4 +30,5 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## 5. UI/UX, Typography & Theme Integrity
 - **Maintain Typography & Design Tokens**: Strictly follow the project's established fonts, typography hierarchies, and spacing variables defined in CSS modules or utility classes. Do not introduce ad-hoc font families or sizes.
 - **System and App Theme Coordination**: Ensure that user-selected theme settings (e.g. Light/Dark mode) integrate seamlessly with system-level theme preferences. Always prevent theme conflicts, flickering, or unreadable high-contrast issues during client-side hydration.
-
+- **No Unsolicited UI Changes**: Never modify workscreens, pages, layouts, or component UI files for visual or layout changes unless explicitly requested by the user and confirmed with a clear message beforehand.
+- **Responsive Layout & Device Adaptation**: Always design, create, and update components considering all device screen sizes, from mobile (especially iOS/Android viewports, handling safe area insets and notches) to laptops and desktops. All screens must scale and fit without clipping, text overflow, layout breaks, or unwanted scrolling issues.

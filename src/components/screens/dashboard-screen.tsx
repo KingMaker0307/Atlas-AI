@@ -38,6 +38,8 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
+import { BeginnerTipCard } from "@/components/beginner-tip-card";
+import { RecoveryCheckinSimple } from "@/components/recovery-checkin-simple";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -255,6 +257,7 @@ export function DashboardScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [planToDelete, setPlanToDelete] = useState<{ id: string; name: string } | null>(null);
   const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
+  const [showAdvancedPlanOptions, setShowAdvancedPlanOptions] = useState(false);
   const [showAiErrorModal, setShowAiErrorModal] = useState(false);
   const [aiErrorMessage, setAiErrorMessage] = useState("");
 
@@ -425,6 +428,28 @@ export function DashboardScreen() {
   };
 
   const getCoachingInsight = (score: number) => {
+    if (guidedMode) {
+      // Plain English for beginners
+      if (score >= 80) return {
+        label: "Your body feels great today! 💪",
+        text: "You're well-rested and full of energy. This is a great day to push yourself in your workout!",
+        color: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+        ringColor: "#10b981",
+      };
+      if (score >= 50) return {
+        label: "You're doing well 🙂",
+        text: "You're in good shape — train as planned today. Listen to your body and don't push too hard.",
+        color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
+        ringColor: "#f59e0b",
+      };
+      return {
+        label: "Your body needs rest 😴",
+        text: "It looks like you need some rest today. Consider going easy, doing a light walk, or taking the day off.",
+        color: "text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20",
+        ringColor: "#f43f5e",
+      };
+    }
+    // Expert mode — technical detail
     if (score >= 80) {
       return {
         label: "Peak Performance primed",
@@ -567,7 +592,7 @@ export function DashboardScreen() {
             <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Sparkles size={16} className="animate-pulse" />
             </span>
-            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Atlas Bio-Telemetry</p>
+            <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Your Daily Health Summary</p>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-955 dark:text-white">
             Welcome, {profile?.name ?? "Athlete"}
@@ -589,7 +614,7 @@ export function DashboardScreen() {
                   guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
                 }`}
               >
-                Guided
+                Guided 🌱
               </button>
               <button
                 type="button"
@@ -598,51 +623,118 @@ export function DashboardScreen() {
                   !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
                 }`}
               >
-                Advanced
+                Expert ⚡
               </button>
             </div>
 
 
             {/* Dynamic Recovery Ring */}
-            {!guidedMode && (
-              <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
-                <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
-                  <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
-                    <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
-                    <motion.circle
-                      cx="32"
-                      cy="32"
-                      r="28"
-                      fill="none"
-                      stroke={insight.ringColor}
-                      strokeWidth="4.5"
-                      strokeDasharray="176"
-                      initial={{ strokeDashoffset: 176 }}
-                      animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="text-center flex items-baseline justify-center">
-                    <span className="text-lg font-black text-zinc-955 dark:text-white leading-none">{recoveryScore}</span>
-                    <span className="text-xs font-bold text-zinc-750 dark:text-zinc-400 leading-none ml-0.5">%</span>
-                  </div>
-                </div>
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-750 dark:text-zinc-400">Recovery Score</span>
-                  <p className="text-sm font-bold text-zinc-955 dark:text-white leading-tight">{insight.label}</p>
-                  <button 
-                    onClick={() => setShowQuickLog(!showQuickLog)}
-                    className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
-                  >
-                    <TimerReset size={14} />
-                    Quick-Log Daily Recovery
-                  </button>
+            <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
+              <div className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 flex items-center justify-center">
+                <svg className="absolute inset-0 transform -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="4.5" />
+                  <motion.circle
+                    cx="32"
+                    cy="32"
+                    r="28"
+                    fill="none"
+                    stroke={insight.ringColor}
+                    strokeWidth="4.5"
+                    strokeDasharray="176"
+                    initial={{ strokeDashoffset: 176 }}
+                    animate={{ strokeDashoffset: 176 - (176 * recoveryScore) / 100 }}
+                    transition={{ duration: 1, ease: "easeOut" }}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="text-center flex items-baseline justify-center">
+                  <span className="text-lg font-black text-zinc-955 dark:text-white leading-none">{recoveryScore}</span>
+                  <span className="text-xs font-bold text-zinc-750 dark:text-zinc-400 leading-none ml-0.5">%</span>
                 </div>
               </div>
-            )}
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-750 dark:text-zinc-400">
+                  {guidedMode ? "Rest & Recovery Score" : "Recovery Score"}
+                </span>
+                <p className="text-sm font-bold text-zinc-955 dark:text-white leading-tight">
+                  {guidedMode ? (recoveryScore >= 80 ? "Feeling Great!" : recoveryScore >= 50 ? "Ready to train" : "Needs Rest") : insight.label}
+                </p>
+                <button 
+                  onClick={() => setShowQuickLog(!showQuickLog)}
+                  className="mt-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors flex items-center gap-1"
+                >
+                  <TimerReset size={14} />
+                  Record Daily Rest/Sleep
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
+
+      {/* ─── QUICK ACTIONS ZONE ─── */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(8);
+            if (activeWorkout) {
+              setActiveTab("workout");
+              setActiveSubScreen("active-workout");
+            } else if (todayRoutine) {
+              handleLaunchWorkoutClick(todayRoutine);
+            } else {
+              setActiveTab("workout");
+            }
+          }}
+          className="h-16 flex flex-col justify-center items-center gap-1 bg-emerald-500/10 dark:bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-2xl p-2 select-none"
+        >
+          <span className="text-lg">🏋️</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider">Start Workout</span>
+        </Button>
+        
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(8);
+            setActiveTab("nutrition");
+          }}
+          className="h-16 flex flex-col justify-center items-center gap-1 bg-amber-500/10 dark:bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-2xl p-2 select-none"
+        >
+          <span className="text-lg">🥗</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider">Log Meal</span>
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            if (navigator.vibrate) navigator.vibrate(8);
+            const addWaterLog = useAtlasStore.getState().addWaterLog;
+            const entryId = createId("wat");
+            await addWaterLog({
+              id: entryId,
+              timestamp: new Date().toISOString(),
+              amount: 250,
+            });
+            alert("Success: Logged 250 ml (1 cup) of water!");
+          }}
+          className="h-16 flex flex-col justify-center items-center gap-1 bg-sky-500/10 dark:bg-sky-500/5 border-sky-500/20 hover:bg-sky-500/20 text-sky-700 dark:text-sky-400 rounded-2xl p-2 select-none"
+        >
+          <span className="text-lg">🥤</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider">+1 Cup Water</span>
+        </Button>
+
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(8);
+            setShowQuickLog(!showQuickLog);
+          }}
+          className="h-16 flex flex-col justify-center items-center gap-1 bg-violet-500/10 dark:bg-violet-500/5 border-violet-500/20 hover:bg-violet-500/20 text-violet-700 dark:text-violet-400 rounded-2xl p-2 select-none"
+        >
+          <span className="text-lg">😴</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider">Log Sleep &amp; Mood 😴</span>
+        </Button>
       </section>
 
       {/* ─── SECURE CLOUD BACKUP MIGRATION BANNER ─── */}
@@ -656,11 +748,17 @@ export function DashboardScreen() {
           <div className="space-y-1 relative z-10 flex-1">
             <div className="flex items-center gap-2">
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">Security & Sync Upgrade</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
+                {guidedMode ? "Keep your progress safe" : "Security & Sync Upgrade"}
+              </p>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-zinc-955 dark:text-white">Upgrade to Secure Cloud Backup</h3>
+            <h3 className="text-sm sm:text-base font-bold text-zinc-955 dark:text-white">
+              {guidedMode ? "💾 Back up your workouts" : "Upgrade to Secure Cloud Backup"}
+            </h3>
             <p className="text-xs text-zinc-750 dark:text-zinc-400 leading-relaxed max-w-2xl">
-              Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices using high-fidelity naming conventions.
+              {guidedMode
+                ? "Link an email address to back up your workouts and access them from any device. It's free and takes 30 seconds."
+                : "Establish a verified cloud-backup email identity. This secures your workouts and syncs your profile securely across all your devices."}
             </p>
           </div>
           <Button
@@ -668,26 +766,31 @@ export function DashboardScreen() {
             className="sm:shrink-0 font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm h-9 text-xs px-4 rounded-xl relative z-10 flex items-center justify-center gap-1.5 self-start sm:self-center"
           >
             <Sparkles size={14} />
-            Secure Profile Now
+            {guidedMode ? "Back up now" : "Secure Profile Now"}
           </Button>
         </motion.div>
       )}
 
-      {/* Quick-Log Recovery Card in Advanced mode, shown in the main dashboard flow */}
+      {/* Quick-Log Recovery Card, shown in the main dashboard flow */}
       <AnimatePresence>
-        {!guidedMode && showQuickLog && (
+        {showQuickLog && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="w-full overflow-hidden"
           >
-            <Card className="p-5 border border-emerald-500/25 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-950/10 space-y-4">
+            {guidedMode ? (
+              <div className="pb-4">
+                <RecoveryCheckinSimple onSaved={() => setShowQuickLog(false)} />
+              </div>
+            ) : (
+              <Card className="p-5 border border-emerald-500/25 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-950/10 space-y-4">
               {/* Header */}
               <div className="flex items-center justify-between border-b border-emerald-200/60 dark:border-white/5 pb-2">
                 <div className="flex items-center gap-2">
                   <Heart size={16} className="text-emerald-600 dark:text-emerald-400 animate-pulse" />
-                  <h3 className="font-bold text-zinc-900 dark:text-white text-sm">Bio-Telemetry Recovery Log</h3>
+                  <h3 className="font-bold text-zinc-900 dark:text-white text-sm">Daily Rest &amp; Recovery Log</h3>
                 </div>
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setShowQuickLog(false)}>
                   <X size={16} />
@@ -711,6 +814,7 @@ export function DashboardScreen() {
                     onChange={(e) => setLogSleep(Number(e.target.value))}
                     className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">Aim for 7.5 to 9 hours of sleep per night.</p>
                 </div>
 
                 {/* Soreness Input */}
@@ -728,13 +832,13 @@ export function DashboardScreen() {
                     onChange={(e) => setLogSoreness(Number(e.target.value))}
                     className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more pain</p>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">1 = feeling great, 10 = very sore muscles</p>
                 </div>
 
                 {/* Stress Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Systemic Stress</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Daily Stress Level</span>
                     <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logStress}/10</span>
                   </div>
                   <input
@@ -746,13 +850,13 @@ export function DashboardScreen() {
                     onChange={(e) => setLogStress(Number(e.target.value))}
                     className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more stressed</p>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">1 = very relaxed, 10 = extremely stressed</p>
                 </div>
 
-                {/* Nervous Energy Input */}
+                {/* Energy Level Input */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Nervous Energy</span>
+                    <span className="text-zinc-700 dark:text-zinc-300 font-semibold">Energy Level</span>
                     <span className="text-emerald-700 dark:text-emerald-300 font-bold tabular-nums">{logEnergy}/10</span>
                   </div>
                   <input
@@ -764,7 +868,7 @@ export function DashboardScreen() {
                     onChange={(e) => setLogEnergy(Number(e.target.value))}
                     className="w-full h-1.5 rounded-lg appearance-none cursor-pointer accent-emerald-500 bg-emerald-200 dark:bg-zinc-700"
                   />
-                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">High value = more energetic</p>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-500">1 = exhausted, 10 = fully energized</p>
                 </div>
               </div>
 
@@ -774,10 +878,11 @@ export function DashboardScreen() {
                   Cancel
                 </Button>
                 <Button variant="primary" size="sm" onClick={handleQuickLogSubmit} className="bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400 text-white font-bold">
-                  Log Recovery
+                  Save how I'm feeling ✓
                 </Button>
               </div>
             </Card>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -932,21 +1037,32 @@ export function DashboardScreen() {
       {/* ─── TODAY'S TARGET HERO SECTION ─── */}
       <section className="relative overflow-hidden">
         {workoutPlans.length === 0 ? (
-          <Card className="p-6 border-dashed border-2 border-card-border bg-surface/10 dark:bg-white/[0.01]">
-            <div className="text-center space-y-4">
-              <ClipboardList className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
-              <div>
-                <h2 className="text-xl font-bold text-zinc-955 dark:text-white">No Active Plan Established</h2>
-                <p className="text-xs text-zinc-750 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
-                  To begin logging metrics, progressive overload cycles, and streaks, create a customized program or let our AI coach build one.
-                </p>
+          <div className="space-y-4">
+            {guidedMode && (
+              <BeginnerTipCard
+                emoji="🌱"
+                headline="Welcome to your new fitness helper!"
+                body="Getting started is easy. Let's load our friendly 3-Day workout plan template, or ask the AI Coach to design one based on your goals."
+                cta="Let's Set Up a Plan! 🏋️"
+                onCta={() => setShowCreatePlanModal(true)}
+              />
+            )}
+            <Card className="p-6 border-dashed border-2 border-card-border bg-surface/10 dark:bg-white/[0.01]">
+              <div className="text-center space-y-4">
+                <ClipboardList className="mx-auto h-12 w-12 text-emerald-500 dark:text-emerald-400" />
+                <div>
+                  <h2 className="text-xl font-bold text-zinc-955 dark:text-white">No Active Plan Established</h2>
+                  <p className="text-xs text-zinc-750 dark:text-zinc-400 max-w-sm mx-auto mt-1 leading-relaxed">
+                    To begin logging metrics, progressive overload cycles, and streaks, create a customized program or let our AI coach build one.
+                  </p>
+                </div>
+                <Button variant="primary" onClick={() => setActiveTab("workout")} className="mx-auto flex items-center gap-1.5 font-bold">
+                  <Plus size={16} />
+                  Initialize Training Plan
+                </Button>
               </div>
-              <Button variant="primary" onClick={() => setActiveTab("workout")} className="mx-auto flex items-center gap-1.5 font-bold">
-                <Plus size={16} />
-                Initialize Training Plan
-              </Button>
-            </div>
-          </Card>
+            </Card>
+          </div>
         ) : todayRoutine ? (
           /* Active Routine Day Hero */
           <div className="p-5 sm:p-6 border border-emerald-500/20 dark:border-emerald-500/20 bg-card relative shadow-sm overflow-hidden group rounded-2xl">
@@ -1131,12 +1247,11 @@ export function DashboardScreen() {
       )}
 
       {/* ─── PHYSIOLOGICAL METRICS GRID with Expandable Coach Insights ─── */}
-      {!guidedMode && (
-        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {/* Streak */}
-          <div className="flex flex-col">
+      <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {/* Streak */}
+        <div className="flex flex-col">
           <MetricCard
-            label="Streak"
+            label="Daily Streak"
             value={`${getCurrentStreak(workouts, activeWorkoutPlanId)}d`}
             detail="training days"
             icon={<Flame size={18} />}
@@ -1150,9 +1265,11 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-700 dark:text-zinc-300 leading-normal"
               >
-                Streak is the count of consecutive plan-routine execution days. Keep consistent pacing to build myofibrillar habit patterns!
+                {guidedMode 
+                  ? "Streak is the number of consecutive days you have completed a scheduled workout. Consistent training helps you build healthy habits and stay strong!"
+                  : "Streak is the count of consecutive plan-routine execution days. Keep consistent pacing to build myofibrillar habit patterns!"}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1175,9 +1292,11 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-700 dark:text-zinc-300 leading-normal"
               >
-                Evaluates the completed workouts against your target profile ({profile?.daysPerWeek ?? 3} days/week). Standard 30-day baseline is critical for athletic progress.
+                {guidedMode
+                  ? "Consistency measures how well you stick to your target workouts (e.g. 3 workouts per week). Logging regularly is the key to achieving long-term fitness results!"
+                  : "Evaluates the completed workouts against your target profile. Standard 30-day baseline is critical for athletic progress."}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1200,9 +1319,11 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-700 dark:text-zinc-300 leading-normal"
               >
-                Total load lifted across all exercises this week (sets * reps * weight). Progressive load volume triggers mechanical tension.
+                {guidedMode
+                  ? "Weekly Volume is the total weight you lifted this week (sets multiplied by reps and weight). Lifting more weight over time helps you build muscle and strength."
+                  : "Total load lifted across all exercises this week (sets * reps * weight). Progressive load volume triggers mechanical tension."}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1211,7 +1332,7 @@ export function DashboardScreen() {
         {/* Fatigue */}
         <div className="flex flex-col">
           <MetricCard
-            label="Fatigue Rating"
+            label="Muscle Fatigue"
             value={fatigue.label}
             detail="auto tracked"
             icon={<BatteryCharging size={18} />}
@@ -1225,9 +1346,11 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-700 dark:text-zinc-300 leading-normal"
               >
-                Nervous system strain mapped from sleep, stress, and soreness variables. AI adjusts load intensities in active routines dynamically.
+                {guidedMode
+                  ? "Muscle Fatigue is estimated from your logged sleep, stress, and soreness. The coach uses this to adjust your workout weights so you stay safe and avoid injuries!"
+                  : "Nervous system strain mapped from sleep, stress, and soreness variables. AI adjusts load intensities in active routines dynamically."}
               </motion.div>
             )}
           </AnimatePresence>
@@ -1236,7 +1359,7 @@ export function DashboardScreen() {
         {/* Sleep */}
         <div className="flex flex-col col-span-2 md:col-span-1">
           <MetricCard
-            label="CNS Sleep"
+            label="Sleep Duration"
             value={`${latestRecoveryLog?.sleepHours ?? 7.5}h`}
             detail="last logged"
             icon={<Moon size={18} />}
@@ -1250,171 +1373,168 @@ export function DashboardScreen() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-750 dark:text-zinc-300 leading-normal"
+                className="mt-1 p-2.5 rounded-lg bg-surface border border-surface-border text-xs text-zinc-700 dark:text-zinc-300 leading-normal"
               >
-                Your latest logged sleep. 7.5-9 hours is the critical physiological zone for protein synthesis and tissue restoration.
+                {guidedMode
+                  ? "Your last logged sleep duration. Getting 7.5 to 9 hours of sleep per night is essential for your body to repair muscles and restore energy."
+                  : "Your latest logged sleep. 7.5-9 hours is the critical physiological zone for protein synthesis and tissue restoration."}
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </section>
-      )}
 
       {/* ─── WEEKLY CONSISTENCY STREAKS GRID ─── */}
-      {!guidedMode && (
-        <Card className="p-4 border border-card-border bg-card shadow-sm">
-          <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-2.5">
-            <Calendar size={16} className="text-emerald-600 dark:text-emerald-400" />
-            <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Consistency Streaks</h2>
-          </div>
-          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
-            Your combined training and nutrition tracking history. Keep the momentum going by logging workouts and meals daily!
-          </p>
+      <Card className="p-4 border border-card-border bg-card shadow-sm">
+        <div className="flex items-center gap-2 border-b border-zinc-100 dark:border-white/5 pb-2.5">
+          <Calendar size={16} className="text-emerald-600 dark:text-emerald-400" />
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Your Activity Calendar</h2>
+        </div>
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
+          Your active days of completed training and nutrition tracking. Log daily to build habits!
+        </p>
 
-          <div className="mt-4 flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
-            {/* Grid */}
-            <div className="flex flex-col gap-1.5 select-none w-full max-w-[340px] shrink-0">
-              {/* Day of Week Labels */}
-              <div className="grid grid-cols-[36px_1fr] gap-2 items-center">
-                <div /> {/* Spacer for row labels */}
-                <div className="grid grid-cols-7 gap-1.5 text-center">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, idx) => (
-                    <div key={idx} className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
-                      {label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Rows (4 weeks) */}
-              {[0, 1, 2, 3].map((weekIdx) => {
-                const weekDays = consistencyDays.slice(weekIdx * 7, (weekIdx + 1) * 7);
-                const isCurrentWeek = weekIdx === 3;
-                return (
-                  <div key={weekIdx} className="grid grid-cols-[36px_1fr] gap-2 items-center">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase font-mono">
-                      {isCurrentWeek ? "This" : `W-${3 - weekIdx}`}
-                    </span>
-                    <div className="grid grid-cols-7 gap-1.5">
-                      {weekDays.map((day) => {
-                        let cellBgClass = "bg-zinc-150 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-800/60";
-                        let titleText = `${day.dateStr}: Rest Day / No entries`;
-
-                        if (day.isFuture) {
-                          cellBgClass = "bg-zinc-100/50 dark:bg-zinc-900/20 border border-dashed border-zinc-200/30 dark:border-zinc-800/30 opacity-40";
-                          titleText = `${day.dateStr}: Future day`;
-                        } else if (day.hasWorkout && day.hasNutrition) {
-                          cellBgClass = "bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500 text-white shadow-sm shadow-emerald-500/10";
-                          titleText = `${day.dateStr}: Workout + Nutrition logged (Full consistency!)`;
-                        } else if (day.hasWorkout) {
-                          cellBgClass = "bg-teal-500/90 dark:bg-teal-500/70 border border-teal-500/80 text-white shadow-sm shadow-teal-500/10";
-                          titleText = `${day.dateStr}: Workout logged`;
-                        } else if (day.hasNutrition) {
-                          cellBgClass = "bg-amber-500/90 dark:bg-amber-500/70 border border-amber-500/80 text-white shadow-sm shadow-amber-500/10";
-                          titleText = `${day.dateStr}: Nutrition logged`;
-                        }
-
-                        return (
-                          <div
-                            key={day.dateStr}
-                            className={`aspect-square w-full rounded-[6px] relative flex items-center justify-center transition-all duration-150 hover:scale-115 active:scale-95 cursor-help ${cellBgClass}`}
-                            title={titleText}
-                          >
-                            {day.isToday && (
-                              <span className="absolute -inset-0.5 rounded-[8px] border-2 border-indigo-500 dark:border-indigo-400 animate-pulse pointer-events-none" />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+        <div className="mt-4 flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
+          {/* Grid */}
+          <div className="flex flex-col gap-1.5 select-none w-full max-w-[340px] shrink-0">
+            {/* Day of Week Labels */}
+            <div className="grid grid-cols-[36px_1fr] gap-2 items-center">
+              <div /> {/* Spacer for row labels */}
+              <div className="grid grid-cols-7 gap-1.5 text-center">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label, idx) => (
+                  <div key={idx} className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500">
+                    {label}
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
 
-            {/* Legend / Stats */}
-            <div className="flex flex-col gap-3 justify-center w-full">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
-                  <div className="w-3.5 h-3.5 rounded-[4px] bg-teal-500/90 border border-teal-500" />
-                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Workout Logged</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
-                  <div className="w-3.5 h-3.5 rounded-[4px] bg-amber-500/90 border border-amber-500" />
-                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Nutrition Logged</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border col-span-2">
-                  <div className="w-3.5 h-3.5 rounded-[4px] bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500" />
-                  <span className="text-zinc-700 dark:text-zinc-300 font-medium">Full Lockstep (Workout + Diet)</span>
-                </div>
-              </div>
+            {/* Rows (4 weeks) */}
+            {[0, 1, 2, 3].map((weekIdx) => {
+              const weekDays = consistencyDays.slice(weekIdx * 7, (weekIdx + 1) * 7);
+              const isCurrentWeek = weekIdx === 3;
+              return (
+                <div key={weekIdx} className="grid grid-cols-[36px_1fr] gap-2 items-center">
+                  <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase font-mono">
+                    {isCurrentWeek ? "This" : `W-${3 - weekIdx}`}
+                  </span>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {weekDays.map((day) => {
+                      let cellBgClass = "bg-zinc-150 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-800/60";
+                      let titleText = `${day.dateStr}: Rest Day / No entries`;
 
-              {/* Minimal metrics text */}
-              <div className="p-2.5 rounded-xl bg-surface border border-surface-border text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
-                <div className="flex justify-between items-center mb-1">
-                  <span>Workouts completed (28d):</span>
-                  <strong className="text-zinc-850 dark:text-white font-bold font-mono">
-                    {consistencyDays.filter(d => d.hasWorkout && !d.isFuture).length} days
-                  </strong>
+                      if (day.isFuture) {
+                        cellBgClass = "bg-zinc-100/50 dark:bg-zinc-900/20 border border-dashed border-zinc-200/30 dark:border-zinc-800/30 opacity-40";
+                        titleText = `${day.dateStr}: Future day`;
+                      } else if (day.hasWorkout && day.hasNutrition) {
+                        cellBgClass = "bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500 text-white shadow-sm shadow-emerald-500/10";
+                        titleText = `${day.dateStr}: Workout + Nutrition logged (Full consistency!)`;
+                      } else if (day.hasWorkout) {
+                        cellBgClass = "bg-teal-500/90 dark:bg-teal-500/70 border border-teal-500/80 text-white shadow-sm shadow-teal-500/10";
+                        titleText = `${day.dateStr}: Workout logged`;
+                      } else if (day.hasNutrition) {
+                        cellBgClass = "bg-amber-500/90 dark:bg-amber-500/70 border border-amber-500/80 text-white shadow-sm shadow-amber-500/10";
+                        titleText = `${day.dateStr}: Nutrition logged`;
+                      }
+
+                      return (
+                        <div
+                          key={day.dateStr}
+                          className={`aspect-square w-full rounded-[6px] relative flex items-center justify-center transition-all duration-150 hover:scale-115 active:scale-95 cursor-help ${cellBgClass}`}
+                          title={titleText}
+                        >
+                          {day.isToday && (
+                            <span className="absolute -inset-0.5 rounded-[8px] border-2 border-indigo-500 dark:border-indigo-400 animate-pulse pointer-events-none" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span>Diet tracked (28d):</span>
-                  <strong className="text-zinc-850 dark:text-white font-bold font-mono">
-                    {consistencyDays.filter(d => d.hasNutrition && !d.isFuture).length} days
-                  </strong>
-                </div>
+              );
+            })}
+          </div>
+
+          {/* Legend / Stats */}
+          <div className="flex flex-col gap-3 justify-center w-full">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
+                <div className="w-3.5 h-3.5 rounded-[4px] bg-teal-500/90 border border-teal-500" />
+                <span className="text-zinc-700 dark:text-zinc-300 font-medium">Workout Logged</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border">
+                <div className="w-3.5 h-3.5 rounded-[4px] bg-amber-500/90 border border-amber-500" />
+                <span className="text-zinc-700 dark:text-zinc-300 font-medium">Nutrition Logged</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-surface border border-surface-border col-span-2">
+                <div className="w-3.5 h-3.5 rounded-[4px] bg-gradient-to-br from-emerald-450 to-teal-500 border border-emerald-500" />
+                <span className="text-zinc-700 dark:text-zinc-300 font-medium">Full Lockstep (Workout + Diet)</span>
+              </div>
+            </div>
+
+            {/* Minimal metrics text */}
+            <div className="p-2.5 rounded-xl bg-surface border border-surface-border text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+              <div className="flex justify-between items-center mb-1">
+                <span>Workouts completed (28d):</span>
+                <strong className="text-zinc-850 dark:text-white font-bold font-mono">
+                  {consistencyDays.filter(d => d.hasWorkout && !d.isFuture).length} days
+                </strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Diet tracked (28d):</span>
+                <strong className="text-zinc-850 dark:text-white font-bold font-mono">
+                  {consistencyDays.filter(d => d.hasNutrition && !d.isFuture).length} days
+                </strong>
               </div>
             </div>
           </div>
-        </Card>
-      )}
+        </div>
+      </Card>
 
       {/* ─── DYNAMIC BIOMETRICS hub ─── */}
-      {!guidedMode && (
-        <Card className="p-4 border border-card-border bg-card shadow">
-          <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
-            <div className="flex items-center gap-2">
-              <User size={16} className="text-emerald-600 dark:text-emerald-400" />
-              <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Athlete Biometrics</h2>
-            </div>
-            <Button variant="ghost" size="icon" aria-label="Edit biometrics" className="h-7 w-7 text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setActiveTab("settings")}>
-              <Pencil size={14} />
-            </Button>
+      <Card className="p-4 border border-card-border bg-card shadow">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-white/5 pb-2.5">
+          <div className="flex items-center gap-2">
+            <User size={16} className="text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">My Height &amp; Weight</h2>
           </div>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
-            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Age</span>
-              <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-750 dark:text-zinc-400">yrs</span></p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Weight</span>
-              <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-750 dark:text-zinc-400">{profile?.weightUnit}</span></p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Height</span>
-              <p className="font-bold text-zinc-955 dark:text-white text-sm">
-                {profile?.height
-                  ? profile.heightUnit === "in"
-                    ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
-                    : `${profile.height} cm`
-                  : "N/A"}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Target Physique</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-450 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
-                {profile?.targetPhysique ?? "N/A"}
-              </p>
-            </div>
-            <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
-              <span className="text-xs text-zinc-750 dark:text-zinc-400 font-bold uppercase">Protein Target</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-450 text-sm">
-                {nutritionTargets.protein ? `${nutritionTargets.protein} g/day` : "N/A"}
-              </p>
-            </div>
+          <Button variant="ghost" size="icon" aria-label="Edit biometrics" className="h-7 w-7 text-zinc-400 hover:text-zinc-900 dark:hover:text-white" onClick={() => setActiveTab("settings")}>
+            <Pencil size={14} />
+          </Button>
+        </div>
+        <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+            <span className="text-xs text-zinc-555 dark:text-zinc-400 font-bold uppercase">Age</span>
+            <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.age ?? "N/A"} <span className="text-xs font-normal text-zinc-500">yrs</span></p>
           </div>
-        </Card>
-      )}
+          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+            <span className="text-xs text-zinc-555 dark:text-zinc-400 font-bold uppercase">Weight</span>
+            <p className="font-bold text-zinc-955 dark:text-white text-sm">{profile?.weight ?? "N/A"} <span className="text-xs font-normal text-zinc-500">{profile?.weightUnit}</span></p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+            <span className="text-xs text-zinc-555 dark:text-zinc-400 font-bold uppercase">Height</span>
+            <p className="font-bold text-zinc-955 dark:text-white text-sm">
+              {profile?.height
+                ? profile.heightUnit === "in"
+                  ? `${Math.floor(profile.height / 12)}'${Math.round(profile.height % 12)}"`
+                  : `${profile.height} cm`
+                : "N/A"}
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+            <span className="text-xs text-zinc-555 dark:text-zinc-400 font-bold uppercase">My Goal</span>
+            <p className="font-bold text-emerald-600 dark:text-emerald-450 text-xs truncate" title={profile?.targetPhysique ?? "N/A"}>
+              {profile?.targetPhysique ?? "N/A"}
+            </p>
+          </div>
+          <div className="p-2.5 rounded-xl bg-surface border border-surface-border space-y-0.5">
+            <span className="text-xs text-zinc-555 dark:text-zinc-400 font-bold uppercase">Protein Goal</span>
+            <p className="font-bold text-emerald-600 dark:text-emerald-450 text-sm">
+              {nutritionTargets.protein ? `${nutritionTargets.protein} g/day` : "N/A"}
+            </p>
+          </div>
+        </div>
+      </Card>
   
       {/* ─── HIGH-FIDELITY TABBED TRENDS CONSOLE ─── */}
       {!guidedMode && (
@@ -1943,28 +2063,7 @@ export function DashboardScreen() {
                   </div>
                 </button>
 
-                {/* Option 2: Custom Manual Builder */}
-                <button
-                  onClick={() => {
-                    handleCreateManualPlan();
-                    setShowCreatePlanModal(false);
-                  }}
-                  className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
-                >
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
-                    <Plus size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      Create Manual Plan
-                    </h4>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
-                      Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
-                    </p>
-                  </div>
-                </button>
-
-                {/* Option 3: AI Coach Planner */}
+                {/* Option 2: AI Coach Planner */}
                 <button
                   onClick={() => {
                     handleGenerateAiPlan();
@@ -1984,6 +2083,61 @@ export function DashboardScreen() {
                     </p>
                   </div>
                 </button>
+
+                {/* Option 3: Custom Manual Builder (Collapsed or clearly labelled in Guided Mode) */}
+                {guidedMode ? (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedPlanOptions(!showAdvancedPlanOptions)}
+                      className="w-full text-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition py-1"
+                    >
+                      {showAdvancedPlanOptions ? "Hide manual plan option ▲" : "Show advanced manual plan option ▼"}
+                    </button>
+                    {showAdvancedPlanOptions && (
+                      <button
+                        onClick={() => {
+                          handleCreateManualPlan();
+                          setShowCreatePlanModal(false);
+                          setShowAdvancedPlanOptions(false);
+                        }}
+                        className="w-full text-left p-3.5 mt-2 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer animate-fadeIn"
+                      >
+                        <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
+                          <Plus size={18} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            Create Manual Plan (Advanced)
+                          </h4>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
+                            Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
+                          </p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      handleCreateManualPlan();
+                      setShowCreatePlanModal(false);
+                    }}
+                    className="w-full text-left p-3.5 rounded-xl border border-card-border bg-surface/30 hover:bg-surface transition-all flex gap-3.5 items-start group cursor-pointer"
+                  >
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-455 shrink-0">
+                      <Plus size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        Create Manual Plan
+                      </h4>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">
+                        Design a completely customized plan from scratch. Add routines, configure days, target sets, and select exercises manually.
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </Card>

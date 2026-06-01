@@ -21,6 +21,8 @@ html {
 body {
   min-height: 100%;
   margin: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background:
     radial-gradient(circle at 20% -10%, rgba(52, 211, 153, 0.12), transparent 28rem),
     radial-gradient(circle at 90% 0%, rgba(56, 189, 248, 0.1), transparent 24rem),

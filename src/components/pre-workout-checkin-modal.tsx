@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { X } from "lucide-react";
 import { todayKey } from "@/lib/id";
+import { cn } from "@/lib/cn";
 
 interface PreWorkoutCheckinModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface PreWorkoutCheckinModalProps {
 export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkoutCheckinModalProps) {
   const recoveryLogs = useAtlasStore((state) => state.recoveryLogs);
   const logRecovery = useAtlasStore((state) => state.logRecovery);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
 
   const lastSleepHours = recoveryLogs.at(-1)?.sleepHours ?? 7.5;
   const [sleepHours, setSleepHours] = useState<number | undefined>(lastSleepHours);
@@ -63,40 +65,78 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <Card className="w-full max-w-sm p-6 space-y-4 relative" role="dialog" aria-modal="true" aria-labelledby="pre-workout-title">
+      <Card className="w-full max-w-sm p-6 space-y-4 relative shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="pre-workout-title">
         <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose} aria-label="Close modal">
           <X size={20} aria-hidden="true" />
         </Button>
         <h2 id="pre-workout-title" className="text-xl font-semibold text-foreground">Pre-Workout Check-in</h2>
         <p className="text-zinc-500 dark:text-zinc-400 text-sm">How many hours did you sleep last night?</p>
 
-        {/* Workout Limit Notice */}
-        <div className="p-3 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10 text-xs text-zinc-650 dark:text-zinc-300 space-y-1">
-          <p className="font-semibold text-emerald-700 dark:text-emerald-400">Workout Duration Notice</p>
-          <p>Please note: A workout session has a maximum limit of 3 hours. Sessions running longer will be automatically stopped and logged.</p>
-        </div>
+        {/* Workout Limit Notice (hidden in Guided Mode) */}
+        {!guidedMode ? (
+          <div className="p-3 rounded-xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10 text-xs text-zinc-650 dark:text-zinc-300 space-y-1">
+            <p className="font-semibold text-emerald-700 dark:text-emerald-400">Workout Duration Notice</p>
+            <p>Please note: A workout session has a maximum limit of 3 hours. Sessions running longer will be automatically stopped and logged.</p>
+          </div>
+        ) : (
+          <p className="text-emerald-600 dark:text-emerald-400 text-xs font-bold font-sans italic">Let's crush today's session! 💪</p>
+        )}
 
-        <div>
-          <Label htmlFor="sleepHours">Sleep Hours</Label>
-          <Input
-            id="sleepHours"
-            type="number"
-            step="0.1"
-            min="0"
-            max="24"
-            value={sleepHours ?? ""}
-            onChange={(e) => handleChange(e.target.value)}
-            placeholder="e.g., 7.5"
-          />
-          {error && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
-        </div>
+        {guidedMode ? (
+          <div className="space-y-2">
+            <Label>Select Sleep Option</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "4h or less 😴", val: 4 },
+                { label: "5–6h 😐", val: 5.5 },
+                { label: "7–8h 😊", val: 7.5 },
+                { label: "9h+ 😄", val: 9.5 }
+              ].map((opt) => {
+                const active = sleepHours === opt.val;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => {
+                      setSleepHours(opt.val);
+                      setError(null);
+                    }}
+                    className={cn(
+                      "py-3 px-2 rounded-xl border text-xs font-bold transition-all text-center select-none cursor-pointer",
+                      active
+                        ? "bg-emerald-500 border-emerald-500 text-white-keep shadow-md"
+                        : "bg-surface border-surface-border text-zinc-700 dark:text-zinc-300 hover:bg-surface-hover"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor="sleepHours">Sleep Hours</Label>
+            <Input
+              id="sleepHours"
+              type="number"
+              step="0.1"
+              min="0"
+              max="24"
+              value={sleepHours ?? ""}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="e.g., 7.5"
+            />
+            {error && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{error}</p>}
+          </div>
+        )}
 
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleSkip} className="flex-1">
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" onClick={handleSkip} className="flex-1 rounded-xl">
             Skip
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!!error} className="flex-1">
-            Save & Start
+          <Button variant="primary" onClick={handleSave} disabled={!!error} className="flex-1 rounded-xl">
+            Save &amp; Start
           </Button>
         </div>
       </Card>

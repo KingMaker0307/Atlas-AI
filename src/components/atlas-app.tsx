@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon } from "lucide-react";
-import { useEffect } from "react";
+import { BarChart3, Bot, CalendarCheck, ClipboardList, Home, LayoutDashboard, Settings, ShieldAlert, Sun, Moon, Flame, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
+import { TodayScreen } from "@/components/screens/today-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
 import { ProgressScreen } from "@/components/screens/progress-screen";
@@ -19,20 +20,28 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { Onboarding } from "@/components/onboarding";
 import { PwaRegistrar } from "@/components/pwa-registrar";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { NutritionTracker } from "@/components/nutrition-tracker";
+import { ModeBanner } from "@/components/mode-banner";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { useAtlasStore, type AtlasTab } from "@/store/useAtlasStore";
 
-const navItems: Array<{
-  id: AtlasTab;
-  label: string;
-  icon: typeof Home;
-}> = [
-  { id: "dashboard", label: "Dashboard", icon: Home },
-  { id: "workout", label: "Plans", icon: ClipboardList },
-  { id: "coach", label: "Coach", icon: Bot },
-  { id: "progress", label: "Progress", icon: BarChart3 },
-  { id: "settings", label: "Settings", icon: Settings },
+// Nav items for Expert Mode (full dashboard view)
+const expertNavItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
+  { id: "dashboard", label: "Dashboard",  icon: LayoutDashboard },
+  { id: "workout",   label: "Workout",    icon: ClipboardList },
+  { id: "nutrition", label: "Nutrition",  icon: Flame },
+  { id: "coach",     label: "Coach",      icon: Bot },
+  { id: "progress",  label: "Progress",   icon: BarChart3 },
+];
+
+// Nav items for Guided Mode — simplified labels, Today as first tab
+const guidedNavItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
+  { id: "today",     label: "Today",      icon: CalendarCheck },
+  { id: "workout",   label: "Workout",    icon: ClipboardList },
+  { id: "nutrition", label: "Nutrition",  icon: Flame },
+  { id: "coach",     label: "Coach",      icon: Bot },
+  { id: "progress",  label: "Progress",   icon: BarChart3 },
 ];
 
 export function AtlasApp() {
@@ -46,8 +55,14 @@ export function AtlasApp() {
   const setTheme = useAtlasStore((state) => state.setTheme);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
   const blocked = useAtlasStore((state) => state.blocked);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Pick nav set based on mode
+  const navItems = guidedMode ? guidedNavItems : expertNavItems;
+  // In guided mode, redirect 'dashboard' tab to 'today' unless user explicitly navigated there
+  const resolvedTab = (guidedMode && activeTab === "dashboard") ? "today" : activeTab;
 
 
   useEffect(() => {
@@ -122,7 +137,9 @@ export function AtlasApp() {
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold leading-none text-foreground">Atlas AI Coach</p>
-            <p className="mt-1.5 text-[10px] font-medium text-zinc-500 leading-none">Private fitness intelligence</p>
+            <p className="mt-1.5 text-[10px] font-medium text-zinc-500 leading-none">
+              {guidedMode ? "Your personal fitness helper 🌱" : "Private fitness intelligence"}
+            </p>
           </div>
         </div>
 
@@ -130,7 +147,7 @@ export function AtlasApp() {
         <div className="flex-1 flex flex-col gap-1.5 w-full">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = activeTab === item.id;
+            const active = resolvedTab === item.id;
             return (
               <button
                 key={item.id}
@@ -165,34 +182,45 @@ export function AtlasApp() {
               <OfflineIndicator />
               <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-mono">System Standby</span>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-                const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
-                void setTheme(resolved === "dark" ? "light" : "dark");
-              }}
-              className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
-              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-              aria-label="Toggle display theme"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={theme}
-                  initial={{ y: 12, rotate: 45, opacity: 0 }}
-                  animate={{ y: 0, rotate: 0, opacity: 1 }}
-                  exit={{ y: -12, rotate: -45, opacity: 0 }}
-                  transition={{ duration: 0.18, ease: "easeInOut" }}
-                  className="shrink-0"
-                >
-                  {theme === "dark" ? (
-                    <Sun size={14} className="text-amber-500" />
-                  ) : (
-                    <Moon size={14} className="text-indigo-500 dark:text-indigo-400" />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+                title="Open settings"
+                aria-label="Open settings"
+              >
+                <Settings size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                  const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
+                  void setTheme(resolved === "dark" ? "light" : "dark");
+                }}
+                className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                aria-label="Toggle display theme"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={theme}
+                    initial={{ y: 12, rotate: 45, opacity: 0 }}
+                    animate={{ y: 0, rotate: 0, opacity: 1 }}
+                    exit={{ y: -12, rotate: -45, opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeInOut" }}
+                    className="shrink-0"
+                  >
+                    {theme === "dark" ? (
+                      <Sun size={14} className="text-amber-500" />
+                    ) : (
+                      <Moon size={14} className="text-indigo-500 dark:text-indigo-400" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </button>
+            </div>
           </div>
           <InstallPrompt />
         </div>
@@ -209,11 +237,23 @@ export function AtlasApp() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold leading-none text-foreground truncate">Atlas AI Coach</p>
                 <p className="mt-1 text-[10px] text-zinc-500 font-medium leading-none truncate hidden min-[360px]:block">
-                  Private fitness intelligence
+                  {guidedMode ? "Your personal fitness helper 🌱" : "Private fitness intelligence"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0 justify-end flex-nowrap pl-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(8);
+                  setSettingsOpen(true);
+                }}
+                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
+                title="Open settings"
+                aria-label="Open settings"
+              >
+                <Settings size={14} />
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -249,23 +289,28 @@ export function AtlasApp() {
         </div>
       )}
 
+      {/* ─── MODE BANNER (shown for new guided mode users) ─── */}
+      <ModeBanner />
+
       {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
       <main className={cn(
         "mx-auto w-full max-w-6xl md:pb-8",
-        activeTab === "workout" && activeSubScreen === "active-workout"
+        resolvedTab === "workout" && activeSubScreen === "active-workout"
           ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16"
           : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-[calc(2rem+env(safe-area-inset-top))]"
       )}>
         <AnimatePresence mode="wait">
-          {activeTab === "workout" && activeSubScreen ? (
+          {resolvedTab === "workout" && activeSubScreen ? (
             renderSubScreen()
           ) : (
-            <motion.div key={activeTab}>
-              {activeTab === "dashboard" ? <ErrorBoundary screen="Dashboard"><DashboardScreen /></ErrorBoundary> : null}
-              {activeTab === "workout" ? <ErrorBoundary screen="Workout"><WorkoutScreen /></ErrorBoundary> : null}
-              {activeTab === "coach" ? <ErrorBoundary screen="Coach"><CoachScreen /></ErrorBoundary> : null}
-              {activeTab === "progress" ? <ErrorBoundary screen="Progress"><ProgressScreen /></ErrorBoundary> : null}
-              {activeTab === "settings" ? <ErrorBoundary screen="Settings"><SettingsScreen /></ErrorBoundary> : null}
+            <motion.div key={resolvedTab}>
+              {resolvedTab === "today"      ? <ErrorBoundary screen="Today"><TodayScreen /></ErrorBoundary> : null}
+              {resolvedTab === "dashboard"  ? <ErrorBoundary screen="Dashboard"><DashboardScreen /></ErrorBoundary> : null}
+              {resolvedTab === "workout"    ? <ErrorBoundary screen="Workout"><WorkoutScreen /></ErrorBoundary> : null}
+              {resolvedTab === "nutrition"  ? <ErrorBoundary screen="Nutrition"><NutritionTracker /></ErrorBoundary> : null}
+              {resolvedTab === "coach"      ? <ErrorBoundary screen="Coach"><CoachScreen /></ErrorBoundary> : null}
+              {resolvedTab === "progress"   ? <ErrorBoundary screen="Progress"><ProgressScreen /></ErrorBoundary> : null}
+              {resolvedTab === "settings"   ? <ErrorBoundary screen="Settings"><SettingsScreen /></ErrorBoundary> : null}
             </motion.div>
           )}
         </AnimatePresence>
@@ -274,9 +319,9 @@ export function AtlasApp() {
       {/* ─── MOBILE BOTTOM BAR NAVIGATION (Hidden on desktop) ─── */}
       <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
         <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-5 px-1 sm:px-2 md:max-w-xl">
-          {navItems.map((item) => {
+          {navItems.filter(item => item.id !== "settings").map((item) => {
             const Icon = item.icon;
-            const active = activeTab === item.id;
+            const active = resolvedTab === item.id;
             return (
               <button
                 className={cn(
@@ -304,6 +349,33 @@ export function AtlasApp() {
           })}
         </div>
       </nav>
+
+      <AnimatePresence>
+        {settingsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex justify-end bg-zinc-950/40 backdrop-blur-sm"
+          >
+            {/* Backdrop click to close */}
+            <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
+            
+            {/* Drawer Panel */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-2xl h-dvh bg-background border-l border-card-border shadow-2xl overflow-y-auto p-4 sm:p-6 pb-20 z-10"
+            >
+              <ErrorBoundary screen="Settings">
+                <SettingsScreen onClose={() => setSettingsOpen(false)} />
+              </ErrorBoundary>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -637,7 +637,7 @@ export function WelcomeScreen() {
             <Dumbbell size={26} className="text-zinc-955 keep-light" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Welcome to Atlas</h1>
-          <p className="mt-1 text-xs sm:text-sm text-zinc-400">Your private offline-first fitness intelligence OS</p>
+          <p className="mt-1 text-xs sm:text-sm text-zinc-400">Your secure cloud-connected fitness helper</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -656,42 +656,28 @@ export function WelcomeScreen() {
                   Atlas AI Fitness OS
                 </p>
                 <p className="text-xs text-zinc-400 leading-relaxed max-w-sm mx-auto">
-                  Begin your private fitness journey. Select how you want to configure your localized database.
+                  Begin your secure fitness journey. Select how you want to configure your cloud connected profile.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                {/* 1. Sign up with Google */}
+              {/* Action grid menu items */}
+              <div className="space-y-3">
+                {/* 1. Supabase Cloud Sync */}
                 <button
                   type="button"
                   onClick={() => {
-                    setName("");
-                    setAge(28);
-                    setWeight(165);
-                    setHeight(70);
-                    setExperience("beginner");
-                    setBodyType("mesomorph");
-                    setTargetPhysique("athletic");
-                    setGoal("Build strength and muscle size");
-                    setDaysPerWeek(3);
-                    setWeightUnit("lbs");
-                    setHeightUnit("in");
-                    setSetupAiCoach(true);
                     setSelectedSyncType("federated");
-                    setGoogleAuthError(null);
-                    setView("federated-setup");
+                    setView("backup");
                   }}
-                  className="flex items-start text-left p-5 rounded-2xl border border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-500/5 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 hover:border-emerald-500/30 dark:hover:border-emerald-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  className="w-full flex items-start gap-4 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/35 hover:bg-emerald-500/[0.02] bg-zinc-50 dark:bg-zinc-900/60 transition duration-200 cursor-pointer text-left group hover:scale-[1.01]"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-xl pointer-events-none group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-500/20 transition-all" />
-                  
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mr-4 shadow-sm border border-emerald-500/20">
-                    <Cloud size={20} className="stroke-[2.5]" />
+                  <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <Cloud size={18} />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
-                      Sign up with Google
-                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
+                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                      Supabase Cloud Sync (Recommended)
+                      <ArrowRight size={14} className="text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
                       Sync to any device. Logs you in automatically if an account exists, or starts a fresh personalized setup.
@@ -699,18 +685,18 @@ export function WelcomeScreen() {
                   </div>
                 </button>
 
-                {/* 2. Local Setup (Continue with Email) */}
+                {/* 2. Manual local setup */}
                 <button
                   type="button"
                   onClick={() => {
-                    setStartupChoice("local");
+                    setSelectedSyncType("offline");
+                    setView("setup");
+                    setCapturedProvider("email");
                   }}
-                  className="flex items-start text-left p-5 rounded-2xl border border-blue-500/15 dark:border-blue-500/20 bg-blue-50/40 dark:bg-blue-500/5 hover:bg-blue-50/80 dark:hover:bg-blue-500/10 hover:border-blue-500/30 dark:hover:border-blue-500/40 transition-all duration-200 group relative overflow-hidden cursor-pointer"
+                  className="w-full flex items-start gap-4 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:border-blue-500/35 hover:bg-blue-500/[0.02] bg-zinc-50 dark:bg-zinc-900/60 transition duration-200 cursor-pointer text-left group hover:scale-[1.01]"
                 >
-                  <div className="absolute -right-12 -bottom-12 h-24 w-24 rounded-full bg-blue-500/5 dark:bg-blue-500/10 blur-xl pointer-events-none group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-all" />
-                  
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mr-4 shadow-sm border border-blue-500/20">
-                    <Mail size={20} className="stroke-[2.5]" />
+                  <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <Mail size={18} />
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-zinc-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
@@ -718,7 +704,7 @@ export function WelcomeScreen() {
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-blue-600 dark:group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      Create your training profile manually. Verifies your email with a 6-digit code to enable secure cloud sync and automatic backups.
+                      Create your training profile manually. All data is safely saved to your secure online account, with optional email verification for account recovery.
                     </p>
                   </div>
                 </button>
@@ -754,7 +740,7 @@ export function WelcomeScreen() {
                       <ArrowRight size={14} className="text-zinc-500 group-hover:text-teal-600 dark:group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
                     </h3>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                      Restore workouts, routines, and settings from a cloud backup using Google Drive or Cloud Email Sync.
+                      Restore workouts, routines, and settings from a previous backup to recover your account data.
                     </p>
                   </div>
                 </button>
@@ -1583,11 +1569,11 @@ export function WelcomeScreen() {
                               onChange={(e: any) => setTargetPhysique(e.target.value)}
                               className="mt-1 text-xs font-bold"
                             >
-                              <option value="lean">Lean</option>
-                              <option value="athletic">Athletic</option>
-                              <option value="bulky">Bulky</option>
-                              <option value="shredded">Shredded</option>
-                              <option value="toned">Toned</option>
+                              <option value="lean">Toned & lean</option>
+                              <option value="athletic">Athletic & fit</option>
+                              <option value="bulky">Big & muscular</option>
+                              <option value="shredded">Very lean & defined</option>
+                              <option value="toned">Toned & healthy</option>
                             </Select>
                           </div>
                         </div>
@@ -1753,9 +1739,9 @@ export function WelcomeScreen() {
                               onChange={(e: any) => setEquipment(e.target.value)}
                               className="mt-1 text-xs font-bold"
                             >
-                              <option value="full gym">Full Gym</option>
-                              <option value="home gym">Home Gym</option>
-                              <option value="bodyweight">Bodyweight Only</option>
+                              <option value="full gym">Full Commercial Gym</option>
+                              <option value="home gym">Home / Basic Gym</option>
+                              <option value="bodyweight">No Equipment (Bodyweight Only)</option>
                             </Select>
                           </div>
 
@@ -1782,9 +1768,9 @@ export function WelcomeScreen() {
                             onChange={(e: any) => setBodyType(e.target.value)}
                             className="mt-1 text-xs font-bold"
                           >
-                            <option value="mesomorph">Mesomorph (Athletic build)</option>
-                            <option value="ectomorph">Ectomorph (Lean/faster metabolism)</option>
-                            <option value="endomorph">Endomorph (Broad/easier mass)</option>
+                            <option value="mesomorph">Naturally athletic / muscular</option>
+                            <option value="ectomorph">Naturally slim / lean</option>
+                            <option value="endomorph">Naturally bigger / heavier</option>
                           </Select>
                         </div>
                       </div>

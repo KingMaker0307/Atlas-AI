@@ -65,23 +65,23 @@ const experienceOptions = [
 ] as const;
 
 const equipmentOptions = [
-  { value: "full gym", label: "Full Gym", desc: "Access to barbells, dumbbells, cables, and various specialized machines." },
-  { value: "home gym", label: "Home Gym", desc: "Basic setup with dumbbells, resistance bands, or an adjustable bench." },
-  { value: "bodyweight", label: "Bodyweight Only", desc: "No equipment required. Focuses on calisthenics, flexibility, and core strength." },
+  { value: "full gym", label: "Full Commercial Gym", desc: "Access to barbells, dumbbells, cables, and various specialized machines." },
+  { value: "home gym", label: "Home / Basic Gym", desc: "Basic setup with dumbbells, resistance bands, or an adjustable bench." },
+  { value: "bodyweight", label: "No Equipment (Bodyweight Only)", desc: "No equipment required. Focuses on calisthenics, flexibility, and core strength." },
 ] as const;
 
 const bodyTypeOptions = [
-  { value: "ectomorph", label: "Ectomorph", desc: "Naturally lean, narrow frame, fast metabolism. Finds it harder to build mass." },
-  { value: "mesomorph", label: "Mesomorph", desc: "Naturally athletic and muscular build. Responds quickly to training." },
-  { value: "endomorph", label: "Endomorph", desc: "Broad, sturdy frame, slower metabolism. Gains weight easily and holds mass well." },
+  { value: "ectomorph", label: "Naturally slim / lean", desc: "Naturally lean or thin, fast metabolism. Finds it harder to build mass." },
+  { value: "mesomorph", label: "Naturally athletic / muscular", desc: "Naturally athletic, average, or muscular build. Responds quickly to training." },
+  { value: "endomorph", label: "Naturally bigger / heavier", desc: "Broad, sturdy frame, slower metabolism. Gains weight and holds mass easily." },
 ] as const;
 
 const targetPhysiqueOptions = [
-  { value: "lean", label: "Lean", desc: "Sleek and lean body structure." },
-  { value: "athletic", label: "Athletic", desc: "Functional muscle/fat balance." },
-  { value: "bulky", label: "Bulky", desc: "Maximize size and thickness." },
-  { value: "shredded", label: "Shredded", desc: "Ultra-low fat, high definition." },
-  { value: "toned", label: "Toned", desc: "Firm muscles, healthy look." },
+  { value: "lean", label: "Toned & lean", desc: "Sleek and lean body structure." },
+  { value: "athletic", label: "Athletic & fit", desc: "Functional muscle/fat balance." },
+  { value: "bulky", label: "Big & muscular", desc: "Maximize size and thickness." },
+  { value: "shredded", label: "Very lean & defined", desc: "Ultra-low fat, high definition." },
+  { value: "toned", label: "Toned & healthy", desc: "Firm muscles, healthy look." },
 ] as const;
 
 const activityLevelOptions = [
@@ -899,7 +899,7 @@ export function Onboarding() {
                       AI Coach Configuration (Optional)
                     </h2>
                     <p className="text-zinc-400 text-xs mt-1">
-                      Atlas Coach is local-first and offline-first. You can connect a provider now or skip this step to configure it later in Settings.
+                      Atlas Coach is cloud-powered and auto-synced. You can connect a provider now or skip this step to configure it later in Settings.
                     </p>
                   </div>
 

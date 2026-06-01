@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Atlas AI Coach",
-  description: "A private, local-first AI fitness coach. Track workouts, log nutrition, and get intelligent coaching — all securely on your device.",
+  description: "A private, cloud-connected AI fitness coach. Track workouts, log nutrition, and get intelligent coaching — securely synced to your profile.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -16,14 +16,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Atlas AI Coach",
-    description: "Your private AI fitness coach. Track workouts, nutrition, and recovery — securely on your device.",
+    description: "Your private AI fitness coach. Track workouts, nutrition, and recovery — securely synced to your profile.",
     type: "website",
     siteName: "Atlas AI Coach",
   },
   twitter: {
     card: "summary",
     title: "Atlas AI Coach",
-    description: "Your private AI fitness coach. Track workouts, nutrition, and recovery — securely on your device.",
+    description: "Your private AI fitness coach. Track workouts, nutrition, and recovery — securely synced to your profile.",
   },
 };
 

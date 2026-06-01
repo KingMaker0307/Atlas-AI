@@ -36,6 +36,7 @@ import { Card, Surface } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useAtlasStore } from "@/store/useAtlasStore";
+import { BeginnerTipCard } from "@/components/beginner-tip-card";
 import { calculateNutritionTargets, DEFAULT_TARGETS } from "@/lib/calculators";
 import { decryptString } from "@/lib/security/crypto";
 import { getProviderAdapter } from "@/providers";
@@ -261,9 +262,10 @@ const RingProgress: FC<{ value: number; max: number; className?: string; size?: 
 };
 
 // ─── Macro Bar ───────────────────────────────────────────────────
-const MacroBar: FC<{ label: string; value: number; max: number; unit: string; color: string; icon: FC<any>; iconColor: string }> = ({
-  label, value, max, unit, color, icon: Icon, iconColor,
+const MacroBar: FC<{ label: string; value: number; max: number; unit: string; color: string; icon: FC<any>; iconColor: string; tooltip?: string }> = ({
+  label, value, max, unit, color, icon: Icon, iconColor, tooltip,
 }) => {
+  const guidedMode = useAtlasStore((s) => s.guidedMode);
   const pct = Math.min((value / max) * 100, 100);
   const isOver = value > max;
 
@@ -273,6 +275,11 @@ const MacroBar: FC<{ label: string; value: number; max: number; unit: string; co
         <div className="flex items-center gap-1.5">
           <Icon size={13} className={iconColor} aria-hidden="true" />
           <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
+          {guidedMode && tooltip && (
+            <span className="text-[10px] text-zinc-500 font-medium font-sans select-none" title={tooltip}>
+              ({tooltip})
+            </span>
+          )}
         </div>
         <span className={cn("font-mono font-bold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
           {value.toFixed(1)}<span className="font-normal text-zinc-600 dark:text-zinc-400">/{max}{unit}</span>
@@ -435,6 +442,7 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
   meal,
   searchCountry,
 }) => {
+  const guidedMode = useAtlasStore((s) => s.guidedMode);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [matchingItemId, setMatchingItemId] = useState<string | null>(null);
   const [matcherSearchQuery, setMatcherSearchQuery] = useState("");
@@ -887,31 +895,48 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
 
       {/* Action Buttons */}
       <div className="pt-2 flex flex-col gap-2">
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="primary"
-            disabled={selectedCount === 0 || isLogging}
-            onClick={onLogSeparate}
-            className="flex items-center justify-center gap-1 h-9 rounded-xl text-xs"
-          >
-            {isLogging ? (
-              <div className="h-3.5 w-3.5 border border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <span>Log Separate Items</span>
-            )}
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={selectedCount === 0 || isLogging}
-            onClick={onLogCombined}
-            className="flex items-center justify-center gap-1 h-9 rounded-xl text-xs border border-zinc-300 dark:border-zinc-750"
-          >
-            {isLogging ? (
-              <div className="h-3.5 w-3.5 border border-zinc-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <span>Log Combined</span>
-            )}
-          </Button>
+        <div className="flex gap-2">
+          {guidedMode ? (
+            <Button
+              variant="primary"
+              disabled={selectedCount === 0 || isLogging}
+              onClick={onLogSeparate}
+              className="flex-1 flex items-center justify-center gap-1 h-10 rounded-xl text-xs font-bold"
+            >
+              {isLogging ? (
+                <div className="h-3.5 w-3.5 border border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>Confirm &amp; Log Meals ✓</span>
+              )}
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="primary"
+                disabled={selectedCount === 0 || isLogging}
+                onClick={onLogSeparate}
+                className="flex items-center justify-center gap-1 h-9 rounded-xl text-xs flex-1"
+              >
+                {isLogging ? (
+                  <div className="h-3.5 w-3.5 border border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>Log Separate Items</span>
+                )}
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={selectedCount === 0 || isLogging}
+                onClick={onLogCombined}
+                className="flex items-center justify-center gap-1 h-9 rounded-xl text-xs border border-zinc-300 dark:border-zinc-750 flex-1"
+              >
+                {isLogging ? (
+                  <div className="h-3.5 w-3.5 border border-zinc-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>Log Combined</span>
+                )}
+              </Button>
+            </>
+          )}
         </div>
         <Button
           variant="secondary"
@@ -933,6 +958,7 @@ const AddFoodModal: FC<{
   initialMeal: NutritionEntry["meal"];
 }> = ({ onAdd, onClose, initialMeal }) => {
   const [meal, setMeal] = useState<NutritionEntry["meal"]>(initialMeal);
+  const guidedMode = useAtlasStore((s) => s.guidedMode);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<CommonFoodItem | null>(null);
   const [servingQty, setServingQty] = useState(1);
@@ -2597,7 +2623,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                       { label: "Protein (g)", id: "customProtein", value: customProtein, set: setCustomProtein, placeholder: "e.g. 30" },
                       { label: "Carbs (g)", id: "customCarbs", value: customCarbs, set: setCustomCarbs, placeholder: "e.g. 45" },
                       { label: "Fat (g)", id: "customFat", value: customFat, set: setCustomFat, placeholder: "e.g. 12" },
-                      { label: "Fiber (g)", id: "customFiber", value: customFiber, set: setCustomFiber, placeholder: "e.g. 5" },
+                      ...(!guidedMode ? [{ label: "Fiber (g)", id: "customFiber", value: customFiber, set: setCustomFiber, placeholder: "e.g. 5" }] : []),
                     ].map((f) => (
                       <div key={f.id}>
                         <label className="text-[10px] font-bold text-zinc-755 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
@@ -2608,7 +2634,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
                   {/* ── Micronutrients (collapsible, auto-opened when AI fills them) ── */}
                   {(() => {
-                    const hasMicros = customSugar || customSodium || customPotassium || customVitaminC || customCalcium || customIron;
+                    const hasMicros = customSugar || customSodium || customPotassium || customVitaminC || customCalcium || customIron || (guidedMode && customFiber);
                     return (
                       <details open={!!hasMicros} className="group">
                         <summary className="flex items-center gap-1.5 cursor-pointer list-none select-none py-1">
@@ -2618,6 +2644,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                         </summary>
                         <div className="grid grid-cols-2 gap-2.5 mt-2">
                           {[
+                            ...(guidedMode ? [{ label: "Fiber (g)", id: "customFiber", value: customFiber, set: setCustomFiber, placeholder: "e.g. 5" }] : []),
                             { label: "Sugar (g)", id: "customSugar", value: customSugar, set: setCustomSugar, placeholder: "e.g. 8" },
                             { label: "Sodium (mg)", id: "customSodium", value: customSodium, set: setCustomSodium, placeholder: "e.g. 320" },
                             { label: "Potassium (mg)", id: "customPotassium", value: customPotassium, set: setCustomPotassium, placeholder: "e.g. 400" },
@@ -2853,6 +2880,7 @@ export function NutritionTracker() {
   const workouts = useAtlasStore((s) => s.workouts);
   const weightUnit = useAtlasStore((s) => s.weightUnit);
   const heightUnit = useAtlasStore((s) => s.heightUnit);
+  const guidedMode = useAtlasStore((s) => s.guidedMode);
 
   const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
   const waterLogs = useAtlasStore((s) => s.waterLogs || []);
@@ -3965,7 +3993,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
   const subTabs = [
     { id: "overview" as const, label: "Daily Log", icon: Activity },
     { id: "trends" as const, label: "Trends & Targets", icon: BarChart3 },
-    { id: "micros" as const, label: "Micronutrients", icon: Shield },
+    ...(!guidedMode ? [{ id: "micros" as const, label: "Micronutrients", icon: Shield }] : []),
   ];
 
   return (
@@ -4165,6 +4193,25 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             </>
                           )}
                         </button>
+                      </div>
+
+                      {/* Quick Add Presets Row */}
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {[
+                          { label: "+100 kcal", fn: () => handleAddEntry({ id: `quick-kcal-${Date.now()}`, name: "Quick Log Calories", calories: 100, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                          { label: "+10g Protein", fn: () => handleAddEntry({ id: `quick-prot-${Date.now()}`, name: "Quick Log Protein", calories: 40, protein: 10, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                          { label: "+20g Carbs", fn: () => handleAddEntry({ id: `quick-carb-${Date.now()}`, name: "Quick Log Carbs", calories: 80, protein: 0, carbs: 20, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                          { label: "+5g Fat", fn: () => handleAddEntry({ id: `quick-fat-${Date.now()}`, name: "Quick Log Fats", calories: 45, protein: 0, carbs: 0, fat: 5, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                        ].map((btn) => (
+                          <button
+                            key={btn.label}
+                            type="button"
+                            onClick={btn.fn}
+                            className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-white/40 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 rounded-lg transition active:scale-95 cursor-pointer"
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
                       </div>
 
                       {/* Quick Log Image Thumbnail Previews */}
@@ -4524,6 +4571,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 </div>
               )}
 
+              {guidedMode && activeEntries.length === 0 && (
+                <BeginnerTipCard
+                  emoji="🥗"
+                  headline="Why track food?"
+                  body="Tracking your meals helps you make sure you get enough protein to recover and enough calories to fuel your workouts. Start by adding your first meal below!"
+                  variant="nutrition"
+                  className="mb-4"
+                />
+              )}
+
               {/* Collapsible Meal Logging Areas */}
               <div className="space-y-2.5">
                 {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([meal, cfg]) => {
@@ -4864,10 +4921,12 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               <Card className="p-4 space-y-4">
                 <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Macronutrient Target Split</h4>
                 <div className="space-y-4">
-                  <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" />
-                  <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" />
-                  <MacroBar label="Fat" value={totals.fat} max={targets.fat} unit="g" color="bg-rose-450" icon={Droplets} iconColor="text-rose-450" />
-                  <MacroBar label="Fiber" value={totals.fiber} max={targets.fiber} unit="g" color="bg-emerald-450" icon={Leaf} iconColor="text-emerald-450" />
+                  <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" />
+                  <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" tooltip="gives you energy ⚡" />
+                  <MacroBar label="Fat" value={totals.fat} max={targets.fat} unit="g" color="bg-rose-450" icon={Droplets} iconColor="text-rose-450" tooltip="keeps you healthy 🫀" />
+                  {!guidedMode && (
+                    <MacroBar label="Fiber" value={totals.fiber} max={targets.fiber} unit="g" color="bg-emerald-450" icon={Leaf} iconColor="text-emerald-450" />
+                  )}
                 </div>
               </Card>
 

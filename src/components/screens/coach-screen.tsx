@@ -19,6 +19,7 @@ export function CoachScreen() {
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const apiCallCount = useAtlasStore((state) => state.apiCallCount);
   const tokenCount = useAtlasStore((state) => state.tokenCount);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   
@@ -48,7 +49,9 @@ export function CoachScreen() {
       className="flex h-[calc(100dvh-15rem)] md:h-[calc(100dvh-8rem)] flex-col gap-3"
     >
       <section className="shrink-0">
-        <p className="text-xs sm:text-sm text-zinc-400">Intelligent guidance</p>
+        <p className="text-xs sm:text-sm text-zinc-400">
+          {guidedMode ? "Ask me anything about fitness 🏃" : "Intelligent guidance"}
+        </p>
         <h1 className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">Coach</h1>
       </section>
 
@@ -62,6 +65,37 @@ export function CoachScreen() {
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-4">
+            {aiMessages.filter((m) => m.role !== "system").length === 0 && (
+              <div className="flex flex-col gap-2.5 pb-4 select-none">
+                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Tap a question to start:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {(
+                    guidedMode ? [
+                      { text: "I'm new to the gym — where do I start? 🏋️", icon: "🏋️" },
+                      { text: "What should I eat today? 🥗", icon: "🥗" },
+                      { text: "I feel sore — should I still work out? 😅", icon: "😅" },
+                    ] : [
+                      { text: "Help me build a beginner 3-day workout plan", icon: "🏋️" },
+                      { text: "Suggest a healthy, high-protein breakfast", icon: "🥗" },
+                      { text: "Why is sleep important for exercise?", icon: "😴" },
+                    ]
+                  ).map((chip) => (
+                    <button
+                      key={chip.text}
+                      type="button"
+                      onClick={() => {
+                        if (coachBusy) return;
+                        void sendCoachMessage(chip.text);
+                      }}
+                      className="p-3 text-left rounded-xl border border-zinc-250 hover:border-emerald-500/40 bg-zinc-50/50 hover:bg-emerald-500/[0.02] dark:border-zinc-800 dark:hover:border-emerald-500/25 dark:bg-zinc-900/45 dark:hover:bg-emerald-500/[0.01] text-xs font-semibold text-zinc-905 dark:text-zinc-150 transition active:scale-[0.98] flex flex-col justify-between h-20"
+                    >
+                      <span className="text-lg">{chip.icon}</span>
+                      <span className="leading-snug">{chip.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {aiMessages.filter((m) => m.role !== "system").map((message) => {
               const isWorkoutPlan = parseAiWorkoutPlan(message.content) !== null;
 
@@ -175,7 +209,7 @@ export function CoachScreen() {
           >
             <input
               className="flex-1 rounded-xl border border-input-border bg-input px-4 py-2.5 md:py-2 text-base md:text-sm text-foreground placeholder:text-zinc-500 focus:border-emerald-500/50 focus:outline-none focus:ring-0"
-              placeholder={coachBusy ? "Waiting for AI response..." : "Ask about your routine, fatigue, or nutrition..."}
+              placeholder={coachBusy ? "Waiting for AI response..." : guidedMode ? "Ask anything — no question is too basic! 😊" : "Ask about your routine, fatigue, or nutrition..."}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               disabled={coachBusy}
@@ -206,18 +240,20 @@ export function CoachScreen() {
         </div>
       </Card>
 
-      {/* AI Usage Meter */}
-      <Card className="p-3 sm:p-4 mt-3 sm:mt-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-sm sm:text-base font-semibold text-foreground">AI Usage</h2>
-            <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Calls: {apiCallCount}/{apiQuotaLimit} · Tokens: {tokenCount.toLocaleString()}</p>
+      {/* AI Usage Meter — hidden in Guided Mode, shown in Expert Mode */}
+      {!guidedMode && (
+        <Card className="p-3 sm:p-4 mt-3 sm:mt-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm sm:text-base font-semibold text-foreground">AI Usage</h2>
+              <p className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Calls: {apiCallCount}/{apiQuotaLimit} · Tokens: {tokenCount.toLocaleString()}</p>
+            </div>
+            <div className="w-16 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden shrink-0">
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(apiCallPercentage, 100)}%` }} />
+            </div>
           </div>
-          <div className="w-16 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden shrink-0">
-            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${Math.min(apiCallPercentage, 100)}%` }} />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </motion.div>
   );
 }

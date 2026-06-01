@@ -44,7 +44,7 @@ import { createAiSlice, AiSlice } from "./slices/ai-slice";
 export { assignRoutinesToDays, getDaysSequence } from "./slices/ai-slice";
 export type { SendCoachMessageOptions } from "./slices/ai-slice";
 
-export type AtlasTab = "dashboard" | "workout" | "coach" | "progress" | "settings";
+export type AtlasTab = "today" | "dashboard" | "workout" | "nutrition" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "local-offline" | "backup" | null;
 export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | "active-workout" | null;
 
@@ -575,6 +575,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       weightUnit: profile.weightUnit ?? get().weightUnit,
       heightUnit: profile.heightUnit ?? get().heightUnit,
       hasOnboarded: true, 
+      guidedMode: profile.experience === "beginner" ? true : false,
       activeTab: "dashboard" 
     });
     registry.save((r, uid) => r.user.saveProfile(uid, finalProfile));

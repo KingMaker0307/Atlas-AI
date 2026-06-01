@@ -36,6 +36,7 @@ import { format, getISOWeek, getYear as getDateFnsYear, parseISO } from "date-fn
 import { DailyRecoveryModal } from "@/components/daily-recovery-modal";
 import { DailyBodyMetricModal } from "@/components/daily-body-metric-modal";
 import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
+import { BeginnerTipCard } from "@/components/beginner-tip-card";
 
 
 function parseLocalDate(dateStr: string): Date {
@@ -406,8 +407,12 @@ export function ProgressScreen() {
       {/* ─── HEADER PANEL ─── */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3 no-print">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Training Intelligence</h1>
-          <p className="text-xs sm:text-xs text-zinc-400 font-medium">Progressive overload charts & recovery analytics</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+            {guidedMode ? "My Progress" : "Training Intelligence"}
+          </h1>
+          <p className="text-xs sm:text-xs text-zinc-400 font-medium">
+            {guidedMode ? "See how you're getting better over time 📈" : "Progressive overload charts & recovery analytics"}
+          </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono select-year-label">Select Year:</span>
@@ -420,23 +425,43 @@ export function ProgressScreen() {
               <option key={year} value={year}>{year}</option>
             ))}
           </Select>
-          <Button
-            size="sm"
-            variant="primary"
-            className="h-8 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-black text-xs px-3 rounded-xl shadow"
-            onClick={() => window.print()}
-          >
-            Export PDF Report
-          </Button>
+          {!guidedMode && (
+            <Button
+              size="sm"
+              variant="primary"
+              className="h-8 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 font-black text-xs px-3 rounded-xl shadow"
+              onClick={() => window.print()}
+            >
+              Export PDF Report
+            </Button>
+          )}
         </div>
       </section>
 
-      <Surface className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-500/10 text-zinc-700 dark:text-zinc-300 rounded-xl flex gap-3 items-start select-none no-print">
-        <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-        <p className="text-xs leading-normal">
-          This is where your achievements are tracked. Once you log a workout, your strength progression charts and streak stats will update here automatically.
-        </p>
-      </Surface>
+      {guidedMode ? (
+        workouts.length === 0 ? (
+          <BeginnerTipCard
+            emoji="🎉"
+            headline="Complete a workout to see your progress here"
+            body="Your strength trends, activity calendar, and recovery stats will start updating automatically once you log your first training session!"
+            className="no-print"
+          />
+        ) : (
+          <Surface className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-500/10 text-zinc-700 dark:text-zinc-300 rounded-xl flex gap-3 items-start select-none no-print">
+            <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+            <p className="text-xs leading-normal">
+              This is where your achievements are tracked. Once you log a workout, your strength progression charts and streak stats will update here automatically.
+            </p>
+          </Surface>
+        )
+      ) : (
+        <Surface className="p-3.5 bg-emerald-50/80 dark:bg-emerald-950/10 border border-emerald-500/20 dark:border-emerald-500/10 text-zinc-700 dark:text-zinc-300 rounded-xl flex gap-3 items-start select-none no-print">
+          <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+          <p className="text-xs leading-normal">
+            This is where your achievements are tracked. Once you log a workout, your strength progression charts and streak stats will update here automatically.
+          </p>
+        </Surface>
+      )}
 
       {/* ─── BIOLOGICAL READINESS & ANNUAL SUMMARY CONSOLE ─── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -447,7 +472,7 @@ export function ProgressScreen() {
           <div className="flex items-start justify-between">
             <div>
               <span className="text-xs font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded border border-violet-500/25">
-                Biological readiness
+                {guidedMode ? "Today's Energy Level" : "Biological readiness"}
               </span>
               <h3 className="text-lg font-bold text-foreground mt-2 leading-none">System Recovery</h3>
             </div>
@@ -529,7 +554,9 @@ export function ProgressScreen() {
                 </div>
 
                 <div className="bg-surface border border-surface-border p-2.5 rounded-xl flex flex-col justify-between col-span-2 sm:col-span-1">
-                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">CNS Status</span>
+                  <span className="text-xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-wider">
+                    {guidedMode ? "Energy Level" : "CNS Status"}
+                  </span>
                   <div className="mt-1 flex items-baseline gap-1">
                     <span className="text-lg font-black text-foreground">Optimal</span>
                   </div>
@@ -581,8 +608,14 @@ export function ProgressScreen() {
             <div className="py-8 text-center flex flex-col items-center justify-center h-full space-y-3">
               <Info className="text-zinc-500" size={28} />
               <div>
-                <h4 className="text-sm font-bold text-foreground">No Program Designated</h4>
-                <p className="text-xs text-zinc-500 mt-0.5 max-w-[280px]">Designate a training routine on the plan builder screen to track Streaks and CNS stats.</p>
+                <h4 className="text-sm font-bold text-foreground">
+                  {guidedMode ? "No workout plan set up yet" : "No Program Designated"}
+                </h4>
+                <p className="text-xs text-zinc-500 mt-0.5 max-w-[280px]">
+                  {guidedMode
+                    ? "Set up a workout plan first, then come back here to track your streak and progress!"
+                    : "Designate a training routine on the plan builder screen to track Streaks and CNS stats."}
+                </p>
               </div>
             </div>
           )}
@@ -614,7 +647,9 @@ export function ProgressScreen() {
             <Moon size={16} />
           </div>
           <div>
-            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Avg Sleep Efficiency</p>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">
+              {guidedMode ? "Average Sleep" : "Avg Sleep Efficiency"}
+            </p>
             <p className="text-lg font-black text-foreground leading-none mt-1">{averageSleepHours} <span className="text-xs font-semibold text-zinc-500">hours</span></p>
           </div>
         </div>
@@ -653,7 +688,7 @@ export function ProgressScreen() {
                 { id: "strength", label: "Strength" },
                 { id: "cardio", label: "Cardio" },
                 { id: "recovery", label: "Recovery" },
-                { id: "mass", label: "Mass & Vol" }
+                { id: "mass", label: guidedMode ? "Weight & Volume" : "Mass & Vol" }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -675,7 +710,9 @@ export function ProgressScreen() {
           {chartTab === "strength" && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <p className="text-xs text-zinc-400 font-medium">Estimated 1-Repetition Maximum (1RM) progression in weight loads.</p>
+                <p className="text-xs text-zinc-400 font-medium">
+                  {guidedMode ? "How much weight you're lifting over time — bigger numbers mean you're getting stronger!" : "Estimated 1-Repetition Maximum (1RM) progression in weight loads."}
+                </p>
                 <Select 
                   value={selectedExercise} 
                   onChange={(e) => setSelectedExercise(e.target.value)}
@@ -703,7 +740,11 @@ export function ProgressScreen() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
                     <Info size={20} className="text-emerald-450 dark:text-emerald-400 shrink-0" />
-                    <span>Insufficient load point records available. Log completed strength training sets containing weight load, reps, and RIR inside your active workouts to map your estimated 1-Repetition Maximum (1RM) progressive overload curves.</span>
+                    <span>
+                      {guidedMode
+                        ? "Log some workouts first to see your strength chart here! Complete a few sets with weights to see your progress over time. 💪"
+                        : "Insufficient load point records available. Log completed strength training sets containing weight load, reps, and RIR inside your active workouts to map your estimated 1-Repetition Maximum (1RM) progressive overload curves."}
+                    </span>
                   </div>
                 )}
               </div>
