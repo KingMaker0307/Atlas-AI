@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "predev": "kill -9 $(lsof -t -i:3000 2>/dev/null) 2>/dev/null || true",
-    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev",
-    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
-    "export": "NEXT_TELEMETRY_DISABLED=1 next build",
+    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev --webpack",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
+    "export": "NEXT_TELEMETRY_DISABLED=1 next build --webpack",
     "start": "NEXT_TELEMETRY_DISABLED=1 next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit"
