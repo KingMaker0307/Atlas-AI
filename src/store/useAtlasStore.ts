@@ -362,6 +362,18 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
 
             await db.delete("profiles", guestId);
 
+            // Clean up any obsolete guest sync_queue items to prevent RLS violations on replay
+            try {
+              const allQueueItems = await db.getAll("sync_queue");
+              for (const item of allQueueItems) {
+                if (item.userId === guestId) {
+                  await db.delete("sync_queue", item.id!);
+                }
+              }
+            } catch (queueErr) {
+              console.warn("[Migration] Non-fatal: Failed to clean up guest sync_queue:", queueErr);
+            }
+
             const [newWorkouts, newPlans, newNutrition, newWater, newBodyMetrics, newRecovery, newProfile] =
               await Promise.all([
                 registry.load((r, uid) => r.workout.getWorkouts(uid, 30)),
