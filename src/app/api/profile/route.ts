@@ -11,8 +11,19 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireAuth, AuthError } from "@/lib/supabase/require-auth";
 
 export async function GET(request: NextRequest) {
+  // Verify the caller is authenticated
+  try {
+    await requireAuth(request);
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
@@ -34,9 +45,10 @@ export async function GET(request: NextRequest) {
       mode: "supabase",
       hasOnboarded: data?.has_onboarded ?? false,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal server error";
     console.error("GET /api/profile error:", error);
-    return NextResponse.json({ blocked: false, mode: "supabase" });
+    return NextResponse.json({ blocked: false, mode: "supabase", error: msg });
   }
 }
 

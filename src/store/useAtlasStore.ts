@@ -618,6 +618,8 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         activeWorkoutPlanId,
         activeWorkout,
         hydrated: true,
+        // Authenticated via Supabase → always "cloud", skip WelcomeScreen
+        startupChoice: "cloud" as const,
         activeTab: "dashboard",
         activeSettingsTab: "profile",
         coachBusy: false,

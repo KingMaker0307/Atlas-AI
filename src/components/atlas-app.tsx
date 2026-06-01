@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { DashboardScreen } from "@/components/screens/dashboard-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
@@ -13,6 +13,7 @@ import { RoutineBuilderScreen } from "@/components/screens/routine-builder-scree
 import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
 import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
 import { AppLoader } from "@/components/ui/app-loader";
+import { HealthDisclaimer } from "@/components/ui/health-disclaimer";
 import { InstallPrompt } from "@/components/install-prompt";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { Onboarding } from "@/components/onboarding";
@@ -45,47 +46,9 @@ export function AtlasApp() {
   const setTheme = useAtlasStore((state) => state.setTheme);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
   const blocked = useAtlasStore((state) => state.blocked);
-  const profile = useAtlasStore((state) => state.profile);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
-  const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
 
-  const [online, setOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  );
 
-  useEffect(() => {
-    const sync = () => setOnline(navigator.onLine);
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", sync);
-    return () => {
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", sync);
-    };
-  }, []);
-
-  // Removed: Google Drive polling loop (replaced by registry composite adapter)
-
-  useEffect(() => {
-    if (!hydrated || !profile?.id || !online) return;
-
-    const checkBlocked = async () => {
-      try {
-        const res = await fetch(`/api/profile/?userId=${profile.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.blocked) {
-            useAtlasStore.setState({ blocked: true });
-          }
-        }
-      } catch (e) {
-        console.error("Failed to check blocked status:", e);
-      }
-    };
-
-    void checkBlocked();
-    const interval = setInterval(checkBlocked, 60000); // Check every minute
-    return () => clearInterval(interval);
-  }, [hydrated, profile?.id, online]);
 
   useEffect(() => {
     void hydrate();
@@ -124,6 +87,7 @@ export function AtlasApp() {
 
   if (blocked) return <BlockedBlockerScreen />;
   if (!hydrated) return <AppLoader visible={true} />;
+  if (!startupChoice) return <WelcomeScreen />;
   if (!hasOnboarded) return <Onboarding />;
 
   const renderSubScreen = () => {
@@ -144,6 +108,7 @@ export function AtlasApp() {
   return (
     <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-955 md:pl-64">
       <PwaRegistrar />
+      <HealthDisclaimer />
       
       {/* ─── DESKTOP SIDEBAR NAVIGATION PANEL (Hidden on mobile) ─── */}
       <aside

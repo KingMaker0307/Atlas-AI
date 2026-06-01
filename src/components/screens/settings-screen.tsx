@@ -8,10 +8,12 @@ import {
   Database,
   Download,
   LinkIcon,
+  Loader2,
   Palette,
   PlugZap,
   RefreshCcw,
   Save,
+  Trash2,
   Upload,
   Pencil,
   Server,
@@ -265,6 +267,8 @@ export function SettingsScreen() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isUpgradingGoogle, setIsUpgradingGoogle] = useState(false);
   const [upgradeGoogleAuthError, setUpgradeGoogleAuthError] = useState<string | null>(null);
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
   const [upgradeSandboxEmail, setUpgradeSandboxEmail] = useState("");
   const [forceLoadRealGoogleUpgrade, setForceLoadRealGoogleUpgrade] = useState(false);
 
@@ -1399,6 +1403,69 @@ export function SettingsScreen() {
                         </Button>
                       </Surface>
                     </div>
+                  </Card>
+
+                  {/* ─── GDPR: Delete Account ─── */}
+                  <Card className="p-5 space-y-4 border-rose-500/20">
+                    <div className="flex items-center gap-2.5 border-b border-rose-500/15 pb-3">
+                      <Trash2 className="text-rose-400" size={18} />
+                      <h2 className="text-base font-bold text-rose-400 tracking-tight">Delete Account</h2>
+                    </div>
+
+                    <p className="text-xs text-zinc-500 leading-relaxed">
+                      Permanently delete your Atlas AI account and{" "}
+                      <span className="font-semibold text-rose-400">all associated data</span>{" "}
+                      — workouts, nutrition logs, body metrics, AI providers, and your profile.{" "}
+                      <span className="font-bold">This action is irreversible.</span>
+                    </p>
+
+                    {deleteAccountError && (
+                      <Surface className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
+                        <AlertCircle size={14} className="text-rose-400 shrink-0 mt-0.5" />
+                        <p className="text-xs text-rose-400">{deleteAccountError}</p>
+                      </Surface>
+                    )}
+
+                    <Button
+                      id="delete-account-btn"
+                      variant="danger"
+                      className="w-full gap-2"
+                      disabled={deleteAccountLoading}
+                      onClick={async () => {
+                        const confirmed = window.confirm(
+                          "⚠️ Delete your Atlas AI account?\n\nThis will permanently erase all your data (workouts, nutrition, body metrics, AI providers).\n\nThis action CANNOT be undone.\n\nType your decision carefully."
+                        );
+                        if (!confirmed) return;
+
+                        setDeleteAccountLoading(true);
+                        setDeleteAccountError(null);
+
+                        try {
+                          const res = await fetch("/api/account", { method: "DELETE" });
+                          const json = await res.json();
+
+                          if (!res.ok) {
+                            setDeleteAccountError(json.error ?? "Failed to delete account.");
+                            setDeleteAccountLoading(false);
+                            return;
+                          }
+
+                          // Clear local state + redirect to sign-in
+                          const { createClient } = await import("@/lib/supabase/client");
+                          await createClient().auth.signOut();
+                          window.location.href = "/sign-in";
+                        } catch (err) {
+                          setDeleteAccountError("Network error. Please try again.");
+                          setDeleteAccountLoading(false);
+                        }
+                      }}
+                    >
+                      {deleteAccountLoading ? (
+                        <><Loader2 size={15} className="animate-spin" /> Deleting account...</>
+                      ) : (
+                        <><Trash2 size={15} /> Permanently Delete My Account</>
+                      )}
+                    </Button>
                   </Card>
 
                   {/* Google Drive Upgrade Card */}
