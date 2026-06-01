@@ -2933,24 +2933,45 @@ export function NutritionTracker() {
 
   // Account creation date to prevent navigating to endless back dates
   const accountCreatedDateString = useMemo(() => {
-    if (!profile?.createdAt) {
-      // Default fallback: 30 days ago
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      return getLocalDateString(d);
+    let earliestDate = new Date();
+    // Default fallback: 30 days ago
+    earliestDate.setDate(earliestDate.getDate() - 30);
+
+    if (profile?.createdAt) {
+      try {
+        const d = new Date(profile.createdAt);
+        if (!isNaN(d.getTime())) {
+          earliestDate = d;
+        }
+      } catch (e) {}
     }
-    try {
-      const d = new Date(profile.createdAt);
-      if (isNaN(d.getTime())) {
-        throw new Error("Invalid date");
-      }
-      return getLocalDateString(d);
-    } catch {
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      return getLocalDateString(d);
+
+    // Scan nutrition entries to find if there is an older entry
+    if (entries && entries.length > 0) {
+      entries.forEach((e) => {
+        try {
+          const d = new Date(e.timestamp);
+          if (!isNaN(d.getTime()) && d < earliestDate) {
+            earliestDate = d;
+          }
+        } catch (err) {}
+      });
     }
-  }, [profile?.createdAt]);
+
+    // Scan water logs to find if there is an older log
+    if (waterLogs && waterLogs.length > 0) {
+      waterLogs.forEach((w) => {
+        try {
+          const d = new Date(w.timestamp);
+          if (!isNaN(d.getTime()) && d < earliestDate) {
+            earliestDate = d;
+          }
+        } catch (err) {}
+      });
+    }
+
+    return getLocalDateString(earliestDate);
+  }, [profile?.createdAt, entries, waterLogs]);
 
   const canNavigateBack = useMemo(() => {
     return targetDateString > accountCreatedDateString;
