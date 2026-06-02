@@ -14,7 +14,7 @@ export function HomeScreen() {
     <div className="space-y-6">
       {/* Top Segmented Tab Switcher */}
       <div className="flex justify-start">
-        <div className="relative flex gap-1 rounded-2xl border border-surface-border bg-surface p-1 select-none w-full max-w-[320px]">
+        <div className="relative flex gap-1 rounded-2xl border border-surface-border bg-surface p-1 select-none w-full">
           <button
             type="button"
             onClick={() => setSubTab("today")}

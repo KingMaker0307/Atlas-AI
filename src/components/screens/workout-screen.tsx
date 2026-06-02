@@ -51,8 +51,6 @@ import { NutritionTracker } from "@/components/nutrition-tracker";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 import { PostWorkoutCheckinModal } from "@/components/post-workout-checkin-modal";
 import { FinishSessionModal } from "@/components/finish-session-modal";
-import { BeginnerWorkoutWizard } from "@/components/beginner-workout-wizard";
-import { GlossaryTooltip } from "@/components/glossary-tooltip";
 
 const getExerciseStats = (workouts: any[], exerciseId: string, weightUnit: string) => {
   const completedWorkouts = workouts.filter((w) => w.completedAt);
@@ -825,26 +823,56 @@ export function WorkoutScreen() {
         <section className="flex items-center justify-between">
           <div>
             <p className="text-sm text-zinc-555">
-              Create, schedule, and track your workout routines.
+              {planTab === "plans" ? "Manage and track your plans" : "Track calories, macros & nutrients"}
             </p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Workouts &amp; Plans</h1>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Plans</h1>
           </div>
-          <Button
-            size="sm"
-            variant="primary"
-            icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-955 border-t-transparent" /> : <Plus size={16} />}
-            disabled={coachBusy}
-            onClick={() => {
-              setEditingWorkoutPlanId(null);
-              setActiveSubScreen("workout-plan-builder");
-            }}
-          >
-            {coachBusy ? "Generating..." : "Create Plan"}
-          </Button>
+          {planTab === "plans" && (
+            <Button
+              size="sm"
+              variant="primary"
+              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+              disabled={coachBusy}
+              onClick={() => {
+                setEditingWorkoutPlanId(null);
+                setActiveSubScreen("workout-plan-builder");
+              }}
+            >
+              {coachBusy ? "Generating..." : "Create Plan"}
+            </Button>
+          )}
         </section>
 
-        {/* ─── Plans Content ─── */}
-        <>
+        {/* ─── Tab Bar ─── */}
+        <div className="flex gap-1 p-1 bg-input border border-input-border rounded-2xl select-none">
+          {([
+            { id: "plans" as const, label: "Workout Plans", emoji: "🏋️" },
+            { id: "nutrition" as const, label: "Nutrition", emoji: "🥗" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              id={`plan-tab-${tab.id}`}
+              role="tab"
+              aria-selected={planTab === tab.id}
+              onClick={() => setPlanTab(tab.id)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 active:scale-[0.98]",
+                planTab === tab.id
+                  ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm shadow-black/10 dark:shadow-black/40"
+                  : "text-zinc-850 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white"
+              )}
+            >
+              <span>{tab.emoji}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── Nutrition Tab ─── */}
+        {planTab === "nutrition" && <NutritionTracker />}
+
+        {/* ─── Plans Tab content (hidden when on nutrition) ─── */}
+        {planTab === "plans" && (<>
 
         {coachBusy && (
           <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
@@ -918,29 +946,25 @@ export function WorkoutScreen() {
         )}
 
         {workoutPlans.length === 0 ? (
-          guidedMode ? (
-            <BeginnerWorkoutWizard onComplete={() => {}} />
-          ) : (
-            <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border bg-zinc-50/20 dark:bg-white/[0.01] shadow-md">
-              <ClipboardList className="h-12 w-12 text-emerald-500/80 dark:text-emerald-400/80 mb-4" />
-              <h2 className="text-xl font-bold text-foreground">No workout programs found</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
-                Create a custom training program manually, start with a templates preset, or let our AI coach formulate a plan for you.
-              </p>
-              <Button
-                className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center gap-1.5"
-                variant="primary"
-                disabled={coachBusy}
-                onClick={() => {
-                  setEditingWorkoutPlanId(null);
-                  setActiveSubScreen("workout-plan-builder");
-                }}
-              >
-                <Plus size={16} />
-                Create Custom Plan
-              </Button>
-            </Card>
-          )
+          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border bg-zinc-50/20 dark:bg-white/[0.01] shadow-md">
+            <ClipboardList className="h-12 w-12 text-emerald-500/80 dark:text-emerald-400/80 mb-4" />
+            <h2 className="text-xl font-bold text-foreground">No workout programs found</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
+              Create a custom training program manually, start with a templates preset, or let our AI coach formulate a plan for you.
+            </p>
+            <Button
+              className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center gap-1.5"
+              variant="primary"
+              disabled={coachBusy}
+              onClick={() => {
+                setEditingWorkoutPlanId(null);
+                setActiveSubScreen("workout-plan-builder");
+              }}
+            >
+              <Plus size={16} />
+              Create Custom Plan
+            </Button>
+          </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {workoutPlans.map((plan) => {
@@ -1273,7 +1297,7 @@ export function WorkoutScreen() {
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
 
         {/* End of Plans tab content */}
-        </>
+        </>)}
 
         <PreWorkoutCheckinModal
           isOpen={showPreWorkoutModal}
@@ -1394,22 +1418,20 @@ export function WorkoutScreen() {
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end flex-nowrap">
             {/* Hands-Free Voice Logger Button */}
-            {!guidedMode && (
-              <Button
-                size="icon"
-                className={cn(
-                  "h-9 w-9 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center active:scale-95",
-                  isListening
-                    ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
-                    : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
-                )}
-                onClick={toggleListening}
-                aria-label="Voice command logger"
-                title="Voice command logging"
-              >
-                {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
-              </Button>
-            )}
+            <Button
+              size="icon"
+              className={cn(
+                "h-9 w-9 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center active:scale-95",
+                isListening
+                  ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
+                  : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
+              )}
+              onClick={toggleListening}
+              aria-label="Voice command logger"
+              title="Voice command logging"
+            >
+              {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
+            </Button>
 
             {/* Active Timer badge (Inline space-saving) */}
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold select-none h-9 shrink-0">
@@ -1838,21 +1860,19 @@ export function WorkoutScreen() {
                             {isCardio ? (
                               <>
                                 {/* GPX upload banner */}
-                                {!guidedMode && (
-                                  <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2.5 rounded-xl border border-purple-500/10 select-none">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <Upload size={14} className="text-purple-400 shrink-0" />
-                                      <div className="text-left min-w-0">
-                                        <p className="text-xs font-bold text-foreground leading-tight">GPX Sync</p>
-                                        <p className="text-xs text-zinc-500 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance & calories from a .GPX file.</p>
-                                      </div>
+                                <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent p-2.5 rounded-xl border border-purple-500/10 select-none">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Upload size={14} className="text-purple-400 shrink-0" />
+                                    <div className="text-left min-w-0">
+                                      <p className="text-xs font-bold text-foreground leading-tight">GPX Sync</p>
+                                      <p className="text-xs text-zinc-500 mt-0.5 leading-none hidden sm:block">Auto-fill duration, distance & calories from a .GPX file.</p>
                                     </div>
-                                    <label className="h-7 px-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all shrink-0">
-                                      Upload
-                                      <input type="file" accept=".gpx" className="hidden" onChange={e => handleGpxUpload(e, workoutExercise.id, workoutExercise.sets)} />
-                                    </label>
                                   </div>
-                                )}
+                                  <label className="h-7 px-2.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-purple-600 hover:bg-purple-500 cursor-pointer text-white-keep flex items-center justify-center transition-all shrink-0">
+                                    Upload
+                                    <input type="file" accept=".gpx" className="hidden" onChange={e => handleGpxUpload(e, workoutExercise.id, workoutExercise.sets)} />
+                                  </label>
+                                </div>
 
                                 {workoutExercise.sets.map((set, setIndex) => {
                                   const isActiveSet = setIndex === activeSetIdx;
@@ -2153,18 +2173,15 @@ export function WorkoutScreen() {
                                                 Check
                                               </Button>
                                             </div>
+                                          </div>
                                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
                                             {(() => {
                                               const repStep = isTimeBased ? 5 : 1;
                                               const maxRepVal = isTimeBased ? 999 : 100;
                                               return (
                                                 <div>
-                                                  <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">
-                                                    <GlossaryTooltip term={isTimeBased ? "rest" : "reps"}>
-                                                      {isTimeBased ? "Seconds" : "Reps"}
-                                                    </GlossaryTooltip>
-                                                  </label>
-                                                  <div className={cn("flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors", guidedMode ? "h-12" : "h-11")}>
+                                                  <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">{isTimeBased ? "Seconds" : "Reps"}</label>
+                                                  <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
                                                     <button
                                                       type="button"
                                                       onClick={() => {
@@ -2172,14 +2189,14 @@ export function WorkoutScreen() {
                                                         const v = Math.max(0, displayReps - repStep);
                                                         void updateSet(workoutExercise.id, set.id, { reps: v });
                                                       }}
-                                                      className={cn("rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer", guidedMode ? "h-11 w-11" : "h-10 w-10")}
+                                                      className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
                                                       aria-label={isTimeBased ? "Decrease seconds" : "Decrease reps"}
                                                     >
                                                       <Minus size={14} className="stroke-[3px]" />
                                                     </button>
                                                     <Input
                                                       inputMode="numeric" type="number" min={0} max={maxRepVal}
-                                                      className={cn("px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none", guidedMode ? "h-10" : "h-9")}
+                                                      className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
                                                       value={set.reps === 0 ? "" : set.reps}
                                                       placeholder={String(displayReps)}
                                                       onChange={e => {
@@ -2194,7 +2211,7 @@ export function WorkoutScreen() {
                                                         const v = Math.min(maxRepVal, displayReps + repStep);
                                                         void updateSet(workoutExercise.id, set.id, { reps: v });
                                                       }}
-                                                      className={cn("rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer", guidedMode ? "h-11 w-11" : "h-10 w-10")}
+                                                      className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
                                                       aria-label={isTimeBased ? "Increase seconds" : "Increase reps"}
                                                     >
                                                       <Plus size={14} className="stroke-[3px]" />
@@ -2205,12 +2222,8 @@ export function WorkoutScreen() {
                                             })()}
                                             
                                             <div>
-                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">
-                                                <GlossaryTooltip term="set">
-                                                  Load ({exUnit})
-                                                </GlossaryTooltip>
-                                              </label>
-                                              <div className={cn("flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors", guidedMode ? "h-12" : "h-11")}>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">Load ({exUnit})</label>
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
                                                 <button
                                                   type="button"
                                                   onClick={() => {
@@ -2219,14 +2232,14 @@ export function WorkoutScreen() {
                                                     const v = parseFloat(Math.max(0, displayWeight - step).toFixed(1));
                                                     void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
-                                                  className={cn("rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer", guidedMode ? "h-11 w-11" : "h-10 w-10")}
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
                                                   aria-label="Decrease load"
                                                 >
                                                   <Minus size={14} className="stroke-[3px]" />
                                                 </button>
                                                 <Input
                                                   inputMode="decimal" type="number" min={0} max={2000} step="any"
-                                                  className={cn("px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none", guidedMode ? "h-10" : "h-9")}
+                                                  className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
                                                   value={set.weight === 0 ? "" : set.weight}
                                                   placeholder={String(displayWeight)}
                                                   onChange={e => {
@@ -2242,7 +2255,7 @@ export function WorkoutScreen() {
                                                     const v = parseFloat(Math.min(2000, displayWeight + step).toFixed(1));
                                                     void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
-                                                  className={cn("rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer", guidedMode ? "h-11 w-11" : "h-10 w-10")}
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
                                                   aria-label="Increase load"
                                                 >
                                                   <Plus size={14} className="stroke-[3px]" />
@@ -2250,9 +2263,8 @@ export function WorkoutScreen() {
                                               </div>
                                             </div>
                                             
-                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">
-                                                {guidedMode ? "Effort Level" : "RIR"}
-                                              </label>
+                                            <div>
+                                              <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">RIR</label>
                                               {guidedMode ? (
                                                 <div className="bg-surface border border-surface-border rounded-xl overflow-hidden shadow-sm focus-within:border-emerald-500/50 h-11 flex items-center">
                                                   <Select
@@ -2388,7 +2400,7 @@ export function WorkoutScreen() {
 
                                   return (
                                     <div className="mt-2.5 p-3.5 rounded-xl bg-surface/40 border border-surface-border space-y-3 text-xs select-none">
-                                      {!guidedMode && platesList && platesList.length > 0 && (
+                                      {platesList && platesList.length > 0 && (
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-card-border pb-2.5">
                                           <div className="flex items-center gap-2 text-zinc-755 font-bold">
                                             <Dumbbell size={15} className="text-emerald-400 shrink-0" />
@@ -2426,21 +2438,13 @@ export function WorkoutScreen() {
                                             <p className="font-extrabold text-foreground leading-tight text-[11px] uppercase tracking-wide">
                                               Stimulus Advisory (Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} · RIR {rirVal}):
                                             </p>
-                                              <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
-                                                {guidedMode ? (
-                                                  rirVal <= 1
-                                                    ? "Great effort! That felt hard — you pushed to your limit. Rest up and next time you can try adding a little more weight."
-                                                    : rirVal >= 4
-                                                    ? "That felt easy — try adding a bit more weight next time to keep improving!"
-                                                    : "Nice work! That's the perfect challenge level — tough but doable. Keep it up."
-                                                ) : (
-                                                  rirVal <= 1
-                                                    ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
-                                                    : rirVal >= 4
-                                                    ? "Low-intensity stimulus. Consider increasing load by 5–10% to target hypertrophy."
-                                                    : "Moderate stimulus — perfect sweet spot for safe progressive overload."
-                                                )}
-                                              </p>
+                                            <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
+                                              {rirVal <= 1
+                                                ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
+                                                : rirVal >= 4
+                                                ? "Low-intensity stimulus. Consider increasing load by 5–10% to target hypertrophy."
+                                                : "Moderate stimulus — perfect sweet spot for safe progressive overload."}
+                                            </p>
                                           </div>
                                         </div>
                                       )}

@@ -255,7 +255,7 @@ export function AtlasApp() {
 
       {/* ─── MOBILE BRAND TOP HEADER (Hidden on desktop) ─── */}
       {!(activeTab === "workout" && activeSubScreen === "active-workout") && (
-        <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
+        <div className="fixed inset-x-0 top-0 z-30 border-b border-card-border bg-header pt-[env(safe-area-inset-top)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden overflow-hidden">
           <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-300 font-extrabold text-zinc-955">
@@ -268,7 +268,7 @@ export function AtlasApp() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0 justify-end flex-nowrap pl-2">
+            <div className="flex items-center gap-1 shrink-0 justify-end flex-nowrap pl-2">
               <button
                 type="button"
                 onClick={() => {
@@ -324,7 +324,7 @@ export function AtlasApp() {
         "mx-auto w-full max-w-6xl pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
         resolvedTab === "workout" && activeSubScreen === "active-workout"
           ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16 pb-0"
-          : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-[calc(2rem+env(safe-area-inset-top))]"
+          : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-8"
       )}>
         <AnimatePresence mode="wait">
           {resolvedTab === "workout" && activeSubScreen ? (
@@ -343,7 +343,7 @@ export function AtlasApp() {
 
       {/* ─── MOBILE BOTTOM BAR NAVIGATION (Hidden on desktop) ─── */}
       <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-5 px-1 sm:px-2 md:max-w-xl">
+        <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-4 px-1 sm:px-2 md:max-w-xl">
           {navItems.filter(item => item.id !== "settings").map((item) => {
             const Icon = item.icon;
             const active = resolvedTab === item.id;
@@ -392,7 +392,7 @@ export function AtlasApp() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-2xl h-dvh bg-background border-l border-card-border shadow-2xl overflow-y-auto p-4 sm:p-6 pb-20 z-10"
+              className="relative w-full max-w-2xl h-dvh bg-background border-l border-card-border shadow-2xl overflow-y-auto p-4 sm:p-6 pb-20 pr-[max(1rem,env(safe-area-inset-right))] z-10"
             >
               <ErrorBoundary screen="Settings">
                 <SettingsScreen onClose={() => setSettingsOpen(false)} />
