@@ -527,7 +527,9 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
   },
 
   pullCloudUpdate: async (): Promise<boolean> => {
-    const user = get().user;
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     try {
       if (!registry.isAuthenticated) return false;
