@@ -176,7 +176,7 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
                   {apiKeyBlocked ? "AI Provider Not Configured" : "Plan Generation Failed"}
                 </p>
               </div>
-              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans break-words">
                 {error}
               </p>
               {apiKeyBlocked && (

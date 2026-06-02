@@ -70,7 +70,7 @@
   --amber-450: #fbbf24;
 }
 
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card-bg);

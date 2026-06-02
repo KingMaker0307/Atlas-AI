@@ -46,7 +46,7 @@ export const GlossaryTooltip: React.FC<GlossaryTooltipProps> = ({ term, children
       </span>
       {visible && (
         <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-zinc-900 dark:bg-zinc-950 text-white rounded-xl text-xs leading-relaxed shadow-xl border border-zinc-800 z-50 animate-in fade-in slide-in-from-bottom-1 pointer-events-none select-none">
-          <span className="block font-black uppercase tracking-wider text-[10px] text-emerald-400 mb-1">
+          <span className="block font-bold uppercase tracking-wider text-[10px] text-emerald-400 mb-1">
             Fitness Guide: {term}
           </span>
           {definition}

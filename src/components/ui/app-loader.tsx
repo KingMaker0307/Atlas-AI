@@ -98,7 +98,7 @@ export function AppLoader({ visible }: AppLoaderProps) {
 
             {/* App name */}
             <div className="text-center space-y-1">
-              <h1 className="text-2xl font-black tracking-tight text-white">
+              <h1 className="text-2xl font-bold tracking-tight text-white">
                 Atlas <span className="text-emerald-400">AI</span>
               </h1>
               <p className="text-xs font-semibold text-zinc-500 tracking-widest uppercase">

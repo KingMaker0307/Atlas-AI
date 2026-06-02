@@ -156,7 +156,7 @@ export function WorkoutPlanDetailScreen() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">{plan.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">{plan.name}</h1>
               <span title="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
                 <Info 
                   size={15} 
@@ -226,7 +226,7 @@ export function WorkoutPlanDetailScreen() {
                 <div>
                   <div className="flex items-start justify-between gap-4 border-b border-card-border pb-3">
                     <div>
-                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
                       <h2 className="mt-2 text-xl font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-tight">{routine.name}</h2>
                       <p className="mt-1 text-xs text-zinc-555 leading-normal">{routine.focus}</p>
 
@@ -342,7 +342,7 @@ export function WorkoutPlanDetailScreen() {
                 <div className="p-3 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/15 mb-2.5">
                   <Moon size={24} />
                 </div>
-                <span className="text-xs text-violet-600 dark:text-violet-400 font-black uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
+                <span className="text-xs text-violet-600 dark:text-violet-400 font-bold uppercase tracking-widest bg-violet-500/10 px-2.5 py-0.5 rounded border border-violet-500/25 mb-1.5">{day}</span>
                 <p className="text-sm font-bold text-foreground mt-1">Rest &amp; CNS Restoration</p>
                 <p className="text-xs text-zinc-555 dark:text-zinc-450 max-w-[220px] mt-0.5 leading-normal">
                   Muscle hypertrophy and neural system recovery occur on rest cycles. Focus on targeted hydration and sleep.
@@ -400,7 +400,7 @@ export function WorkoutPlanDetailScreen() {
                 <div className="mt-4 w-full border-t border-violet-500/10 pt-4">
                   <Button
                     variant="ghost"
-                    className="w-full h-9 text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-all active:scale-[0.98]"
+                    className="w-full h-9 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 rounded-xl transition-all active:scale-[0.98]"
                     onClick={() => {
                       setRoutineBuilderDefaultDay(day);
                       setEditingRoutineId(null);

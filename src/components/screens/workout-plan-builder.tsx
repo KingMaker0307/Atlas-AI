@@ -702,7 +702,7 @@ export function WorkoutPlanBuilderScreen() {
             <Button variant="ghost" size="icon" onClick={() => setActiveSubScreen(null)} aria-label="Exit detail screen">
               <ArrowLeft size={20} aria-hidden="true" />
             </Button>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Create Workout Plan</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Create Workout Plan</h1>
           </section>
 
           <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
@@ -970,7 +970,7 @@ export function WorkoutPlanBuilderScreen() {
               <Button variant="ghost" size="icon" onClick={() => editingWorkoutPlanId ? setActiveSubScreen(null) : setView("choose-method")} aria-label="Back">
                 <ArrowLeft size={20} aria-hidden="true" />
               </Button>
-              <h1 className="text-xl font-black tracking-tight text-foreground">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">
                 {editingWorkoutPlanId ? "Edit Plan" : "New Plan"}
               </h1>
             </div>
@@ -1176,7 +1176,7 @@ export function WorkoutPlanBuilderScreen() {
                 <AlertTriangle className="text-rose-500 dark:text-rose-400" size={22} />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-rose-500 dark:text-rose-400">AI Coach</p>
                 <h3 id="ai-error-title" className="text-lg font-bold text-zinc-900 dark:text-white leading-snug mt-0.5">Plan Generation Failed</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Something went wrong while your AI Coach was building your plan.</p>
               </div>
@@ -1185,7 +1185,7 @@ export function WorkoutPlanBuilderScreen() {
             {/* Error detail */}
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/[0.07] p-3.5 space-y-1">
               <p className="text-xs font-extrabold uppercase tracking-wider text-rose-500 dark:text-rose-400">Error Detail</p>
-              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-mono break-words">
+              <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed font-sans break-words">
                 {aiErrorMessage || "An unknown error occurred communicating with the AI provider."}
               </p>
             </div>

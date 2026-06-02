@@ -3,11 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, Bot, CalendarCheck, ClipboardList, Home, LayoutDashboard, Settings, ShieldAlert, Sun, Moon, Flame, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { DashboardScreen } from "@/components/screens/dashboard-screen";
-import { TodayScreen } from "@/components/screens/today-screen";
+import { HomeScreen } from "@/components/screens/home-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
-import { ProgressScreen } from "@/components/screens/progress-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
 import { WelcomeScreen } from "@/components/screens/welcome-screen";
 import { RoutineBuilderScreen } from "@/components/screens/routine-builder-screen";
@@ -27,22 +25,12 @@ import { cn } from "@/lib/cn";
 import { useAtlasStore, type AtlasTab } from "@/store/useAtlasStore";
 import { drainSyncQueue } from "@/lib/repositories/registry";
 
-// Nav items for Expert Mode (full dashboard view)
-const expertNavItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
-  { id: "dashboard", label: "Dashboard",  icon: LayoutDashboard },
+// Unified navigation items list
+const navItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
+  { id: "dashboard", label: "Home",       icon: Home },
   { id: "workout",   label: "Workout",    icon: ClipboardList },
   { id: "nutrition", label: "Nutrition",  icon: Flame },
   { id: "coach",     label: "Coach",      icon: Bot },
-  { id: "progress",  label: "Progress",   icon: BarChart3 },
-];
-
-// Nav items for Guided Mode — simplified labels, Today as first tab
-const guidedNavItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
-  { id: "today",     label: "Today",      icon: CalendarCheck },
-  { id: "workout",   label: "Workout",    icon: ClipboardList },
-  { id: "nutrition", label: "Nutrition",  icon: Flame },
-  { id: "coach",     label: "Coach",      icon: Bot },
-  { id: "progress",  label: "Progress",   icon: BarChart3 },
 ];
 
 export function AtlasApp() {
@@ -61,10 +49,8 @@ export function AtlasApp() {
   const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Pick nav set based on mode
-  const navItems = guidedMode ? guidedNavItems : expertNavItems;
-  // In guided mode, redirect 'dashboard' tab to 'today' unless user explicitly navigated there
-  const resolvedTab = (guidedMode && activeTab === "dashboard") ? "today" : activeTab;
+  // For backwards compatibility and routing: 'today' redirects to unified 'dashboard' Home screen
+  const resolvedTab = activeTab === "today" ? "dashboard" : activeTab;
 
 
   useEffect(() => {
@@ -200,7 +186,7 @@ export function AtlasApp() {
                 aria-label={item.label}
                 className={cn(
                   "relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition w-full justify-start leading-none min-h-[44px]",
-                  active ? "text-emerald-500 dark:text-emerald-250 font-black" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
+                  active ? "text-emerald-500 dark:text-emerald-250 font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                 )}
               >
                 {active ? (
@@ -221,7 +207,7 @@ export function AtlasApp() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <OfflineIndicator />
-              <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-mono">System Standby</span>
+              <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-sans">System Standby</span>
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -335,9 +321,9 @@ export function AtlasApp() {
 
       {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
       <main className={cn(
-        "mx-auto w-full max-w-6xl md:pb-8",
+        "mx-auto w-full max-w-6xl pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
         resolvedTab === "workout" && activeSubScreen === "active-workout"
-          ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16"
+          ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16 pb-0"
           : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-[calc(2rem+env(safe-area-inset-top))]"
       )}>
         <AnimatePresence mode="wait">
@@ -345,12 +331,10 @@ export function AtlasApp() {
             renderSubScreen()
           ) : (
             <motion.div key={resolvedTab}>
-              {resolvedTab === "today"      ? <ErrorBoundary screen="Today"><TodayScreen /></ErrorBoundary> : null}
-              {resolvedTab === "dashboard"  ? <ErrorBoundary screen="Dashboard"><DashboardScreen /></ErrorBoundary> : null}
+              {resolvedTab === "dashboard"  ? <ErrorBoundary screen="Home"><HomeScreen /></ErrorBoundary> : null}
               {resolvedTab === "workout"    ? <ErrorBoundary screen="Workout"><WorkoutScreen /></ErrorBoundary> : null}
               {resolvedTab === "nutrition"  ? <ErrorBoundary screen="Nutrition"><NutritionTracker /></ErrorBoundary> : null}
               {resolvedTab === "coach"      ? <ErrorBoundary screen="Coach"><CoachScreen /></ErrorBoundary> : null}
-              {resolvedTab === "progress"   ? <ErrorBoundary screen="Progress"><ProgressScreen /></ErrorBoundary> : null}
               {resolvedTab === "settings"   ? <ErrorBoundary screen="Settings"><SettingsScreen /></ErrorBoundary> : null}
             </motion.div>
           )}

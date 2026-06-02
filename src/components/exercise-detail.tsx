@@ -898,7 +898,7 @@ export function ExerciseDetail({
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                           </span>
-                          <span className="text-xs font-extrabold uppercase tracking-widest font-mono">Loop</span>
+                          <span className="text-xs font-extrabold uppercase tracking-widest font-sans">Loop</span>
                         </>
                       ) : (
                         <>
@@ -1001,7 +1001,7 @@ export function ExerciseDetail({
                   <div className="p-4 rounded-2xl bg-surface border border-surface-border min-h-[100px] flex flex-col justify-between transition-all duration-300">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-mono">
+                        <span className="text-xs font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-sans tabular-nums">
                           Phase {guideStep + 1}
                         </span>
                         <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
@@ -1015,7 +1015,7 @@ export function ExerciseDetail({
 
                     {/* Step deck buttons */}
                     <div className="flex items-center justify-between border-t border-surface-border pt-3.5 mt-4 select-none">
-                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 font-mono">
+                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 font-sans tabular-nums">
                         Step {guideStep + 1} of {combinedSteps.length}
                       </span>
                       <div className="flex items-center gap-1">
@@ -1136,13 +1136,13 @@ export function ExerciseDetail({
                   <div className="space-y-2 text-xs text-zinc-500 dark:text-zinc-450">
                     <div className="flex justify-between items-center bg-surface p-1.5 rounded border border-surface-border">
                       <span className="font-bold text-zinc-700 dark:text-zinc-300">Target Intensity Zone</span>
-                      <span className="text-violet-600 dark:text-violet-300 font-extrabold font-mono">
+                      <span className="text-violet-600 dark:text-violet-300 font-extrabold font-sans tabular-nums">
                         {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "Zone 4 (80-90% HRmax)" : "Zone 2 (60-70% HRmax)"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center bg-surface p-1.5 rounded border border-surface-border">
                       <span className="font-bold text-zinc-700 dark:text-zinc-300">Est. Energy Expenditure</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold font-mono">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold font-sans tabular-nums">
                         {exercise.name.toLowerCase().includes("hiit") || exercise.name.toLowerCase().includes("sprint") ? "12-16 kcal/min" : "7-10 kcal/min"}
                       </span>
                     </div>

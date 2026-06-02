@@ -44,7 +44,7 @@ export function MetricCard({
         </span>
         {icon ? <span className="text-current shrink-0">{icon}</span> : null}
       </div>
-      <div className="mt-3 text-xl sm:text-2xl font-black tracking-tight text-zinc-955 dark:text-white">
+      <div className="mt-3 text-xl sm:text-2xl font-extrabold tracking-tight text-zinc-955 dark:text-white">
         {value}
       </div>
       {detail ? (

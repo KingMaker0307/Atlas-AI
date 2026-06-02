@@ -35,13 +35,21 @@ import {
   Copy,
   Check,
   ArrowLeft,
+  Search,
+  LineChart as LineChartIcon,
+  Info,
+  Clock3,
+  Zap,
+  Thermometer,
+  PlusCircle,
+  Edit,
 } from "lucide-react";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { BeginnerTipCard } from "@/components/beginner-tip-card";
 import { RecoveryCheckinSimple } from "@/components/recovery-checkin-simple";
 import { Card, Surface } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/input";
+import { Input, Label, Select } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
 import {
   calculateRecoveryScore,
@@ -52,17 +60,40 @@ import {
   getVolumeSeries,
   getWeeklyVolume,
   getTrainingConsistency,
+  getStrengthSeries,
+  topExercisesForAnalytics,
 } from "@/lib/progression/engine";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { parseAiWorkoutPlan } from "@/lib/ai/parser";
 import { useState, useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import type { UserProfile, RecoveryLog } from "@/types/domain";
+import type { UserProfile, RecoveryLog, BodyMetric, Workout } from "@/types/domain";
 import { createId } from "@/lib/id";
 import { validateEmail } from "@/lib/email-validator";
 import { restoreProfileByEmail } from "@/lib/sync";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 import { calculateNutritionTargets } from "@/lib/calculators";
+import { DailyRecoveryModal } from "@/components/daily-recovery-modal";
+import { DailyBodyMetricModal } from "@/components/daily-body-metric-modal";
+import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
+import { format, getISOWeek, getYear as getDateFnsYear, parseISO } from "date-fns";
+function parseLocalDate(dateStr: string): Date {
+  if (dateStr.includes("T")) {
+    return new Date(dateStr);
+  }
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+type HistoryView = "day" | "week" | "month" | "year";
+
+function getVolumeForWorkout(workout: Workout): number {
+  return workout.exercises.reduce((totalVolume, exercise) => {
+    return totalVolume + exercise.sets.reduce((setVolume, set) => {
+      return setVolume + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0);
+    }, 0);
+  }, 0);
+}
 
 export function DashboardScreen() {
   const profile = useAtlasStore((state) => state.profile);
@@ -97,6 +128,37 @@ export function DashboardScreen() {
   const setWorkoutTab = useAtlasStore((state) => state.setWorkoutTab);
   const theme = useAtlasStore((state) => state.theme);
   const setTheme = useAtlasStore((state) => state.setTheme);
+  const logBodyMetric = useAtlasStore((state) => state.logBodyMetric);
+  const storeExercises = useAtlasStore((state) => state.exercises);
+
+  const [selectedExercise, setSelectedExercise] = useState(topExercisesForAnalytics()[0]?.id ?? "bench-press");
+  const [selectedHistoryView, setSelectedHistoryView] = useState<HistoryView>("day");
+  const [modalSelectedDate, setModalSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [showBodyMetricModal, setShowBodyMetricModal] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  const [historySearch, setHistorySearch] = useState("");
+  const [chartTab, setChartTab] = useState<"strength" | "cardio" | "recovery" | "mass">("strength");
+  const [showCharts, setShowCharts] = useState(false);
+
+  useEffect(() => {
+    setShowCharts(!guidedMode);
+  }, [guidedMode]);
+
+  const getExerciseById = (id: string) => {
+    const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return (
+      storeExercises.find((e) => {
+        const exerciseNormId = e.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+        return (
+          e.id === id ||
+          exerciseNormId === normId ||
+          e.name.trim().toLowerCase() === id.trim().toLowerCase()
+        );
+      }) || getStaticExerciseById(id)
+    );
+  };
 
   // One-time Cloud Sync Migration States
   const [showMigrationModal, setShowMigrationModal] = useState(false);
@@ -303,6 +365,203 @@ export function DashboardScreen() {
   const bodySeries = getBodyweightSeries(bodyMetrics);
   const volumeSeries = getVolumeSeries(workouts);
   const recentPrs = getRecentPrs(workouts);
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    workouts.forEach(w => years.add(new Date(w.startedAt).getFullYear()));
+    recoveryLogs.forEach(r => years.add(new Date(r.date).getFullYear()));
+    bodyMetrics.forEach(b => years.add(new Date(b.date).getFullYear()));
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+    if (sortedYears.length === 0) {
+      sortedYears.push(new Date().getFullYear());
+    }
+    return sortedYears;
+  }, [workouts, recoveryLogs, bodyMetrics]);
+
+  const [selectedYear, setSelectedYear] = useState<number>(availableYears[0] || new Date().getFullYear());
+
+  const filteredWorkoutsForYear = useMemo(() => {
+    return workouts.filter(w => 
+      new Date(w.startedAt).getFullYear() === selectedYear &&
+      w.exercises.some(ex => ex.sets.some(s => s.completed))
+    );
+  }, [workouts, selectedYear]);
+
+  const filteredRecoveryLogsForYear = useMemo(() => {
+    return recoveryLogs.filter(r => new Date(r.date).getFullYear() === selectedYear);
+  }, [recoveryLogs, selectedYear]);
+
+  const filteredBodyMetricsForYear = useMemo(() => {
+    return bodyMetrics.filter(b => new Date(b.date).getFullYear() === selectedYear);
+  }, [bodyMetrics, selectedYear]);
+
+  const exercisesWithHistory = useMemo(() => {
+    const performedIds = new Set<string>();
+    workouts.forEach((w) => {
+      w.exercises.forEach((ex) => {
+        if (ex.sets.some((s) => s.completed)) {
+          performedIds.add(ex.exerciseId);
+        }
+      });
+    });
+
+    const performedList = Array.from(performedIds).map((id) => {
+      const match = getExerciseById(id);
+      return {
+        id,
+        name: match?.name ?? id.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+      };
+    });
+
+    const defaults = topExercisesForAnalytics();
+    const mergedList = [...performedList];
+    defaults.forEach((def) => {
+      if (!mergedList.some((ex) => ex.id === def.id)) {
+        mergedList.push(def);
+      }
+    });
+
+    return mergedList.sort((a, b) => a.name.localeCompare(b.name));
+  }, [workouts]);
+
+  const strengthSeries = useMemo(() => {
+    return getStrengthSeries(filteredWorkoutsForYear, selectedExercise);
+  }, [filteredWorkoutsForYear, selectedExercise]);
+
+  const cardioSeries = useMemo(() => {
+    const series: Record<string, { date: string; minutes: number; distance: number; calories: number }> = {};
+    filteredWorkoutsForYear.forEach((w) => {
+      w.exercises.forEach((ex) => {
+        const exerciseData = getExerciseById(ex.exerciseId);
+        const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+        if (!isCardio) return;
+        
+        const dateStr = format(parseLocalDate(w.startedAt), "MMM dd");
+        if (!series[dateStr]) {
+          series[dateStr] = { date: dateStr, minutes: 0, distance: 0, calories: 0 };
+        }
+        ex.sets.forEach((s) => {
+          if (s.completed) {
+            series[dateStr].minutes += (s.durationSeconds || 0) / 60;
+            series[dateStr].distance += s.distance || 0;
+            series[dateStr].calories += s.calories || 0;
+          }
+        });
+      });
+    });
+    return Object.values(series).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+  }, [filteredWorkoutsForYear]);
+
+  const recoveryTrendSeries = useMemo(() => {
+    return [...filteredRecoveryLogsForYear]
+      .sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime())
+      .map(log => ({
+        date: format(parseLocalDate(log.date), "MMM dd"),
+        energy: log.energy,
+        soreness: log.soreness,
+        stress: log.stress,
+        readiness: log.readiness,
+      }));
+  }, [filteredRecoveryLogsForYear]);
+
+  const totalWorkoutsInYear = filteredWorkoutsForYear.length;
+  const totalWorkoutDurationInYear = filteredWorkoutsForYear.reduce((sum, w) => sum + (w.durationMinutes || 0), 0);
+
+  const averageSleepHours = useMemo(() => {
+    if (filteredRecoveryLogsForYear.length === 0) return "0.0";
+    const totalSleepHours = filteredRecoveryLogsForYear.reduce((sum, log) => sum + (log.sleepHours || 0), 0);
+    return (totalSleepHours / filteredRecoveryLogsForYear.length).toFixed(1);
+  }, [filteredRecoveryLogsForYear]);
+
+  const bodyweightSeries = useMemo(() => {
+    return getBodyweightSeries(filteredBodyMetricsForYear);
+  }, [filteredBodyMetricsForYear]);
+
+  const yearVolumeSeries = useMemo(() => {
+    return getVolumeSeries(filteredWorkoutsForYear);
+  }, [filteredWorkoutsForYear]);
+
+  const groupedData = useMemo(() => {
+    const groups: Record<string, { workouts: Workout[], recoveryLogs: RecoveryLog[], bodyMetrics: BodyMetric[] }> = {};
+
+    [...filteredWorkoutsForYear, ...filteredRecoveryLogsForYear, ...filteredBodyMetricsForYear].forEach(item => {
+      const date = parseLocalDate('startedAt' in item ? item.startedAt : item.date);
+      let key: string;
+      switch (selectedHistoryView) {
+        case "day":
+          key = format(date, "yyyy-MM-dd");
+          break;
+        case "week":
+          key = `${date.getFullYear()}-W${getISOWeek(date)}`;
+          break;
+        case "month":
+          key = format(date, "yyyy-MM");
+          break;
+        default:
+          key = "Unknown";
+      }
+
+      if (!groups[key]) {
+        groups[key] = { workouts: [], recoveryLogs: [], bodyMetrics: [] };
+      }
+
+      if ('startedAt' in item) {
+        groups[key].workouts.push(item);
+      } else if ('sleepHours' in item) {
+        groups[key].recoveryLogs.push(item);
+      } else if ('bodyweight' in item) {
+        groups[key].bodyMetrics.push(item);
+      }
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+    return sortedKeys.map(key => ({ key, ...groups[key] }));
+  }, [filteredWorkoutsForYear, filteredRecoveryLogsForYear, filteredBodyMetricsForYear, selectedHistoryView]);
+
+  const filteredGroupedData = useMemo(() => {
+    if (!historySearch) return groupedData;
+    const query = historySearch.toLowerCase();
+    return groupedData.filter(({ key, workouts: workoutsInGroup }) => {
+      const dateStr = selectedHistoryView === "day" ? format(parseISO(key), "PPP") : key;
+      if (dateStr.toLowerCase().includes(query)) return true;
+      return workoutsInGroup.some((w) => {
+        if (w.name.toLowerCase().includes(query)) return true;
+        return w.exercises.some((ex) => {
+          const exerciseName = getExerciseById(ex.exerciseId)?.name ?? "";
+          return exerciseName.toLowerCase().includes(query);
+        });
+      });
+    });
+  }, [groupedData, historySearch, selectedHistoryView]);
+
+  const activeRecoveryHeatmap = useMemo(() => {
+    const trained = new Set(workouts.map((workout) => workout.startedAt.slice(0, 10)));
+    const recovered = new Set(recoveryLogs.map((log) => log.date.slice(0, 10)));
+    return Array.from({ length: 28 }).map((_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (27 - index));
+      const key = date.toISOString().slice(0, 10);
+      return {
+        date: key,
+        label: key.slice(5),
+        trained: trained.has(key),
+        recovered: recovered.has(key),
+      };
+    });
+  }, [workouts, recoveryLogs]);
+
+  const modalDailyRecoveryLog = useMemo(() => {
+    return recoveryLogs.find(r => r.date === modalSelectedDate);
+  }, [recoveryLogs, modalSelectedDate]);
+
+  const modalDailyBodyMetric = useMemo(() => {
+    return bodyMetrics.find(b => b.date === modalSelectedDate);
+  }, [bodyMetrics, modalSelectedDate]);
+
+  const latestBodyweight = useMemo(() => {
+    const sortedBodyMetrics = [...bodyMetrics].sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+    return sortedBodyMetrics.length > 0 ? sortedBodyMetrics[0].bodyweight : 0;
+  }, [bodyMetrics]);
   
   const lastMessage = aiMessages.at(-1);
   const isLastMessageError = lastMessage?.content.includes("**Error:**");
@@ -605,28 +864,55 @@ export function DashboardScreen() {
 
         <div className="flex flex-col gap-3 items-stretch md:items-end w-full md:w-auto">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Experience Mode Toggle */}
-            <div className="flex rounded-xl bg-surface p-1 border border-surface-border self-start sm:self-center select-none">
-              <button
-                type="button"
-                onClick={() => void setGuidedMode(true)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
-                }`}
-              >
-                Guided 🌱
-              </button>
-              <button
-                type="button"
-                onClick={() => void setGuidedMode(false)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                  !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
-                }`}
-              >
-                Expert ⚡
-              </button>
-            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Experience Mode Toggle */}
+              <div className="flex rounded-xl bg-surface p-1 border border-surface-border select-none">
+                <button
+                  type="button"
+                  onClick={() => void setGuidedMode(true)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    guidedMode ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white-keep shadow-md shadow-emerald-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
+                  }`}
+                >
+                  Guided 🌱
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void setGuidedMode(false)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                    !guidedMode ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white-keep shadow-md shadow-violet-500/10" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"
+                  }`}
+                >
+                  Expert ⚡
+                </button>
+              </div>
 
+              {/* Select Year Dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 select-year-label font-sans">Year:</span>
+                <Select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="w-24 h-9 py-1 bg-input border-input-border text-foreground text-xs font-bold rounded-xl focus:border-emerald-500/50 cursor-pointer"
+                >
+                  {availableYears.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Export PDF Button */}
+              {!guidedMode && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="h-9 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 font-bold text-xs px-3 rounded-xl shadow cursor-pointer"
+                  onClick={() => window.print()}
+                >
+                  Export PDF
+                </Button>
+              )}
+            </div>
 
             {/* Dynamic Recovery Ring */}
             <div className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3.5 rounded-xl bg-surface/50 border border-surface-border">
@@ -1535,104 +1821,631 @@ export function DashboardScreen() {
           </div>
         </div>
       </Card>
-  
-      {/* ─── HIGH-FIDELITY TABBED TRENDS CONSOLE ─── */}
-      {!guidedMode && (
-        <Card className="p-5 border border-card-border bg-card shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-100 dark:border-white/5 pb-4">
-            <div>
-              <h2 className="text-lg font-bold text-zinc-955 dark:text-white leading-tight">Bio-Analytics Console</h2>
-              <p className="text-xs text-zinc-555 dark:text-zinc-500">Biological markers and load volume trendlines</p>
-            </div>
+
+      {/* ─── PRINT-ONLY CLINICAL HEADER & CUSTOM STYLES ─── */}
+      <div className="hidden print:flex items-center justify-between border-b-2 border-zinc-955 dark:border-zinc-950 pb-3 mb-6">
+        <div>
+          <h1 className="text-xl font-bold uppercase tracking-tight text-zinc-955 dark:text-zinc-900">ATLAS AI CLINICAL REPORT</h1>
+          <p className="text-xs text-zinc-500 font-bold font-sans">Telemetry Data &amp; Biological Analytics • Generated: {format(new Date(), "PPP")}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-extrabold text-zinc-955 dark:text-zinc-900">{profile?.name || "Client Summary"}</p>
+          <p className="text-xs text-zinc-500 font-bold font-sans">Goal: {profile?.goal || "General Health"}</p>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          html, body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            font-size: 11pt !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          nav, footer, header, button, select, 
+          .no-print, [role="navigation"], [role="tablist"],
+          .bg-header, .fixed, .absolute, .sticky,
+          button[aria-label], select, input {
+            display: none !important;
+          }
+          .space-y-4 {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+          }
+          .border-zinc-800, .border-card-border, .border-white\\/5, .border-surface-border {
+            border: 1px solid #e4e4e7 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+          }
+          .bg-card, .bg-surface, .bg-surface\\/60, .bg-zinc-900, .bg-zinc-955, .bg-zinc-900\\/50, .bg-zinc-900\\/10 {
+            background-color: #f4f4f5 !important;
+            background: #f4f4f5 !important;
+            color: #18181b !important;
+          }
+          h1, h2, h3, h4, h5, h6, p, span, div {
+            color: #09090b !important;
+          }
+          .text-zinc-400, .text-zinc-500, .text-zinc-600 {
+            color: #71717a !important;
+          }
+          .text-emerald-400, .text-emerald-500, .text-emerald-300 {
+            color: #047857 !important;
+            font-weight: bold !important;
+          }
+          .text-violet-400, .text-violet-500 {
+            color: #6d28d9 !important;
+            font-weight: bold !important;
+          }
+          .text-amber-400, .text-amber-300, .text-amber-600 {
+            color: #b45309 !important;
+            font-weight: bold !important;
+          }
+          .text-rose-455, .text-rose-400, .text-rose-500 {
+            color: #be123c !important;
+            font-weight: bold !important;
+          }
+          .recharts-responsive-container {
+            width: 100% !important;
+            height: 250px !important;
+          }
+          .page-break-before {
+            page-break-before: always !important;
+          }
+          .aspect-square {
+            border: 1px solid #e4e4e7 !important;
+            background: #ffffff !important;
+          }
+        }
+      `}</style>
+
+      {/* ─── UNIFIED PORTAL STATS BAR ─── */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 no-print">
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
+          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <Dumbbell size={16} />
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Completed Sessions</p>
+            <p className="text-lg font-bold text-foreground leading-none mt-1">{totalWorkoutsInYear}</p>
+          </div>
+        </div>
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
+          <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            <Clock3 size={16} />
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Duration Logged</p>
+            <p className="text-lg font-bold text-foreground leading-none mt-1">{totalWorkoutDurationInYear} <span className="text-xs font-semibold text-zinc-500">min</span></p>
+          </div>
+        </div>
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
+          <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <Moon size={16} />
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">
+              {guidedMode ? "Average Sleep" : "Avg Sleep Efficiency"}
+            </p>
+            <p className="text-lg font-bold text-foreground leading-none mt-1">{averageSleepHours} <span className="text-xs font-semibold text-zinc-500">hours</span></p>
+          </div>
+        </div>
+        <div className="p-3 bg-surface border border-surface-border rounded-2xl flex items-center gap-2.5 select-none shadow">
+          <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <Weight size={16} />
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Latest Bodyweight</p>
+            <p className="text-lg font-bold text-foreground leading-none mt-1">{latestBodyweight} <span className="text-xs font-semibold text-zinc-500">lbs</span></p>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── UNIFIED CHARTS DECK CONSOLE ─── */}
+      <Card className="p-4 shadow-xl relative overflow-hidden page-break-before">
+        <button
+          type="button"
+          onClick={() => setShowCharts(!showCharts)}
+          className="w-full flex items-center justify-between border-b border-white/5 pb-3 select-none text-left no-print"
+        >
+          <div className="flex items-center gap-2">
+            <LineChartIcon className="text-violet-400 animate-pulse" size={18} />
+            <h3 className="text-base font-bold text-foreground">Training Analytics &amp; Charts</h3>
+          </div>
+          <span className="text-xs text-zinc-500 font-bold">{showCharts ? "Hide Charts" : "Show Charts"}</span>
+        </button>
+
+        <div className={`print:block ${showCharts ? "block" : "hidden"}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 py-3 no-print">
+            <p className="text-xs text-zinc-400 font-medium">Select a category to view training progression trendlines:</p>
             
-            {/* Custom Tabs */}
-            <div className="flex rounded-xl bg-surface p-1 border border-surface-border max-w-xs self-start sm:self-center">
-              <button
-                onClick={() => setActiveChartTab("weight")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "weight" ? "bg-foreground text-background shadow-sm" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"}`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Weight size={14} />
-                  Bodyweight
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveChartTab("volume")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeChartTab === "volume" ? "bg-foreground text-background shadow-sm" : "text-zinc-750 dark:text-zinc-400 hover:text-zinc-955 dark:hover:text-white"}`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <TrendingUp size={14} />
-                  Weekly Volume
-                </span>
-              </button>
+            {/* Segmented Controller */}
+            <div className="flex flex-nowrap bg-input border border-input-border p-0.5 rounded-xl overflow-x-auto w-full sm:w-auto shrink-0 select-none">
+              {[
+                { id: "strength", label: "Strength" },
+                { id: "cardio", label: "Cardio" },
+                { id: "recovery", label: "Recovery" },
+                { id: "mass", label: guidedMode ? "Weight & Volume" : "Mass & Vol" }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setChartTab(tab.id as any)}
+                  className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg transition-all shrink-0 whitespace-nowrap ${
+                    chartTab === tab.id
+                      ? "bg-white dark:bg-white/10 text-zinc-950 dark:text-white font-bold shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
-  
-          <div className="mt-5 h-48 relative">
-            <AnimatePresence mode="wait">
-              {activeChartTab === "weight" ? (
-                <motion.div 
-                  key="weight-chart"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  className="w-full h-full"
-                >
-                  {bodySeries.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={bodySeries} margin={{ left: -30, right: 10, top: 10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="bodyweight" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.45} />
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} domain={["dataMin - 3", "dataMax + 3"]} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Area type="monotone" name="weight" dataKey="weight" stroke="#10b981" strokeWidth={2.5} fill="url(#bodyweight)" />
-                      </AreaChart>
+
+          <div className="mt-4 min-h-[260px] flex flex-col justify-center">
+            {/* strength tab */}
+            {chartTab === "strength" && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p className="text-xs text-zinc-400 font-medium font-sans">
+                    {guidedMode ? "How much weight you're lifting over time — bigger numbers mean you're getting stronger!" : "Estimated 1-Repetition Maximum (1RM) progression in weight loads."}
+                  </p>
+                  <Select 
+                    value={selectedExercise} 
+                    onChange={(e) => setSelectedExercise(e.target.value)}
+                    className="w-full sm:w-64 h-10 py-1.5 bg-input border-input-border text-foreground text-xs font-bold font-sans rounded-xl focus:border-emerald-500/50 cursor-pointer"
+                  >
+                    {exercisesWithHistory.map((exercise) => (
+                      <option key={exercise.id} value={exercise.id}>
+                        {exercise.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="h-56">
+                  {strengthSeries.length > 1 ? (
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                      <LineChart data={strengthSeries}>
+                        <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                        <XAxis dataKey="date" stroke="#71717a" fontSize={10} fontStyle="bold" />
+                        <YAxis stroke="#71717a" fontSize={10} fontStyle="bold" />
+                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
+                        <Line dataKey="estimated1rm" stroke="#6ee7b7" strokeWidth={3} dot={{ r: 4, stroke: "#10b981", strokeWidth: 1.5, fill: "#fff" }} />
+                      </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-555 dark:text-zinc-500 italic">
-                      Requires at least two bodyweight logs to generate analytical trendlines.
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-555 dark:text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
+                      <Info size={20} className="text-emerald-450 dark:text-emerald-400 shrink-0" />
+                      <span>
+                        {guidedMode
+                          ? "Log some workouts first to see your strength chart here! Complete a few sets with weights to see your progress over time. 💪"
+                          : "Insufficient load point records available. Log completed strength training sets containing weight load, reps, and RIR inside your active workouts to map your estimated 1-Repetition Maximum (1RM) progressive overload curves."}
+                      </span>
                     </div>
                   )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="volume-chart"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
-                  className="w-full h-full"
-                >
-                  {volumeSeries.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={volumeSeries} margin={{ left: -30, right: 10, top: 10, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="volume" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.45} />
-                            <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <XAxis dataKey="week" stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#52525b" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Area type="monotone" name="volume" dataKey="volume" stroke="#0ea5e9" strokeWidth={2.5} fill="url(#volume)" />
-                      </AreaChart>
+                </div>
+              </div>
+            )}
+
+            {/* cardio tab */}
+            {chartTab === "cardio" && (
+              <div className="space-y-4">
+                <p className="text-xs text-zinc-400 font-medium font-sans">Aerobic active recovery duration, incline pacing, and calorie expenditure rates.</p>
+                <div className="h-56">
+                  {cardioSeries.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                      <BarChart data={cardioSeries}>
+                        <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                        <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
+                        <YAxis stroke="#71717a" fontSize={10} />
+                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
+                        <Bar dataKey="minutes" name="Cardio Mins" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="calories" name="Calories (kcal)" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                      </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-555 dark:text-zinc-500 italic">
-                      Log at least two workout sessions containing sets to evaluate dynamic training volume graphs.
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-555 dark:text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
+                      <Activity size={22} className="text-violet-450 dark:text-violet-400 shrink-0" />
+                      <span>No cardiovascular conditioning data recorded. Record duration, distance, and calorie expenditure for treadmill runs, stationary cycle sessions, or import Garmin/Apple Watch telemetry files to view conditioning trends.</span>
                     </div>
                   )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </div>
+            )}
+
+            {/* recovery tab */}
+            {chartTab === "recovery" && (
+              <div className="space-y-4">
+                <p className="text-xs text-zinc-400 font-medium font-sans">Fluctuations in daily readiness, soreness thresholds, energy levels, and stress indices.</p>
+                <div className="h-56">
+                  {recoveryTrendSeries.length > 1 ? (
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                      <LineChart data={recoveryTrendSeries}>
+                        <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                        <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
+                        <YAxis stroke="#71717a" fontSize={10} domain={[0, 10]} />
+                        <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
+                        <Line type="monotone" dataKey="energy" stroke="#facc15" strokeWidth={2} name="Energy" dot={false} />
+                        <Line type="monotone" dataKey="soreness" stroke="#ef4444" strokeWidth={2} name="Soreness" dot={false} />
+                        <Line type="monotone" dataKey="stress" stroke="#c084fc" strokeWidth={2} name="Stress" dot={false} />
+                        <Line type="monotone" dataKey="readiness" stroke="#34d399" strokeWidth={2} name="Readiness" dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-555 dark:text-zinc-500 text-xs select-none gap-2 p-6 text-center max-w-sm mx-auto">
+                      <Info size={20} className="text-amber-450 dark:text-amber-400 shrink-0" />
+                      <span>No biological telemetry recorded yet. Log daily recovery indicators—sleep duration, muscle soreness index, stress levels, and subjective fatigue—to compute your active Central Nervous System (CNS) readiness waves and performance potential.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* mass tab */}
+            {chartTab === "mass" && (
+              <div className="space-y-4">
+                <p className="text-xs text-zinc-400 font-medium font-sans select-none">Comparison overlay between weekly strength training volume load and bodyweight mass.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Bodyweight Mass Panel */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-555 dark:text-zinc-400 select-none">Bodyweight Mass (Trend)</h4>
+                    <div className="h-56">
+                      {bodyweightSeries.length > 1 ? (
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                          <AreaChart data={bodyweightSeries}>
+                            <defs>
+                              <linearGradient id="bodyweightGrad" x1="0" x2="0" y1="0" y2="1">
+                                <stop offset="5%" stopColor="#c084fc" stopOpacity={0.4} />
+                                <stop offset="95%" stopColor="#c084fc" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                            <XAxis dataKey="date" stroke="#71717a" fontSize={10} />
+                            <YAxis stroke="#71717a" fontSize={10} domain={["dataMin - 3", "dataMax + 3"]} />
+                            <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
+                            <Area dataKey="weight" stroke="#c084fc" fill="url(#bodyweightGrad)" strokeWidth={2} name="Weight (lbs)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full border border-dashed border-surface-border rounded-xl text-zinc-555 dark:text-zinc-500 text-xs p-4 text-center select-none gap-2">
+                          <Info size={18} className="text-zinc-500 shrink-0" />
+                          <span>Record at least 2 bodyweight entries in the logs shelf below to view mass history.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Weekly Training Volume Panel */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-555 dark:text-zinc-400 select-none">Weekly Training Volume (lbs)</h4>
+                    <div className="h-56">
+                      {yearVolumeSeries.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                          <BarChart data={yearVolumeSeries}>
+                            <CartesianGrid stroke="rgba(255,255,255,0.02)" strokeDasharray="3 3" />
+                            <XAxis dataKey="week" stroke="#71717a" fontSize={10} />
+                            <YAxis stroke="#71717a" fontSize={10} />
+                            <Tooltip contentStyle={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", borderRadius: "12px", color: "var(--foreground)" }} itemStyle={{ color: "var(--foreground)" }} labelStyle={{ color: "#888" }} />
+                            <Bar dataKey="volume" fill="#10b981" radius={[4, 4, 0, 0]} name="Volume" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full border border-dashed border-surface-border rounded-xl text-zinc-555 dark:text-zinc-500 text-xs p-4 text-center select-none gap-2">
+                          <Info size={18} className="text-zinc-500 shrink-0" />
+                          <span>Complete workouts with weight training sets to populate weekly volume analytics.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </Card>
-      )}
+        </div>
+      </Card>
+
+      {/* ─── INTERACTIVE ACTIVE RECOVERY HEATMAP ─── */}
+      <Card className="p-4 shadow-xl relative overflow-hidden">
+        <div className="mb-2 flex items-center justify-between border-b border-white/5 pb-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="text-emerald-400" size={16} />
+            <h3 className="text-sm font-bold text-zinc-955 dark:text-white">Active Recovery Heatmap</h3>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase font-sans tracking-wider text-zinc-500">
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500/80" /> Trained</span>
+            <span>•</span>
+            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-violet-600/60" /> Recovery</span>
+          </div>
+        </div>
+        
+        <p className="text-xs text-zinc-555 dark:text-zinc-400 mt-1 mb-3 font-sans">28-day training heatmap. Click any cell to log daily recovery or body weight metrics directly.</p>
+
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          {activeRecoveryHeatmap.map((day) => {
+            const isTrained = day.trained;
+            const isRecovered = day.recovered;
+            
+            return (
+              <button
+                key={day.date}
+                type="button"
+                onClick={() => {
+                  setModalSelectedDate(day.date);
+                  setShowRecoveryModal(true);
+                }}
+                className={`aspect-square rounded-lg border flex flex-col justify-between p-1 transition-all duration-300 ${
+                  isTrained
+                    ? "bg-emerald-500/80 border-emerald-400/35 text-zinc-955 dark:text-zinc-950 shadow"
+                    : isRecovered
+                    ? "bg-violet-600/60 border-violet-500/35 text-white-keep shadow"
+                    : "bg-surface border-surface-border text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"
+                }`}
+              >
+                <span className="text-xs font-sans tabular-nums leading-none tracking-tight font-bold">{day.label.slice(3)}</span>
+                {isTrained && <Dumbbell size={11} className="self-end" />}
+                {!isTrained && isRecovered && <Moon size={11} className="self-end" />}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
+      {/* ─── HISTORICAL SEARCH & GROUPED LOGS DRAWER ─── */}
+      <Card className="p-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="text-zinc-400" size={16} />
+            <h3 className="text-sm font-bold text-zinc-955 dark:text-white">Historical Training Logs</h3>
+          </div>
+          
+          <div className="flex items-center gap-2 shrink-0 select-none">
+            {["day", "week", "month"].map((view) => (
+              <Button
+                key={view}
+                size="sm"
+                variant={selectedHistoryView === view ? "primary" : "secondary"}
+                onClick={() => setSelectedHistoryView(view as HistoryView)}
+                className="h-7 text-xs uppercase font-bold animate-fadeIn"
+              >
+                {view}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Search header bar */}
+        <div className="mt-3 relative">
+          <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-500">
+            <Search size={14} />
+          </span>
+          <Input
+            type="text"
+            placeholder="Search by routine name, date (e.g. Jan 10) or exercise name..."
+            className="pl-9 text-xs h-8 bg-input border-input-border text-foreground w-full rounded-xl focus:border-violet-500/50"
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+          />
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {filteredGroupedData.length === 0 && (
+            <p className="text-zinc-500 text-xs italic p-4 text-center">No logs matching query found for this period.</p>
+          )}
+
+          {filteredGroupedData.map(({ key, workouts: workoutsInGroup, recoveryLogs: recoveryLogsInGroup, bodyMetrics: bodyMetricsInGroup }) => {
+            const displayDate = selectedHistoryView === "day" ? format(parseISO(key), "PPPP") : key;
+            const currentDayRecoveryLog = recoveryLogsInGroup && recoveryLogsInGroup[0];
+            const currentDayBodyMetric = bodyMetricsInGroup && bodyMetricsInGroup[0];
+            const hasRecoveryData = recoveryLogsInGroup && recoveryLogsInGroup.length > 0;
+            const hasWorkoutData = workoutsInGroup && workoutsInGroup.length > 0;
+            
+            // Stats inside the folder
+            const totalWorkouts = workoutsInGroup?.length || 0;
+            const totalVolume = workoutsInGroup?.reduce((sum, w) => sum + getVolumeForWorkout(w), 0) || 0;
+            
+            const isFolderExpanded = !!expandedFolders[key];
+
+            return (
+              <div 
+                key={key} 
+                className="border border-surface-border rounded-2xl bg-surface/20 overflow-hidden animate-fadeIn"
+              >
+                {/* Folder Header */}
+                <button
+                  type="button"
+                  onClick={() => setExpandedFolders(prev => ({ ...prev, [key]: !prev[key] }))}
+                  className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-zinc-150/40 dark:hover:bg-white/[0.01] transition-all select-none"
+                >
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-bold text-zinc-955 dark:text-white truncate capitalize leading-snug">{displayDate}</h4>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs font-bold font-sans text-zinc-500">
+                      {totalWorkouts > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/5 border border-emerald-500/10 text-emerald-400">
+                          {totalWorkouts} {totalWorkouts === 1 ? "workout" : "workouts"}
+                        </span>
+                      )}
+                      {totalVolume > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-sky-500/5 border border-sky-500/10 text-sky-400 font-sans">
+                          Vol: {totalVolume.toLocaleString()} lbs
+                        </span>
+                      )}
+                      {hasRecoveryData && (
+                        <span className="px-1.5 py-0.5 rounded bg-violet-500/5 border border-violet-500/10 text-violet-400">
+                          Bio-Logged
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    {isFolderExpanded ? <ChevronUp size={16} className="text-zinc-400" /> : <ChevronDown size={16} className="text-zinc-400" />}
+                  </div>
+                </button>
+
+                {isFolderExpanded && (
+                  <div className="p-4 border-t border-surface-border bg-surface/30 space-y-4 transition-all">
+                    
+                    {/* Recovery summary inside the folder */}
+                    <div className="p-3 bg-card border border-card-border rounded-xl animate-fadeIn">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-sans">CNS &amp; Body Metrics</span>
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs font-semibold text-zinc-600 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
+                            onClick={() => {
+                              setModalSelectedDate(key);
+                              setShowRecoveryModal(true);
+                            }}
+                          >
+                            {currentDayRecoveryLog ? "Edit Bio-Data" : "Add Bio-Data"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs font-semibold text-zinc-600 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-transparent"
+                            onClick={() => {
+                              setModalSelectedDate(key);
+                              setShowBodyMetricModal(true);
+                            }}
+                          >
+                            {currentDayBodyMetric ? "Edit Weight" : "Add Weight"}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {hasRecoveryData || currentDayBodyMetric ? (
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-2 pt-2 border-t border-white/5 text-xs text-zinc-400">
+                          {currentDayRecoveryLog?.sleepHours && (
+                            <div>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider font-sans">Sleep</span>
+                              <span className="font-extrabold text-blue-400 font-sans tabular-nums">{currentDayRecoveryLog.sleepHours}h</span>
+                            </div>
+                          )}
+                          {currentDayRecoveryLog?.energy && (
+                            <div>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider font-sans">Energy</span>
+                              <span className="font-extrabold text-yellow-400 font-sans tabular-nums">{currentDayRecoveryLog.energy}/10</span>
+                            </div>
+                          )}
+                          {currentDayRecoveryLog?.soreness && (
+                            <div>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider font-sans">Soreness</span>
+                              <span className="font-extrabold text-red-400 font-sans tabular-nums">{currentDayRecoveryLog.soreness}/10</span>
+                            </div>
+                          )}
+                          {currentDayRecoveryLog?.readiness && (
+                            <div>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider font-sans">Readiness</span>
+                              <span className="font-extrabold text-emerald-400 font-sans tabular-nums">{currentDayRecoveryLog.readiness}/10</span>
+                            </div>
+                          )}
+                          {currentDayRecoveryLog?.stress && (
+                            <div>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider font-sans">Stress</span>
+                              <span className="font-extrabold text-purple-400 font-sans tabular-nums">{currentDayRecoveryLog.stress}/10</span>
+                            </div>
+                          )}
+                          {currentDayBodyMetric?.bodyweight && (
+                            <div>
+                              <span className="block text-xs text-zinc-600 font-bold uppercase tracking-wider font-sans">Mass</span>
+                              <span className="font-extrabold text-sky-400 font-sans tabular-nums">{currentDayBodyMetric.bodyweight} lbs</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500 italic mt-1.5 pl-0.5 font-sans">No biological recovery metrics logged for this date.</p>
+                      )}
+                    </div>
+
+                    {/* Logged Routines inside the folder */}
+                    {hasWorkoutData ? (
+                      <div className="space-y-3">
+                        <span className="text-xs font-bold text-zinc-555 dark:text-zinc-500 uppercase tracking-wider font-sans">Logged Routines</span>
+                        <div className="space-y-3">
+                          {workoutsInGroup.map((workout) => {
+                            const wDuration = workout.durationMinutes || 0;
+                            const wVolume = getVolumeForWorkout(workout);
+                            const wSets = workout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => s.completed).length, 0);
+
+                            return (
+                              <div key={workout.id} className="p-3.5 bg-card border border-card-border rounded-xl">
+                                <div className="flex justify-between items-start gap-4 pb-2.5 border-b border-surface-border">
+                                  <div>
+                                    <h5 className="text-foreground text-xs font-bold leading-none">{workout.name}</h5>
+                                    <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1 font-semibold font-sans">
+                                      <span>{format(parseISO(workout.startedAt), "HH:mm")}</span>
+                                      <span>•</span>
+                                      <span>{wDuration} min</span>
+                                      {wVolume > 0 && (
+                                        <>
+                                          <span>•</span>
+                                          <span>{wVolume.toLocaleString()} lbs</span>
+                                        </>
+                                      )}
+                                      <span>•</span>
+                                      <span>{wSets} completed sets</span>
+                                    </p>
+                                  </div>
+                                  {workout.fatigueRating && (
+                                    <span className="text-xs font-bold text-zinc-400 bg-zinc-800/80 px-1.5 py-0.5 rounded-full border border-white/5 font-sans">
+                                      Fatigue: {workout.fatigueRating}/10
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="mt-2.5 space-y-2">
+                                  {workout.exercises.map((we) => {
+                                    const exerciseData = getExerciseById(we.exerciseId);
+                                    const exerciseName = exerciseData?.name ?? "Exercise";
+                                    const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+                                    const completedSets = we.sets.filter(s => s.completed);
+
+                                    return (
+                                      <div key={we.id} className="p-2 bg-white/[0.01] border border-white/5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                                        <span className="font-bold text-zinc-850 dark:text-zinc-300">{exerciseName}</span>
+                                        <div className="flex items-center gap-2">
+                                          {completedSets.length > 0 && (
+                                            <span className="text-xs text-zinc-400 font-sans tabular-nums">
+                                              {isCardio ? (
+                                                completedSets.map((s) => {
+                                                  const min = s.durationSeconds ? (s.durationSeconds / 60).toFixed(1) : "0";
+                                                  const dist = s.distance ? `${s.distance}mi` : "";
+                                                  const extra = s.incline ? `@${s.incline}%` : (s.resistance ? `Lvl${s.resistance}` : "");
+                                                  return `${min}m${dist ? `(${dist})` : ""}${extra ? ` ${extra}` : ""}`;
+                                                }).join(", ")
+                                              ) : (
+                                                completedSets.map((s) => `${s.weight}x${s.reps}`).join(", ")
+                                              )}
+                                            </span>
+                                          )}
+                                          <span className="text-xs font-sans font-bold bg-surface border border-surface-border px-1.5 py-0.5 rounded leading-none text-zinc-500 dark:text-zinc-400 shrink-0 tabular-nums">
+                                            {completedSets.length}/{we.sets.length} sets
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-555 dark:text-zinc-500 italic mt-1 pl-0.5 font-sans">No logged strength or recovery workouts in this period.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* ─── DYNAMIC PLANS, PERSONAL RECORDS & COACH NOTE (Only shown in Advanced Mode) ─── */}
       {!guidedMode && (
@@ -2411,6 +3224,23 @@ export function DashboardScreen() {
           </Card>
         </div>
       )}
+
+      {/* Modals */}
+      <DailyRecoveryModal
+        isOpen={showRecoveryModal}
+        onClose={() => setShowRecoveryModal(false)}
+        selectedDate={modalSelectedDate}
+        dailyRecoveryLog={modalDailyRecoveryLog}
+        logRecovery={logRecovery}
+      />
+      <DailyBodyMetricModal
+        isOpen={showBodyMetricModal}
+        onClose={() => setShowBodyMetricModal(false)}
+        selectedDate={modalSelectedDate}
+        dailyBodyMetric={modalDailyBodyMetric}
+        logBodyMetric={logBodyMetric}
+        latestBodyweight={latestBodyweight}
+      />
     </motion.div>
   </>
 );

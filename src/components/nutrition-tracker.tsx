@@ -281,7 +281,7 @@ const MacroBar: FC<{ label: string; value: number; max: number; unit: string; co
             </span>
           )}
         </div>
-        <span className={cn("font-mono font-bold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
+        <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
           {value.toFixed(1)}<span className="font-normal text-zinc-600 dark:text-zinc-400">/{max}{unit}</span>
         </span>
       </div>
@@ -308,13 +308,13 @@ const MicroBadge: FC<{ label: string; value: number; max: number; unit: string; 
     <Surface className="flex flex-col items-center gap-1.5 p-3 text-center bg-zinc-50/20 dark:bg-zinc-900/40">
       <div className="relative">
         <RingProgress value={value} max={max} className={isOver ? "stroke-rose-600 dark:stroke-rose-500" : className} size={50} strokeWidth={4.5} />
-        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-foreground">
+        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground">
           {Math.round(pct)}%
         </span>
       </div>
       <div>
         <p className="text-[11px] font-bold text-zinc-900 dark:text-white leading-tight">{label}</p>
-        <p className="text-[9px] font-mono text-zinc-750 dark:text-zinc-300 mt-0.5">{value.toFixed(0)}/{max}{unit}</p>
+        <p className="text-[10px] font-sans tabular-nums font-semibold text-zinc-750 dark:text-zinc-300 mt-0.5">{value.toFixed(0)}/{max}{unit}</p>
       </div>
     </Surface>
   );
@@ -578,7 +578,7 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
           <Check size={14} className="text-emerald-500" />
           <span>Confirm AI Analysis</span>
         </h4>
@@ -631,17 +631,17 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
                 />
 
                 {item.source === "image" && (
-                  <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded select-none shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded select-none shrink-0">
                     📸 Image
                   </span>
                 )}
                 {item.source === "text" && (
-                  <span className="text-[8px] font-black uppercase tracking-wider bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 px-1.5 py-0.5 rounded select-none shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 px-1.5 py-0.5 rounded select-none shrink-0">
                     ✏️ Text
                   </span>
                 )}
                 {item.source === "both" && (
-                  <span className="text-[8px] font-black uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950/40 text-indigo-750 dark:text-indigo-400 px-1.5 py-0.5 rounded select-none shrink-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950/40 text-indigo-750 dark:text-indigo-400 px-1.5 py-0.5 rounded select-none shrink-0">
                     🤖 Both
                   </span>
                 )}
@@ -698,26 +698,26 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
               {/* Macros values display */}
               <div className="mt-2 grid grid-cols-4 gap-1.5 pl-5 select-none">
                 <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
-                  <span className="block text-[8px] font-black uppercase text-zinc-500">Cals</span>
-                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                  <span className="block text-[10px] font-bold uppercase text-zinc-500">Cals</span>
+                  <span className="text-xs font-semibold tabular-nums text-zinc-800 dark:text-zinc-250">
                     {Math.round(item.calories * item.quantity)}
                   </span>
                 </div>
                 <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
-                  <span className="block text-[8px] font-black uppercase text-zinc-500">Pro</span>
-                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                  <span className="block text-[10px] font-bold uppercase text-zinc-500">Pro</span>
+                  <span className="text-xs font-semibold tabular-nums text-zinc-800 dark:text-zinc-250">
                     {(item.protein * item.quantity).toFixed(1)}g
                   </span>
                 </div>
                 <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
-                  <span className="block text-[8px] font-black uppercase text-zinc-500">Carb</span>
-                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                  <span className="block text-[10px] font-bold uppercase text-zinc-500">Carb</span>
+                  <span className="text-xs font-semibold tabular-nums text-zinc-800 dark:text-zinc-250">
                     {(item.carbs * item.quantity).toFixed(1)}g
                   </span>
                 </div>
                 <div className="bg-zinc-100/50 dark:bg-zinc-900/50 rounded-lg p-1.5 text-center">
-                  <span className="block text-[8px] font-black uppercase text-zinc-500">Fat</span>
-                  <span className="text-xs font-black text-zinc-800 dark:text-zinc-250">
+                  <span className="block text-[10px] font-bold uppercase text-zinc-500">Fat</span>
+                  <span className="text-xs font-semibold tabular-nums text-zinc-800 dark:text-zinc-250">
                     {(item.fat * item.quantity).toFixed(1)}g
                   </span>
                 </div>
@@ -782,7 +782,7 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
                               <span className="font-bold text-zinc-800 dark:text-zinc-200">{prod.name}</span>
                               {prod.brand && <span className="text-[9px] text-zinc-500 ml-1">({prod.brand})</span>}
                             </div>
-                            <span className="font-black text-zinc-700 dark:text-zinc-300 shrink-0 ml-2">{prod.calories} kcal</span>
+                            <span className="font-bold text-zinc-700 dark:text-zinc-300 shrink-0 ml-2">{prod.calories} kcal</span>
                           </button>
                         ))
                       )}
@@ -808,7 +808,7 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
                     { label: "Base Iron (mg)", key: "iron", step: 0.1 },
                   ].map((field) => (
                     <div key={field.key}>
-                      <label className="block text-[8px] font-black uppercase text-zinc-550 mb-0.5">
+                      <label className="block text-[10px] font-bold uppercase text-zinc-550 mb-0.5">
                         {field.label}
                       </label>
                       <input
@@ -836,25 +836,25 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
       {/* Confirmation Combined totals summary */}
       {selectedCount > 0 && (
         <div className="bg-zinc-100/70 dark:bg-zinc-900/60 rounded-xl p-3.5 border border-zinc-200 dark:border-zinc-800 text-zinc-950 dark:text-white space-y-1.5 select-none shadow-inner">
-          <div className="flex justify-between items-center text-xs font-black">
+          <div className="flex justify-between items-center text-xs font-bold">
             <span className="uppercase text-[10px] tracking-wider text-zinc-500">Totals ({selectedCount} items)</span>
             <span className="text-sm text-emerald-600 dark:text-emerald-400">{totals.calories} kcal</span>
           </div>
           <div className="grid grid-cols-4 gap-1 text-center pt-1 border-t border-zinc-250 dark:border-zinc-800">
             <div>
-              <span className="block text-[8px] uppercase font-black text-zinc-500">Protein</span>
+              <span className="block text-[10px] uppercase font-bold text-zinc-500">Protein</span>
               <span className="text-xs font-bold">{totals.protein}g</span>
             </div>
             <div>
-              <span className="block text-[8px] uppercase font-black text-zinc-500">Carbs</span>
+              <span className="block text-[10px] uppercase font-bold text-zinc-500">Carbs</span>
               <span className="text-xs font-bold">{totals.carbs}g</span>
             </div>
             <div>
-              <span className="block text-[8px] uppercase font-black text-zinc-500">Fat</span>
+              <span className="block text-[10px] uppercase font-bold text-zinc-500">Fat</span>
               <span className="text-xs font-bold">{totals.fat}g</span>
             </div>
             <div>
-              <span className="block text-[8px] uppercase font-black text-zinc-500">Fiber</span>
+              <span className="block text-[10px] uppercase font-bold text-zinc-500">Fiber</span>
               <span className="text-xs font-bold">{totals.fiber}g</span>
             </div>
           </div>
@@ -2066,13 +2066,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                               />
                               <div className="truncate">
                                 <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
-                                <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono mt-0.5">{food.servingUnit}</p>
+                                <p className="text-[10px] text-zinc-750 dark:text-zinc-350 mt-0.5">{food.servingUnit}</p>
                               </div>
                             </div>
                             <div className="text-right flex items-center gap-1.5 shrink-0">
                               <div>
-                                <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
-                                <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                <p className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-sans tabular-nums font-semibold">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
                               </div>
                             </div>
                           </button>
@@ -2114,13 +2114,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                     />
                                     <div className="truncate">
                                       <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">{food.name}</p>
-                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono mt-0.5">{food.servingUnit}</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 mt-0.5">{food.servingUnit}</p>
                                     </div>
                                   </div>
                                   <div className="text-right flex items-center gap-1.5 shrink-0">
                                     <div>
-                                      <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
-                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                      <p className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-sans tabular-nums font-semibold">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
                                     </div>
                                   </div>
                                 </button>
@@ -2171,7 +2171,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                             {food.brand}
                                           </span>
                                         )}
-                                        <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate font-mono">
+                                        <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate">
                                           {food.servingUnit}
                                         </span>
                                       </div>
@@ -2179,8 +2179,8 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                   </button>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <div className="text-right">
-                                      <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
-                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                      <p className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-sans tabular-nums font-semibold">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
                                     </div>
                                     <button
                                       type="button"
@@ -2225,7 +2225,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                       aria-label="Select search region"
                       value={searchCountry}
                       onChange={(e) => setSearchCountry(e.target.value)}
-                      className="h-9 px-2 text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shrink-0 cursor-pointer font-mono"
+                      className="h-9 px-2 text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shrink-0 cursor-pointer"
                     >
                       {COUNTRY_OPTIONS.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -2301,7 +2301,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                           {food.brand}
                                         </span>
                                       )}
-                                      <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate font-mono">
+                                      <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate">
                                         {food.servingUnit}
                                       </span>
                                     </div>
@@ -2309,8 +2309,8 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                 </div>
                                 <div className="text-right flex items-center gap-1.5 shrink-0">
                                   <div>
-                                    <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
-                                    <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                    <p className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                    <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-sans tabular-nums font-semibold">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
                                   </div>
                                 </div>
                               </button>
@@ -2367,7 +2367,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                             {food.brand}
                                           </span>
                                         )}
-                                        <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate font-mono">
+                                        <span className="text-[9px] text-zinc-700 dark:text-zinc-350 truncate">
                                           {food.servingUnit}
                                         </span>
                                       </div>
@@ -2375,8 +2375,8 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                   </button>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <div className="text-right">
-                                      <p className="text-xs font-black text-zinc-900 dark:text-white">{food.calories} kcal</p>
-                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-mono">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
+                                      <p className="text-xs font-semibold tabular-nums text-zinc-900 dark:text-white">{food.calories} kcal</p>
+                                      <p className="text-[10px] text-zinc-750 dark:text-zinc-350 font-sans tabular-nums font-semibold">P:{food.protein}g C:{food.carbs}g F:{food.fat}g</p>
                                     </div>
                                     <button
                                       type="button"
@@ -2688,12 +2688,12 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               className="w-full flex items-center justify-between text-xs font-bold text-zinc-900 dark:text-white"
             >
               <div className="flex items-center gap-2">
-                <span className="h-5 w-5 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-450 text-[10px] font-black">
+                <span className="h-5 w-5 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-450 text-[10px] font-bold">
                   {selectedCount}
                 </span>
                 <span>Selected Food Tray</span>
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 font-mono">
+              <div className="flex items-center gap-1 text-[10px] text-zinc-700 dark:text-zinc-300 font-sans tabular-nums font-semibold">
                 <span>{trayTotals.calories} kcal</span>
                 <ChevronDown size={14} className={cn("transition-transform duration-200", isTrayExpanded && "rotate-180")} />
               </div>
@@ -2732,7 +2732,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                           >
                             -
                           </button>
-                          <span className="w-7 text-center font-mono font-bold text-[10px] text-foreground">
+                          <span className="w-7 text-center font-sans tabular-nums font-semibold text-[10px] text-foreground">
                             {qty}
                           </span>
                           <button
@@ -2751,7 +2751,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             +
                           </button>
                         </div>
-                        <span className="font-mono font-bold w-12 text-right shrink-0">
+                        <span className="font-sans tabular-nums font-semibold w-12 text-right shrink-0">
                           {Math.round(food.calories * qty)} kcal
                         </span>
                         <button
@@ -4035,7 +4035,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           />
           <button
             type="button"
-            className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-450 shadow-sm border border-input-border text-xs font-black uppercase tracking-wider focus-visible:outline-none"
+            className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-450 shadow-sm border border-input-border text-xs font-bold uppercase tracking-wider focus-visible:outline-none"
           >
             <Calendar size={13} aria-hidden="true" />
             <span>{dateLabel}</span>
@@ -4069,7 +4069,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               aria-selected={active}
               onClick={() => setNutritionTab(tab.id)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98]",
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98]",
                 active
                   ? "bg-card text-emerald-450 shadow-sm font-bold"
                   : "text-zinc-750 hover:text-zinc-955"
@@ -4101,7 +4101,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                       <div className="h-6 w-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                         <Sparkles size={13} className="animate-pulse" />
                       </div>
-                      <span className="text-xs font-black uppercase tracking-wider text-zinc-955 dark:text-white">Smart Quick Log</span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-955 dark:text-white">Smart Quick Log</span>
                     </div>
                     {/* Meal selector for quick logging */}
                     <div className="flex items-center gap-1">
@@ -4207,7 +4207,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             key={btn.label}
                             type="button"
                             onClick={btn.fn}
-                            className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-white/40 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 rounded-lg transition active:scale-95 cursor-pointer"
+                            className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/40 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 rounded-lg transition active:scale-95 cursor-pointer"
                           >
                             {btn.label}
                           </button>
@@ -4265,7 +4265,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                         />
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <Flame size={20} className={totals.calories > targets.calories ? "text-rose-450 animate-bounce" : "text-emerald-450"} />
-                          <span className="text-sm font-black text-zinc-955 mt-0.5 leading-none">
+                          <span className="text-sm font-bold text-zinc-955 mt-0.5 leading-none">
                             {Math.round((totals.calories / targets.calories) * 100) || 0}%
                           </span>
                         </div>
@@ -4273,12 +4273,12 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
                       {/* Main Calorie Numbers */}
                       <div className="flex-1 min-w-0">
-                        <h2 className="text-[11px] font-black uppercase tracking-widest text-zinc-955 flex items-center gap-1.5">
+                        <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-955 flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-450" />
                           Daily Balance
                         </h2>
                         <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-4xl font-black text-zinc-955 tracking-tight tabular-nums leading-none">
+                          <span className="text-4xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
                             {remainingCals.toLocaleString()}
                           </span>
                           <span className="text-xs text-zinc-750 font-extrabold uppercase tracking-wider">kcal left</span>
@@ -4293,15 +4293,15 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     <div className="grid grid-cols-3 gap-2 pt-3 border-t border-card-border">
                       <div className="bg-surface/50 p-2 rounded-xl border border-surface-border text-center">
                         <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-750 block mb-0.5">Budget</span>
-                        <span className="text-sm font-bold text-zinc-955 font-mono">{targets.calories.toLocaleString()}</span>
+                        <span className="text-sm font-semibold text-zinc-955 font-sans tabular-nums">{targets.calories.toLocaleString()}</span>
                       </div>
                       <div className="bg-surface/50 p-2 rounded-xl border border-surface-border text-center">
                         <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-750 block mb-0.5">Food</span>
-                        <span className="text-sm font-bold text-rose-450 font-mono">-{totals.calories.toLocaleString()}</span>
+                        <span className="text-sm font-semibold text-rose-450 font-sans tabular-nums">-{totals.calories.toLocaleString()}</span>
                       </div>
                       <div className="bg-surface/50 p-2 rounded-xl border border-surface-border text-center">
                         <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-750 block mb-0.5">Active</span>
-                        <span className="text-sm font-bold text-emerald-450 font-mono">+{burnedCalories.toLocaleString()}</span>
+                        <span className="text-sm font-semibold text-emerald-450 font-sans tabular-nums">+{burnedCalories.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -4345,7 +4345,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                         </motion.div>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
                           <Droplets size={18} className={hydrationRatio > 0.4 ? "text-white drop-shadow-sm" : "text-sky-500/60"} />
-                          <span className={cn("text-[9px] font-black font-mono leading-none mt-1", hydrationRatio > 0.4 ? "text-white" : "text-sky-500")}>
+                          <span className={cn("text-[9px] font-bold font-sans tabular-nums leading-none mt-1", hydrationRatio > 0.4 ? "text-white" : "text-sky-500")}>
                             {Math.round(hydrationRatio * 100)}%
                           </span>
                         </div>
@@ -4353,12 +4353,12 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
                       {/* Main Hydration Numbers */}
                       <div className="flex-1 min-w-0">
-                        <h2 className="text-[11px] font-black uppercase tracking-widest text-zinc-955 flex items-center gap-1.5">
+                        <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-955 flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
                           Hydration Log
                         </h2>
                         <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-4xl font-black text-zinc-955 tracking-tight tabular-nums leading-none">
+                          <span className="text-4xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
                             {totalWater.toLocaleString()}
                           </span>
                           <span className="text-xs text-zinc-750 font-bold uppercase tracking-wider">
@@ -4389,7 +4389,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                         >
                           -
                         </button>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">Fine Adjust (Last Log)</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">Fine Adjust (Last Log)</span>
                         <button
                           type="button"
                           onClick={() => addWater(250)}
@@ -4413,8 +4413,8 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             onClick={() => addWater(val)}
                             className="flex-1 flex flex-col items-center justify-center py-2 rounded-2xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-450 border border-sky-500/20 hover:border-sky-500/40 transition active:scale-[0.97] focus-visible:outline-none"
                           >
-                            <span className="text-xs font-black font-mono">+{val}ml</span>
-                            <span className="text-[9px] uppercase font-black text-sky-550/80 dark:text-sky-400/80 mt-0.5">{label}</span>
+                            <span className="text-xs font-bold tabular-nums">+{val}ml</span>
+                            <span className="text-[10px] uppercase font-bold text-sky-550/80 dark:text-sky-400/80 mt-0.5">{label}</span>
                           </button>
                         ))}
                       </div>
@@ -4429,10 +4429,10 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             placeholder="Custom amount"
                             value={customWaterInput}
                             onChange={(e) => setCustomWaterInput(e.target.value)}
-                            className="w-full h-10 pl-3.5 pr-10 rounded-xl border border-input-border bg-input text-xs text-zinc-955 font-mono placeholder:text-zinc-600 dark:placeholder:text-zinc-350 focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition duration-150"
+                            className="w-full h-10 pl-3.5 pr-10 rounded-xl border border-input-border bg-input text-xs text-zinc-955 font-sans tabular-nums placeholder:text-zinc-600 dark:placeholder:text-zinc-350 focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition duration-150"
                             aria-label="Custom water amount in ml"
                           />
-                          <span className="absolute right-3.5 top-3 text-[10px] text-zinc-750 font-black uppercase tracking-wider select-none">
+                          <span className="absolute right-3.5 top-3 text-[10px] text-zinc-750 font-bold uppercase tracking-wider select-none">
                             ml
                           </span>
                         </div>
@@ -4446,7 +4446,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             }
                           }}
                           disabled={!customWaterInput || parseInt(customWaterInput) <= 0}
-                          className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wider transition active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none shrink-0"
+                          className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider transition active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none shrink-0"
                         >
                           Log
                         </button>
@@ -4488,18 +4488,18 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 px-1">
                     <Sparkles size={14} className="text-emerald-450" />
-                    <h3 className="text-xs font-black text-zinc-750 uppercase tracking-widest">Physique Metrics</h3>
+                    <h3 className="text-xs font-bold text-zinc-750 uppercase tracking-widest">Physique Metrics</h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {calculatedBmi && (
                       <div className="p-4 rounded-2xl border border-card-border bg-card space-y-2 select-none shadow-[0_12px_40px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.24)] flex flex-col justify-between">
                         <div>
-                          <span className="text-[10px] font-black uppercase font-mono tracking-widest text-zinc-750">Live Telemetry</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-750">Live Telemetry</span>
                           <h4 className="text-sm font-bold text-zinc-955 mt-1 leading-none">Body Mass Index (BMI)</h4>
                         </div>
 
                         <div className="py-2 flex items-baseline gap-2">
-                          <span className="text-3xl font-black text-zinc-955 font-mono leading-none">{calculatedBmi.value}</span>
+                          <span className="text-3xl font-bold text-zinc-955 tabular-nums leading-none">{calculatedBmi.value}</span>
                           <span className={`text-xs font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
                             {calculatedBmi.classification}
                           </span>
@@ -4515,7 +4515,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             <button
                               type="button"
                               onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                              className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-zinc-750 hover:text-zinc-950 dark:text-zinc-350 dark:hover:text-white bg-zinc-50/50 dark:bg-zinc-900/60 border border-card-border px-2.5 py-1.5 rounded-xl transition duration-200"
+                              className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-750 hover:text-zinc-955 dark:text-zinc-350 dark:hover:text-white bg-zinc-50/50 dark:bg-zinc-900/60 border border-card-border px-2.5 py-1.5 rounded-xl transition duration-200"
                             >
                               <span>{showBmiGuidance ? "Hide Strategy Details" : `Improvement Strategy`}</span>
                               <Info size={14} className="text-zinc-750" />
@@ -4531,8 +4531,8 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                 >
                                   <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-xs leading-relaxed space-y-1.5`}>
                                     <div className="flex justify-between items-center select-none mb-1">
-                                      <span className={`font-black uppercase tracking-wider ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
-                                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase font-mono ${bmiAdvice.badgeColor}`}>
+                                      <span className={`font-bold uppercase tracking-wider ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${bmiAdvice.badgeColor}`}>
                                         {bmiAdvice.badge}
                                       </span>
                                     </div>
@@ -4553,17 +4553,17 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     {calculatedProtein && (
                       <div className="p-4 rounded-2xl border border-card-border bg-card space-y-2 select-none shadow-[0_12px_40px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.24)] flex flex-col justify-between">
                         <div>
-                          <span className="text-[10px] font-black uppercase font-mono tracking-widest text-zinc-750">Optimal Fueling</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-750">Optimal Fueling</span>
                           <h4 className="text-sm font-bold text-zinc-955 mt-1 leading-none">Daily Protein Target</h4>
                         </div>
 
                         <div className="py-2.5 flex items-baseline gap-1.5">
-                          <span className="text-3xl font-black text-zinc-955 font-mono leading-none">{calculatedProtein.value}</span>
-                          <span className="text-xs font-extrabold text-zinc-750 font-mono">g / day</span>
+                          <span className="text-3xl font-bold text-zinc-955 tabular-nums leading-none">{calculatedProtein.value}</span>
+                          <span className="text-xs font-bold text-zinc-750">g / day</span>
                         </div>
 
                         <p className="text-xs text-zinc-750 leading-relaxed font-medium">
-                          Physique-goal estimate at <span className="text-zinc-955 font-black font-mono">{calculatedProtein.multiplier}g</span> per lb for your <span className="text-zinc-955 font-black">{profile?.targetPhysique || "athletic"}</span> target. Your macro bar uses a per-kg clinical target based on your activity level.
+                          Physique-goal estimate at <span className="text-zinc-955 font-bold tabular-nums">{calculatedProtein.multiplier}g</span> per lb for your <span className="text-zinc-955 font-bold">{profile?.targetPhysique || "athletic"}</span> target. Your macro bar uses a per-kg clinical target based on your activity level.
                         </p>
                       </div>
                     )}
@@ -4611,13 +4611,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2.5">
                           {items.length > 0 && (
-                            <div className="flex items-center gap-1 text-[9px] font-mono font-bold select-none mr-0.5 sm:mr-1">
+                            <div className="flex items-center gap-1 text-[9px] font-sans font-bold select-none mr-0.5 sm:mr-1">
                               <span className="text-blue-455 bg-blue-500/5 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">P:{Math.round(mealProtein)}g</span>
                               <span className="text-amber-450 bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">C:{Math.round(mealCarbs)}g</span>
                               <span className="text-rose-450 bg-rose-500/5 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">F:{Math.round(mealFat)}g</span>
                             </div>
                           )}
-                          <span className="text-xs sm:text-sm font-black text-zinc-955 tabular-nums whitespace-nowrap">
+                          <span className="text-xs sm:text-sm font-bold text-zinc-955 tabular-nums whitespace-nowrap">
                             {mealCals} <span className="text-[9px] sm:text-[10px] font-normal text-zinc-755">kcal</span>
                           </span>
                           {isExpanded ? <ChevronUp size={15} className="text-zinc-750 shrink-0" /> : <ChevronDown size={15} className="text-zinc-750 shrink-0" />}
@@ -4645,15 +4645,15 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                   >
                                     <div className="min-w-0 flex-1 mr-2">
                                       <p className="text-xs font-bold text-zinc-955 truncate">{entry.name}</p>
-                                      <div className="flex gap-2.5 mt-0.5 text-[9px] font-mono">
-                                        <span className="text-blue-455 font-bold">P:{entry.protein}g</span>
-                                        <span className="text-amber-450 font-bold">C:{entry.carbs}g</span>
-                                        <span className="text-rose-450 font-bold">F:{entry.fat}g</span>
-                                        {entry.fiber > 0 && <span className="text-emerald-450 font-bold">Fb:{entry.fiber}g</span>}
+                                      <div className="flex gap-2.5 mt-0.5 text-[10px] font-sans tabular-nums">
+                                        <span className="text-blue-455 font-semibold">P:{entry.protein}g</span>
+                                        <span className="text-amber-450 font-semibold">C:{entry.carbs}g</span>
+                                        <span className="text-rose-450 font-semibold">F:{entry.fat}g</span>
+                                        {entry.fiber > 0 && <span className="text-emerald-450 font-semibold">Fb:{entry.fiber}g</span>}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                      <span className="text-xs font-black text-zinc-955 tabular-nums">{entry.calories} kcal</span>
+                                      <span className="text-xs font-bold text-zinc-955 tabular-nums">{entry.calories} kcal</span>
                                       <button
                                         onClick={() => removeEntry(entry.id)}
                                         aria-label={`Remove ${entry.name}`}
@@ -4710,13 +4710,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               {/* Water Log List history in Overview */}
               {activeWaterLogs.length > 0 && (
                 <Card className="p-4 space-y-2.5">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Water Intake History</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Water Intake History</h4>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {[...activeWaterLogs].reverse().map((log) => (
                       <div key={log.id} className="flex justify-between items-center p-2 rounded-xl bg-surface/50 border border-card-border">
                         <div className="flex items-center gap-2">
                           <Droplets size={12} className="text-sky-400" />
-                          <span className="text-xs font-semibold text-zinc-955 font-mono">{log.amount} ml</span>
+                          <span className="text-xs font-semibold text-zinc-955 font-sans tabular-nums">{log.amount} ml</span>
                           <span className="text-[9px] text-zinc-750">
                             at {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
@@ -4794,7 +4794,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                 className={cn(
                                   "flex-1 py-1.5 rounded-lg text-[10px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                                   active
-                                    ? "bg-card text-emerald-450 shadow-sm font-black"
+                                    ? "bg-card text-emerald-450 shadow-sm font-bold"
                                     : "text-zinc-750 hover:text-zinc-955"
                                 )}
                               >
@@ -4877,27 +4877,27 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
               {/* Energy Formula & Budget calculations */}
               <Card className="p-4 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Energy Balance Formula</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Energy Balance Formula</h4>
                 
                 <div className="grid grid-cols-7 items-center justify-between text-center bg-surface/50 border border-surface-border p-3.5 rounded-xl text-zinc-955 select-none">
                   <div>
                     <p className="text-[10px] font-bold text-zinc-750">Budget</p>
-                    <p className="text-sm font-black mt-1 font-mono">{targets.calories}</p>
+                    <p className="text-sm font-bold mt-1 font-sans tabular-nums">{targets.calories}</p>
                   </div>
                   <span className="text-xs font-bold text-zinc-400" aria-hidden="true">−</span>
                   <div>
                     <p className="text-[10px] font-bold text-rose-450">Food</p>
-                    <p className="text-sm font-black text-rose-450 mt-1 font-mono">{totals.calories}</p>
+                    <p className="text-sm font-bold text-rose-450 mt-1 font-sans tabular-nums">{totals.calories}</p>
                   </div>
                   <span className="text-xs font-bold text-zinc-400" aria-hidden="true">+</span>
                   <div>
                     <p className="text-[10px] font-bold text-amber-450">Burned</p>
-                    <p className="text-sm font-black text-amber-450 mt-1 font-mono">{burnedCalories}</p>
+                    <p className="text-sm font-bold text-amber-450 mt-1 font-sans tabular-nums">{burnedCalories}</p>
                   </div>
                   <span className="text-xs font-bold text-zinc-400" aria-hidden="true">=</span>
                   <div>
                     <p className="text-[10px] font-bold text-emerald-450">Left</p>
-                    <p className="text-sm font-black text-emerald-450 mt-1 font-mono">{remainingCals}</p>
+                    <p className="text-sm font-bold text-emerald-450 mt-1 font-sans tabular-nums">{remainingCals}</p>
                   </div>
                 </div>
 
@@ -4912,14 +4912,14 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   </div>
                   <div className="flex justify-between py-2 items-center">
                     <span className="font-bold text-zinc-955">Baseline Expenditure (TDEE)</span>
-                    <span className="font-mono font-black text-emerald-450">{targets.tdee} kcal/day</span>
+                    <span className="font-sans tabular-nums font-bold text-emerald-450">{targets.tdee} kcal/day</span>
                   </div>
                 </div>
               </Card>
 
               {/* Dynamic Target Macro splits */}
               <Card className="p-4 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Macronutrient Target Split</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Macronutrient Target Split</h4>
                 <div className="space-y-4">
                   <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" />
                   <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" tooltip="gives you energy ⚡" />
@@ -4942,13 +4942,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
                     <div>
                       <p className="text-[10px] font-bold text-zinc-750 uppercase tracking-wider">Last 7 Days</p>
-                      <p className="text-xl font-black text-zinc-955 mt-1.5 font-mono">{trendsData.last7Days.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
+                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last7Days.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
                     </div>
                     <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-750 space-y-1">
-                      <div className="flex justify-between font-mono"><span>P:</span><span>{trendsData.last7Days.avgProtein}g</span></div>
-                      <div className="flex justify-between font-mono"><span>C:</span><span>{trendsData.last7Days.avgCarbs}g</span></div>
-                      <div className="flex justify-between font-mono"><span>F:</span><span>{trendsData.last7Days.avgFat}g</span></div>
-                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-400">
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last7Days.avgProtein}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last7Days.avgCarbs}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last7Days.avgFat}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-400">
                         <span>Water:</span><span>{trendsData.last7Days.avgWater}ml</span>
                       </div>
                     </div>
@@ -4958,13 +4958,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
                     <div>
                       <p className="text-[10px] font-bold text-zinc-750 uppercase tracking-wider">Last 30 Days</p>
-                      <p className="text-xl font-black text-zinc-955 mt-1.5 font-mono">{trendsData.last30Days.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
+                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last30Days.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
                     </div>
                     <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-750 space-y-1">
-                      <div className="flex justify-between font-mono"><span>P:</span><span>{trendsData.last30Days.avgProtein}g</span></div>
-                      <div className="flex justify-between font-mono"><span>C:</span><span>{trendsData.last30Days.avgCarbs}g</span></div>
-                      <div className="flex justify-between font-mono"><span>F:</span><span>{trendsData.last30Days.avgFat}g</span></div>
-                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-400">
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last30Days.avgProtein}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last30Days.avgCarbs}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last30Days.avgFat}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-400">
                         <span>Water:</span><span>{trendsData.last30Days.avgWater}ml</span>
                       </div>
                     </div>
@@ -4974,13 +4974,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
                     <div>
                       <p className="text-[10px] font-bold text-zinc-750 uppercase tracking-wider">Last 12 Months</p>
-                      <p className="text-xl font-black text-zinc-955 mt-1.5 font-mono">{trendsData.last12Months.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
+                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last12Months.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
                     </div>
                     <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-750 space-y-1">
-                      <div className="flex justify-between font-mono"><span>P:</span><span>{trendsData.last12Months.avgProtein}g</span></div>
-                      <div className="flex justify-between font-mono"><span>C:</span><span>{trendsData.last12Months.avgCarbs}g</span></div>
-                      <div className="flex justify-between font-mono"><span>F:</span><span>{trendsData.last12Months.avgFat}g</span></div>
-                      <div className="flex justify-between font-mono border-t border-card-border/30 pt-1 mt-1 text-sky-400">
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last12Months.avgProtein}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last12Months.avgCarbs}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last12Months.avgFat}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-400">
                         <span>Water:</span><span>{trendsData.last12Months.avgWater}ml</span>
                       </div>
                     </div>
@@ -4998,7 +4998,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
             <div className="space-y-4">
               {/* Comprehensive RDA Grid */}
               <Card className="p-4 space-y-3.5">
-                <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Vitamins & Minerals Progress (RDA)</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Vitamins & Minerals Progress (RDA)</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
                   <MicroBadge label="Sodium" value={totals.sodium} max={targets.sodium} unit="mg" className="stroke-amber-450" />
                   <MicroBadge label="Potassium" value={totals.potassium} max={targets.potassium} unit="mg" className="stroke-violet-455" />
@@ -5010,34 +5010,34 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
               {/* RDA reference table */}
               <Card className="p-4 space-y-3">
-                <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Guideline Thresholds</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Guideline Thresholds</h4>
                 <div className="divide-y divide-card-border text-xs">
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-foreground">Sodium</span>
-                    <span className="text-zinc-750">Keep below 2,300 mg (prevents fluid retention)</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
+                    <span className="font-semibold text-foreground text-left">Sodium</span>
+                    <span className="text-zinc-750 text-left sm:text-right">Keep below 2,300 mg (prevents fluid retention)</span>
                   </div>
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-foreground">Potassium</span>
-                    <span className="text-zinc-750">Aim for 4,700 mg (supports heart/muscle function)</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
+                    <span className="font-semibold text-foreground text-left">Potassium</span>
+                    <span className="text-zinc-750 text-left sm:text-right">Aim for 4,700 mg (supports heart/muscle function)</span>
                   </div>
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-foreground">Vitamin C</span>
-                    <span className="text-zinc-750">Aim for 90 mg (promotes immune health)</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
+                    <span className="font-semibold text-foreground text-left">Vitamin C</span>
+                    <span className="text-zinc-750 text-left sm:text-right">Aim for 90 mg (promotes immune health)</span>
                   </div>
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-foreground">Calcium</span>
-                    <span className="text-zinc-750">Aim for 1,000 mg (essential for bone structure)</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
+                    <span className="font-semibold text-foreground text-left">Calcium</span>
+                    <span className="text-zinc-750 text-left sm:text-right">Aim for 1,000 mg (essential for bone structure)</span>
                   </div>
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-foreground">Iron</span>
-                    <span className="text-zinc-750">Aim for 8 mg (supports blood oxygenation)</span>
+                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
+                    <span className="font-semibold text-foreground text-left">Iron</span>
+                    <span className="text-zinc-750 text-left sm:text-right">Aim for 8 mg (supports blood oxygenation)</span>
                   </div>
                 </div>
               </Card>
 
               {/* Micro Sources logs */}
               <Card className="p-4 space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-wider text-zinc-750">Top Micronutrient Source Foods</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Top Micronutrient Source Foods</h4>
                 {activeEntries.length === 0 ? (
                   <p className="text-xs text-zinc-750 text-center py-4 italic">No logged foods to display micro sources</p>
                 ) : (

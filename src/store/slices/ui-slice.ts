@@ -11,6 +11,7 @@ export interface UiSlice {
   blocked: boolean;
   theme: ThemeMode;
   guidedMode: boolean;
+  homeSubTab: "today" | "analytics";
 
   setBlocked: (blocked: boolean) => void;
   setActiveSettingsTab: (tab: "profile" | "ai" | "system" | "subscription") => void;
@@ -19,6 +20,7 @@ export interface UiSlice {
   setActiveSubScreen: (subScreen: SubScreen) => void;
   setTheme: (theme: ThemeMode) => Promise<void>;
   setGuidedMode: (guidedMode: boolean) => Promise<void>;
+  setHomeSubTab: (subTab: "today" | "analytics") => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -35,6 +37,7 @@ export const createUiSlice: StateCreator<
   blocked: false,
   theme: "system",
   guidedMode: true,
+  homeSubTab: "today",
 
   setBlocked: (blocked) => set({ blocked }),
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
@@ -43,4 +46,5 @@ export const createUiSlice: StateCreator<
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
   setTheme: async (theme) => set({ theme }),
   setGuidedMode: async (guidedMode) => set({ guidedMode }),
+  setHomeSubTab: (homeSubTab) => set({ homeSubTab }),
 });

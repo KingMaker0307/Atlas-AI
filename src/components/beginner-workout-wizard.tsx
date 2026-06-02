@@ -153,7 +153,7 @@ export function BeginnerWorkoutWizard({ onComplete }: BeginnerWorkoutWizardProps
                       : "border-card-border bg-card hover:border-emerald-500/40"
                   }`}
                 >
-                  <span className="text-2xl font-black text-foreground">{d.value}</span>
+                  <span className="text-2xl font-extrabold text-foreground">{d.value}</span>
                   <span className="text-xs font-bold text-zinc-500">{d.desc}</span>
                 </button>
               ))}

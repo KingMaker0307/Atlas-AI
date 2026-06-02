@@ -447,7 +447,7 @@ export function Onboarding() {
                   {/* Unit System Preferences */}
                   <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-3">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Unit Preferences</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label>Weight Unit</Label>
                         <Controller
@@ -528,7 +528,7 @@ export function Onboarding() {
                     <div>
                       <Label htmlFor="age">Age</Label>
                       <div className="mt-1.5">
-                        <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" className="text-xs font-mono font-bold" />
+                        <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" className="text-xs font-sans font-medium" />
                         {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
                       </div>
                     </div>
@@ -576,7 +576,7 @@ export function Onboarding() {
                           max={1000}
                           {...register("weight")}
                           placeholder={selectedWeightUnit === "lbs" ? "e.g., 170" : "e.g., 78"}
-                          className="text-xs font-mono font-bold"
+                          className="text-xs font-sans font-medium"
                         />
                         {errors.weight && <p className="mt-1 text-xs text-rose-300">{errors.weight.message}</p>}
                       </div>
@@ -600,7 +600,7 @@ export function Onboarding() {
                                   const inches = Number(watch("height")) % 12 || 0;
                                   setValue("height", feet * 12 + inches);
                                 }}
-                                className="text-xs font-mono font-bold"
+                                className="text-xs font-sans font-medium"
                               />
                             </div>
                             <div>
@@ -615,7 +615,7 @@ export function Onboarding() {
                                   const feet = Math.floor(Number(watch("height")) / 12) || 5;
                                   setValue("height", feet * 12 + inches);
                                 }}
-                                className="text-xs font-mono font-bold"
+                                className="text-xs font-sans font-medium"
                               />
                             </div>
                             <input type="hidden" {...register("height")} />
@@ -628,7 +628,7 @@ export function Onboarding() {
                             max={300}
                             {...register("height")}
                             placeholder="e.g., 178"
-                            className="text-xs font-mono font-bold"
+                            className="text-xs font-sans font-medium"
                           />
                         )}
                       </div>
@@ -1040,33 +1040,6 @@ export function Onboarding() {
   );
 }
 
-function SegmentedSetting<T extends string>({
-  value,
-  values,
-  onChange,
-}: {
-  value: T;
-  values: T[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="grid gap-1 rounded-xl border border-card-border bg-input p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
-      {values.map((item) => (
-        <button
-          type="button"
-          className={`rounded-lg px-2 py-2 text-xs font-semibold capitalize transition ${
-            item === value ? "bg-foreground text-background" : "text-zinc-500 hover:bg-zinc-900/5 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
-          }`}
-          key={item}
-          onClick={() => onChange(item)}
-        >
-          {item === "in" ? "ft & in" : item}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 interface SelectorOption<T> {
   value: T;
   label: string;
@@ -1086,10 +1059,13 @@ function CardGridSelector<T extends string>({
 }) {
   return (
     <div
-      className="grid gap-2"
-      style={{
-        gridTemplateColumns: columns > 1 ? `repeat(${columns}, minmax(0, 1fr))` : "1fr",
-      }}
+      className={`grid gap-2 ${
+        columns === 2
+          ? "grid-cols-1 sm:grid-cols-2"
+          : columns === 3
+          ? "grid-cols-1 sm:grid-cols-3"
+          : "grid-cols-1"
+      }`}
     >
       {options.map((opt) => {
         const isSelected = opt.value === value;

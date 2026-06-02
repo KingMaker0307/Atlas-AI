@@ -178,6 +178,7 @@ export function TodayScreen() {
   const workoutPlans = useAtlasStore((s) => s.workoutPlans);
   const activeWorkoutPlanId = useAtlasStore((s) => s.activeWorkoutPlanId);
   const setActiveTab = useAtlasStore((s) => s.setActiveTab);
+  const setHomeSubTab = useAtlasStore((s) => s.setHomeSubTab);
   const guidedMode = useAtlasStore((s) => s.guidedMode);
 
   const todayStr = todayKey();
@@ -402,44 +403,31 @@ export function TodayScreen() {
         transition={{ duration: 0.35, delay: 0.25 }}
         className="grid grid-cols-2 gap-2.5"
       >
-        {[
-          { label: "Ask AI Coach", emoji: "🤖", tab: "coach" as const, color: "border-emerald-500/20 hover:border-emerald-500/50" },
-          { label: "View Progress", emoji: "📈", tab: "progress" as const, color: "border-sky-500/20 hover:border-sky-500/50" },
-        ].map((item) => (
-          <button
-            key={item.tab}
-            type="button"
-            onClick={() => setActiveTab(item.tab)}
-            className={cn(
-              "flex items-center gap-2.5 p-3.5 rounded-2xl border bg-card transition-all duration-150 cursor-pointer group",
-              item.color
-            )}
-          >
-            <span className="text-xl" aria-hidden="true">{item.emoji}</span>
-            <span className="text-sm font-semibold text-foreground">{item.label}</span>
-            <ChevronRight size={14} className="ml-auto text-zinc-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
-          </button>
-        ))}
+        <button
+          type="button"
+          onClick={() => setActiveTab("coach")}
+          className="flex items-center gap-2.5 p-3.5 rounded-2xl border bg-card transition-all duration-150 cursor-pointer group border-emerald-500/20 hover:border-emerald-500/50"
+        >
+          <span className="text-xl" aria-hidden="true">🤖</span>
+          <span className="text-sm font-semibold text-foreground font-sans">Ask AI Coach</span>
+          <ChevronRight size={14} className="ml-auto text-zinc-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("dashboard");
+            setHomeSubTab("analytics");
+          }}
+          className="flex items-center gap-2.5 p-3.5 rounded-2xl border bg-card transition-all duration-150 cursor-pointer group border-sky-500/20 hover:border-sky-500/50"
+        >
+          <span className="text-xl" aria-hidden="true">📈</span>
+          <span className="text-sm font-semibold text-foreground font-sans">View Progress</span>
+          <ChevronRight size={14} className="ml-auto text-zinc-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+        </button>
       </motion.div>
 
-      {/* Switch to full dashboard */}
-      {!guidedMode && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="text-center pt-1"
-        >
-          <button
-            type="button"
-            onClick={() => setActiveTab("dashboard")}
-            className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer inline-flex items-center gap-1"
-          >
-            Switch to full dashboard
-            <ChevronRight size={12} />
-          </button>
-        </motion.div>
-      )}
+
     </div>
   );
 }

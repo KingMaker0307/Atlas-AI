@@ -672,7 +672,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
       {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}
 
       {/* Mobile horizontal tabs */}
-      <div className="flex md:hidden bg-surface border border-surface-border p-1 rounded-2xl select-none gap-1">
+      <div className="flex md:hidden bg-surface border border-surface-border p-1 rounded-2xl select-none gap-1 overflow-x-auto scrollbar-none scroll-smooth">
         {[
           { id: "profile", label: "Profile", icon: <User size={14} /> },
           { id: "ai", label: "AI Coach", icon: <Cpu size={14} /> },
@@ -684,13 +684,13 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             <button
               key={tab.id}
               onClick={() => setActiveSettingsTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${active
+              className={`flex-1 min-w-[90px] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap shrink-0 ${active
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
                   : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                 }`}
             >
               {tab.icon}
-              <span>{tab.label}</span>
+              <span className="truncate">{tab.label}</span>
             </button>
           );
         })}
@@ -902,11 +902,11 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                         {heightUnit === "in" ? (
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Feet</Label>
                               <Input
                                 type="number"
                                 min={2}
                                 max={8}
+                                placeholder="Feet"
                                 value={draftProfile.height ? Math.floor(draftProfile.height / 12) : ""}
                                 onChange={(e) => {
                                   const feet = Number(e.target.value);
@@ -917,11 +917,11 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                               />
                             </div>
                             <div>
-                              <Label className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Inches</Label>
                               <Input
                                 type="number"
                                 min={0}
                                 max={11}
+                                placeholder="Inches"
                                 value={draftProfile.height ? Math.round(draftProfile.height % 12) : ""}
                                 onChange={(e) => {
                                   const inches = Number(e.target.value);
@@ -1308,7 +1308,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-3 border-b border-white/5 select-none">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-3 border-b border-white/5 select-none w-full">
                       <SegmentedSetting<ThemeMode>
                         label="App Display Theme"
                         value={theme}
@@ -1787,15 +1787,23 @@ function SegmentedSetting<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 w-full">
       <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-0">{label}</Label>
-      <div className="relative grid gap-1 rounded-xl border border-surface-border bg-surface p-1" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
+      <div
+        className={`relative grid gap-1 rounded-xl border border-surface-border bg-surface p-1 w-full ${
+          values.length === 2
+            ? "grid-cols-2"
+            : values.length === 3
+            ? "grid-cols-3"
+            : "grid-cols-1"
+        }`}
+      >
         {values.map((item) => {
           const active = item === value;
           return (
             <button
               type="button"
-              className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 ${active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 w-full min-w-0 ${active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                 }`}
               key={item}
               onClick={() => onChange(item)}
@@ -1807,7 +1815,7 @@ function SegmentedSetting<T extends string>({
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <span className="relative z-20">{item === "in" ? "ft & in" : item}</span>
+              <span className="relative z-20 whitespace-nowrap truncate block px-1 w-full text-center">{item === "in" ? "ft & in" : item}</span>
             </button>
           );
         })}
