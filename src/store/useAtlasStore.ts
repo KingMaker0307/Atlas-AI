@@ -13,7 +13,7 @@ import {
 import { createId } from "@/lib/id";
 import { decryptExport, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
 import { findFirstSupportedModel } from "@/providers";
-import { registry, createProductionContainer, drainSyncQueue } from "@/lib/repositories/registry";
+import { registry, createProductionContainer, drainSyncQueue, nullContainer } from "@/lib/repositories/registry";
 import { getProgressionRecommendations } from "@/lib/progression/engine";
 import type {
   AiMessage,
@@ -234,22 +234,55 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
   hydrate: async () => {
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
+    
+    // Quick session resolution
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const container = await createProductionContainer(supabase, user.id);
-      registry.set(user.id, container);
+      // 1. STALE-WHILE-REVALIDATE: Load local IndexedDB state instantly first to bypass slow network
+      const { 
+        IndexedDbUserRepository, 
+        IndexedDbWorkoutRepository, 
+        IndexedDbWorkoutPlanRepository,
+        IndexedDbNutritionRepository, 
+        IndexedDbWaterRepository, 
+        IndexedDbBodyMetricRepository,
+        IndexedDbRecoveryRepository 
+      } = await import("@/adapters/indexeddb/index");
 
-      // INCREMENTAL LOAD: 30-day baseline for workouts limit=30
+      const local = {
+        user: new IndexedDbUserRepository(),
+        workout: new IndexedDbWorkoutRepository(),
+        plan: new IndexedDbWorkoutPlanRepository(),
+        nutrition: new IndexedDbNutritionRepository(),
+        water: new IndexedDbWaterRepository(),
+        body: new IndexedDbBodyMetricRepository(),
+        recovery: new IndexedDbRecoveryRepository(),
+      };
+
+      // Set temporary local container in registry for immediate local operations
+      const localContainer = {
+        ...nullContainer,
+        user: local.user,
+        workout: local.workout,
+        plan: local.plan,
+        nutrition: local.nutrition,
+        water: local.water,
+        body: local.body,
+        recovery: local.recovery,
+      } as any;
+      registry.set(user.id, localContainer);
+
+      // Fetch from local IndexedDB cache instantly
       const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile] =
         await Promise.all([
-          registry.load((r, uid) => r.workout.getWorkouts(uid, 30)),
-          registry.load((r, uid) => r.plan.getPlans(uid)),
-          registry.load((r, uid) => r.nutrition.getEntries(uid)),
-          registry.load((r, uid) => r.water.getLogs(uid)),
-          registry.load((r, uid) => r.body.getMetrics(uid)),
-          registry.load((r, uid) => r.recovery.getLogs(uid)),
-          registry.load((r, uid) => r.user.getProfile(uid)),
+          local.workout.getWorkouts(user.id),
+          local.plan.getPlans(user.id),
+          local.nutrition.getEntries(user.id),
+          local.water.getLogs(user.id),
+          local.body.getMetrics(user.id),
+          local.recovery.getLogs(user.id),
+          local.user.getProfile(user.id),
         ]);
 
       const migratedPlans = ((plans ?? []) as any[]).map((plan: any) => ({
@@ -292,143 +325,151 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           const { getDb } = await import("@/lib/storage/db");
           const db = await getDb();
           const guestId = guestProfileRecord.id;
-            console.log(`[Migration] Found old local user profile (id: ${guestId}). Migrating data to user: ${user.id}...`);
+          console.log(`[Migration] Found old local user profile (id: ${guestId}). Migrating data to user: ${user.id}...`);
 
-            const migratedProfile = {
-              ...guestProfileRecord,
-              id: user.id,
-              email: user.email ?? "",
-              emailVerified: true,
-              capturedProvider,
-              hasOnboarded: true,
-            };
-            delete (migratedProfile as any)._userId;
+          const migratedProfile = {
+            ...guestProfileRecord,
+            id: user.id,
+            email: user.email ?? "",
+            emailVerified: true,
+            capturedProvider,
+            hasOnboarded: true,
+          };
+          delete (migratedProfile as any)._userId;
 
-            await registry.save((r, uid) => r.user.saveProfile(uid, migratedProfile as any));
+          // Write to local repository (which points directly to IndexedDB)
+          await local.user.saveProfile(user.id, migratedProfile as any);
 
-            const guestWorkouts = await db.getAll("workouts");
-            for (const w of guestWorkouts) {
-              if (w._userId === guestId) {
-                const migratedWorkout = { ...w, id: w.id };
-                delete (migratedWorkout as any)._userId;
-                await registry.save((r, uid) => r.workout.saveWorkout(uid, migratedWorkout));
+          const guestWorkouts = await db.getAll("workouts");
+          for (const w of guestWorkouts) {
+            if (w._userId === guestId) {
+              const migratedWorkout = { ...w, id: w.id };
+              delete (migratedWorkout as any)._userId;
+              await local.workout.saveWorkout(user.id, migratedWorkout);
+            }
+          }
+
+          const guestPlans = await db.getAll("workout_plans");
+          for (const p of guestPlans) {
+            if (p._userId === guestId) {
+              const migratedPlan = { ...p, id: p.id };
+              delete (migratedPlan as any)._userId;
+              await local.plan.savePlan(user.id, migratedPlan);
+            }
+          }
+
+          const guestNutrition = await db.getAll("nutrition_entries");
+          for (const n of guestNutrition) {
+            if (n._userId === guestId) {
+              const migratedNutrition = { ...n, id: n.id };
+              delete (migratedNutrition as any)._userId;
+              await local.nutrition.addEntry(user.id, migratedNutrition);
+            }
+          }
+
+          const guestWater = await db.getAll("water_logs");
+          for (const wl of guestWater) {
+            if (wl._userId === guestId) {
+              const migratedWater = { ...wl, id: wl.id };
+              delete (migratedWater as any)._userId;
+              await local.water.addLog(user.id, migratedWater);
+            }
+          }
+
+          const guestMetrics = await db.getAll("body_metrics");
+          for (const bm of guestMetrics) {
+            if (bm._userId === guestId) {
+              const migratedMetric = { ...bm, id: bm.id };
+              delete (migratedMetric as any)._userId;
+              await local.body.addMetric(user.id, migratedMetric);
+            }
+          }
+
+          const guestRecovery = await db.getAll("recovery_logs");
+          for (const rl of guestRecovery) {
+            if (rl._userId === guestId) {
+              const migratedRecovery = { ...rl, id: rl.id };
+              delete (migratedRecovery as any)._userId;
+              await local.recovery.addLog(user.id, migratedRecovery);
+            }
+          }
+
+          await db.delete("profiles", guestId);
+
+          // Clean up guest sync queue
+          try {
+            const allQueueItems = await db.getAll("sync_queue");
+            for (const item of allQueueItems) {
+              if (item.userId === guestId) {
+                await db.delete("sync_queue", item.id!);
               }
             }
+          } catch (queueErr) {
+            console.warn("[Migration] Non-fatal: Failed to clean up guest sync_queue:", queueErr);
+          }
 
-            const guestPlans = await db.getAll("workout_plans");
-            for (const p of guestPlans) {
-              if (p._userId === guestId) {
-                const migratedPlan = { ...p, id: p.id };
-                delete (migratedPlan as any)._userId;
-                await registry.save((r, uid) => r.plan.savePlan(uid, migratedPlan));
-              }
-            }
+          const [newWorkouts, newPlans, newNutrition, newWater, newBodyMetrics, newRecovery, newProfile] =
+            await Promise.all([
+              local.workout.getWorkouts(user.id),
+              local.plan.getPlans(user.id),
+              local.nutrition.getEntries(user.id),
+              local.water.getLogs(user.id),
+              local.body.getMetrics(user.id),
+              local.recovery.getLogs(user.id),
+              local.user.getProfile(user.id),
+            ]);
 
-            const guestNutrition = await db.getAll("nutrition_entries");
-            for (const n of guestNutrition) {
-              if (n._userId === guestId) {
-                const migratedNutrition = { ...n, id: n.id };
-                delete (migratedNutrition as any)._userId;
-                await registry.save((r, uid) => r.nutrition.addEntry(uid, migratedNutrition));
-              }
-            }
+          const newMigratedPlans = ((newPlans ?? []) as any[]).map((plan: any, i: number) => ({
+            ...plan,
+            creatorType: plan.creatorType || "manual",
+            startDay: plan.startDay || "Monday",
+            routines: (plan.routines || []).map((r: any, idx: number) => ({
+              ...r,
+              day: (!r.day || r.day.startsWith("Day "))
+                ? ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][idx % 7]
+                : r.day,
+            })),
+          }));
 
-            const guestWater = await db.getAll("water_logs");
-            for (const wl of guestWater) {
-              if (wl._userId === guestId) {
-                const migratedWater = { ...wl, id: wl.id };
-                delete (migratedWater as any)._userId;
-                await registry.save((r, uid) => r.water.addLog(uid, migratedWater));
-              }
-            }
+          set({
+            workouts: newWorkouts ?? [],
+            workoutPlans: newMigratedPlans.length > 0 ? newMigratedPlans : freshSnap.workoutPlans,
+            nutritionEntries: newNutrition ?? [],
+            waterLogs: newWater ?? [],
+            bodyMetrics: newBodyMetrics ?? [],
+            recoveryLogs: newRecovery ?? [],
+            profile: newProfile ? migrateProfile(newProfile as any) : (migratedProfile as any),
+            hasOnboarded: true,
+            activeWorkoutPlanId: newMigratedPlans[0]?.id ?? null,
+            activeWorkout,
+            hydrated: true,
+            startupChoice: "cloud",
+            activeTab: "dashboard",
+            activeSettingsTab: "profile",
+            coachBusy: false,
+            providerBusy: false,
+            user: { 
+              id: user.id, 
+              email: user.email ?? "", 
+              name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
+            },
+          } as any);
 
-            const guestMetrics = await db.getAll("body_metrics");
-            for (const bm of guestMetrics) {
-              if (bm._userId === guestId) {
-                const migratedMetric = { ...bm, id: bm.id };
-                delete (migratedMetric as any)._userId;
-                await registry.save((r, uid) => r.body.addMetric(uid, migratedMetric));
-              }
-            }
+          // 2. Setup composite container & trigger remote sync in background
+          const container = await createProductionContainer(supabase, user.id);
+          registry.set(user.id, container);
 
-            const guestRecovery = await db.getAll("recovery_logs");
-            for (const rl of guestRecovery) {
-              if (rl._userId === guestId) {
-                const migratedRecovery = { ...rl, id: rl.id };
-                delete (migratedRecovery as any)._userId;
-                await registry.save((r, uid) => r.recovery.addLog(uid, migratedRecovery));
-              }
-            }
-
-            await db.delete("profiles", guestId);
-
-            // Clean up any obsolete guest sync_queue items to prevent RLS violations on replay
-            try {
-              const allQueueItems = await db.getAll("sync_queue");
-              for (const item of allQueueItems) {
-                if (item.userId === guestId) {
-                  await db.delete("sync_queue", item.id!);
-                }
-              }
-            } catch (queueErr) {
-              console.warn("[Migration] Non-fatal: Failed to clean up guest sync_queue:", queueErr);
-            }
-
-            const [newWorkouts, newPlans, newNutrition, newWater, newBodyMetrics, newRecovery, newProfile] =
-              await Promise.all([
-                registry.load((r, uid) => r.workout.getWorkouts(uid, 30)),
-                registry.load((r, uid) => r.plan.getPlans(uid)),
-                registry.load((r, uid) => r.nutrition.getEntries(uid)),
-                registry.load((r, uid) => r.water.getLogs(uid)),
-                registry.load((r, uid) => r.body.getMetrics(uid)),
-                registry.load((r, uid) => r.recovery.getLogs(uid)),
-                registry.load((r, uid) => r.user.getProfile(uid)),
-              ]);
-
-            const newMigratedPlans = ((newPlans ?? []) as any[]).map((plan: any, i: number) => ({
-              ...plan,
-              creatorType: plan.creatorType || "manual",
-              startDay: plan.startDay || "Monday",
-              routines: (plan.routines || []).map((r: any, idx: number) => ({
-                ...r,
-                day: (!r.day || r.day.startsWith("Day "))
-                  ? ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][idx % 7]
-                  : r.day,
-              })),
-            }));
-
-            set({
-              workouts: newWorkouts ?? [],
-              workoutPlans: newMigratedPlans.length > 0 ? newMigratedPlans : freshSnap.workoutPlans,
-              nutritionEntries: newNutrition ?? [],
-              waterLogs: newWater ?? [],
-              bodyMetrics: newBodyMetrics ?? [],
-              recoveryLogs: newRecovery ?? [],
-              profile: newProfile ? migrateProfile(newProfile as any) : (migratedProfile as any),
-              hasOnboarded: true,
-              activeWorkoutPlanId: newMigratedPlans[0]?.id ?? null,
-              activeWorkout,
-              hydrated: true,
-              startupChoice: "cloud",
-              activeTab: "dashboard",
-              activeSettingsTab: "profile",
-              coachBusy: false,
-              providerBusy: false,
-              user: { 
-                id: user.id, 
-                email: user.email ?? "", 
-                name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
-              },
-            } as any);
-
-            console.log(`[Migration] Successful guest-to-user migration complete for user ${user.id}!`);
-            void drainSyncQueue();
-            return;
+          void (async () => {
+            await drainSyncQueue();
+            await get().pullCloudUpdate();
+          })();
+          return;
         } catch (migErr) {
           console.error("[Migration] Local guest data migration failed:", migErr);
         }
       }
 
+      // Populate Zustand state with local data instantly
       set({
         workouts: workouts ?? freshSnap.workouts,
         workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
@@ -453,7 +494,14 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         },
       } as any);
 
-      void drainSyncQueue();
+      // 2. Setup composite container & trigger remote sync in background
+      const container = await createProductionContainer(supabase, user.id);
+      registry.set(user.id, container);
+
+      void (async () => {
+        await drainSyncQueue();
+        await get().pullCloudUpdate();
+      })();
 
       if (typeof window !== "undefined") {
         window.addEventListener("online", () => { void drainSyncQueue(); }, { once: false });
@@ -479,7 +527,64 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
   },
 
   pullCloudUpdate: async (): Promise<boolean> => {
-    return false;
+    const user = get().user;
+    if (!user) return false;
+    try {
+      if (!registry.isAuthenticated) return false;
+
+      // Pull latest datasets in parallel
+      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile] =
+        await Promise.all([
+          registry.load((r, uid) => r.workout.getWorkouts(uid, 30)),
+          registry.load((r, uid) => r.plan.getPlans(uid)),
+          registry.load((r, uid) => r.nutrition.getEntries(uid)),
+          registry.load((r, uid) => r.water.getLogs(uid)),
+          registry.load((r, uid) => r.body.getMetrics(uid)),
+          registry.load((r, uid) => r.recovery.getLogs(uid)),
+          registry.load((r, uid) => r.user.getProfile(uid)),
+        ]);
+
+      // Migrate plans structure if needed
+      const migratedPlans = ((plans ?? []) as any[]).map((plan: any) => ({
+        ...plan,
+        creatorType: plan.creatorType || "manual",
+        startDay: plan.startDay || "Monday",
+        routines: (plan.routines || []).map((r: any, i: number) => ({
+          ...r,
+          day: (!r.day || r.day.startsWith("Day "))
+            ? ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i % 7]
+            : r.day,
+        })),
+      }));
+
+      // Enrich and migrate profile
+      const providerType = user.app_metadata?.provider || (user.identities?.[0]?.provider) || "email";
+      const capturedProvider = providerType === "google" ? "google" : "email";
+      const enrichedProfile = profile ? {
+        ...migrateProfile(profile as any),
+        email: user.email ?? "",
+        emailVerified: true,
+        capturedProvider,
+      } : null;
+
+      // Merge into state
+      set({
+        workouts: workouts ?? get().workouts,
+        workoutPlans: migratedPlans.length > 0 ? migratedPlans : get().workoutPlans,
+        nutritionEntries: nutrition ?? get().nutritionEntries,
+        waterLogs: water ?? get().waterLogs,
+        bodyMetrics: bodyMetrics ?? get().bodyMetrics,
+        recoveryLogs: recovery ?? get().recoveryLogs,
+        profile: enrichedProfile ?? get().profile,
+        lastSyncedAt: new Date().toISOString(),
+      } as any);
+
+      console.log("[Sync Pull] Successfully synced latest data from cloud.");
+      return true;
+    } catch (err) {
+      console.error("[Sync Pull] Error fetching remote cloud updates:", err);
+      return false;
+    }
   },
 
   finalizeRestore: async (choice) => {

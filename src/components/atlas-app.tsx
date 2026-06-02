@@ -25,6 +25,7 @@ import { ModeBanner } from "@/components/mode-banner";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { useAtlasStore, type AtlasTab } from "@/store/useAtlasStore";
+import { drainSyncQueue } from "@/lib/repositories/registry";
 
 // Nav items for Expert Mode (full dashboard view)
 const expertNavItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
@@ -57,6 +58,7 @@ export function AtlasApp() {
   const blocked = useAtlasStore((state) => state.blocked);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
+  const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Pick nav set based on mode
@@ -68,6 +70,45 @@ export function AtlasApp() {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Sync pull manager (refocus, visibility, and 60s periodic polling)
+  useEffect(() => {
+    if (!hydrated) return;
+
+    let lastPullTime = 0;
+    const cooldownMs = 10000; // 10-second minimum gap between pulls
+
+    const triggerPull = async () => {
+      const now = Date.now();
+      if (now - lastPullTime < cooldownMs) return;
+      lastPullTime = now;
+      await drainSyncQueue();
+      await pullCloudUpdate();
+    };
+
+    const onFocus = () => {
+      void triggerPull();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void triggerPull();
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const pollInterval = setInterval(() => {
+      void triggerPull();
+    }, 60000); // Poll remote state every 60 seconds
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearInterval(pollInterval);
+    };
+  }, [hydrated, pullCloudUpdate]);
 
   useEffect(() => {
     if (!hydrated) return;

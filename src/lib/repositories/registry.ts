@@ -48,7 +48,7 @@ export interface RepositoryContainer {
 const noop = async () => {};
 const emptyArr = async () => [];
 
-const nullContainer: RepositoryContainer = {
+export const nullContainer: RepositoryContainer = {
   user: { getProfile: async () => null, saveProfile: noop, deleteProfile: noop },
   workout: { getWorkouts: emptyArr as any, saveWorkout: noop, deleteWorkout: noop },
   plan: { getPlans: emptyArr as any, savePlan: noop, deletePlan: noop },
