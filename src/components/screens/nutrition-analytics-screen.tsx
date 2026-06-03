@@ -346,15 +346,7 @@ export function NutritionAnalyticsScreen() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          {/* Experience Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => setGuidedMode(!guidedMode)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm"
-          >
-            <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
-            <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
-          </button>
+
 
           <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-600 dark:text-zinc-400">
             <BarChart3 className="text-emerald-500" size={14} />
@@ -465,8 +457,18 @@ export function NutritionAnalyticsScreen() {
 
         {/* 2. Today's Macronutrient & Micronutrient Progress (Macros + Micros RDA inside it) */}
         <Card className="p-4 space-y-4">
-          <div className="flex items-center gap-2 border-b border-card-border pb-2.5">
+          <div className="flex items-center justify-between border-b border-card-border pb-2.5 gap-2">
             <h4 className="text-xs font-bold text-zinc-955">Today's Macronutrient Progress</h4>
+
+            {/* Experience Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => setGuidedMode(!guidedMode)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm"
+            >
+              <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
+              <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
+            </button>
           </div>
           <div className="space-y-4">
             <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" />

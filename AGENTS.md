@@ -32,3 +32,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **System and App Theme Coordination**: Ensure that user-selected theme settings (e.g. Light/Dark mode) integrate seamlessly with system-level theme preferences. Always prevent theme conflicts, flickering, or unreadable high-contrast issues during client-side hydration.
 - **No Unsolicited UI Changes**: Never modify workscreens, pages, layouts, or component UI files for visual or layout changes unless explicitly requested by the user and confirmed with a clear message beforehand.
 - **Responsive Layout & Device Adaptation**: Always design, create, and update components considering all device screen sizes, from mobile (especially iOS/Android viewports, handling safe area insets and notches) to laptops and desktops. All screens must scale and fit without clipping, text overflow, layout breaks, or unwanted scrolling issues.
+
+## 6. Production-Readiness & Quality Assurance Checklist
+- Before finalizing any refactoring or adding new screens, check your modifications against the repository-wide screen-by-screen quality checklist in [production_checklist.md](file:///Users/simranjotsingh/Documents/Atlas%20AI/production_checklist.md).
+- Ensure all checkboxes corresponding to modified/created screen areas are validated.
+

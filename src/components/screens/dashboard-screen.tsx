@@ -845,13 +845,7 @@ export function DashboardScreen() {
         className="flex flex-col gap-4 pb-10"
       >
 
-        {/* ── Section header ── */}
-        <div className="px-1">
-          <h1 className="text-xl font-bold text-foreground">Your Progress</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-          </p>
-        </div>
+
 
         {/* ── Body feeling card ── */}
         <Card className="p-4 space-y-3">

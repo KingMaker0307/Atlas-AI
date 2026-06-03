@@ -1112,28 +1112,33 @@ export function WorkoutScreen() {
         {/* ─── WORKOUT ANALYTICS SECTION ─── */}
         {workoutPlans.length > 0 && (
           <div className="border-t border-card-border/80 my-8 pt-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Workout Analytics</h2>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Track your volume, progressive overload, and consistency</p>
+            <Card className="p-5 space-y-4 shadow-sm border-card-border bg-card">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-card-border pb-3.5">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Workout Analytics</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Track your volume, progressive overload, and consistency</p>
+                </div>
+                <div className="flex flex-col items-start sm:items-end gap-1.5 self-start sm:self-auto shrink-0">
+                  {/* Experience Mode Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setGuidedMode(!guidedMode)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-surface hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none"
+                  >
+                    <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
+                    <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-col items-start sm:items-end gap-1.5 self-start sm:self-auto">
-                {guidedMode && (
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium max-w-[280px] text-left sm:text-right leading-tight">
-                    You&apos;re in <span className="font-bold">Guided Mode 🌱</span> — we&apos;ve simplified everything for you. Switch to Expert Mode any time in Settings.
-                  </p>
-                )}
-                {/* Experience Mode Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setGuidedMode(!guidedMode)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none"
-                >
-                  <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
-                  <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
-                </button>
+
+
+              <div className="pt-1.5">
+                <h3 className="text-base font-bold text-foreground">Your Progress</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                </p>
               </div>
-            </div>
+            </Card>
             
             <AnimatePresence mode="wait">
               <motion.div

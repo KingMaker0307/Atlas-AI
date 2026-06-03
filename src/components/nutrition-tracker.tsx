@@ -3877,15 +3877,27 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           </div>
         </div>
 
-        <Button
-          size="sm"
-          variant="primary"
-          className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center gap-1.5 self-start sm:self-auto rounded-xl px-4 py-2"
-          onClick={() => setActiveSubScreen("nutrition-analytics")}
-        >
-          <BarChart3 size={15} />
-          <span>Nutrition Analytics</span>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="font-bold flex items-center gap-1.5 rounded-xl px-4 py-2"
+            onClick={() => setActiveSubScreen("nutrition-analytics")}
+          >
+            <BarChart3 size={15} />
+            <span>Nutrition Analytics</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="primary"
+            className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center gap-1.5 rounded-xl px-4 py-2 shadow-md focus-visible:ring-emerald-500"
+            onClick={() => { setSelectedAddMeal("breakfast"); setShowAddModal(true); }}
+          >
+            <Plus size={16} />
+            <span>Log Food Item</span>
+          </Button>
+        </div>
       </section>
 
       {/* ─── Standardized Date Picker Control (Infinite Date Navigation) ─── */}
@@ -4227,13 +4239,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 </Card>
               )}
 
-              <Button
-                variant="primary"
-                className="w-full shadow-md focus-visible:ring-emerald-500"
-                onClick={() => { setSelectedAddMeal("breakfast"); setShowAddModal(true); }}
-              >
-                <Plus size={16} /> Log Food Item
-              </Button>
+
 
               {/* Smart Quick Log & Meal Sections */}
               <div className="space-y-4">
