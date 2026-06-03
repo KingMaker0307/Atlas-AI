@@ -65,6 +65,9 @@ export interface UserProfile {
   email?: string;
   emailVerified?: boolean;
   capturedProvider?: "google" | "apple" | "email" | null;
+  /** Encryption password used to derive the AES key for AI provider API keys.
+   *  Stored in Supabase (protected by RLS) so keys can be decrypted on any device. */
+  deviceSecret?: string;
 }
 
 export interface Exercise {

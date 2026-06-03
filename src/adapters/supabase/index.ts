@@ -67,6 +67,8 @@ export class SupabaseUserRepository implements UserRepository {
       gender: data.gender,
       activityLevel: data.activity_level,
       hasOnboarded: data.has_onboarded,
+      // Encryption password for AI provider API keys — enables cross-device decryption
+      deviceSecret: data.device_secret ?? undefined,
     } as UserProfile;
   }
 
@@ -96,6 +98,8 @@ export class SupabaseUserRepository implements UserRepository {
         theme: "system",
         has_onboarded: true,
         updated_at: new Date().toISOString(),
+        // Persist encryption password so API keys can be decrypted on any device
+        ...(profile.deviceSecret ? { device_secret: profile.deviceSecret } : {}),
       },
       { onConflict: "id" },
     );

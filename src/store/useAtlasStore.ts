@@ -310,6 +310,13 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         capturedProvider,
       } : null;
 
+      // Restore the device secret from the persisted profile so that API keys
+      // encrypted on another device/browser can be decrypted immediately.
+      const cloudSecret = (enrichedProfile as any)?.deviceSecret;
+      if (cloudSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(cloudSecret);
+      }
+
       let guestProfileRecord = null;
       try {
         const { getDb } = await import("@/lib/storage/db");
@@ -576,6 +583,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         capturedProvider,
       } : null;
 
+      // Restore the device secret so that API keys can be decrypted cross-device.
+      const cloudSecret = (enrichedProfile as any)?.deviceSecret;
+      if (cloudSecret && typeof window !== "undefined") {
+        setDeviceSecretValue(cloudSecret);
+      }
+
       // Merge into state
       set({
         workouts: workouts ?? get().workouts,
@@ -693,7 +706,13 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       registry.save((r, uid) => r.aiProvider.setActiveProvider(uid, providerId));
     }
 
-    const finalProfile = { ...profile, goal: customGoal ?? profile.goal };
+    const finalProfile = {
+      ...profile,
+      goal: customGoal ?? profile.goal,
+      // Always attach the current device secret so it's persisted to Supabase
+      // and can be restored on any other device.
+      deviceSecret: getDeviceSecretValue(),
+    };
     set({ 
       profile: finalProfile, 
       weightUnit: profile.weightUnit ?? get().weightUnit,
@@ -713,7 +732,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       delete safePatch.email;
       delete safePatch.emailVerified;
     }
-    const updatedProfile = { ...profile, ...safePatch };
+    const updatedProfile = {
+      ...profile,
+      ...safePatch,
+      // Carry the current device secret forward so it's never cleared by a profile update
+      deviceSecret: (profile as any).deviceSecret ?? getDeviceSecretValue(),
+    };
     set({ 
       profile: updatedProfile,
       heightUnit: updatedProfile.heightUnit ?? get().heightUnit,
