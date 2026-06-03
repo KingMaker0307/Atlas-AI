@@ -827,56 +827,26 @@ export function WorkoutScreen() {
         <section className="flex items-center justify-between">
           <div>
             <p className="text-sm text-zinc-555">
-              {planTab === "plans" ? "Manage and track your plans" : "Track calories, macros & nutrients"}
+              Manage and track your workout plans
             </p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Plans</h1>
           </div>
-          {planTab === "plans" && (
-            <Button
-              size="sm"
-              variant="primary"
-              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
-              disabled={coachBusy}
-              onClick={() => {
-                setEditingWorkoutPlanId(null);
-                setActiveSubScreen("workout-plan-builder");
-              }}
-            >
-              {coachBusy ? "Generating..." : "Create Plan"}
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="primary"
+            icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+            disabled={coachBusy}
+            onClick={() => {
+              setEditingWorkoutPlanId(null);
+              setActiveSubScreen("workout-plan-builder");
+            }}
+          >
+            {coachBusy ? "Generating..." : "Create Plan"}
+          </Button>
         </section>
 
-        {/* ─── Tab Bar ─── */}
-        <div className="flex gap-1 p-1 bg-input border border-input-border rounded-2xl select-none">
-          {([
-            { id: "plans" as const, label: "Workout Plans", emoji: "🏋️" },
-            { id: "nutrition" as const, label: "Nutrition", emoji: "🥗" },
-          ] as const).map((tab) => (
-            <button
-              key={tab.id}
-              id={`plan-tab-${tab.id}`}
-              role="tab"
-              aria-selected={planTab === tab.id}
-              onClick={() => setPlanTab(tab.id)}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 active:scale-[0.98]",
-                planTab === tab.id
-                  ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm shadow-black/10 dark:shadow-black/40"
-                  : "text-zinc-850 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white"
-              )}
-            >
-              <span>{tab.emoji}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ─── Nutrition Tab ─── */}
-        {planTab === "nutrition" && <NutritionTracker />}
-
-        {/* ─── Plans Tab content (hidden when on nutrition) ─── */}
-        {planTab === "plans" && (<>
+        {/* ─── Plans Content ─── */}
+        <>
 
         {coachBusy && (
           <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
@@ -1301,7 +1271,7 @@ export function WorkoutScreen() {
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
 
         {/* End of Plans tab content */}
-        </>)}
+        </>
 
         <PreWorkoutCheckinModal
           isOpen={showPreWorkoutModal}

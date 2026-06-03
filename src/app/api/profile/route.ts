@@ -164,20 +164,35 @@ export async function GET(request: NextRequest) {
           energy: row.energy,
           note: row.note,
         })),
-        aiProviders: (providersRes.data || []).map((row) => ({
-          id: row.id,
-          type: row.type,
-          label: row.label ?? row.type,
-          baseUrl: row.base_url,
-          model: row.model ?? "",
-          apiKey: row.encrypted_api_key ? { iv: "", data: row.encrypted_api_key } : undefined,
-          temperature: row.temperature ?? 0.7,
-          contextLength: row.context_length ?? 4096,
-          streaming: row.streaming ?? true,
-          enabled: row.enabled ?? true,
-          lastTestedAt: row.last_tested_at,
-          lastStatus: row.last_status,
-        })),
+        aiProviders: (providersRes.data || []).map((row) => {
+          let apiKeyObj: any = undefined;
+          if (row.encrypted_api_key) {
+            try {
+              const parsed = JSON.parse(row.encrypted_api_key);
+              if (parsed && typeof parsed === "object" && "iv" in parsed && "data" in parsed) {
+                apiKeyObj = parsed;
+              } else {
+                apiKeyObj = { iv: "", data: row.encrypted_api_key };
+              }
+            } catch {
+              apiKeyObj = { iv: "", data: row.encrypted_api_key };
+            }
+          }
+          return {
+            id: row.id,
+            type: row.type,
+            label: row.label ?? row.type,
+            baseUrl: row.base_url,
+            model: row.model ?? "",
+            apiKey: apiKeyObj,
+            temperature: row.temperature ?? 0.7,
+            contextLength: row.context_length ?? 4096,
+            streaming: row.streaming ?? true,
+            enabled: row.enabled ?? true,
+            lastTestedAt: row.last_tested_at,
+            lastStatus: row.last_status,
+          };
+        }),
         theme: profileData?.theme ?? "system",
         weightUnit: profileData?.weight_unit ?? "lbs",
         heightUnit: profileData?.height_unit ?? "in",

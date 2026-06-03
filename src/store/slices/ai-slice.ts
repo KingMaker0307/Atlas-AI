@@ -10,6 +10,7 @@ import type {
 import { createId } from "@/lib/id";
 import { decryptString, encryptString } from "@/lib/security/crypto";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
+import { registry } from "@/lib/repositories/registry";
 import { parseAiWorkoutPlan, cleanJsonString } from "@/lib/ai/parser";
 import { buildCoachContext } from "@/lib/coach/context";
 import { exercises as staticExercises } from "@/data/exercises";
@@ -101,6 +102,11 @@ export const createAiSlice: StateCreator<
       aiProviders: providers,
       activeProviderId: provider.enabled ? provider.id : get().activeProviderId,
     });
+
+    const user = get().user;
+    if (user) {
+      await registry.load((r, uid) => r.aiProvider.saveProvider(uid, nextProvider));
+    }
   },
 
   setActiveProvider: async (providerId) => {
@@ -111,6 +117,11 @@ export const createAiSlice: StateCreator<
         enabled: provider.id === providerId,
       })),
     });
+
+    const user = get().user;
+    if (user) {
+      await registry.load((r, uid) => r.aiProvider.setActiveProvider(uid, providerId));
+    }
   },
 
   markProviderKeyStatus: async (providerId, status, errorMessage) => {

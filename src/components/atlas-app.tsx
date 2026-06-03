@@ -31,6 +31,7 @@ const navItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
   { id: "workout",   label: "Workout",    icon: ClipboardList },
   { id: "nutrition", label: "Nutrition",  icon: Flame },
   { id: "coach",     label: "Coach",      icon: Bot },
+  { id: "settings",  label: "Settings",   icon: Settings },
 ];
 
 export function AtlasApp() {
@@ -47,25 +48,15 @@ export function AtlasApp() {
   const guidedMode = useAtlasStore((state) => state.guidedMode);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
   const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
   // For backwards compatibility and routing: 'today' redirects to unified 'dashboard' Home screen
   const resolvedTab = activeTab === "today" ? "dashboard" : activeTab;
 
   const activeSettingsTab = useAtlasStore((state) => state.activeSettingsTab);
-  const drawerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to top when primary tabs or active sub-screens change
+  // Scroll to top when primary tabs, active sub-screens, or settings tabs change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as any });
-  }, [activeTab, activeSubScreen]);
-
-  // Scroll settings drawer to top when active settings tab changes
-  useEffect(() => {
-    if (drawerRef.current) {
-      drawerRef.current.scrollTo({ top: 0, behavior: "instant" as any });
-    }
-  }, [activeSettingsTab, settingsOpen]);
+  }, [activeTab, activeSubScreen, activeSettingsTab]);
 
 
   useEffect(() => {
@@ -227,15 +218,6 @@ export function AtlasApp() {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
-                title="Open settings"
-                aria-label="Open settings"
-              >
-                <Settings size={14} />
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                   const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
@@ -287,18 +269,6 @@ export function AtlasApp() {
               <button
                 type="button"
                 onClick={() => {
-                  if (navigator.vibrate) navigator.vibrate(8);
-                  setSettingsOpen(true);
-                }}
-                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0"
-                title="Open settings"
-                aria-label="Open settings"
-              >
-                <Settings size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
                   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                   const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
                   void setTheme(resolved === "dark" ? "light" : "dark");
@@ -331,16 +301,16 @@ export function AtlasApp() {
         </div>
       )}
 
-      {/* ─── MODE BANNER (shown for new guided mode users) ─── */}
-      <ModeBanner />
-
       {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
       <main className={cn(
-        "mx-auto w-full max-w-6xl pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-8",
+        "mx-auto w-full max-w-6xl pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-8",
         resolvedTab === "workout" && activeSubScreen === "active-workout"
           ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16 pb-0"
-          : "px-4 md:px-8 pt-[calc(4.25rem+env(safe-area-inset-top))] md:pt-8"
+          : "px-4 md:px-8 pt-[calc(4.0rem+env(safe-area-inset-top))] md:pt-8"
       )}>
+        {/* ─── MODE BANNER (shown for new guided mode users) ─── */}
+        <ModeBanner />
+
         <AnimatePresence mode="wait">
           {resolvedTab === "workout" && activeSubScreen ? (
             renderSubScreen()
@@ -358,8 +328,8 @@ export function AtlasApp() {
 
       {/* ─── MOBILE BOTTOM BAR NAVIGATION (Hidden on desktop) ─── */}
       <nav aria-label="Main navigation" className="fixed inset-x-0 bottom-0 z-40 border-t border-card-border bg-nav pb-[env(safe-area-inset-bottom)] supports-[backdrop-filter]:backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-4 px-1 sm:px-2 md:max-w-xl">
-          {navItems.filter(item => item.id !== "settings").map((item) => {
+        <div className="mx-auto grid h-14 sm:h-16 max-w-md grid-cols-5 px-1 sm:px-2 md:max-w-xl">
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = resolvedTab === item.id;
             return (
@@ -390,33 +360,7 @@ export function AtlasApp() {
         </div>
       </nav>
 
-      <AnimatePresence>
-        {settingsOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex justify-end bg-zinc-950/40 backdrop-blur-sm"
-          >
-            {/* Backdrop click to close */}
-            <div className="absolute inset-0" onClick={() => setSettingsOpen(false)} />
-            
-            {/* Drawer Panel */}
-            <motion.div
-              ref={drawerRef}
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-2xl h-dvh bg-background border-l border-card-border shadow-2xl overflow-y-auto px-4 sm:px-6 pt-4 pb-6 pr-[max(1rem,env(safe-area-inset-right))] z-10"
-            >
-              <ErrorBoundary screen="Settings">
-                <SettingsScreen onClose={() => setSettingsOpen(false)} />
-              </ErrorBoundary>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }

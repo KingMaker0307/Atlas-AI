@@ -535,7 +535,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       if (!registry.isAuthenticated) return false;
 
       // Pull latest datasets in parallel
-      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile] =
+      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile, dbProviders] =
         await Promise.all([
           registry.load((r, uid) => r.workout.getWorkouts(uid, 30)),
           registry.load((r, uid) => r.plan.getPlans(uid)),
@@ -544,6 +544,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           registry.load((r, uid) => r.body.getMetrics(uid)),
           registry.load((r, uid) => r.recovery.getLogs(uid)),
           registry.load((r, uid) => r.user.getProfile(uid)),
+          registry.load((r, uid) => r.aiProvider.getProviders(uid)),
         ]);
 
       // Migrate plans structure if needed
@@ -578,6 +579,8 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         bodyMetrics: bodyMetrics ?? get().bodyMetrics,
         recoveryLogs: recovery ?? get().recoveryLogs,
         profile: enrichedProfile ?? get().profile,
+        aiProviders: (dbProviders && dbProviders.length > 0) ? dbProviders : get().aiProviders,
+        activeProviderId: (dbProviders && dbProviders.length > 0) ? (dbProviders.find((p: any) => p.enabled)?.id || dbProviders[0]?.id) : get().activeProviderId,
         lastSyncedAt: new Date().toISOString(),
       } as any);
 

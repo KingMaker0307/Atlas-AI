@@ -32,6 +32,8 @@ import {
   AlertCircle,
   Zap,
   X,
+  Activity,
+  Heart,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -782,7 +784,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                   <Card className="p-5 shadow-2xl space-y-5">
                     <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3">
                       <div className="flex items-center gap-2.5">
-                        <Palette className="text-emerald-500 dark:text-emerald-400" size={18} />
+                        <Activity className="text-emerald-500 dark:text-emerald-400" size={18} />
                         <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">My Body Stats</h2>
                       </div>
                       <div className="flex items-center gap-1.5 select-none">

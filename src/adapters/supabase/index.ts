@@ -478,20 +478,35 @@ export class SupabaseAiProviderRepository implements AiProviderRepository {
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return (data || []).map((row) => ({
-      id: row.id,
-      type: row.type,
-      label: row.label ?? row.type,
-      baseUrl: row.base_url,
-      model: row.model ?? "",
-      apiKey: row.encrypted_api_key ? { iv: "", data: row.encrypted_api_key } : undefined,
-      temperature: row.temperature ?? 0.7,
-      contextLength: row.context_length ?? 4096,
-      streaming: row.streaming ?? true,
-      enabled: row.enabled ?? true,
-      lastTestedAt: row.last_tested_at,
-      lastStatus: row.last_status,
-    }));
+    return (data || []).map((row) => {
+      let apiKeyObj: any = undefined;
+      if (row.encrypted_api_key) {
+        try {
+          const parsed = JSON.parse(row.encrypted_api_key);
+          if (parsed && typeof parsed === "object" && "iv" in parsed && "data" in parsed) {
+            apiKeyObj = parsed;
+          } else {
+            apiKeyObj = { iv: "", data: row.encrypted_api_key };
+          }
+        } catch {
+          apiKeyObj = { iv: "", data: row.encrypted_api_key };
+        }
+      }
+      return {
+        id: row.id,
+        type: row.type,
+        label: row.label ?? row.type,
+        baseUrl: row.base_url,
+        model: row.model ?? "",
+        apiKey: apiKeyObj,
+        temperature: row.temperature ?? 0.7,
+        contextLength: row.context_length ?? 4096,
+        streaming: row.streaming ?? true,
+        enabled: row.enabled ?? true,
+        lastTestedAt: row.last_tested_at,
+        lastStatus: row.last_status,
+      };
+    });
   }
 
   async saveProvider(userId: string, provider: AiProviderSettings): Promise<void> {
@@ -503,7 +518,7 @@ export class SupabaseAiProviderRepository implements AiProviderRepository {
         label: provider.label,
         base_url: provider.baseUrl,
         model: provider.model,
-        encrypted_api_key: provider.apiKey ? provider.apiKey.data : null,
+        encrypted_api_key: provider.apiKey ? JSON.stringify(provider.apiKey) : null,
         temperature: provider.temperature,
         context_length: provider.contextLength,
         streaming: provider.streaming,
