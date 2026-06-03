@@ -40,6 +40,7 @@ import type {
   AiProviderSettings,
 } from "@/types/domain";
 import { enqueueSync } from "@/lib/storage/db";
+import { registry } from "@/lib/repositories/registry";
 
 function isOnline(): boolean {
   return typeof navigator !== "undefined" ? navigator.onLine : true;
@@ -49,6 +50,14 @@ async function remoteWrite(
   fn: () => Promise<void>,
   queueFallback: () => Promise<void>,
 ): Promise<void> {
+  // If we are replaying the sync queue, do not catch errors or enqueue them again.
+  // Instead, let the error bubble up so the queue drainer can log it, increment retries, and keep it in the queue.
+  const isDraining = typeof window !== "undefined" && registry.isDraining;
+  if (isDraining) {
+    await fn();
+    return;
+  }
+
   if (!isOnline()) {
     await queueFallback();
     return;

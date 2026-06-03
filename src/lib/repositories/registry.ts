@@ -68,11 +68,14 @@ export const nullContainer: RepositoryContainer = {
 
 let _userId: string | null = null;
 let _container: RepositoryContainer = nullContainer;
+let _isDraining = false;
 
 export const registry = {
   get userId(): string | null { return _userId; },
   get repos(): RepositoryContainer { return _container; },
   get isAuthenticated(): boolean { return _userId !== null; },
+  get isDraining(): boolean { return _isDraining; },
+  setDraining(val: boolean): void { _isDraining = val; },
 
   /** Wire up a real container on successful auth */
   set(userId: string, container: RepositoryContainer): void {
@@ -194,51 +197,56 @@ export async function drainSyncQueue(): Promise<void> {
 
   console.log(`[SyncQueue] Draining ${items.length} queued operation(s)...`);
 
-  for (const item of items) {
-    if (item.retries >= 5) {
-      // Give up after 5 attempts — log and remove
-      console.warn(`[SyncQueue] Dropping item after 5 retries:`, item);
-      await removeFromQueue(item.id!);
-      continue;
-    }
-
-    try {
-      if (item.operation === "delete") {
-        // Route to correct delete method
-        if (item.store === "workouts") {
-          await _container.workout.deleteWorkout(item.userId, item.recordId);
-        } else if (item.store === "workout_plans") {
-          await _container.plan.deletePlan(item.userId, item.recordId);
-        } else if (item.store === "nutrition_entries") {
-          await _container.nutrition.deleteEntry(item.userId, item.recordId);
-        } else if (item.store === "water_logs") {
-          await _container.water.deleteLog(item.userId, item.recordId);
-        } else if (item.store === "body_metrics") {
-          await _container.body.deleteMetric(item.userId, item.recordId);
-        } else if (item.store === "recovery_logs") {
-          await _container.recovery.deleteLog(item.userId, item.recordId);
-        }
-      } else if (item.operation === "upsert" && item.payload) {
-        if (item.store === "workouts") {
-          await _container.workout.saveWorkout(item.userId, item.payload as any);
-        } else if (item.store === "workout_plans") {
-          await _container.plan.savePlan(item.userId, item.payload as any);
-        } else if (item.store === "nutrition_entries") {
-          await _container.nutrition.addEntry(item.userId, item.payload as any);
-        } else if (item.store === "water_logs") {
-          await _container.water.addLog(item.userId, item.payload as any);
-        } else if (item.store === "body_metrics") {
-          await _container.body.addMetric(item.userId, item.payload as any);
-        } else if (item.store === "recovery_logs") {
-          await _container.recovery.addLog(item.userId, item.payload as any);
-        } else if (item.store === "profiles") {
-          await _container.user.saveProfile(item.userId, item.payload as any);
-        }
+  registry.setDraining(true);
+  try {
+    for (const item of items) {
+      if (item.retries >= 5) {
+        // Give up after 5 attempts — log and remove
+        console.warn(`[SyncQueue] Dropping item after 5 retries:`, item);
+        await removeFromQueue(item.id!);
+        continue;
       }
-      await removeFromQueue(item.id!);
-    } catch (err) {
-      console.warn(`[SyncQueue] Retry ${item.retries + 1} failed for item ${item.id}:`, err);
-      await incrementQueueRetry(item.id!);
+
+      try {
+        if (item.operation === "delete") {
+          // Route to correct delete method
+          if (item.store === "workouts") {
+            await _container.workout.deleteWorkout(item.userId, item.recordId);
+          } else if (item.store === "workout_plans") {
+            await _container.plan.deletePlan(item.userId, item.recordId);
+          } else if (item.store === "nutrition_entries") {
+            await _container.nutrition.deleteEntry(item.userId, item.recordId);
+          } else if (item.store === "water_logs") {
+            await _container.water.deleteLog(item.userId, item.recordId);
+          } else if (item.store === "body_metrics") {
+            await _container.body.deleteMetric(item.userId, item.recordId);
+          } else if (item.store === "recovery_logs") {
+            await _container.recovery.deleteLog(item.userId, item.recordId);
+          }
+        } else if (item.operation === "upsert" && item.payload) {
+          if (item.store === "workouts") {
+            await _container.workout.saveWorkout(item.userId, item.payload as any);
+          } else if (item.store === "workout_plans") {
+            await _container.plan.savePlan(item.userId, item.payload as any);
+          } else if (item.store === "nutrition_entries") {
+            await _container.nutrition.addEntry(item.userId, item.payload as any);
+          } else if (item.store === "water_logs") {
+            await _container.water.addLog(item.userId, item.payload as any);
+          } else if (item.store === "body_metrics") {
+            await _container.body.addMetric(item.userId, item.payload as any);
+          } else if (item.store === "recovery_logs") {
+            await _container.recovery.addLog(item.userId, item.payload as any);
+          } else if (item.store === "profiles") {
+            await _container.user.saveProfile(item.userId, item.payload as any);
+          }
+        }
+        await removeFromQueue(item.id!);
+      } catch (err) {
+        console.warn(`[SyncQueue] Retry ${item.retries + 1} failed for item ${item.id}:`, err);
+        await incrementQueueRetry(item.id!);
+      }
     }
+  } finally {
+    registry.setDraining(false);
   }
 }
