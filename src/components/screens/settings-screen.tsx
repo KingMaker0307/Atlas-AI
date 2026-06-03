@@ -659,14 +659,24 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="mx-auto max-w-5xl space-y-4 sm:space-y-5 pb-28 pt-2 flex flex-col"
+      className="mx-auto max-w-5xl space-y-4 sm:space-y-5 pb-8 pt-0 flex flex-col"
     >
       {/* ─── HEADER TITLE PANEL ─── */}
-      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3 select-none">
+      <section className="flex flex-row items-center justify-between gap-2 border-b border-white/5 pb-3 select-none">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Settings</h1>
           <p className="text-xs sm:text-xs text-zinc-400 font-medium">Profile, AI engine, storage &amp; preferences</p>
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition active:scale-95 cursor-pointer shrink-0"
+            aria-label="Close settings"
+          >
+            <X size={16} />
+          </button>
+        )}
       </section>
 
       {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}

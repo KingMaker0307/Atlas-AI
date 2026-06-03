@@ -433,6 +433,10 @@ export function WorkoutScreen() {
   const planTab = useAtlasStore((state) => state.workoutTab);
   const setPlanTab = useAtlasStore((state) => state.setWorkoutTab);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as any });
+  }, [planTab]);
+
   const toggleListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {

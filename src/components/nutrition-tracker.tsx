@@ -2928,6 +2928,10 @@ export function NutritionTracker() {
   const [expandedMeal, setExpandedMeal] = useState<NutritionEntry["meal"] | null>("breakfast");
   const [nutritionTab, setNutritionTab] = useState<"overview" | "trends" | "micros">("overview");
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as any });
+  }, [nutritionTab]);
+
   // Custom Date state (Defaults to today, allows selecting any day in history)
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
@@ -3998,6 +4002,288 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
   return (
     <div className="space-y-4 pb-4">
+      {/* ─── Meal Log Sections at the top (Only on overview/Daily Log tab) ─── */}
+      {nutritionTab === "overview" && (
+        <div className="space-y-4">
+          {/* Samsung Health-style Smart Quick Log */}
+          <Card className="p-4 bg-gradient-to-r from-emerald-500/5 via-sky-500/5 to-transparent border border-card-border shadow-sm">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <Sparkles size={13} className="animate-pulse" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-955 dark:text-white">Smart Quick Log</span>
+                </div>
+                {/* Meal selector for quick logging */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-zinc-750 font-bold uppercase">Slot:</span>
+                  <select
+                    aria-label="Select meal slot"
+                    value={quickLogMeal}
+                    onChange={(e) => setQuickLogMeal(e.target.value as any)}
+                    className="h-6 px-1.5 rounded-lg border border-input-border bg-input text-[10px] font-bold text-zinc-955 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-800"
+                  >
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                    <option value="snack">Snack</option>
+                  </select>
+                </div>
+              </div>
+
+              {quickLogAnalyzedItems.length > 0 ? (
+                <FoodItemConfirmationPanel
+                  items={quickLogAnalyzedItems}
+                  setItems={setQuickLogAnalyzedItems}
+                  selectedIds={selectedQuickLogAnalyzedIds}
+                  setSelectedIds={setSelectedQuickLogAnalyzedIds}
+                  onLogSeparate={handleQuickLogSeparate}
+                  onLogCombined={handleQuickLogCombined}
+                  onCancel={handleQuickLogCancel}
+                  isLogging={false}
+                  refinementText={quickLogRefinementText}
+                  setRefinementText={setQuickLogRefinementText}
+                  onRefine={handleQuickLogRefine}
+                  isRefining={isQuickLogRefining}
+                  meal={quickLogMeal}
+                  searchCountry={searchCountry}
+                />
+              ) : (
+                <form onSubmit={handleQuickLog} className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={quickLogText}
+                      onChange={(e) => setQuickLogText(e.target.value)}
+                      placeholder={quickLogImages.length > 0 ? "Identify these food photos or add description (optional)..." : "Type e.g., '3 scrambled eggs, a banana, and coffee'..."}
+                      disabled={isQuickLogging}
+                      className="flex-1 h-9 px-3 rounded-xl border border-input-border bg-input text-xs text-zinc-955 placeholder:text-zinc-650 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition bg-white dark:bg-zinc-800"
+                    />
+                    <label
+                      htmlFor="quickLogImageInput"
+                      className="h-9 w-9 bg-zinc-150 dark:bg-zinc-800 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center cursor-pointer transition select-none shrink-0"
+                      title="Upload photos"
+                    >
+                      <Camera size={16} className="text-zinc-600 dark:text-zinc-455" />
+                    </label>
+                    <input
+                      id="quickLogImageInput"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="sr-only"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (!files || files.length === 0) return;
+                        Array.from(files).forEach((file) => {
+                          const mime = file.type || "image/jpeg";
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const result = ev.target?.result as string;
+                            setQuickLogImages((prev) => [
+                              ...prev,
+                              { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, dataUrl: result, mimeType: mime }
+                            ]);
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isQuickLogging || (!quickLogText.trim() && quickLogImages.length === 0)}
+                      className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-655 text-white text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 active:scale-95 disabled:active:scale-100"
+                    >
+                      {isQuickLogging ? (
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Sparkles size={13} />
+                          <span>Log</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Quick Add Presets Row */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {[
+                      { label: "+100 kcal", fn: () => handleAddEntry({ id: `quick-kcal-${Date.now()}`, name: "Quick Log Calories", calories: 100, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                      { label: "+20g Carbs", fn: () => handleAddEntry({ id: `quick-carb-${Date.now()}`, name: "Quick Log Carbs", calories: 80, protein: 0, carbs: 20, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                      { label: "+5g Fat", fn: () => handleAddEntry({ id: `quick-fat-${Date.now()}`, name: "Quick Log Fats", calories: 45, protein: 0, carbs: 0, fat: 5, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
+                    ].map((btn) => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={btn.fn}
+                        className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/40 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 rounded-lg transition active:scale-95 cursor-pointer"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Quick Log Image Thumbnail Previews */}
+                  {quickLogImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {quickLogImages.map((img) => (
+                        <div key={img.id} className="relative h-12 w-20 rounded-lg overflow-hidden border border-zinc-250 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-900 group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img.dataUrl} alt="Quick preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setQuickLogImages((prev) => prev.filter((x) => x.id !== img.id))}
+                            className="absolute top-0.5 right-0.5 h-4 w-4 bg-black/75 hover:bg-rose-600 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                            aria-label="Remove image"
+                          >
+                            <X size={8} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {quickLogFeedback && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-[11px] font-medium text-emerald-600 dark:text-emerald-455"
+                    >
+                      {quickLogFeedback}
+                    </motion.p>
+                  )}
+                </form>
+              )}
+            </div>
+          </Card>
+
+          {/* BeginnerTipCard */}
+          {guidedMode && activeEntries.length === 0 && (
+            <BeginnerTipCard
+              emoji="🥗"
+              headline="Why track food?"
+              body="Tracking your meals helps you make sure you get enough protein to recover and enough calories to fuel your workouts. Start by adding your first meal below!"
+              variant="nutrition"
+              className="mb-4"
+            />
+          )}
+
+          {/* Collapsible Meal Logging Areas */}
+          <div className="space-y-2.5">
+            {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([meal, cfg]) => {
+              const MealIcon = cfg.icon;
+              const items = mealEntries(meal);
+              const mealCals = items.reduce((s, e) => s + e.calories, 0);
+              const mealProtein = items.reduce((s, e) => s + e.protein, 0);
+              const mealCarbs = items.reduce((s, e) => s + e.carbs, 0);
+              const mealFat = items.reduce((s, e) => s + e.fat, 0);
+              const isExpanded = expandedMeal === meal;
+
+              return (
+                <Card key={meal} className="overflow-hidden">
+                  <button
+                    aria-expanded={isExpanded}
+                    aria-controls={`meal-section-${meal}`}
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-surface/50 transition active:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    onClick={() => setExpandedMeal(isExpanded ? null : meal)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn("h-8 w-8 rounded-xl border flex items-center justify-center", cfg.bg)}>
+                        <MealIcon size={15} className={cfg.color} aria-hidden="true" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-zinc-955">{cfg.label}</p>
+                        <p className="text-[10px] text-zinc-750 font-mono">{items.length} logged</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 sm:gap-2.5">
+                      {items.length > 0 && (
+                        <div className="flex items-center gap-1 text-[9px] font-sans font-bold select-none mr-0.5 sm:mr-1">
+                          <span className="text-blue-455 bg-blue-500/5 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">P:{Math.round(mealProtein)}g</span>
+                          <span className="text-amber-450 bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">C:{Math.round(mealCarbs)}g</span>
+                          <span className="text-rose-450 bg-rose-500/5 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">F:{Math.round(mealFat)}g</span>
+                        </div>
+                      )}
+                      <span className="text-xs sm:text-sm font-bold text-zinc-955 tabular-nums whitespace-nowrap">
+                        {mealCals} <span className="text-[9px] sm:text-[10px] font-normal text-zinc-755">kcal</span>
+                      </span>
+                      {isExpanded ? <ChevronUp size={15} className="text-zinc-750 shrink-0" /> : <ChevronDown size={15} className="text-zinc-750 shrink-0" />}
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        id={`meal-section-${meal}`}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-3.5 pb-3.5 space-y-2 border-t border-card-border pt-2.5 bg-surface/20">
+                          {items.length === 0 ? (
+                            <p className="text-xs text-zinc-750 text-center py-4 italic">No items logged under {cfg.label.toLowerCase()}</p>
+                          ) : (
+                            items.map((entry) => (
+                              <div
+                                key={entry.id}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-card-border shadow-sm"
+                              >
+                                <div className="min-w-0 flex-1 mr-2">
+                                  <p className="text-xs font-bold text-zinc-955 truncate">{entry.name}</p>
+                                  <div className="flex gap-2.5 mt-0.5 text-[10px] font-sans tabular-nums">
+                                    <span className="text-blue-455 font-semibold">P:{entry.protein}g</span>
+                                    <span className="text-amber-450 font-semibold">C:{entry.carbs}g</span>
+                                    <span className="text-rose-450 font-semibold">F:{entry.fat}g</span>
+                                    {entry.fiber > 0 && <span className="text-emerald-450 font-semibold">Fb:{entry.fiber}g</span>}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-xs font-bold text-zinc-955 tabular-nums">{entry.calories} kcal</span>
+                                  <button
+                                    onClick={() => removeEntry(entry.id)}
+                                    aria-label={`Remove ${entry.name}`}
+                                    className="h-6 w-6 flex items-center justify-center rounded-lg text-zinc-450 hover:text-rose-450 hover:bg-rose-450/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                          <button
+                            onClick={() => { setSelectedAddMeal(meal); setShowAddModal(true); }}
+                            className={cn(
+                              "w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                              cfg.color,
+                              `border-current/40 hover:bg-current/5`
+                            )}
+                          >
+                            <Plus size={13} /> Add food to {cfg.label}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Log Food Item Button */}
+          <Button
+            variant="primary"
+            className="w-full shadow-md focus-visible:ring-emerald-500"
+            onClick={() => { setSelectedAddMeal("breakfast"); setShowAddModal(true); }}
+          >
+            <Plus size={16} /> Log Food Item
+          </Button>
+        </div>
+      )}
+
       {/* ─── Standardized Date Picker Control (Infinite Date Navigation) ─── */}
       <div className="flex items-center justify-between p-1 bg-input border border-input-border rounded-2xl select-none">
         <button
@@ -4035,7 +4321,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           />
           <button
             type="button"
-            className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-450 shadow-sm border border-input-border text-xs font-bold uppercase tracking-wider focus-visible:outline-none"
+            className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-455 shadow-sm border border-input-border text-xs font-bold uppercase tracking-wider focus-visible:outline-none"
           >
             <Calendar size={13} aria-hidden="true" />
             <span>{dateLabel}</span>
@@ -4093,160 +4379,6 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         >
           {nutritionTab === "overview" && (
             <div className="space-y-4">
-              {/* Samsung Health-style Smart Quick Log */}
-              <Card className="p-4 bg-gradient-to-r from-emerald-500/5 via-sky-500/5 to-transparent border border-card-border shadow-sm">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                        <Sparkles size={13} className="animate-pulse" />
-                      </div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-955 dark:text-white">Smart Quick Log</span>
-                    </div>
-                    {/* Meal selector for quick logging */}
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-zinc-750 font-bold uppercase">Slot:</span>
-                      <select
-                        aria-label="Select meal slot"
-                        value={quickLogMeal}
-                        onChange={(e) => setQuickLogMeal(e.target.value as any)}
-                        className="h-6 px-1.5 rounded-lg border border-input-border bg-input text-[10px] font-bold text-zinc-955 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-800"
-                      >
-                        <option value="breakfast">Breakfast</option>
-                        <option value="lunch">Lunch</option>
-                        <option value="dinner">Dinner</option>
-                        <option value="snack">Snack</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {quickLogAnalyzedItems.length > 0 ? (
-                    <FoodItemConfirmationPanel
-                      items={quickLogAnalyzedItems}
-                      setItems={setQuickLogAnalyzedItems}
-                      selectedIds={selectedQuickLogAnalyzedIds}
-                      setSelectedIds={setSelectedQuickLogAnalyzedIds}
-                      onLogSeparate={handleQuickLogSeparate}
-                      onLogCombined={handleQuickLogCombined}
-                      onCancel={handleQuickLogCancel}
-                      isLogging={false}
-                      refinementText={quickLogRefinementText}
-                      setRefinementText={setQuickLogRefinementText}
-                      onRefine={handleQuickLogRefine}
-                      isRefining={isQuickLogRefining}
-                      meal={quickLogMeal}
-                      searchCountry={searchCountry}
-                    />
-                  ) : (
-                    <form onSubmit={handleQuickLog} className="space-y-3">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={quickLogText}
-                          onChange={(e) => setQuickLogText(e.target.value)}
-                          placeholder={quickLogImages.length > 0 ? "Identify these food photos or add description (optional)..." : "Type e.g., '3 scrambled eggs, a banana, and coffee'..."}
-                          disabled={isQuickLogging}
-                          className="flex-1 h-9 px-3 rounded-xl border border-input-border bg-input text-xs text-zinc-955 placeholder:text-zinc-650 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition bg-white dark:bg-zinc-800"
-                        />
-                        <label
-                          htmlFor="quickLogImageInput"
-                          className="h-9 w-9 bg-zinc-150 dark:bg-zinc-800 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 flex items-center justify-center cursor-pointer transition select-none shrink-0"
-                          title="Upload photos"
-                        >
-                          <Camera size={16} className="text-zinc-600 dark:text-zinc-450" />
-                        </label>
-                        <input
-                          id="quickLogImageInput"
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="sr-only"
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            if (!files || files.length === 0) return;
-                            Array.from(files).forEach((file) => {
-                              const mime = file.type || "image/jpeg";
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                const result = ev.target?.result as string;
-                                setQuickLogImages((prev) => [
-                                  ...prev,
-                                  { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, dataUrl: result, mimeType: mime }
-                                ]);
-                              };
-                              reader.readAsDataURL(file);
-                            });
-                            e.target.value = "";
-                          }}
-                        />
-                        <button
-                          type="submit"
-                          disabled={isQuickLogging || (!quickLogText.trim() && quickLogImages.length === 0)}
-                          className="h-9 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-650 text-white text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 active:scale-95 disabled:active:scale-100"
-                        >
-                          {isQuickLogging ? (
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <>
-                              <Sparkles size={13} />
-                              <span>Log</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Quick Add Presets Row */}
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {[
-                          { label: "+100 kcal", fn: () => handleAddEntry({ id: `quick-kcal-${Date.now()}`, name: "Quick Log Calories", calories: 100, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
-                          { label: "+10g Protein", fn: () => handleAddEntry({ id: `quick-prot-${Date.now()}`, name: "Quick Log Protein", calories: 40, protein: 10, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
-                          { label: "+20g Carbs", fn: () => handleAddEntry({ id: `quick-carb-${Date.now()}`, name: "Quick Log Carbs", calories: 80, protein: 0, carbs: 20, fat: 0, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
-                          { label: "+5g Fat", fn: () => handleAddEntry({ id: `quick-fat-${Date.now()}`, name: "Quick Log Fats", calories: 45, protein: 0, carbs: 0, fat: 5, fiber: 0, sugar: 0, sodium: 0, potassium: 0, vitaminC: 0, calcium: 0, iron: 0, meal: quickLogMeal, servingSize: 1, servingUnit: "serving", timestamp: new Date().toISOString() }) },
-                        ].map((btn) => (
-                          <button
-                            key={btn.label}
-                            type="button"
-                            onClick={btn.fn}
-                            className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-white/40 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500/30 hover:bg-emerald-500/5 text-zinc-700 dark:text-zinc-300 rounded-lg transition active:scale-95 cursor-pointer"
-                          >
-                            {btn.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Quick Log Image Thumbnail Previews */}
-                      {quickLogImages.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {quickLogImages.map((img) => (
-                            <div key={img.id} className="relative h-12 w-20 rounded-lg overflow-hidden border border-zinc-250 dark:border-zinc-800 bg-zinc-150 dark:bg-zinc-900 group">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={img.dataUrl} alt="Quick preview" className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={() => setQuickLogImages((prev) => prev.filter((x) => x.id !== img.id))}
-                                className="absolute top-0.5 right-0.5 h-4 w-4 bg-black/75 hover:bg-rose-600 rounded-full flex items-center justify-center text-white transition active:scale-90"
-                                aria-label="Remove image"
-                              >
-                                <X size={8} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {quickLogFeedback && (
-                        <motion.p
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="text-[11px] font-medium text-emerald-600 dark:text-emerald-455"
-                        >
-                          {quickLogFeedback}
-                        </motion.p>
-                      )}
-                    </form>
-                  )}
-                </div>
-              </Card>
               <Card className="p-5 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
 
@@ -4488,13 +4620,13 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 px-1">
                     <Sparkles size={14} className="text-emerald-450" />
-                    <h3 className="text-xs font-bold text-zinc-750 uppercase tracking-widest">Physique Metrics</h3>
+                    <h3 className="text-xs font-bold text-zinc-755 uppercase tracking-widest">Physique Metrics</h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {calculatedBmi && (
                       <div className="p-4 rounded-2xl border border-card-border bg-card space-y-2 select-none shadow-[0_12px_40px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.24)] flex flex-col justify-between">
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-750">Live Telemetry</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-755">Live Telemetry</span>
                           <h4 className="text-sm font-bold text-zinc-955 mt-1 leading-none">Body Mass Index (BMI)</h4>
                         </div>
 
@@ -4505,7 +4637,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                           </span>
                         </div>
 
-                        <p className="text-xs text-zinc-750 leading-relaxed font-medium">
+                        <p className="text-xs text-zinc-755 leading-relaxed font-medium">
                           Estimated tissue mass calculations. Standard healthy ranges are between 18.5 and 24.9.
                         </p>
 
@@ -4515,10 +4647,10 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             <button
                               type="button"
                               onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                              className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-750 hover:text-zinc-955 dark:text-zinc-350 dark:hover:text-white bg-zinc-50/50 dark:bg-zinc-900/60 border border-card-border px-2.5 py-1.5 rounded-xl transition duration-200"
+                              className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-755 hover:text-zinc-955 dark:text-zinc-350 dark:hover:text-white bg-zinc-50/50 dark:bg-zinc-900/60 border border-card-border px-2.5 py-1.5 rounded-xl transition duration-200"
                             >
                               <span>{showBmiGuidance ? "Hide Strategy Details" : `Improvement Strategy`}</span>
-                              <Info size={14} className="text-zinc-750" />
+                              <Info size={14} className="text-zinc-755" />
                             </button>
 
                             <AnimatePresence>
@@ -4536,7 +4668,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                                         {bmiAdvice.badge}
                                       </span>
                                     </div>
-                                    <ul className="list-disc pl-3.5 space-y-1 text-zinc-750 font-medium">
+                                    <ul className="list-disc pl-3.5 space-y-1 text-zinc-755 font-medium">
                                       {bmiAdvice.tips.map((tip, idx) => (
                                         <li key={idx} className="leading-snug">{tip}</li>
                                       ))}
@@ -4553,16 +4685,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     {calculatedProtein && (
                       <div className="p-4 rounded-2xl border border-card-border bg-card space-y-2 select-none shadow-[0_12px_40px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.24)] flex flex-col justify-between">
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-750">Optimal Fueling</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-755">Optimal Fueling</span>
                           <h4 className="text-sm font-bold text-zinc-955 mt-1 leading-none">Daily Protein Target</h4>
                         </div>
 
                         <div className="py-2.5 flex items-baseline gap-1.5">
                           <span className="text-3xl font-bold text-zinc-955 tabular-nums leading-none">{calculatedProtein.value}</span>
-                          <span className="text-xs font-bold text-zinc-750">g / day</span>
+                          <span className="text-xs font-bold text-zinc-755">g / day</span>
                         </div>
 
-                        <p className="text-xs text-zinc-750 leading-relaxed font-medium">
+                        <p className="text-xs text-zinc-755 leading-relaxed font-medium">
                           Physique-goal estimate at <span className="text-zinc-955 font-bold tabular-nums">{calculatedProtein.multiplier}g</span> per lb for your <span className="text-zinc-955 font-bold">{profile?.targetPhysique || "athletic"}</span> target. Your macro bar uses a per-kg clinical target based on your activity level.
                         </p>
                       </div>
@@ -4571,119 +4703,6 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 </div>
               )}
 
-              {guidedMode && activeEntries.length === 0 && (
-                <BeginnerTipCard
-                  emoji="🥗"
-                  headline="Why track food?"
-                  body="Tracking your meals helps you make sure you get enough protein to recover and enough calories to fuel your workouts. Start by adding your first meal below!"
-                  variant="nutrition"
-                  className="mb-4"
-                />
-              )}
-
-              {/* Collapsible Meal Logging Areas */}
-              <div className="space-y-2.5">
-                {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([meal, cfg]) => {
-                  const MealIcon = cfg.icon;
-                  const items = mealEntries(meal);
-                  const mealCals = items.reduce((s, e) => s + e.calories, 0);
-                  const mealProtein = items.reduce((s, e) => s + e.protein, 0);
-                  const mealCarbs = items.reduce((s, e) => s + e.carbs, 0);
-                  const mealFat = items.reduce((s, e) => s + e.fat, 0);
-                  const isExpanded = expandedMeal === meal;
-
-                  return (
-                    <Card key={meal} className="overflow-hidden">
-                      <button
-                        aria-expanded={isExpanded}
-                        aria-controls={`meal-section-${meal}`}
-                        className="w-full flex items-center justify-between p-3.5 hover:bg-surface/50 transition active:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                        onClick={() => setExpandedMeal(isExpanded ? null : meal)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn("h-8 w-8 rounded-xl border flex items-center justify-center", cfg.bg)}>
-                            <MealIcon size={15} className={cfg.color} aria-hidden="true" />
-                          </div>
-                          <div className="text-left">
-                            <p className="text-sm font-bold text-zinc-955">{cfg.label}</p>
-                            <p className="text-[10px] text-zinc-750 font-mono">{items.length} logged</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2.5">
-                          {items.length > 0 && (
-                            <div className="flex items-center gap-1 text-[9px] font-sans font-bold select-none mr-0.5 sm:mr-1">
-                              <span className="text-blue-455 bg-blue-500/5 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">P:{Math.round(mealProtein)}g</span>
-                              <span className="text-amber-450 bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">C:{Math.round(mealCarbs)}g</span>
-                              <span className="text-rose-450 bg-rose-500/5 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">F:{Math.round(mealFat)}g</span>
-                            </div>
-                          )}
-                          <span className="text-xs sm:text-sm font-bold text-zinc-955 tabular-nums whitespace-nowrap">
-                            {mealCals} <span className="text-[9px] sm:text-[10px] font-normal text-zinc-755">kcal</span>
-                          </span>
-                          {isExpanded ? <ChevronUp size={15} className="text-zinc-750 shrink-0" /> : <ChevronDown size={15} className="text-zinc-750 shrink-0" />}
-                        </div>
-                      </button>
-
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div
-                            id={`meal-section-${meal}`}
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="px-3.5 pb-3.5 space-y-2 border-t border-card-border pt-2.5 bg-surface/20">
-                              {items.length === 0 ? (
-                                <p className="text-xs text-zinc-750 text-center py-4 italic">No items logged under {cfg.label.toLowerCase()}</p>
-                              ) : (
-                                items.map((entry) => (
-                                  <div
-                                    key={entry.id}
-                                    className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-card-border shadow-sm"
-                                  >
-                                    <div className="min-w-0 flex-1 mr-2">
-                                      <p className="text-xs font-bold text-zinc-955 truncate">{entry.name}</p>
-                                      <div className="flex gap-2.5 mt-0.5 text-[10px] font-sans tabular-nums">
-                                        <span className="text-blue-455 font-semibold">P:{entry.protein}g</span>
-                                        <span className="text-amber-450 font-semibold">C:{entry.carbs}g</span>
-                                        <span className="text-rose-450 font-semibold">F:{entry.fat}g</span>
-                                        {entry.fiber > 0 && <span className="text-emerald-450 font-semibold">Fb:{entry.fiber}g</span>}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <span className="text-xs font-bold text-zinc-955 tabular-nums">{entry.calories} kcal</span>
-                                      <button
-                                        onClick={() => removeEntry(entry.id)}
-                                        aria-label={`Remove ${entry.name}`}
-                                        className="h-6 w-6 flex items-center justify-center rounded-lg text-zinc-450 hover:text-rose-450 hover:bg-rose-450/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                              <button
-                                onClick={() => { setSelectedAddMeal(meal); setShowAddModal(true); }}
-                                className={cn(
-                                  "w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                                  cfg.color,
-                                  `border-current/40 hover:bg-current/5`
-                                )}
-                              >
-                                <Plus size={13} /> Add food to {cfg.label}
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </Card>
-                  );
-                })}
-              </div>
-
               {/* Diagnostics insights */}
               {activeEntries.length > 0 && (
                 <Card className="p-4 bg-gradient-to-br from-emerald-450/5 to-emerald-450/[0.02] border border-emerald-450/15">
@@ -4691,7 +4710,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     <TrendingUp size={15} className="text-emerald-450" />
                     <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-450">Nutritional Diagnostics</p>
                   </div>
-                  <div className="space-y-2 text-xs text-zinc-750 leading-snug">
+                  <div className="space-y-2 text-xs text-zinc-755 leading-snug">
                     {totals.protein >= targets.protein * 0.9 ? (
                       <p className="flex items-start gap-2"><Check size={12} className="text-emerald-450 mt-0.5 shrink-0" /> <span>Protein goal is met ({totals.protein}g). Muscle repair is properly supported. 💪</span></p>
                     ) : (
@@ -4710,7 +4729,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               {/* Water Log List history in Overview */}
               {activeWaterLogs.length > 0 && (
                 <Card className="p-4 space-y-2.5">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Water Intake History</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-755">Water Intake History</h4>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                     {[...activeWaterLogs].reverse().map((log) => (
                       <div key={log.id} className="flex justify-between items-center p-2 rounded-xl bg-surface/50 border border-card-border">

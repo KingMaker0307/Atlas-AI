@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from "react";
 import { TodayScreen } from "./today-screen";
 import { DashboardScreen } from "./dashboard-screen";
 import { AdvancedAnalyticsScreen } from "./advanced-analytics-screen";
@@ -12,6 +13,10 @@ export function HomeScreen() {
   const setSubTab = useAtlasStore((state) => state.setHomeSubTab);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
   const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as any });
+  }, [subTab, guidedMode]);
 
   return (
     <div className="space-y-6">

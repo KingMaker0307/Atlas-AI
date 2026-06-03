@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, Bot, CalendarCheck, ClipboardList, Home, LayoutDashboard, Settings, ShieldAlert, Sun, Moon, Flame, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { HomeScreen } from "@/components/screens/home-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
@@ -51,6 +51,21 @@ export function AtlasApp() {
 
   // For backwards compatibility and routing: 'today' redirects to unified 'dashboard' Home screen
   const resolvedTab = activeTab === "today" ? "dashboard" : activeTab;
+
+  const activeSettingsTab = useAtlasStore((state) => state.activeSettingsTab);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when primary tabs or active sub-screens change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as any });
+  }, [activeTab, activeSubScreen]);
+
+  // Scroll settings drawer to top when active settings tab changes
+  useEffect(() => {
+    if (drawerRef.current) {
+      drawerRef.current.scrollTo({ top: 0, behavior: "instant" as any });
+    }
+  }, [activeSettingsTab, settingsOpen]);
 
 
   useEffect(() => {
@@ -321,10 +336,10 @@ export function AtlasApp() {
 
       {/* ─── MAIN PAGES INTERACTIVE CONTENT ─── */}
       <main className={cn(
-        "mx-auto w-full max-w-6xl pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8",
+        "mx-auto w-full max-w-6xl pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-8",
         resolvedTab === "workout" && activeSubScreen === "active-workout"
           ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16 pb-0"
-          : "px-4 md:px-8 pt-[calc(5rem+env(safe-area-inset-top))] md:pt-8"
+          : "px-4 md:px-8 pt-[calc(4.25rem+env(safe-area-inset-top))] md:pt-8"
       )}>
         <AnimatePresence mode="wait">
           {resolvedTab === "workout" && activeSubScreen ? (
@@ -388,11 +403,12 @@ export function AtlasApp() {
             
             {/* Drawer Panel */}
             <motion.div
+              ref={drawerRef}
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-2xl h-dvh bg-background border-l border-card-border shadow-2xl overflow-y-auto p-4 sm:p-6 pb-20 pr-[max(1rem,env(safe-area-inset-right))] z-10"
+              className="relative w-full max-w-2xl h-dvh bg-background border-l border-card-border shadow-2xl overflow-y-auto px-4 sm:px-6 pt-4 pb-6 pr-[max(1rem,env(safe-area-inset-right))] z-10"
             >
               <ErrorBoundary screen="Settings">
                 <SettingsScreen onClose={() => setSettingsOpen(false)} />
