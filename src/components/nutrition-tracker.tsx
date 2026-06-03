@@ -2889,6 +2889,7 @@ export function NutritionTracker() {
   const deleteNutritionEntryAction = useAtlasStore((s) => s.deleteNutritionEntry);
   const addWaterLogAction = useAtlasStore((s) => s.addWaterLog);
   const deleteWaterLogAction = useAtlasStore((s) => s.deleteWaterLog);
+  const setActiveSubScreen = useAtlasStore((s) => s.setActiveSubScreen);
 
   // Assign to local variable to avoid renaming throughout the file
   const entries = nutritionEntries;
@@ -2926,17 +2927,8 @@ export function NutritionTracker() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAddMeal, setSelectedAddMeal] = useState<NutritionEntry["meal"]>("breakfast");
   const [expandedMeal, setExpandedMeal] = useState<NutritionEntry["meal"] | null>("breakfast");
-  const [nutritionTab, setNutritionTab] = useState<"overview" | "trends" | "micros">("overview");
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" as any });
-  }, [nutritionTab]);
-
   // Custom Date state (Defaults to today, allows selecting any day in history)
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-
-  // Interactive Caloric Engine guide (Closed by default, generic accordion trigger)
-  const [showCaloricEngineGuide, setShowCaloricEngineGuide] = useState(false);
 
   // Hydration custom inputs
   const [customWaterInput, setCustomWaterInput] = useState("");
@@ -2948,15 +2940,6 @@ export function NutritionTracker() {
   // This correctly handles: gender (BMR constant), activityLevel (PAL multiplier),
   // goal text + targetPhysique (calorie adjustment), and gender-aware iron RDA.
   const targets = useMemo(() => calculateNutritionTargets(profile), [profile]);
-
-  // Beginner Guide inner sub-tab selection (lose vs gain vs maintain)
-  const [activeGuideGoal, setActiveGuideGoal] = useState<"lose" | "gain" | "maintain">("lose");
-  
-  useEffect(() => {
-    if (targets.goalType) {
-      setActiveGuideGoal(targets.goalType);
-    }
-  }, [targets.goalType]);
 
   // Date Navigation Helpers
   const targetDateString = useMemo(() => {
@@ -3227,52 +3210,6 @@ export function NutritionTracker() {
       multiplier: multiplier.toFixed(1),
     };
   }, [profile?.weight, profile?.targetPhysique, profile?.weightUnit, weightUnit]);
-
-  // Historical monthly and yearly trend averages calculated dynamically
-  const trendsData = useMemo(() => {
-    const getStatsForDays = (daysCount: number) => {
-      const limitDate = new Date();
-      limitDate.setDate(limitDate.getDate() - daysCount);
-      const limitStr = getLocalDateString(limitDate);
-
-      const filteredFoods = entries.filter((e) => getLocalDateString(e.timestamp) >= limitStr);
-      const filteredWater = waterLogs.filter((w) => getLocalDateString(w.timestamp) >= limitStr);
-
-      // Count unique days with logs in this period
-      const uniqueDays = new Set([
-        ...filteredFoods.map((e) => getLocalDateString(e.timestamp)),
-        ...filteredWater.map((w) => getLocalDateString(w.timestamp)),
-      ]);
-      const daysLogged = Math.max(uniqueDays.size, 1);
-
-      const foodTotals = filteredFoods.reduce(
-        (acc, e) => ({
-          calories: acc.calories + e.calories,
-          protein: acc.protein + e.protein,
-          carbs: acc.carbs + e.carbs,
-          fat: acc.fat + e.fat,
-        }),
-        { calories: 0, protein: 0, carbs: 0, fat: 0 }
-      );
-
-      const waterTotal = filteredWater.reduce((sum, w) => sum + w.amount, 0);
-
-      return {
-        avgCalories: Math.round(foodTotals.calories / daysLogged),
-        avgProtein: Math.round(foodTotals.protein / daysLogged),
-        avgCarbs: Math.round(foodTotals.carbs / daysLogged),
-        avgFat: Math.round(foodTotals.fat / daysLogged),
-        avgWater: Math.round(waterTotal / daysLogged),
-        daysLogged: uniqueDays.size,
-      };
-    };
-
-    return {
-      last7Days: getStatsForDays(7),
-      last30Days: getStatsForDays(30),
-      last12Months: getStatsForDays(365),
-    };
-  }, [entries, waterLogs]);
 
   const handleQuickLog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3978,31 +3915,33 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
   // Hydration level helper
   const hydrationRatio = Math.min(totalWater / waterTarget, 1);
 
-  // Top Macro Sources helper
-  const getTopMacroSources = (macro: "protein" | "carbs" | "fat" | "fiber") => {
-    return [...activeEntries]
-      .filter((e) => e[macro] > 0)
-      .sort((a, b) => b[macro] - a[macro])
-      .slice(0, 3);
-  };
-
-  // Micronutrient top contributing foods
-  const getTopMicroSources = (micro: "sodium" | "potassium" | "vitaminC" | "calcium" | "iron") => {
-    return [...activeEntries]
-      .filter((e) => e[micro] > 0)
-      .sort((a, b) => b[micro] - a[micro])
-      .slice(0, 3);
-  };
-
-  const subTabs = [
-    { id: "overview" as const, label: "Daily Log", icon: Activity },
-    { id: "trends" as const, label: "Trends & Targets", icon: BarChart3 },
-    ...(!guidedMode ? [{ id: "micros" as const, label: "Micronutrients", icon: Shield }] : []),
-  ];
-
   return (
     <div className="space-y-4 pb-4">
-{/* ─── Standardized Date Picker Control (Infinite Date Navigation) ─── */}
+      {/* ─── Header & Navigation ─── */}
+      <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm text-zinc-555">
+              Track your daily meals &amp; water intake
+            </p>
+            <h1 className="mt-0.5 text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              Nutrition Log
+            </h1>
+          </div>
+        </div>
+
+        <Button
+          size="sm"
+          variant="primary"
+          className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center gap-1.5 self-start sm:self-auto rounded-xl px-4 py-2"
+          onClick={() => setActiveSubScreen("nutrition-analytics")}
+        >
+          <BarChart3 size={15} />
+          <span>Nutrition Analytics</span>
+        </Button>
+      </section>
+
+      {/* ─── Standardized Date Picker Control (Infinite Date Navigation) ─── */}
       <div className="flex items-center justify-between p-1 bg-input border border-input-border rounded-2xl select-none">
         <button
           onClick={() => navigateDayOffset(-1)}
@@ -4061,42 +4000,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         </button>
       </div>
 
-{/* ─── Condensed Sub-Tab Navigation Bar (Overview, Trends/Targets, Micros) ─── */}
-      <div className="flex overflow-x-auto scrollbar-none gap-1 p-1 bg-input border border-input-border rounded-2xl select-none" role="tablist" aria-label="Nutrition navigation">
-        {subTabs.map((tab) => {
-          const Icon = tab.icon;
-          const active = nutritionTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={active}
-              onClick={() => setNutritionTab(tab.id)}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background active:scale-[0.98]",
-                active
-                  ? "bg-card text-emerald-450 shadow-sm font-bold"
-                  : "text-zinc-750 hover:text-zinc-955"
-              )}
-            >
-              <Icon size={14} className="shrink-0" aria-hidden="true" />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
       <AnimatePresence mode="wait">
         <motion.div
-          key={nutritionTab}
+          key={getLocalDateString(selectedDate)}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
           className="space-y-4"
         >
-          {nutritionTab === "overview" && (
-            <div className="space-y-4">
+          <div className="space-y-4">
               {/* Daily Progress Summary & Hydration Tracker */}
               <Card className="p-5 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
@@ -4597,348 +4510,10 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
               );
             })}
           </div>
-
         </div>
-            </div>
-          )}
-          {/* 2. TRENDS & TARGETS TAB */}
-          {nutritionTab === "trends" && (
-            <div className="space-y-4">
-              {/* Dynamic Caloric Objectives Guide (Generic closed accordion trigger) */}
-              <Card className="overflow-hidden">
-                <button
-                  aria-expanded={showCaloricEngineGuide}
-                  aria-controls="caloric-guide-details"
-                  onClick={() => setShowCaloricEngineGuide(!showCaloricEngineGuide)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-surface/50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-emerald-450/10 flex items-center justify-center text-emerald-450 shrink-0">
-                      <Info size={14} aria-hidden="true" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-zinc-955">🧬 Caloric Objectives Demystified</p>
-                      <p className="text-[10px] text-zinc-750">Tap to expand deficit, surplus &amp; maintenance breakdowns</p>
-                    </div>
-                  </div>
-                  {showCaloricEngineGuide ? <ChevronUp size={16} className="text-zinc-750" /> : <ChevronDown size={16} className="text-zinc-750" />}
-                </button>
-
-                <AnimatePresence>
-                  {showCaloricEngineGuide && (
-                    <motion.div
-                      id="caloric-guide-details"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden border-t border-card-border"
-                    >
-                      <div className="p-4 space-y-4">
-                        {/* Selector Tabs inside accordion */}
-                        <div className="flex gap-1 p-1 bg-surface border border-surface-border rounded-xl select-none">
-                          {[
-                            { id: "lose" as const, label: "Weight Loss" },
-                            { id: "gain" as const, label: "Muscle Gain" },
-                            { id: "maintain" as const, label: "Maintenance" },
-                          ].map((tab) => {
-                            const active = activeGuideGoal === tab.id;
-                            const matchesUserGoal = targets.goalType === tab.id;
-                            return (
-                              <button
-                                key={tab.id}
-                                onClick={() => setActiveGuideGoal(tab.id)}
-                                className={cn(
-                                  "flex-1 py-1.5 rounded-lg text-[10px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                                  active
-                                    ? "bg-card text-emerald-450 shadow-sm font-bold"
-                                    : "text-zinc-750 hover:text-zinc-955"
-                                )}
-                              >
-                                {tab.label} {matchesUserGoal && "⭐"}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p className="text-[9px] text-zinc-750 italic text-center select-none">
-                          ⭐ denotes your active target, dynamically matched from your profile goal: <strong className="text-zinc-955 capitalize">{profile?.goal || "Not Set"}</strong>.
-                        </p>
-
-                        {/* Guide Content Panels */}
-                        <Surface className="p-3.5 space-y-3 bg-surface/50">
-                          {activeGuideGoal === "lose" && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center text-xs font-bold text-zinc-955">
-                                <span>Caloric Deficit</span>
-                                <span className="font-mono text-rose-450">TDEE − 500 kcal</span>
-                              </div>
-                              <p className="text-[11px] text-zinc-750 leading-relaxed">
-                                <strong>What is it?</strong> To reduce weight, you must feed your body less energy than it expends. This forces tissues to draw from stored body fat to cover the daily energy gap.
-                              </p>
-                              <div className="border-t border-card-border/60 pt-2 space-y-1 text-[11px] text-zinc-750 leading-relaxed">
-                                <p>💪 <strong>Action Plan:</strong></p>
-                                <ul className="list-disc pl-4 space-y-1 mt-1">
-                                  <li>Stay near your deficit target of <strong>{(targets.tdee - 500).toLocaleString()} kcal</strong> daily.</li>
-                                  <li>Prioritize Protein (<strong>{targets.protein}g</strong>) to prevent the body from breaking down muscle tissues.</li>
-                                  <li>Losing 0.5 to 1.5 lbs per week is the safe, sustainable benchmark.</li>
-                                </ul>
-                              </div>
-                            </div>
-                          )}
-
-                          {activeGuideGoal === "gain" && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center text-xs font-bold text-zinc-955">
-                                <span>Caloric Surplus</span>
-                                <span className="font-mono text-emerald-450">TDEE + 300 kcal</span>
-                              </div>
-                              <p className="text-[11px] text-zinc-750 leading-relaxed">
-                                <strong>What is it?</strong> Creating new muscle fibers requires extra raw energy. A moderate caloric surplus provides the necessary building materials for tissue synthesis and training energy.
-                              </p>
-                              <div className="border-t border-card-border/60 pt-2 space-y-1 text-[11px] text-zinc-750 leading-relaxed">
-                                <p>🏋️ <strong>Action Plan:</strong></p>
-                                <ul className="list-disc pl-4 space-y-1 mt-1">
-                                  <li>Eat nutritious whole foods to hit your surplus target of <strong>{(targets.tdee + 300).toLocaleString()} kcal</strong>.</li>
-                                  <li>Focus on progressive overload workout schemes. Otherwise, the extra calories will be stored as fat.</li>
-                                  <li>Aim for a slow gain rate of 1 to 2 lbs per month.</li>
-                                </ul>
-                              </div>
-                            </div>
-                          )}
-
-                          {activeGuideGoal === "maintain" && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center text-xs font-bold text-zinc-955">
-                                <span>Weight Maintenance</span>
-                                <span className="font-mono text-blue-455">TDEE Baseline</span>
-                              </div>
-                              <p className="text-[11px] text-zinc-750 leading-relaxed">
-                                <strong>What is it?</strong> Consuming exactly as many calories as your body expends daily. Keeps your bodyweight steady while supporting consistent recovery.
-                              </p>
-                              <div className="border-t border-card-border/60 pt-2 space-y-1 text-[11px] text-zinc-750 leading-relaxed">
-                                <p>🥛 <strong>Action Plan:</strong></p>
-                                <ul className="list-disc pl-4 space-y-1 mt-1">
-                                  <li>Keep caloric intake close to your TDEE of <strong>{targets.tdee.toLocaleString()} kcal</strong>.</li>
-                                  <li>Good for recomposition (slowly replacing body fat with muscle) and stabilizing metabolism.</li>
-                                  <li>Establishes a solid baseline for weight management consistency.</li>
-                                </ul>
-                              </div>
-                            </div>
-                          )}
-                        </Surface>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
-
-              {/* Energy Formula & Budget calculations */}
-              <Card className="p-4 space-y-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Energy Balance Formula</h4>
-                
-                <div className="grid grid-cols-7 items-center justify-between text-center bg-surface/50 border border-surface-border p-3.5 rounded-xl text-zinc-955 select-none">
-                  <div>
-                    <p className="text-[10px] font-bold text-zinc-750">Budget</p>
-                    <p className="text-sm font-bold mt-1 font-sans tabular-nums">{targets.calories}</p>
-                  </div>
-                  <span className="text-xs font-bold text-zinc-400" aria-hidden="true">−</span>
-                  <div>
-                    <p className="text-[10px] font-bold text-rose-450">Food</p>
-                    <p className="text-sm font-bold text-rose-450 mt-1 font-sans tabular-nums">{totals.calories}</p>
-                  </div>
-                  <span className="text-xs font-bold text-zinc-400" aria-hidden="true">+</span>
-                  <div>
-                    <p className="text-[10px] font-bold text-amber-450">Burned</p>
-                    <p className="text-sm font-bold text-amber-450 mt-1 font-sans tabular-nums">{burnedCalories}</p>
-                  </div>
-                  <span className="text-xs font-bold text-zinc-400" aria-hidden="true">=</span>
-                  <div>
-                    <p className="text-[10px] font-bold text-emerald-450">Left</p>
-                    <p className="text-sm font-bold text-emerald-450 mt-1 font-sans tabular-nums">{remainingCals}</p>
-                  </div>
-                </div>
-
-                <div className="divide-y divide-card-border text-[11px] pt-1">
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-zinc-750">Basal Metabolic Rate (BMR)</span>
-                    <span className="font-mono text-zinc-750">{targets.bmr} kcal/day</span>
-                  </div>
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-semibold text-zinc-750">Physical Activity Multiplier (1.55x)</span>
-                    <span className="font-mono text-zinc-750">+{targets.tdee - targets.bmr} kcal/day</span>
-                  </div>
-                  <div className="flex justify-between py-2 items-center">
-                    <span className="font-bold text-zinc-955">Baseline Expenditure (TDEE)</span>
-                    <span className="font-sans tabular-nums font-bold text-emerald-450">{targets.tdee} kcal/day</span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Dynamic Target Macro splits */}
-              <Card className="p-4 space-y-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Macronutrient Target Split</h4>
-                <div className="space-y-4">
-                  <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" />
-                  <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" tooltip="gives you energy ⚡" />
-                  <MacroBar label="Fat" value={totals.fat} max={targets.fat} unit="g" color="bg-rose-450" icon={Droplets} iconColor="text-rose-450" tooltip="keeps you healthy 🫀" />
-                  {!guidedMode && (
-                    <MacroBar label="Fiber" value={totals.fiber} max={targets.fiber} unit="g" color="bg-emerald-450" icon={Leaf} iconColor="text-emerald-450" />
-                  )}
-                </div>
-              </Card>
-
-              {/* ─── Historical Trends & Analytics (Weekly, Monthly, Yearly Breakdowns) ─── */}
-              <Card className="p-4 space-y-4">
-                <div className="flex items-center gap-2 border-b border-card-border pb-3">
-                  <BarChart3 size={15} className="text-emerald-450" />
-                  <h4 className="text-xs font-bold text-zinc-955">Historical Trends &amp; Averages</h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4.5">
-                  {/* Last 7 Days */}
-                  <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-750 uppercase tracking-wider">Last 7 Days</p>
-                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last7Days.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
-                    </div>
-                    <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-750 space-y-1">
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last7Days.avgProtein}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last7Days.avgCarbs}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last7Days.avgFat}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-400">
-                        <span>Water:</span><span>{trendsData.last7Days.avgWater}ml</span>
-                      </div>
-                    </div>
-                  </Surface>
-
-                  {/* Last 30 Days (Monthly Breakdown) */}
-                  <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-750 uppercase tracking-wider">Last 30 Days</p>
-                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last30Days.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
-                    </div>
-                    <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-750 space-y-1">
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last30Days.avgProtein}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last30Days.avgCarbs}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last30Days.avgFat}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-400">
-                        <span>Water:</span><span>{trendsData.last30Days.avgWater}ml</span>
-                      </div>
-                    </div>
-                  </Surface>
-
-                  {/* Last 12 Months (Yearly Breakdown) */}
-                  <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-750 uppercase tracking-wider">Last 12 Months</p>
-                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last12Months.avgCalories} <span className="text-[10px] font-normal text-zinc-750 font-sans">kcal/d</span></p>
-                    </div>
-                    <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-750 space-y-1">
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last12Months.avgProtein}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last12Months.avgCarbs}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last12Months.avgFat}g</span></div>
-                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-400">
-                        <span>Water:</span><span>{trendsData.last12Months.avgWater}ml</span>
-                      </div>
-                    </div>
-                  </Surface>
-                </div>
-                <p className="text-[9px] text-zinc-750 italic text-center">
-                  * Analytics compile your real daily averages based on logged logs across the active tracking windows.
-                </p>
-              </Card>
-            </div>
-          )}
-
-          {/* 3. MICRONUTRIENTS TAB */}
-          {nutritionTab === "micros" && (
-            <div className="space-y-4">
-              {/* Comprehensive RDA Grid */}
-              <Card className="p-4 space-y-3.5">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Vitamins & Minerals Progress (RDA)</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
-                  <MicroBadge label="Sodium" value={totals.sodium} max={targets.sodium} unit="mg" className="stroke-amber-450" />
-                  <MicroBadge label="Potassium" value={totals.potassium} max={targets.potassium} unit="mg" className="stroke-violet-455" />
-                  <MicroBadge label="Vitamin C" value={totals.vitaminC} max={targets.vitaminC} unit="mg" className="stroke-amber-450" />
-                  <MicroBadge label="Calcium" value={totals.calcium} max={targets.calcium} unit="mg" className="stroke-blue-455" />
-                  <MicroBadge label="Iron" value={totals.iron} max={targets.iron} unit="mg" className="stroke-rose-450" />
-                </div>
-              </Card>
-
-              {/* RDA reference table */}
-              <Card className="p-4 space-y-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Guideline Thresholds</h4>
-                <div className="divide-y divide-card-border text-xs">
-                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
-                    <span className="font-semibold text-foreground text-left">Sodium</span>
-                    <span className="text-zinc-750 text-left sm:text-right">Keep below 2,300 mg (prevents fluid retention)</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
-                    <span className="font-semibold text-foreground text-left">Potassium</span>
-                    <span className="text-zinc-750 text-left sm:text-right">Aim for 4,700 mg (supports heart/muscle function)</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
-                    <span className="font-semibold text-foreground text-left">Vitamin C</span>
-                    <span className="text-zinc-750 text-left sm:text-right">Aim for 90 mg (promotes immune health)</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
-                    <span className="font-semibold text-foreground text-left">Calcium</span>
-                    <span className="text-zinc-750 text-left sm:text-right">Aim for 1,000 mg (essential for bone structure)</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between py-2 sm:items-center gap-1">
-                    <span className="font-semibold text-foreground text-left">Iron</span>
-                    <span className="text-zinc-750 text-left sm:text-right">Aim for 8 mg (supports blood oxygenation)</span>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Micro Sources logs */}
-              <Card className="p-4 space-y-4">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-750">Top Micronutrient Source Foods</h4>
-                {activeEntries.length === 0 ? (
-                  <p className="text-xs text-zinc-750 text-center py-4 italic">No logged foods to display micro sources</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Potassium Sources */}
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold text-violet-455 flex items-center gap-1"><Shield size={12} aria-hidden="true" /> Top Potassium Sources</p>
-                      <div className="space-y-1.5">
-                        {getTopMicroSources("potassium").length === 0 ? (
-                          <p className="text-[10px] text-zinc-750 italic">None logged</p>
-                        ) : (
-                          getTopMicroSources("potassium").map((food) => (
-                            <Surface key={food.id} className="text-xs p-2.5 flex justify-between items-center bg-surface/50">
-                              <span className="truncate pr-1 text-foreground font-semibold">{food.name}</span>
-                              <span className="font-mono font-bold text-violet-455 shrink-0">{food.potassium}mg</span>
-                            </Surface>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Vitamin C Sources */}
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold text-amber-450 flex items-center gap-1"><Shield size={12} aria-hidden="true" /> Top Vitamin C Sources</p>
-                      <div className="space-y-1.5">
-                        {getTopMicroSources("vitaminC").length === 0 ? (
-                          <p className="text-[10px] text-zinc-750 italic">None logged</p>
-                        ) : (
-                          getTopMicroSources("vitaminC").map((food) => (
-                            <Surface key={food.id} className="text-xs p-2.5 flex justify-between items-center bg-surface/50">
-                              <span className="truncate pr-1 text-foreground font-semibold">{food.name}</span>
-                              <span className="font-mono font-bold text-amber-450 shrink-0">{food.vitaminC}mg</span>
-                            </Surface>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
+      </div>
+    </motion.div>
+  </AnimatePresence>
       {/* Add food modal overlay */}
       <AnimatePresence>
         {showAddModal && (

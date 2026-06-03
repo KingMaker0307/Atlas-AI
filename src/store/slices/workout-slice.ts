@@ -172,6 +172,8 @@ export const createWorkoutSlice: StateCreator<
         activeSubScreen: null,
         workoutTab: "plans",
       });
+      const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+      registry.save((r, uid) => r.workout.saveWorkout(uid, completedWorkout));
     }
   },
 
@@ -273,6 +275,8 @@ export const createWorkoutSlice: StateCreator<
       plan.routines.push(sanitizedRoutine);
     }
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
+    const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+    registry.save((r, uid) => r.plan.savePlan(uid, plan));
   },
 
   deleteRoutine: async (planId: string, routineId: string) => {
@@ -281,6 +285,8 @@ export const createWorkoutSlice: StateCreator<
     if (!plan) return;
     plan.routines = plan.routines.filter(r => r.id !== routineId);
     set({ workoutPlans: plans.map(p => p.id === planId ? plan : p) });
+    const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+    registry.save((r, uid) => r.plan.savePlan(uid, plan));
   },
 
   startWorkout: async (routine) => {
@@ -493,6 +499,14 @@ export const createWorkoutSlice: StateCreator<
       activeWorkout: nextActiveWorkout,
       workoutPlans: nextWorkoutPlans,
     });
+
+    if (activeWorkout.planId) {
+      const updatedPlan = nextWorkoutPlans.find((p) => p.id === activeWorkout.planId);
+      if (updatedPlan) {
+        const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+        registry.save((r, uid) => r.plan.savePlan(uid, updatedPlan));
+      }
+    }
   },
 
   skipWorkoutExercise: async (workoutExerciseId) => {

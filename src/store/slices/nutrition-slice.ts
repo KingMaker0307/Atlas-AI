@@ -117,6 +117,10 @@ export const createNutritionSlice: StateCreator<
 
   addNutritionEntries: async (entries) => {
     set({ nutritionEntries: [...(get().nutritionEntries || []), ...entries] });
+    const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+    for (const entry of entries) {
+      registry.save((r, uid) => r.nutrition.addEntry(uid, entry));
+    }
   },
 
   deleteNutritionEntry: async (id) => {

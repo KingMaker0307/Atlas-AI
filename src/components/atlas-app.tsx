@@ -12,6 +12,7 @@ import { RoutineBuilderScreen } from "@/components/screens/routine-builder-scree
 import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
 import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
 import { ExerciseDatabaseScreen } from "@/components/screens/exercise-database-screen";
+import { NutritionAnalyticsScreen } from "@/components/screens/nutrition-analytics-screen";
 import { AppLoader } from "@/components/ui/app-loader";
 import { HealthDisclaimer } from "@/components/ui/health-disclaimer";
 import { InstallPrompt } from "@/components/install-prompt";
@@ -20,7 +21,6 @@ import { Onboarding } from "@/components/onboarding";
 import { PwaRegistrar } from "@/components/pwa-registrar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { NutritionTracker } from "@/components/nutrition-tracker";
-import { ModeBanner } from "@/components/mode-banner";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { useAtlasStore, type AtlasTab } from "@/store/useAtlasStore";
@@ -151,6 +151,8 @@ export function AtlasApp() {
         return <ErrorBoundary screen="Active Workout"><WorkoutScreen /></ErrorBoundary>;
       case "exercise-database":
         return <ErrorBoundary screen="Exercise Database"><ExerciseDatabaseScreen /></ErrorBoundary>;
+      case "nutrition-analytics":
+        return <ErrorBoundary screen="Nutrition Analytics"><NutritionAnalyticsScreen /></ErrorBoundary>;
       default:
         return null;
     }
@@ -311,11 +313,8 @@ export function AtlasApp() {
           ? "px-0 md:px-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-16 pb-0"
           : "px-4 md:px-8 pt-[calc(4.0rem+env(safe-area-inset-top))] md:pt-8"
       )}>
-        {/* ─── MODE BANNER (shown for new guided mode users) ─── */}
-        <ModeBanner />
-
         <AnimatePresence mode="wait">
-          {resolvedTab === "workout" && activeSubScreen ? (
+          {activeSubScreen ? (
             renderSubScreen()
           ) : (
             <motion.div key={resolvedTab}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { Card } from "@/components/ui/card";
@@ -19,8 +19,6 @@ import {
   Heart,
   Plus,
   Minus,
-  Bot,
-  BarChart3,
   Leaf,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -40,8 +38,42 @@ function getGreeting(name: string): { text: string; Icon: typeof Sun; iconClass:
   return { text: `Good evening, ${name}! 🌙`, Icon: Moon, iconClass: "text-indigo-400" };
 }
 
+interface Tip {
+  emoji: string;
+  headline: string;
+  body: string;
+  tags?: string[];
+}
+
+function filterTipByDiet(tip: Tip, dietaryPreferences: string): boolean {
+  const pref = (dietaryPreferences ?? "").toLowerCase();
+  const text = `${tip.headline} ${tip.body}`.toLowerCase();
+  
+  if (pref.includes("vegan")) {
+    const animalWords = ["egg", "chicken", "meat", "beef", "pork", "fish", "yogurt", "yoghurt", "milk", "cheese", "whey", "dairy", "turkey", "steak"];
+    if (animalWords.some(word => text.includes(word))) return false;
+    if (tip.tags?.some(tag => ["meat", "non-veg", "dairy"].includes(tag))) return false;
+  }
+  
+  if (pref.includes("vegetarian")) {
+    const meatWords = ["chicken", "meat", "beef", "pork", "fish", "steak", "turkey"];
+    if (meatWords.some(word => text.includes(word))) return false;
+    if (tip.tags?.some(tag => ["meat", "non-veg"].includes(tag))) return false;
+  }
+  
+  return true;
+}
+
+function getDailySeed(dateStr: string): number {
+  let hash = 0;
+  for (let i = 0; i < dateStr.length; i++) {
+    hash = dateStr.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
 // ─── Beginner tips ──────────────────────────────────────────────────
-const TIPS = [
+const TIPS: Tip[] = [
   {
     emoji: "💧",
     headline: "Drink water first thing in the morning",
@@ -250,8 +282,14 @@ export function TodayScreen() {
   const activeWorkoutPlanId = useAtlasStore((s) => s.activeWorkoutPlanId);
   const setActiveTab = useAtlasStore((s) => s.setActiveTab);
   const setHomeSubTab = useAtlasStore((s) => s.setHomeSubTab);
+  const setActiveSettingsTab = useAtlasStore((s) => s.setActiveSettingsTab);
 
-  const todayDate = new Date().toISOString().split("T")[0]!;
+  const handleGoToDietSettings = () => {
+    setActiveTab("settings");
+    setActiveSettingsTab("profile");
+  };
+
+  const todayDate = todayKey();
 
   const workoutDoneToday = useMemo(
     () => workouts.some((w) => w.startedAt.startsWith(todayDate) && w.completedAt),
@@ -276,11 +314,54 @@ export function TodayScreen() {
   const todayRoutine = activePlan?.routines?.find((r) => r.day === todayDayName);
 
   const { text: greetingText, Icon: GreetingIcon, iconClass } = getGreeting(profile?.name ?? "there");
-  const dailyTip = TIPS[new Date().getDay() % TIPS.length]!;
+  // Synchronous initial tip filtered for user's diet
+  const initialTip = useMemo(() => {
+    const diet = profile?.dietaryPreferences ?? "";
+    const filtered = TIPS.filter(tip => filterTipByDiet(tip, diet));
+    const list = filtered.length > 0 ? filtered : TIPS;
+    const seed = getDailySeed(todayDate);
+    return list[seed % list.length];
+  }, [profile?.dietaryPreferences, todayDate]);
+
+  const [dailyTip, setDailyTip] = useState<Tip>(initialTip);
+
+  useEffect(() => {
+    let active = true;
+    const fetchTips = async () => {
+      try {
+        let res = await fetch("/api/daily-tips", {
+          cache: "no-cache"
+        });
+        if (!res.ok) {
+          res = await fetch("/daily-tips.json");
+        }
+        if (res.ok) {
+          const remoteTips = await res.json();
+          if (Array.isArray(remoteTips) && remoteTips.length > 0) {
+            const diet = profile?.dietaryPreferences ?? "";
+            const filtered = remoteTips.filter(tip => filterTipByDiet(tip, diet));
+            const list = filtered.length > 0 ? filtered : remoteTips;
+            const seed = getDailySeed(todayDate);
+            const chosen = list[seed % list.length];
+            if (active && chosen) {
+              setDailyTip(chosen);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch daily tips from internet, using local fallback.", err);
+      }
+    };
+    void fetchTips();
+    return () => {
+      active = false;
+    };
+  }, [profile?.dietaryPreferences, todayDate]);
 
   // Count steps done
-  const stepsDone = [checkedInToday, workoutDoneToday, mealLoggedToday, waterGoalMet].filter(Boolean).length;
-  const allDone = stepsDone === 4;
+  const nutritionDone = mealLoggedToday && waterGoalMet;
+  const stepsDone = [checkedInToday, workoutDoneToday, nutritionDone].filter(Boolean).length;
+  const allDone = stepsDone === 3;
 
   return (
     <div className="space-y-4 pb-8">
@@ -299,7 +380,7 @@ export function TodayScreen() {
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1.5 leading-relaxed pl-8">
           {allDone
             ? "You've completed everything today! Amazing work. 🏆"
-            : `${stepsDone} of 4 healthy habits done today — keep going! 💪`}
+            : `${stepsDone} of 3 healthy habits done today — keep going! 💪`}
         </p>
       </motion.div>
 
@@ -373,48 +454,32 @@ export function TodayScreen() {
         </div>
       </DailyStep>
 
-      {/* ── Step 3: Log a meal ── */}
+      {/* ── Step 3: Log your nutrition & water ── */}
       <DailyStep
         step={3}
-        done={mealLoggedToday}
-        emoji="🍽️"
-        title={mealLoggedToday ? "Meal logged!" : "What did you eat today?"}
+        done={mealLoggedToday && waterGoalMet}
+        emoji="🥗"
+        title={(mealLoggedToday && waterGoalMet) ? "Nutrition & Hydration complete!" : "Log your nutrition & water"}
         subtitle={
-          mealLoggedToday
-            ? "Well done! Eating well fuels your progress."
-            : "Tracking your food helps you feel your best. It's easy — takes under a minute!"
+          (mealLoggedToday && waterGoalMet)
+            ? "Great job fueling and hydrating your body today!"
+            : `Log today's meals (${mealLoggedToday ? "✓ Logged" : "Not logged yet"}) and water (${totalWaterMl}/${WATER_GOAL_ML}ml).`
         }
         delay={0.15}
       >
         <div className="space-y-3">
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            You don't need to be perfect — just log what you ate and we'll help you understand your nutrition over time.
+            Keep track of your meals, calories, and daily hydration level to optimize your recovery and performance.
           </p>
           <Button
-            variant="secondary"
+            variant="primary"
             className="w-full"
             onClick={() => setActiveTab("nutrition")}
           >
             <Utensils size={15} className="mr-2 shrink-0" aria-hidden="true" />
-            Add a meal or snack →
+            Go to nutrition logs →
           </Button>
         </div>
-      </DailyStep>
-
-      {/* ── Step 4: Drink water ── */}
-      <DailyStep
-        step={4}
-        done={waterGoalMet}
-        emoji="💧"
-        title={waterGoalMet ? "Hydration goal met!" : "Stay hydrated"}
-        subtitle={
-          waterGoalMet
-            ? "You drank 8 glasses today — outstanding!"
-            : "Aim for 8 glasses (about 2 litres) throughout the day."
-        }
-        delay={0.2}
-      >
-        <WaterStep />
       </DailyStep>
 
       {/* ── Tip of the day ── */}
@@ -433,50 +498,20 @@ export function TodayScreen() {
               <p className="text-xl mb-1.5">{dailyTip.emoji}</p>
               <p className="text-sm font-semibold text-foreground leading-snug mb-1">{dailyTip.headline}</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{dailyTip.body}</p>
+              {!profile?.dietaryPreferences && (
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2 select-none border-t border-violet-500/10 pt-2 leading-tight">
+                  💡 Want personalized nutrition tips? Update your{" "}
+                  <button
+                    onClick={handleGoToDietSettings}
+                    className="text-violet-500 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300 font-bold underline cursor-pointer inline p-0 bg-transparent border-none text-left"
+                  >
+                    Dietary Preferences in Settings
+                  </button>.
+                </p>
+              )}
             </div>
           </div>
         </Card>
-      </motion.div>
-
-      {/* ── Quick links ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.3 }}
-        className="grid grid-cols-2 gap-2.5"
-      >
-        <button
-          type="button"
-          id="today-ask-coach-btn"
-          onClick={() => setActiveTab("coach")}
-          className="flex flex-col items-start gap-2 p-4 rounded-2xl border bg-card transition-all duration-150 cursor-pointer group border-emerald-500/20 hover:border-emerald-500/50 active:scale-95"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10">
-            <Bot size={16} className="text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-bold text-foreground">Ask AI Coach</p>
-            <p className="text-xs text-zinc-500 mt-0.5">Any questions? Just ask!</p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          id="today-view-progress-btn"
-          onClick={() => {
-            setActiveTab("dashboard");
-            setHomeSubTab("analytics");
-          }}
-          className="flex flex-col items-start gap-2 p-4 rounded-2xl border bg-card transition-all duration-150 cursor-pointer group border-sky-500/20 hover:border-sky-500/50 active:scale-95"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10">
-            <BarChart3 size={16} className="text-sky-600 dark:text-sky-400" aria-hidden="true" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-bold text-foreground">My Progress</p>
-            <p className="text-xs text-zinc-500 mt-0.5">See how far you've come</p>
-          </div>
-        </button>
       </motion.div>
     </div>
   );

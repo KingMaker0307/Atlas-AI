@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 
 export function WelcomeScreen() {
   const theme = useAtlasStore((state) => state.theme);
+  const setTheme = useAtlasStore((state) => state.setTheme);
   const router = useRouter();
   const supabase = createClient();
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -35,7 +36,7 @@ export function WelcomeScreen() {
           onClick={() => {
             const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
             const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
-            useAtlasStore.setState({ theme: resolved === "dark" ? "light" : "dark" });
+            void setTheme(resolved === "dark" ? "light" : "dark");
           }}
           className="flex h-9 w-9 items-center justify-center rounded-xl border border-card-border bg-card/80 text-zinc-500 hover:text-foreground shadow-sm transition duration-200 cursor-pointer"
         >

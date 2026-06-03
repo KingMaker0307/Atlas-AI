@@ -17,7 +17,7 @@ describe("id.ts utilities", () => {
 
   describe("todayKey", () => {
     it("should return the date formatted as YYYY-MM-DD", () => {
-      const date = new Date("2026-06-01T12:00:00Z");
+      const date = new Date(2026, 5, 1, 12, 0, 0); // Local June 1st
       const key = todayKey(date);
       expect(key).toBe("2026-06-01");
     });

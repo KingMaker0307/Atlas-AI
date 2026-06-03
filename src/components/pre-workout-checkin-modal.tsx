@@ -65,7 +65,7 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <Card className="w-full max-w-sm p-6 space-y-4 relative shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="pre-workout-title">
+      <Card className="w-full max-w-sm p-6 space-y-4 relative max-h-[90vh] overflow-y-auto shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="pre-workout-title">
         <Button variant="ghost" size="icon" className="absolute top-2.5 right-2.5 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5" onClick={onClose} aria-label="Close modal">
           <X size={20} aria-hidden="true" />
         </Button>

@@ -1,6 +1,8 @@
 import { StateCreator } from "zustand";
 import type { AtlasStoreState, AtlasTab, SubScreen, StartupChoice } from "../useAtlasStore";
 import type { ThemeMode } from "@/types/domain";
+import { readLocalSetting, writeLocalSetting } from "@/lib/storage/db";
+
 
 export interface UiSlice {
   hydrated: boolean;
@@ -35,7 +37,7 @@ export const createUiSlice: StateCreator<
   activeSettingsTab: "profile",
   startupChoice: null,
   blocked: false,
-  theme: "system",
+  theme: typeof window !== "undefined" ? readLocalSetting<ThemeMode>("theme", "system") : "system",
   guidedMode: true,
   homeSubTab: "today",
 
@@ -44,7 +46,10 @@ export const createUiSlice: StateCreator<
   setStartupChoice: (choice) => set({ startupChoice: choice }),
   setActiveTab: (tab) => set({ activeTab: tab, activeSubScreen: null }),
   setActiveSubScreen: (subScreen) => set({ activeSubScreen: subScreen }),
-  setTheme: async (theme) => set({ theme }),
+  setTheme: async (theme) => {
+    writeLocalSetting("theme", theme);
+    set({ theme });
+  },
   setGuidedMode: async (guidedMode) => set({ guidedMode }),
   setHomeSubTab: (homeSubTab) => set({ homeSubTab }),
 });

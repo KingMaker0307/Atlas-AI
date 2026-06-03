@@ -46,7 +46,7 @@ export type { SendCoachMessageOptions } from "./slices/ai-slice";
 
 export type AtlasTab = "today" | "dashboard" | "workout" | "nutrition" | "coach" | "progress" | "settings";
 export type StartupChoice = "google-drive" | "local" | "local-offline" | "backup" | null;
-export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | "active-workout" | "exercise-database" | null;
+export type SubScreen = "routine-builder" | "workout-plan-builder" | "workout-plan-detail" | "active-workout" | "exercise-database" | "nutrition-analytics" | null;
 
 interface OnboardingData extends UserProfile {
   apiKey?: string;
@@ -752,6 +752,18 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
     set({ ...freshSnapshot(), hydrated: true });
   },
 }));
+
+if (typeof window !== "undefined") {
+  let currentTheme = useAtlasStore.getState().theme;
+  useAtlasStore.subscribe((state) => {
+    if (state.theme !== currentTheme) {
+      currentTheme = state.theme;
+      void import("@/lib/storage/db").then(({ writeLocalSetting }) => {
+        writeLocalSetting("theme", currentTheme);
+      });
+    }
+  });
+}
 
 export function useProgressionRecommendations() {
   const { workouts, recoveryLogs } = useAtlasStore();

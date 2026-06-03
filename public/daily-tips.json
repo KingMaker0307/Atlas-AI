@@ -1,0 +1,86 @@
+[
+  {
+    "id": "tip-hydration",
+    "emoji": "💧",
+    "headline": "Drink water first thing in the morning",
+    "body": "A glass of water right after waking up jumpstarts your body. Think of it like charging your phone overnight!",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-protein-meat",
+    "emoji": "🥩",
+    "headline": "Fuel your muscles with lean protein",
+    "body": "Protein is essential for muscle repair. Lean meats like chicken breast, turkey, or beef are highly bioavailable sources.",
+    "tags": ["meat", "non-veg"]
+  },
+  {
+    "id": "tip-protein-veg",
+    "emoji": "🫘",
+    "headline": "Plant-based protein builds muscle too",
+    "body": "Legumes, lentils, tofu, tempeh, and seitan are excellent high-protein plant sources to repair and grow your muscle fibers.",
+    "tags": ["vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-protein-dairy",
+    "emoji": "🥛",
+    "headline": "Greek yogurt is a protein powerhouse",
+    "body": "Yogurt and cottage cheese are rich in casein protein, which digests slowly and provides a steady release of amino acids.",
+    "tags": ["vegetarian", "dairy"]
+  },
+  {
+    "id": "tip-rest-days",
+    "emoji": "🛌",
+    "headline": "Rest days are just as important as workout days",
+    "body": "Your muscles actually grow while you sleep and rest — not during the workout itself. Don't feel guilty for resting!",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-consistency",
+    "emoji": "🐢",
+    "headline": "Slow and steady wins the race",
+    "body": "Showing up 3 days a week consistently for a year beats going every day for one month and burning out. Progress takes time.",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-movement",
+    "emoji": "🧘",
+    "headline": "Any movement counts",
+    "body": "A 20-minute walk, gentle stretching, or even gardening — it all helps your body get stronger and healthier.",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-sleep",
+    "emoji": "😴",
+    "headline": "Sleep is your secret superpower",
+    "body": "7–9 hours of sleep helps your body heal, your memory sharpen, and your energy stay high the next day.",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-start-small",
+    "emoji": "🎯",
+    "headline": "Start small and build up",
+    "body": "Even 5 minutes of exercise is better than nothing. You can always do more next time — the key is to start!",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-fiber",
+    "emoji": "🍎",
+    "headline": "Fiber keeps your energy stable",
+    "body": "Eating fiber-rich foods like oats, apples, chia seeds, and broccoli slows digestion, preventing blood sugar spikes and crashes.",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-electrolytes",
+    "emoji": "🧂",
+    "headline": "Replenish sodium and potassium",
+    "body": "When you sweat, you lose critical minerals. Bananas, coconut water, or a pinch of sea salt in your water help prevent cramping.",
+    "tags": ["general", "vegan", "vegetarian"]
+  },
+  {
+    "id": "tip-mobility",
+    "emoji": "🤸",
+    "headline": "Warm up dynamically before lifting",
+    "body": "Prioritize arm circles, leg swings, and bodyweight squats before training. Static stretching should be saved for after workouts.",
+    "tags": ["general", "vegan", "vegetarian"]
+  }
+]

@@ -928,6 +928,47 @@ export function WorkoutScreen() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
               Create a custom training program manually, start with a templates preset, or let our AI coach formulate a plan for you.
             </p>
+
+            {/* Step-by-Step Guide */}
+            <div className="mt-8 max-w-md w-full text-left bg-zinc-100/50 dark:bg-zinc-900/40 rounded-2xl p-5 border border-surface-border space-y-4">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Sparkles size={14} className="text-emerald-500" />
+                <span>How to Get Started</span>
+              </h3>
+              
+              <div className="grid gap-3.5 text-xs">
+                <div className="flex gap-3">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">1</span>
+                  <div>
+                    <h4 className="font-bold text-zinc-900 dark:text-white">Choose Your Creation Method</h4>
+                    <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                      Click the <strong>Create Custom Plan</strong> button below to build one manually, or navigate to the <strong>Coach</strong> tab to let the AI build one for you.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">2</span>
+                  <div>
+                    <h4 className="font-bold text-zinc-900 dark:text-white">Configure Plan & Routines</h4>
+                    <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                      Specify your goal, training experience level, and add targeted routines for each training day of the week.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">3</span>
+                  <div>
+                    <h4 className="font-bold text-zinc-900 dark:text-white">Set as Active & Log</h4>
+                    <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                      Once created, click <strong>Set Active Plan</strong>. You can then start logging workouts and tracking your volume and overload analytics!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <Button
               className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center gap-1.5"
               variant="primary"
@@ -973,8 +1014,8 @@ export function WorkoutScreen() {
                   <div>
                     <div className="flex items-start justify-between gap-4 border-b border-card-border pb-3">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-tight">{plan.name}</h2>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white leading-tight">{plan.name}</h2>
                           {isActive && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500/20">
                               Active
@@ -1068,67 +1109,75 @@ export function WorkoutScreen() {
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
 
         {/* ─── WORKOUT ANALYTICS SECTION ─── */}
-        <div className="border-t border-card-border/80 my-8 pt-8 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Workout Analytics</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Track your volume, progressive overload, and consistency</p>
+        {workoutPlans.length > 0 && (
+          <div className="border-t border-card-border/80 my-8 pt-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Workout Analytics</h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Track your volume, progressive overload, and consistency</p>
+              </div>
+              <div className="flex flex-col items-start sm:items-end gap-1.5 self-start sm:self-auto">
+                {guidedMode && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium max-w-[280px] text-left sm:text-right leading-tight">
+                    You&apos;re in <span className="font-bold">Guided Mode 🌱</span> — we&apos;ve simplified everything for you. Switch to Expert Mode any time in Settings.
+                  </p>
+                )}
+                {/* Segmented Control for Beginner vs Advanced */}
+                <div className="relative flex gap-1 rounded-2xl border border-surface-border bg-surface p-1 select-none shrink-0">
+                <button
+                  type="button"
+                  onClick={() => void setGuidedMode(true)}
+                  className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
+                    guidedMode
+                      ? "text-zinc-950"
+                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {guidedMode && (
+                    <motion.span
+                      layoutId="active-workout-analytics-mode"
+                      className="absolute inset-0 rounded-xl bg-emerald-300"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-20">Beginner 🌱</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void setGuidedMode(false)}
+                  className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
+                    !guidedMode
+                      ? "text-zinc-950"
+                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {!guidedMode && (
+                    <motion.span
+                      layoutId="active-workout-analytics-mode"
+                      className="absolute inset-0 rounded-xl bg-emerald-300"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-20">Advanced ⚡</span>
+                </button>
+              </div>
+              </div>
             </div>
             
-            {/* Segmented Control for Beginner vs Advanced */}
-            <div className="relative flex gap-1 rounded-2xl border border-surface-border bg-surface p-1 select-none self-start sm:self-auto shrink-0">
-              <button
-                type="button"
-                onClick={() => void setGuidedMode(true)}
-                className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
-                  guidedMode
-                    ? "text-zinc-950"
-                    : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
-                }`}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={guidedMode ? "beginner" : "advanced"}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
               >
-                {guidedMode && (
-                  <motion.span
-                    layoutId="active-workout-analytics-mode"
-                    className="absolute inset-0 rounded-xl bg-emerald-300"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-20">Beginner 🌱</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void setGuidedMode(false)}
-                className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
-                  !guidedMode
-                    ? "text-zinc-950"
-                    : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
-                }`}
-              >
-                {!guidedMode && (
-                  <motion.span
-                    layoutId="active-workout-analytics-mode"
-                    className="absolute inset-0 rounded-xl bg-emerald-300"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-20">Advanced ⚡</span>
-              </button>
-            </div>
+                {guidedMode ? <DashboardScreen /> : <AdvancedAnalyticsScreen />}
+              </motion.div>
+            </AnimatePresence>
           </div>
-          
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={guidedMode ? "beginner" : "advanced"}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {guidedMode ? <DashboardScreen /> : <AdvancedAnalyticsScreen />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+        )}
 
         {/* End of Plans tab content */}
         </>

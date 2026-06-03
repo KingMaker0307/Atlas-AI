@@ -71,10 +71,12 @@ export function WorkoutPlanDetailScreen() {
   if (!plan) return null;
 
   const isReadOnly = plan.creatorType === "template" || plan.creatorType === "ai";
-  const startDay = plan.startDay || "Monday";
   const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  const idx = DAYS_OF_WEEK.indexOf(startDay);
-  const daysSequence = idx === -1 ? DAYS_OF_WEEK : [...DAYS_OF_WEEK.slice(idx), ...DAYS_OF_WEEK.slice(0, idx)];
+  const todayDayName = useMemo(() => new Date().toLocaleDateString("en-US", { weekday: "long" }), []);
+  const todayIdx = DAYS_OF_WEEK.indexOf(todayDayName);
+  const daysSequence = useMemo(() => {
+    return todayIdx === -1 ? DAYS_OF_WEEK : [...DAYS_OF_WEEK.slice(todayIdx), ...DAYS_OF_WEEK.slice(0, todayIdx)];
+  }, [todayIdx]);
 
   const handleStartRoutineClick = (routine: Routine) => {
     setRoutineToStart(routine);
@@ -82,7 +84,6 @@ export function WorkoutPlanDetailScreen() {
   };
 
   const handleTryStartWorkout = (routine: Routine) => {
-    const todayDayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
     
     if (routine.day.toLowerCase() !== todayDayName.toLowerCase()) {
       // Find if another routine is already scheduled for today in this plan
@@ -108,7 +109,6 @@ export function WorkoutPlanDetailScreen() {
     setShowConflictModal(false);
     if (!conflictRoutine) return;
 
-    const todayDayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
     const originalScheduledDay = conflictRoutine.day;
 
     if (conflictingRoutineToday) {
@@ -155,8 +155,8 @@ export function WorkoutPlanDetailScreen() {
             <ArrowLeft size={20} />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">{plan.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">{plan.name}</h1>
               <span title="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
                 <Info 
                   size={15} 
@@ -227,7 +227,7 @@ export function WorkoutPlanDetailScreen() {
                   <div className="flex items-start justify-between gap-4 border-b border-card-border pb-3">
                     <div>
                       <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">{day}</span>
-                      <h2 className="mt-2 text-xl font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-tight">{routine.name}</h2>
+                      <h2 className="mt-2 text-lg sm:text-xl font-bold text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-tight">{routine.name}</h2>
                       <p className="mt-1 text-xs text-zinc-555 leading-normal">{routine.focus}</p>
 
                       {/* Rescheduling Dropdown */}
@@ -292,7 +292,7 @@ export function WorkoutPlanDetailScreen() {
                             className="flex items-center justify-between p-2.5 rounded-xl border border-surface-border bg-surface text-xs shadow-sm"
                             key={item.exerciseId}
                           >
-                            <div className="space-y-0.5 max-w-[12rem] sm:max-w-[14rem]">
+                            <div className="space-y-0.5 min-w-0 flex-1 mr-3">
                               <p className="font-bold text-zinc-900 dark:text-white truncate leading-snug">
                                 {exDetails?.name}
                               </p>
