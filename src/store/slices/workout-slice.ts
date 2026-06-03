@@ -43,7 +43,7 @@ export interface WorkoutSlice {
   getExerciseById: (id: string) => Exercise | undefined;
 }
 
-function recentWeightForExercise(workouts: Workout[], exerciseId: string): number {
+function recentWeightForExercise(workouts: Workout[], exerciseId: string, bodyweightFallback: number = 0): number {
   const last = [...workouts]
     .reverse()
     .flatMap((workout) => workout.exercises)
@@ -51,7 +51,7 @@ function recentWeightForExercise(workouts: Workout[], exerciseId: string): numbe
   const best = last?.sets
     .filter((set) => set.completed)
     .sort((a, b) => b.weight * b.reps - a.weight * a.reps)[0];
-  return best?.weight ?? 0;
+  return best?.weight ?? bodyweightFallback;
 }
 
 function buildWorkoutFromRoutine(
@@ -68,7 +68,10 @@ function buildWorkoutFromRoutine(
     exercises: routine.exercises.map((exercise) => {
       const exerciseData = get().getExerciseById(exercise.exerciseId);
       const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
-      const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId);
+      const isBodyweight = exerciseData?.equipment?.includes("bodyweight");
+      const profileWeight = state.profile?.weight ?? 0;
+      const bwFallback = isBodyweight ? profileWeight : 0;
+      const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId, bwFallback);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
 
       const numSets = isCardio ? 1 : exercise.targetSets;
@@ -331,6 +334,9 @@ export const createWorkoutSlice: StateCreator<
           const last = exercise.sets.at(-1);
           const exerciseData = get().getExerciseById(exercise.exerciseId);
           const isCardio = exerciseData?.category === "cardio" || exerciseData?.category === "steady-state";
+          const isBodyweight = exerciseData?.equipment?.includes("bodyweight");
+          const profileWeight = get().profile?.weight ?? 0;
+          const defaultWeight = last?.weight ?? (isBodyweight ? profileWeight : 0);
           return {
             ...exercise,
             sets: [
@@ -350,7 +356,7 @@ export const createWorkoutSlice: StateCreator<
                 : {
                     id: createId("set"),
                     reps: last?.reps ?? 8,
-                    weight: last?.weight ?? 0,
+                    weight: defaultWeight,
                     rir: last?.rir ?? 2,
                     completed: false,
                   },

@@ -30,6 +30,8 @@ export interface AiSlice {
   providerBusy: boolean;
   apiCallCount: number;
   tokenCount: number;
+  aiWorkoutTipsCache: Record<string, string>;
+  aiNutritionTipsCache: Record<string, string>;
 
   saveProvider: (provider: AiProviderSettings, apiKeyPlain?: string) => Promise<void>;
   setActiveProvider: (providerId: string) => Promise<void>;
@@ -37,6 +39,8 @@ export interface AiSlice {
   testProvider: (providerId: string) => Promise<void>;
   sendCoachMessage: (content: string, options?: SendCoachMessageOptions) => Promise<void>;
   generateGlobalExercise: (name: string) => Promise<Exercise | null>;
+  setAiWorkoutTipCache: (range: string, tip: string) => void;
+  setAiNutritionTipCache: (range: string, tip: string) => void;
 }
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -84,6 +88,8 @@ export const createAiSlice: StateCreator<
   providerBusy: false,
   apiCallCount: 0,
   tokenCount: 0,
+  aiWorkoutTipsCache: {},
+  aiNutritionTipsCache: {},
 
   saveProvider: async (provider, apiKeyPlain) => {
     let finalApiKey = provider.apiKey;
@@ -497,5 +503,23 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         coachBusy: false,
       });
     }
+  },
+
+  setAiWorkoutTipCache: (range, tip) => {
+    set({
+      aiWorkoutTipsCache: {
+        ...get().aiWorkoutTipsCache,
+        [range]: tip,
+      },
+    });
+  },
+
+  setAiNutritionTipCache: (range, tip) => {
+    set({
+      aiNutritionTipsCache: {
+        ...get().aiNutritionTipsCache,
+        [range]: tip,
+      },
+    });
   },
 });

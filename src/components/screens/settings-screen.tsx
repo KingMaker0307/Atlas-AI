@@ -1079,13 +1079,18 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
                     <div className="space-y-4 pt-1">
                       <Field label="Dietary Preferences">
-                        <Input
-                          value={draftProfile.dietaryPreferences ?? ""}
-                          maxLength={200}
+                        <Select
+                          value={draftProfile.dietaryPreferences ?? "non-vegetarian"}
                           onChange={(e) => handleProfileChange("dietaryPreferences", e.target.value)}
-                          placeholder="e.g. Vegetarian, Gluten-free, no peanuts"
-                          className="text-xs font-medium"
-                        />
+                          className="text-xs font-bold font-sans"
+                        >
+                          <option value="vegan">Vegan</option>
+                          <option value="vegetarian">Vegetarian</option>
+                          <option value="non-vegetarian">Non-vegetarian</option>
+                          {draftProfile.dietaryPreferences && !["vegan", "vegetarian", "non-vegetarian"].includes(draftProfile.dietaryPreferences.toLowerCase()) && (
+                            <option value={draftProfile.dietaryPreferences}>{draftProfile.dietaryPreferences}</option>
+                          )}
+                        </Select>
                       </Field>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <Field label="Injuries / Limitations">

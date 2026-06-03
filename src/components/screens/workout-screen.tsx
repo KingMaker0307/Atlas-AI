@@ -49,7 +49,6 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise, Routine } from "@/types/domain";
 import { cn } from "@/lib/cn";
 import { NutritionTracker } from "@/components/nutrition-tracker";
-import { DashboardScreen } from "./dashboard-screen";
 import { AdvancedAnalyticsScreen } from "./advanced-analytics-screen";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 import { PostWorkoutCheckinModal } from "@/components/post-workout-checkin-modal";
@@ -1111,46 +1110,29 @@ export function WorkoutScreen() {
 
         {/* ─── WORKOUT ANALYTICS SECTION ─── */}
         {workoutPlans.length > 0 && (
-          <div className="border-t border-card-border/80 my-8 pt-8 space-y-6">
-            <Card className="p-5 space-y-4 shadow-sm border-card-border bg-card">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-card-border pb-3.5">
+          <div className="border-t border-card-border/80 my-8 pt-8 space-y-5">
+            {/* Header card */}
+            <Card className="p-5 border border-card-border bg-card shadow-sm rounded-3xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Workout Analytics</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Track your volume, progressive overload, and consistency</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                  </p>
                 </div>
-                <div className="flex flex-col items-start sm:items-end gap-1.5 self-start sm:self-auto shrink-0">
-                  {/* Experience Mode Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setGuidedMode(!guidedMode)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-surface hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none"
-                  >
-                    <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
-                    <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
-                  </button>
-                </div>
-              </div>
-
-
-              <div className="pt-1.5">
-                <h3 className="text-base font-bold text-foreground">Your Progress</h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setGuidedMode(!guidedMode)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-border bg-surface hover:bg-surface/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none shrink-0"
+                >
+                  <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500"} />
+                  <span>{guidedMode ? "Beginner View" : "Advanced View"}</span>
+                </button>
               </div>
             </Card>
-            
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={guidedMode ? "beginner" : "advanced"}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                {guidedMode ? <DashboardScreen /> : <AdvancedAnalyticsScreen />}
-              </motion.div>
-            </AnimatePresence>
+
+            {/* Analytics content — mode managed internally */}
+            <AdvancedAnalyticsScreen />
           </div>
         )}
 

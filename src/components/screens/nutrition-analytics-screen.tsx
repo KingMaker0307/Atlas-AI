@@ -17,6 +17,9 @@ import {
   BarChart3,
   Shield,
   Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 
 import { Card, Surface } from "@/components/ui/card";
@@ -24,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { calculateNutritionTargets } from "@/lib/calculators";
+import { getSmartNutritionTips } from "@/lib/coach/smart-nutrition-tips";
+import { AiNutritionTip } from "@/components/ai-nutrition-tip";
 
 // Helper to format Date as YYYY-MM-DD
 const getLocalDateString = (dateOrStr: Date | string) => {
@@ -116,6 +121,58 @@ const MicroBadge: FC<{ label: string; value: number; max: number; unit: string; 
         <p className="text-[10px] font-sans tabular-nums font-semibold text-zinc-750 dark:text-zinc-300 mt-0.5">{value.toFixed(0)}/{max}{unit}</p>
       </div>
     </Surface>
+  );
+};
+
+// ─── Smart Nutrition Tip Card ─────────────────────────────────────────
+const SmartNutritionTipCard: FC<{ targetDateString: string }> = ({ targetDateString }) => {
+  const profile = useAtlasStore((s) => s.profile);
+  const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
+  const waterLogs = useAtlasStore((s) => s.waterLogs || []);
+
+  const tips = useMemo(
+    () => getSmartNutritionTips(profile, nutritionEntries, waterLogs, targetDateString),
+    [profile, nutritionEntries, waterLogs, targetDateString]
+  );
+
+  if (tips.length === 0) return null;
+
+  return (
+    <Card className="p-4 space-y-3 shadow-sm border-card-border">
+      <div className="flex items-center gap-2 border-b border-card-border pb-2.5">
+        <Sparkles size={15} className="text-emerald-500" />
+        <h4 className="text-xs font-bold text-zinc-955">Nutrition Insights &amp; Tips</h4>
+      </div>
+      <div className="space-y-3">
+        {tips.map((tip, idx) => {
+          const Icon = {
+            info: Info,
+            warning: AlertTriangle,
+            success: CheckCircle2,
+            tip: Sparkles,
+          }[tip.type] || Sparkles;
+
+          const colors = {
+            info: "bg-blue-500/5 border-blue-500/15 text-blue-500",
+            warning: "bg-amber-500/5 border-amber-500/15 text-amber-505 dark:text-amber-400",
+            success: "bg-emerald-500/5 border-emerald-500/15 text-emerald-500",
+            tip: "bg-blue-500/5 border-blue-500/15 text-blue-500",
+          }[tip.type] || "bg-blue-500/5 border-blue-500/15 text-blue-500";
+
+          return (
+            <div key={idx} className={`p-4 rounded-2xl border flex items-start gap-3 ${colors}`}>
+              <Icon size={16} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-foreground">{tip.title}</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed font-semibold">
+                  {tip.desc}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 };
 
@@ -529,6 +586,10 @@ export function NutritionAnalyticsScreen() {
             </div>
           )}
         </Card>
+
+        {/* Smart & AI Nutrition Coaching Tips */}
+        <SmartNutritionTipCard targetDateString={targetDateString} />
+        <AiNutritionTip />
 
         {/* 3. Historical Trends & Averages Card (Averages + Top Micronutrient Food Sources) */}
         <Card className="p-4 space-y-4">
