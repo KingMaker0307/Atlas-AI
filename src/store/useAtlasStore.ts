@@ -439,6 +439,8 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
             bodyMetrics: newBodyMetrics ?? [],
             recoveryLogs: newRecovery ?? [],
             profile: newProfile ? migrateProfile(newProfile as any) : (migratedProfile as any),
+            heightUnit: newProfile?.heightUnit ?? (migratedProfile?.heightUnit ?? get().heightUnit),
+            weightUnit: newProfile?.weightUnit ?? (migratedProfile?.weightUnit ?? get().weightUnit),
             hasOnboarded: true,
             activeWorkoutPlanId: newMigratedPlans[0]?.id ?? null,
             activeWorkout,
@@ -462,7 +464,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           void (async () => {
             await drainSyncQueue();
             await get().pullCloudUpdate();
-          })();
+          })().catch((err) => console.warn("[Sync] Background migration sync error:", err));
           return;
         } catch (migErr) {
           console.error("[Migration] Local guest data migration failed:", migErr);
@@ -478,6 +480,8 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         bodyMetrics: bodyMetrics ?? freshSnap.bodyMetrics,
         recoveryLogs: recovery ?? freshSnap.recoveryLogs,
         profile: enrichedProfile || (freshSnap.profile ?? defaultProfile),
+        heightUnit: enrichedProfile?.heightUnit ?? (freshSnap.profile?.heightUnit ?? get().heightUnit),
+        weightUnit: enrichedProfile?.weightUnit ?? (freshSnap.profile?.weightUnit ?? get().weightUnit),
         hasOnboarded: !!profile,
         activeWorkoutPlanId,
         activeWorkout,
@@ -501,10 +505,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       void (async () => {
         await drainSyncQueue();
         await get().pullCloudUpdate();
-      })();
+      })().catch((err) => console.warn("[Sync] Background startup sync error:", err));
 
       if (typeof window !== "undefined") {
-        window.addEventListener("online", () => { void drainSyncQueue(); }, { once: false });
+        window.addEventListener("online", () => {
+          void drainSyncQueue().catch((err) => console.warn("[Sync] Online drain error:", err));
+        }, { once: false });
       }
     } else {
       set({ hydrated: true, coachBusy: false, providerBusy: false });
@@ -579,6 +585,8 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         bodyMetrics: bodyMetrics ?? get().bodyMetrics,
         recoveryLogs: recovery ?? get().recoveryLogs,
         profile: enrichedProfile ?? get().profile,
+        heightUnit: enrichedProfile?.heightUnit ?? get().heightUnit,
+        weightUnit: enrichedProfile?.weightUnit ?? get().weightUnit,
         aiProviders: (dbProviders && dbProviders.length > 0) ? dbProviders : get().aiProviders,
         activeProviderId: (dbProviders && dbProviders.length > 0) ? (dbProviders.find((p: any) => p.enabled)?.id || dbProviders[0]?.id) : get().activeProviderId,
         lastSyncedAt: new Date().toISOString(),
@@ -612,12 +620,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       const isLocalProvider = providerType === "ollama" || providerType === "lmstudio";
 
       const defaultModelForType: Record<string, string> = {
-        openai: "gpt-4o",
-        anthropic: "claude-3-5-sonnet-20241022",
-        gemini: "gemini-1.5-pro",
-        grok: "grok-beta",
+        openai: "gpt-4o-mini",
+        anthropic: "claude-sonnet-4-5",
+        gemini: "gemini-2.0-flash",
+        grok: "grok-3",
         deepseek: "deepseek-chat",
-        openrouter: "meta-llama/llama-3.1-70b-instruct",
+        openrouter: "google/gemini-2.0-flash-001",
         ollama: "llama3",
         lmstudio: "model",
         custom: "model"
@@ -675,8 +683,14 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         ...tempProvider,
         model: finalModel,
         apiKey: encryptedKey,
+        enabled: true,
       };
       set({ aiProviders: [newProvider], activeProviderId: providerId });
+
+      // Persist the provider (with encrypted key) to IDB + Supabase.
+      // Without this, the provider only lives in Zustand memory and is lost on reload.
+      registry.save((r, uid) => r.aiProvider.saveProvider(uid, newProvider));
+      registry.save((r, uid) => r.aiProvider.setActiveProvider(uid, providerId));
     }
 
     const finalProfile = { ...profile, goal: customGoal ?? profile.goal };
@@ -699,9 +713,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       delete safePatch.email;
       delete safePatch.emailVerified;
     }
-    const finalPatch = profile.email ? safePatch : patch;
-    const updatedProfile = { ...profile, ...finalPatch };
-    set({ profile: updatedProfile });
+    const updatedProfile = { ...profile, ...safePatch };
+    set({ 
+      profile: updatedProfile,
+      heightUnit: updatedProfile.heightUnit ?? get().heightUnit,
+      weightUnit: updatedProfile.weightUnit ?? get().weightUnit,
+    });
     registry.save((r, uid) => r.user.saveProfile(uid, updatedProfile));
   },
 

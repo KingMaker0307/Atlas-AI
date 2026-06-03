@@ -9,6 +9,7 @@ import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import type { Routine } from "@/types/domain"; // Import Routine type
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal"; // Import the new modal
 import { RoutineDayConflictModal } from "@/components/routine-day-conflict-modal"; // Import the conflict modal
+import { Tooltip } from "@/components/ui/tooltip";
 import { useState, useMemo } from "react";
 
 export function WorkoutPlanDetailScreen() {
@@ -157,12 +158,12 @@ export function WorkoutPlanDetailScreen() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">{plan.name}</h1>
-              <span title="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
+              <Tooltip content="Daily Workout Limit: A maximum of 3 workouts can be logged per day to prevent overtraining and ensure recovery.">
                 <Info 
                   size={15} 
-                  className="text-zinc-750 hover:text-emerald-500 transition-colors cursor-help" 
+                  className="text-zinc-750 hover:text-emerald-500 transition-colors" 
                 />
-              </span>
+              </Tooltip>
             </div>
             <p className="text-xs text-zinc-555 pt-0.5">{plan.goal}</p>
           </div>

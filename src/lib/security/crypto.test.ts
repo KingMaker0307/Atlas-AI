@@ -44,9 +44,10 @@ describe("security/crypto.ts utilities", () => {
       expect(decrypted).toBe("");
     });
 
-    it("should return empty string for corrupted decrypt inputs", async () => {
-      const decrypted = await decryptString({ iv: "invalid-iv", data: "invalid-data" });
-      expect(decrypted).toBe("");
+    it("should throw for corrupted decrypt inputs (wrong key material)", async () => {
+      await expect(
+        decryptString({ iv: "invalid-iv", data: "invalid-data" })
+      ).rejects.toThrow("Could not decrypt your saved API key");
     });
   });
 

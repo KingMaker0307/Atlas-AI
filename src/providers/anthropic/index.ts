@@ -73,10 +73,12 @@ export const anthropicAdapter: AiProviderAdapter = {
     });
     if (!response.ok) await parseError(response);
     const body = (await response.json()) as { data?: Array<{ id: string; display_name?: string }> };
-    return (body.data ?? []).map((model) => ({
-      id: model.id,
-      label: model.display_name,
-    }));
+    return (body.data ?? [])
+      .map((model) => ({
+        id: model.id,
+        label: model.display_name,
+      }))
+      .filter((m) => m.id.startsWith("claude-"));
   },
   async validate(settings: AiProviderSettings, apiKey: string): Promise<boolean> {
     await this.listModels(settings, apiKey);

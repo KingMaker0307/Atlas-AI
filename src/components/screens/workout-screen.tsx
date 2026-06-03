@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   Check,
@@ -1122,46 +1123,15 @@ export function WorkoutScreen() {
                     You&apos;re in <span className="font-bold">Guided Mode 🌱</span> — we&apos;ve simplified everything for you. Switch to Expert Mode any time in Settings.
                   </p>
                 )}
-                {/* Segmented Control for Beginner vs Advanced */}
-                <div className="relative flex gap-1 rounded-2xl border border-surface-border bg-surface p-1 select-none shrink-0">
+                {/* Experience Mode Toggle */}
                 <button
                   type="button"
-                  onClick={() => void setGuidedMode(true)}
-                  className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
-                    guidedMode
-                      ? "text-zinc-950"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
-                  }`}
+                  onClick={() => setGuidedMode(!guidedMode)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none"
                 >
-                  {guidedMode && (
-                    <motion.span
-                      layoutId="active-workout-analytics-mode"
-                      className="absolute inset-0 rounded-xl bg-emerald-300"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-20">Beginner 🌱</span>
+                  <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
+                  <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => void setGuidedMode(false)}
-                  className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
-                    !guidedMode
-                      ? "text-zinc-950"
-                      : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
-                  }`}
-                >
-                  {!guidedMode && (
-                    <motion.span
-                      layoutId="active-workout-analytics-mode"
-                      className="absolute inset-0 rounded-xl bg-emerald-300"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                  <span className="relative z-20">Advanced ⚡</span>
-                </button>
-              </div>
               </div>
             </div>
             

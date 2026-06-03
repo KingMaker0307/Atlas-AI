@@ -100,7 +100,12 @@ export async function decryptString(secret?: EncryptedSecret): Promise<string> {
     );
     return new TextDecoder().decode(decrypted);
   } catch {
-    return "";
+    // Decryption failed — device secret may have changed (e.g., different browser/cleared storage).
+    // Throwing here surfaces a clear error to the UI instead of silently sending
+    // an empty string to the AI provider (which results in a confusing "Invalid API Key" error).
+    throw new Error(
+      "Could not decrypt your saved API key — your browser data may have changed. Please re-enter your API key in Settings.",
+    );
   }
 }
 

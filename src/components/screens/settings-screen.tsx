@@ -34,12 +34,16 @@ import {
   X,
   Activity,
   Heart,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { AiProviderSettings, HeightUnit, ThemeMode, WeightUnit, UserProfile, Physique } from "@/types/domain";
@@ -47,6 +51,43 @@ import { getProviderAdapter } from "@/providers";
 import { decryptString } from "@/lib/security/crypto";
 import { renderGoogleSignInButton } from "@/lib/google-auth";
 import { restoreProfileByEmail } from "@/lib/sync";
+
+const DEFAULT_MODELS_BY_PROVIDER: Record<string, string[]> = {
+  openai: ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo", "o1-mini", "o3-mini"],
+  anthropic: [
+    "claude-sonnet-4-5",
+    "claude-sonnet-4-0",
+    "claude-3-7-sonnet-latest",
+    "claude-3-5-sonnet-latest",
+    "claude-3-5-haiku-latest",
+    "claude-3-opus-latest",
+    "claude-3-haiku-20240307"
+  ],
+  gemini: [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-pro-preview-05-06",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro",
+  ],
+  grok: ["grok-3", "grok-3-mini", "grok-2", "grok-2-1212", "grok-beta"],
+  deepseek: ["deepseek-chat", "deepseek-reasoner"],
+  openrouter: [
+    "google/gemini-2.0-flash-001",
+    "google/gemini-2.5-flash-preview",
+    "anthropic/claude-sonnet-4-5",
+    "anthropic/claude-3.7-sonnet",
+    "anthropic/claude-3.5-sonnet",
+    "openai/gpt-4o-mini",
+    "openai/gpt-4o",
+    "meta-llama/llama-3.3-70b-instruct",
+    "deepseek/deepseek-chat"
+  ],
+  ollama: ["llama3", "llama3.1", "llama3.2", "mistral", "phi4", "gemma2", "qwen2.5"],
+  lmstudio: ["meta-llama-3-8b-instruct"],
+};
 
 const providerTypes: AiProviderSettings["type"][] = [
   "openai",
@@ -127,12 +168,12 @@ const defaultDraftForType = (type: AiProviderSettings["type"]): AiProviderSettin
   label: providerConfig[type]?.label || "Custom API",
   baseUrl: defaultBaseUrls[type] || "",
   model:
-    type === "openai" ? "gpt-4o" :
-      type === "anthropic" ? "claude-3-5-sonnet-20241022" :
-        type === "gemini" ? "gemini-1.5-pro" :
+    type === "openai" ? "gpt-4o-mini" :
+      type === "anthropic" ? "claude-sonnet-4-5" :
+        type === "gemini" ? "gemini-2.0-flash" :
           type === "deepseek" ? "deepseek-chat" :
-            type === "grok" ? "grok-beta" :
-              type === "openrouter" ? "meta-llama/llama-3.1-70b-instruct" :
+            type === "grok" ? "grok-3" :
+              type === "openrouter" ? "google/gemini-2.0-flash-001" :
                 type === "ollama" ? "llama3" :
                   type === "lmstudio" ? "model" : "model",
   temperature: 0.7,
@@ -286,6 +327,9 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   const [forceLoadRealGoogleUpgrade, setForceLoadRealGoogleUpgrade] = useState(false);
 
   const [initialized, setInitialized] = useState(false);
+  // Tracks the last provider id we've fully synced into draft/apiKey state.
+  // Used to detect when pullCloudUpdate changes the active provider after init.
+  const lastSyncedProviderIdRef = useRef<string | undefined>(undefined);
   const [selectedType, setSelectedType] = useState<AiProviderSettings["type"]>("openai");
   const [draft, setDraft] = useState<AiProviderSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
@@ -309,16 +353,26 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
     }
   }, [draft, prevDraftId]);
 
-  // Initialize selected type and draft based on active provider
+  // Initialize selected type and draft based on active provider.
+  // Also handles the cloud-sync race: pullCloudUpdate() runs after hydrate() and may
+  // load the real provider (with stored API key) AFTER initialized=true is set.
+  // The ref lets us detect when the active provider truly changes post-init.
   useEffect(() => {
-    if (providers.length > 0 && !initialized) {
-      const active = providers.find((p) => p.id === activeProviderId) || providers[0];
-      if (active) {
-        setSelectedType(active.type);
-        setDraft({ ...active });
-        setInitialized(true);
-      }
+    if (providers.length === 0) return;
+    const active = providers.find((p) => p.id === activeProviderId) || providers[0];
+    if (!active) return;
+
+    const isFirstInit = !initialized;
+    const activeProviderChanged = active.id !== lastSyncedProviderIdRef.current;
+
+    if (isFirstInit || activeProviderChanged) {
+      lastSyncedProviderIdRef.current = active.id;
+      setSelectedType(active.type);
+      setDraft({ ...active });
+      setApiKey(active.apiKey ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "");
+      if (isFirstInit) setInitialized(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providers, activeProviderId, initialized]);
 
   // Keep draft updated if the store copy changes (e.g., tested status updates)
@@ -328,6 +382,9 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
   useEffect(() => {
     if (activeSavedProviderOfSelectedType && draft && draft.id === activeSavedProviderOfSelectedType.id) {
+      const prevHadKey = !!draft.apiKey;
+      const nowHasKey = !!activeSavedProviderOfSelectedType.apiKey;
+
       setDraft((d) => {
         if (!d) return null;
         return {
@@ -338,6 +395,14 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           apiKey: activeSavedProviderOfSelectedType.apiKey,
         };
       });
+
+      // If key presence changed (e.g., cloud sync loaded a stored key after init),
+      // also update the UI key field so models can be fetched automatically.
+      if (nowHasKey && !prevHadKey) {
+        setApiKey("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022");
+      } else if (!nowHasKey && prevHadKey) {
+        setApiKey("");
+      }
     }
   }, [activeSavedProviderOfSelectedType]);
 
@@ -530,6 +595,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
   const handleSelectType = (type: AiProviderSettings["type"]) => {
     setSelectedType(type);
+    setModels([]); // Reset models list immediately on switch
+    setModelsError(null);
     const existing = providers.find((p) => p.type === type);
     if (existing) {
       setDraft({ ...existing });
@@ -602,13 +669,21 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
       streaming: true,
     };
     const keyToPass = apiKey === "••••••••••••••••" ? undefined : apiKey;
-    await saveProvider(updatedDraft, keyToPass);
-    await setActiveProvider(updatedDraft.id);
-    setDraft(updatedDraft);
-    if (apiKey !== "") {
-      setApiKey("••••••••••••••••");
+    try {
+      await saveProvider(updatedDraft, keyToPass);
+      await setActiveProvider(updatedDraft.id);
+      setDraft(updatedDraft);
+      if (apiKey !== "") {
+        setApiKey("••••••••••••••••");
+      }
+      await testProvider(updatedDraft.id);
+    } catch (err: any) {
+      setAiError(
+        err?.message
+          ? `Cloud save failed: ${err.message}. Your settings are saved locally for this session only.`
+          : "Failed to save provider to cloud. Check your connection and try again."
+      );
     }
-    await testProvider(updatedDraft.id);
   };
 
   const handleTestProvider = async () => {
@@ -639,12 +714,20 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
       streaming: true,
     };
     const keyToPass = apiKey === "••••••••••••••••" ? undefined : apiKey;
-    await saveProvider(updatedDraft, keyToPass);
-    setDraft(updatedDraft);
-    if (apiKey !== "") {
-      setApiKey("••••••••••••••••");
+    try {
+      await saveProvider(updatedDraft, keyToPass);
+      setDraft(updatedDraft);
+      if (apiKey !== "") {
+        setApiKey("••••••••••••••••");
+      }
+      await testProvider(updatedDraft.id);
+    } catch (err: any) {
+      setAiError(
+        err?.message
+          ? `Cloud save failed: ${err.message}. Your settings are saved locally for this session only.`
+          : "Failed to save provider to cloud. Check your connection and try again."
+      );
     }
-    await testProvider(updatedDraft.id);
   };
 
 
@@ -677,29 +760,26 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-white transition active:scale-95 cursor-pointer shrink-0"
-            aria-label="Close settings"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
           >
             <X size={16} />
           </button>
         )}
       </section>
 
-      {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}
-
       {/* Mobile grid tab selectors */}
       <div className="grid grid-cols-2 gap-2.5 md:hidden select-none mb-1">
         {[
-          { id: "profile", label: "Profile & Goals", icon: <User size={15} />, color: "emerald" },
-          { id: "ai", label: "AI Coach settings", icon: <Cpu size={15} />, color: "violet" },
-          { id: "system", label: "Data & Backup", icon: <Server size={15} />, color: "sky" },
-          { id: "subscription", label: "Plan & Access", icon: <Zap size={15} />, color: "amber" },
+          { id: "profile", label: "Profile", icon: <User size={15} />, color: "emerald" },
+          { id: "ai", label: "AI Coach", icon: <Cpu size={15} />, color: "violet" },
+          { id: "system", label: "Data", icon: <Server size={15} />, color: "sky" },
+          { id: "subscription", label: "Plan", icon: <Zap size={15} />, color: "amber" },
         ].map((tab) => {
           const active = activeSettingsTab === tab.id;
           
           const colorStyles = {
             emerald: active 
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold shadow-sm" 
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-455 font-extrabold shadow-sm" 
               : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200",
             violet: active 
               ? "border-violet-500/30 bg-violet-500/10 text-violet-650 dark:text-violet-400 font-extrabold shadow-sm" 
@@ -723,12 +803,12 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             <button
               key={tab.id}
               onClick={() => setActiveSettingsTab(tab.id as any)}
-              className={`flex items-center gap-2.5 p-2.5 text-[10px] font-black uppercase tracking-wider rounded-2xl border transition-all active:scale-[0.98] ${colorStyles}`}
+              className={`flex items-center gap-2 p-2.5 text-[10px] font-black uppercase tracking-wider rounded-2xl border transition-all active:scale-[0.98] ${colorStyles} min-[380px]:justify-start justify-center overflow-hidden`}
             >
               <div className={`p-1.5 rounded-lg border shrink-0 flex items-center justify-center ${iconStyles}`}>
                 {tab.icon}
               </div>
-              <span className="truncate leading-tight text-left">{tab.label}</span>
+              <span className="leading-tight text-left whitespace-nowrap hidden min-[380px]:block">{tab.label}</span>
             </button>
           );
         })}
@@ -919,74 +999,82 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                         </Select>
                       </Field>
 
-                      <Field label={`Weight (${weightUnit})`}>
-                        <Input
-                          type="number"
-                          min={20}
-                          max={1000}
-                          value={draftProfile.weight ?? ""}
-                          onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
-                          className="text-xs font-mono font-bold"
-                        />
-                      </Field>
-                      <SegmentedSetting<WeightUnit>
-                        label="Weight System"
-                        value={draftProfile.weightUnit ?? weightUnit}
-                        values={["lbs", "kg"]}
-                        onChange={(value) => void handleWeightUnitChange(value)}
-                      />
+                      {(() => {
+                        const activeWeightUnit = draftProfile.weightUnit ?? weightUnit;
+                        const activeHeightUnit = draftProfile.heightUnit ?? heightUnit;
+                        return (
+                          <>
+                            <Field label={`Weight (${activeWeightUnit})`}>
+                              <Input
+                                type="number"
+                                min={20}
+                                max={1000}
+                                value={draftProfile.weight ?? ""}
+                                onChange={(e) => handleProfileChange("weight", Number(e.target.value))}
+                                className="text-xs font-mono font-bold"
+                              />
+                            </Field>
+                            <SegmentedSetting<WeightUnit>
+                              label="Weight System"
+                              value={activeWeightUnit}
+                              values={["lbs", "kg"]}
+                              onChange={(value) => void handleWeightUnitChange(value)}
+                            />
 
-                      <Field label={`Height (${heightUnit === "in" ? "ft & in" : "cm"})`}>
-                        {heightUnit === "in" ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Input
-                                type="number"
-                                min={2}
-                                max={8}
-                                placeholder="Feet"
-                                value={draftProfile.height ? Math.floor(draftProfile.height / 12) : ""}
-                                onChange={(e) => {
-                                  const feet = Number(e.target.value);
-                                  const inches = (draftProfile.height ?? 0) % 12;
-                                  handleProfileChange("height", feet * 12 + inches);
-                                }}
-                                className="text-xs font-mono font-bold"
-                              />
-                            </div>
-                            <div>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={11}
-                                placeholder="Inches"
-                                value={draftProfile.height ? Math.round(draftProfile.height % 12) : ""}
-                                onChange={(e) => {
-                                  const inches = Number(e.target.value);
-                                  const feet = Math.floor((draftProfile.height ?? 0) / 12) || 5;
-                                  handleProfileChange("height", feet * 12 + inches);
-                                }}
-                                className="text-xs font-mono font-bold"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <Input
-                            type="number"
-                            min={20}
-                            max={300}
-                            value={draftProfile.height ?? ""}
-                            onChange={(e) => handleProfileChange("height", Number(e.target.value))}
-                            className="text-xs font-mono font-bold"
-                          />
-                        )}
-                      </Field>
-                      <SegmentedSetting<HeightUnit>
-                        label="Height System"
-                        value={draftProfile.heightUnit ?? heightUnit}
-                        values={["in", "cm"]}
-                        onChange={(value) => void handleHeightUnitChange(value)}
-                      />
+                            <Field label={`Height (${activeHeightUnit === "in" ? "ft & in" : "cm"})`}>
+                              {activeHeightUnit === "in" ? (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Input
+                                      type="number"
+                                      min={2}
+                                      max={8}
+                                      placeholder="Feet"
+                                      value={draftProfile.height ? Math.floor(draftProfile.height / 12) : ""}
+                                      onChange={(e) => {
+                                        const feet = Number(e.target.value);
+                                        const inches = (draftProfile.height ?? 0) % 12;
+                                        handleProfileChange("height", feet * 12 + inches);
+                                      }}
+                                      className="text-xs font-mono font-bold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      max={11}
+                                      placeholder="Inches"
+                                      value={draftProfile.height ? Math.round(draftProfile.height % 12) : ""}
+                                      onChange={(e) => {
+                                        const inches = Number(e.target.value);
+                                        const feet = Math.floor((draftProfile.height ?? 0) / 12) || 5;
+                                        handleProfileChange("height", feet * 12 + inches);
+                                      }}
+                                      className="text-xs font-mono font-bold"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <Input
+                                  type="number"
+                                  min={20}
+                                  max={300}
+                                  value={draftProfile.height ?? ""}
+                                  onChange={(e) => handleProfileChange("height", Number(e.target.value))}
+                                  className="text-xs font-mono font-bold"
+                                />
+                              )}
+                            </Field>
+                            <SegmentedSetting<HeightUnit>
+                              label="Height System"
+                              value={activeHeightUnit}
+                              values={["in", "cm"]}
+                              onChange={(value) => void handleHeightUnitChange(value)}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div className="space-y-4 pt-1">
@@ -1215,7 +1303,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                           </Field>
                         )}
 
-                        <div className={`grid gap-4 ${(draft.type === "ollama" || draft.type === "lmstudio") ? "grid-cols-1" : "grid-cols-2"}`}>
+                        <div className={`grid gap-4 ${(draft.type === "ollama" || draft.type === "lmstudio") ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
                           {draft.type !== "ollama" && draft.type !== "lmstudio" && (
                             <Field label="API Key" hint={providerHints.apiKey}>
                               <div className="relative">
@@ -1239,25 +1327,51 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                           )}
 
                           <Field label="Model" hint={providerHints.model}>
-                            <Select
-                              value={draft.model}
-                              onChange={(event) => setDraft({ ...draft, model: event.target.value })}
-                              disabled={modelsLoading || !!modelsError || models.length === 0}
-                              className="text-xs font-bold"
-                            >
-                              {modelsLoading && <option>Loading models...</option>}
-                              {modelsError && <option>{modelsError}</option>}
-                              {!modelsLoading && !modelsError && models.length === 0 && <option>No models found</option>}
-                              {models.length > 0 && models.map((model) => (
-                                <option value={model} key={model}>
-                                  {model}
-                                </option>
-                              ))}
-                            </Select>
+                            <div className="space-y-2">
+                              {(() => {
+                                const displayModels = models.length > 0 ? models : (DEFAULT_MODELS_BY_PROVIDER[draft.type] || []);
+                                const isCustomModel = draft.model === "" || (draft.model && !displayModels.includes(draft.model));
+                                return (
+                                  <>
+                                    <Select
+                                      value={isCustomModel ? "custom" : draft.model}
+                                      onChange={(event) => {
+                                        const val = event.target.value;
+                                        if (val === "custom") {
+                                          setDraft({ ...draft, model: "" });
+                                        } else {
+                                          setDraft({ ...draft, model: val });
+                                        }
+                                      }}
+                                      disabled={modelsLoading}
+                                      className="text-xs font-bold"
+                                    >
+                                      {modelsLoading && <option value="">Loading models...</option>}
+                                      {displayModels.map((model) => (
+                                        <option value={model} key={model}>
+                                          {model}
+                                        </option>
+                                      ))}
+                                      <option value="custom">+ Enter Custom Model ID...</option>
+                                    </Select>
+                                    
+                                    {(isCustomModel || draft.model === "") && (
+                                      <Input
+                                        type="text"
+                                        placeholder="e.g. gpt-4-32k"
+                                        value={draft.model}
+                                        onChange={(e) => setDraft({ ...draft, model: e.target.value })}
+                                        className="text-xs font-mono mt-1.5"
+                                      />
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </Field>
                         </div>
 
-                        {aiError && <p className="text-xs text-rose-400 font-medium font-mono">{aiError}</p>}
+                        {aiError && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium font-mono">{aiError}</p>}
 
                         {/* Terminals Console Log */}
                         {draft.lastStatus ? (
@@ -1265,10 +1379,10 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
 
                             <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2 select-none">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`h-2 w-2 rounded-full ${draft.lastStatus === "ok" ? "bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span className={`h-2 w-2 rounded-full shrink-0 ${draft.lastStatus === "ok" ? "bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse" : "bg-rose-500 shadow-[0_0_8px_#f43f5e]"
                                   }`} />
-                                <span className="text-zinc-500 uppercase font-black text-xs tracking-widest font-mono">system.adapter.diagnostics</span>
+                                <span className="text-zinc-500 uppercase font-black text-xs tracking-widest font-mono truncate">system.adapter.diagnostics</span>
                               </div>
                               <span className="text-zinc-600 text-xs font-bold">
                                 {draft.lastTestedAt ? new Date(draft.lastTestedAt).toLocaleTimeString() : ""}
@@ -1374,13 +1488,25 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                         value={theme}
                         values={["dark", "light", "system"]}
                         onChange={(value) => void setTheme(value)}
+                        icons={{
+                          dark: <Moon size={14} />,
+                          light: <Sun size={14} />,
+                          system: <Monitor size={14} />,
+                        }}
                       />
-                      <SegmentedSetting<string>
-                        label="Experience Mode"
-                        value={guidedMode ? "guided" : "advanced"}
-                        values={["guided", "advanced"]}
-                        onChange={(value) => void setGuidedMode(value === "guided")}
-                      />
+                      <div>
+                        <Label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Experience Mode</Label>
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => void setGuidedMode(!guidedMode)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none min-h-[36px]"
+                          >
+                            <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
+                            <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Local Storage database statistics engine */}
@@ -1737,9 +1863,9 @@ function Field({ label, children, hint }: { label: string; children: ReactNode; 
       <div className="flex items-center gap-1.5 mb-1.5 select-none">
         <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">{label}</Label>
         {hint && (
-          <span title={hint} className="cursor-help text-zinc-500 hover:text-zinc-300 transition-colors">
-            <Info size={14} />
-          </span>
+          <Tooltip content={hint}>
+            <Info size={14} className="text-zinc-500 hover:text-zinc-300 transition-colors" />
+          </Tooltip>
         )}
       </div>
       {children}
@@ -1752,11 +1878,13 @@ function SegmentedSetting<T extends string>({
   value,
   values,
   onChange,
+  icons,
 }: {
   label: string;
   value: T;
   values: T[];
   onChange: (value: T) => void;
+  icons?: Record<T, React.ReactNode>;
 }) {
   return (
     <div className="space-y-1.5 w-full">
@@ -1775,8 +1903,9 @@ function SegmentedSetting<T extends string>({
           return (
             <button
               type="button"
-              className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 w-full min-w-0 ${active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                }`}
+              className={`relative z-10 rounded-lg py-1.5 text-xs font-bold capitalize transition-colors duration-200 w-full min-w-0 ${
+                active ? "text-white-keep" : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              }`}
               key={item}
               onClick={() => onChange(item)}
             >
@@ -1787,7 +1916,16 @@ function SegmentedSetting<T extends string>({
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <span className="relative z-20 whitespace-nowrap truncate block px-1 w-full text-center">{item === "in" ? "ft & in" : item}</span>
+              <span className="relative z-20 flex items-center justify-center gap-1.5 whitespace-nowrap truncate block px-1 w-full text-center">
+                {icons && icons[item] ? (
+                  <>
+                    <span className="shrink-0">{icons[item]}</span>
+                    <span className="hidden sm:inline capitalize">{item === "in" ? "ft & in" : item}</span>
+                  </>
+                ) : (
+                  <span className="capitalize">{item === "in" ? "ft & in" : item}</span>
+                )}
+              </span>
             </button>
           );
         })}

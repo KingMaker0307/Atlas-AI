@@ -75,8 +75,12 @@ export function AtlasApp() {
       const now = Date.now();
       if (now - lastPullTime < cooldownMs) return;
       lastPullTime = now;
-      await drainSyncQueue();
-      await pullCloudUpdate();
+      try {
+        await drainSyncQueue();
+        await pullCloudUpdate();
+      } catch (err) {
+        console.warn("[Sync] Pull error (non-fatal):", err);
+      }
     };
 
     const onFocus = () => {
@@ -278,7 +282,7 @@ export function AtlasApp() {
                   const resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
                   void setTheme(resolved === "dark" ? "light" : "dark");
                 }}
-                className="flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
+                className="flex items-center justify-center h-10 w-10 rounded-xl border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
                 title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
                 aria-label="Toggle display theme"
               >
@@ -292,9 +296,9 @@ export function AtlasApp() {
                     className="shrink-0"
                   >
                     {theme === "dark" ? (
-                      <Sun size={14} className="text-amber-500" />
+                      <Sun size={18} className="text-amber-500" />
                     ) : (
-                      <Moon size={14} className="text-indigo-500 dark:text-indigo-400" />
+                      <Moon size={18} className="text-indigo-500 dark:text-indigo-400" />
                     )}
                   </motion.div>
                 </AnimatePresence>
@@ -337,7 +341,7 @@ export function AtlasApp() {
             return (
               <button
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 rounded-2xl text-[10px] sm:text-[11px] font-medium transition min-h-[44px]",
+                  "relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 rounded-2xl text-[9px] min-[360px]:text-[10px] sm:text-[11px] font-medium transition min-h-[44px] overflow-hidden",
                   active ? "text-emerald-500 dark:text-emerald-200" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
                 )}
                 key={item.id}
@@ -354,8 +358,8 @@ export function AtlasApp() {
                     className="absolute inset-x-2 sm:inset-x-3 top-1 sm:top-2 h-10 sm:h-12 rounded-2xl bg-emerald-300/12"
                   />
                 ) : null}
-                <Icon className="relative" size={19} />
-                <span className="relative">{item.label}</span>
+                <Icon className="relative shrink-0" size={20} />
+                <span className="relative leading-none whitespace-nowrap text-center hidden min-[360px]:block">{item.label}</span>
               </button>
             );
           })}

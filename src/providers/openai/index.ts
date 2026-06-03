@@ -134,7 +134,36 @@ export function createOpenAiCompatibleAdapter(
       });
       if (!response.ok) await parseOpenAiError(response);
       const body = (await response.json()) as { data?: Array<{ id: string }> };
-      return (body.data ?? []).map((model) => ({ id: model.id }));
+      const rawModels = (body.data ?? []).map((model) => ({ id: model.id }));
+      
+      if (type === "openai") {
+        return rawModels.filter((m) =>
+          (m.id.startsWith("gpt-") || m.id === "o1" || m.id === "o1-mini" || m.id === "o3" || m.id === "o3-mini") &&
+          !m.id.includes("instruct") &&
+          !m.id.includes("realtime") &&
+          !m.id.includes("audio") &&
+          !m.id.includes("search") &&
+          !m.id.includes("preview")
+        );
+      }
+      if (type === "deepseek") {
+        return rawModels.filter((m) => m.id.includes("chat"));
+      }
+      if (type === "grok") {
+        return rawModels.filter((m) => m.id.startsWith("grok-"));
+      }
+      if (type === "openrouter") {
+        return rawModels.filter((m) => 
+          m.id.startsWith("google/gemini-") || 
+          m.id.startsWith("anthropic/claude-") || 
+          m.id.startsWith("meta-llama/llama-") || 
+          m.id.startsWith("openai/gpt-") || 
+          m.id.startsWith("deepseek/deepseek-") || 
+          m.id.startsWith("mistralai/mistral-") || 
+          m.id.startsWith("qwen/qwen-")
+        );
+      }
+      return rawModels;
     },
     async validate(settings: AiProviderSettings, apiKey: string): Promise<boolean> {
       const models = await this.listModels(settings, apiKey);

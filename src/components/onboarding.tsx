@@ -30,7 +30,7 @@ const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
   gender: z.enum(["male", "female"]),
   activityLevel: z.enum(["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"]),
-  customGoal: z.string().min(8, "Add a specific goal").max(120, "Goal must be 120 characters or less"),
+  customGoal: z.string().min(1, "Goal is required").max(120, "Goal must be 120 characters or less"),
   bodyType: z.enum(["ectomorph", "mesomorph", "endomorph"]),
   experience: z.enum(["beginner", "intermediate", "advanced"]),
   trainingStyle: z.enum(["strength", "hypertrophy", "powerbuilding", "endurance", "general"]),
@@ -243,7 +243,7 @@ export function Onboarding() {
       name: user?.name || user?.email?.split("@")[0] || "",
       gender: "male",
       activityLevel: "moderately_active",
-      customGoal: "",
+      customGoal: "Build muscle and strength",
       bodyType: "mesomorph",
       experience: "intermediate",
       trainingStyle: "powerbuilding",
@@ -264,19 +264,11 @@ export function Onboarding() {
   const selectedProvider = watch("providerType");
   const startupChoice = useAtlasStore((state) => state.startupChoice);
 
-  const [setupAiCoach, setSetupAiCoach] = useState(() => startupChoice !== "local-offline");
-
-  const steps = useMemo(() => {
-    const base = [
-      { id: 1, label: "Basics" },
-      { id: 2, label: "Focus & Plan" },
-      { id: 3, label: "Physique" },
-    ];
-    if (setupAiCoach) {
-      base.push({ id: 4, label: "AI Engine" });
-    }
-    return base;
-  }, [setupAiCoach]);
+  const steps = useMemo(() => [
+    { id: 1, label: "Basics" },
+    { id: 2, label: "Focus & Plan" },
+    { id: 3, label: "Physique" },
+  ], []);
 
   const nextStep = async () => {
     let fieldsToValidate: Array<keyof OnboardingForm> = [];
@@ -399,7 +391,7 @@ export function Onboarding() {
               try {
                 const finalValues = {
                   ...values,
-                  providerType: !setupAiCoach ? "none" : values.providerType,
+                  providerType: "none" as const,
                 };
                 await completeOnboarding({
                   id: user?.id || createId("user"),
@@ -636,37 +628,7 @@ export function Onboarding() {
                     </div>
                   </div>
 
-                  {/* AI Coach Toggle */}
-                  <div className="bg-card p-5 border border-card-border rounded-2xl shadow-sm space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">AI Coach Assistant</h3>
-                        <p className="text-xs text-zinc-500 leading-normal">
-                          Enable AI Coach to design personalized programs, write custom workout summaries, and answer training questions.
-                        </p>
-                      </div>
-                      <div className="flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => setSetupAiCoach(!setupAiCoach)}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            setupAiCoach ? "bg-emerald-500" : "bg-zinc-200 dark:bg-zinc-800"
-                          }`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-zinc-950 shadow ring-0 transition duration-200 ease-in-out ${
-                              setupAiCoach ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                    {setupAiCoach && (
-                      <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-400 font-medium animate-fadeIn">
-                        ✨ A dedicated setup step will be added to the end of your onboarding to connect your AI engine (Gemini, OpenAI, Claude, DeepSeek, or local Ollama/LM Studio).
-                      </div>
-                    )}
-                  </div>
+                  {/* AI Coach Assistant Toggle removed from onboarding */}
 
                   <p className="text-xs text-zinc-500 italic mt-2 leading-relaxed">
                     Why we ask: Age, height, and weight are used to establish relative strength ratios and estimate energy expenditure.
@@ -696,14 +658,19 @@ export function Onboarding() {
                   <div>
                     <Label htmlFor="customGoal">Your Workout Goal</Label>
                     <p className="text-zinc-500 text-xs mb-1.5 leading-relaxed">
-                      Be specific! Tell us what you want to achieve (e.g. increase squat, tone up, build core strength).
+                      Select your primary fitness objective used to customize your training plan.
                     </p>
-                    <Textarea
+                    <Select
                       id="customGoal"
-                      maxLength={120}
                       {...register("customGoal")}
-                      placeholder="e.g., Build muscle size, increase bench press strength, and run twice a week."
-                    />
+                    >
+                      <option value="Build muscle and strength">Build Muscle & Strength</option>
+                      <option value="Lose body fat and weight">Lose Body Fat & Weight</option>
+                      <option value="Tone muscles and define shape">Tone Muscles & Define Shape</option>
+                      <option value="Improve general health and fitness">Improve General Health & Fitness</option>
+                      <option value="Increase cardiovascular endurance">Increase Cardiovascular Endurance</option>
+                      <option value="Enhance athletic performance">Enhance Athletic Performance</option>
+                    </Select>
                     {errors.customGoal && <p className="mt-1 text-xs text-rose-300">{errors.customGoal.message}</p>}
                   </div>
 
@@ -884,114 +851,7 @@ export function Onboarding() {
                 </motion.div>
               )}
 
-              {step === 4 && (
-                <motion.div
-                  key="step4"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="space-y-4"
-                >
-                  <div className="pb-1">
-                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                      <Sparkles className="text-emerald-400" size={18} />
-                      AI Coach Configuration (Optional)
-                    </h2>
-                    <p className="text-zinc-400 text-xs mt-1">
-                      Atlas Coach is cloud-powered and auto-synced. You can connect a provider now or skip this step to configure it later in Settings.
-                    </p>
-                  </div>
 
-                  <div>
-                    <Label htmlFor="providerType">AI Engine Provider</Label>
-                    <Select id="providerType" {...register("providerType")}>
-                      {providerTypes.map((type) => (
-                        <option value={type} key={type}>
-                          {type === "none" ? "None (Skip for now, setup later)" :
-                           type === "openai" ? "OpenAI (GPT-4o)" :
-                           type === "anthropic" ? "Anthropic (Claude)" :
-                           type === "gemini" ? "Google Gemini" :
-                           type === "grok" ? "xAI Grok" :
-                           type === "deepseek" ? "DeepSeek API" :
-                           type === "openrouter" ? "OpenRouter" :
-                           type === "ollama" ? "Ollama (Local Offline)" :
-                           type === "lmstudio" ? "LM Studio (Local Offline)" :
-                           type === "custom" ? "Custom Compatible Endpoint" :
-                           type}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  {selectedProvider !== "none" && (
-                    <>
-                      {/* Provider Key Help Card */}
-                      {(() => {
-                        const helper = getProviderInstructions(selectedProvider);
-                        if (!helper) return null;
-                        return (
-                          <Surface className="p-3.5 bg-emerald-950/20 border border-emerald-500/10 text-zinc-300 rounded-xl space-y-2 animate-fadeIn">
-                            <div className="flex items-center gap-2">
-                              <div className="flex h-5 w-5 items-center justify-center rounded bg-emerald-500/15 text-emerald-400">
-                                <Sparkles size={11} className="stroke-[2.5]" />
-                              </div>
-                              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                                {helper.title} Steps
-                              </span>
-                            </div>
-                            <ol className="list-decimal pl-4.5 text-xs text-zinc-400 space-y-1">
-                              {helper.steps.map((st, i) => (
-                                <li key={i} className="leading-relaxed">{st}</li>
-                              ))}
-                            </ol>
-                            {helper.url && (
-                              <a
-                                href={helper.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block text-xs font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition"
-                              >
-                                Go to Console Website →
-                              </a>
-                            )}
-                          </Surface>
-                        );
-                      })()}
-
-                      <div>
-                        <Label htmlFor="apiKey">
-                          {selectedProvider === "ollama" || selectedProvider === "lmstudio"
-                            ? "API Key (Optional)"
-                            : "API Key (Optional - leave blank to skip)"}
-                        </Label>
-                        <Input
-                          id="apiKey"
-                          type="password"
-                          maxLength={500}
-                          {...register("apiKey")}
-                          placeholder={
-                            selectedProvider === "ollama" || selectedProvider === "lmstudio"
-                              ? "Not required for local servers"
-                              : "Optional - Paste key to set up now, or leave blank to skip"
-                          }
-                        />
-                        {errors.apiKey && <p className="mt-1 text-xs text-rose-300">{errors.apiKey.message}</p>}
-                      </div>
-                    </>
-                  )}
-
-                  {submitError && (
-                    <Surface className="p-3 bg-red-950/20 border border-red-500/15 text-rose-300 rounded-xl flex items-start gap-2.5">
-                      <ShieldAlert size={16} className="mt-0.5 text-rose-400 shrink-0" />
-                      <div className="space-y-1">
-                        <span className="text-xs font-bold uppercase tracking-wider text-rose-400 block">Connection Error</span>
-                        <p className="text-xs leading-relaxed text-zinc-300">{submitError}</p>
-                      </div>
-                    </Surface>
-                  )}
-                </motion.div>
-              )}
             </AnimatePresence>
 
             {/* Bottom Actions Row */}

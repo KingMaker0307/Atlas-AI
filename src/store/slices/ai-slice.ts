@@ -105,7 +105,10 @@ export const createAiSlice: StateCreator<
 
     const user = get().user;
     if (user) {
-      await registry.load((r, uid) => r.aiProvider.saveProvider(uid, nextProvider));
+      // Use persist() (not load/save) so Supabase failures throw and reach the UI.
+      // Previously registry.load() silently swallowed these errors, causing the key
+      // to appear saved in memory but never actually reach the cloud.
+      await registry.persist((r, uid) => r.aiProvider.saveProvider(uid, nextProvider));
     }
   },
 

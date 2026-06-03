@@ -113,6 +113,17 @@ export const registry = {
       return null;
     }
   },
+
+  /**
+   * Awaitable write that THROWS on failure.
+   * Use this for critical writes (e.g., API key saves) where the caller
+   * must know if the operation succeeded so it can surface the error to the user.
+   * Unlike save() and load(), errors are NOT swallowed.
+   */
+  async persist<T>(fn: (repos: RepositoryContainer, userId: string) => Promise<T>): Promise<T> {
+    if (!_userId) throw new Error("Not authenticated — please sign in and try again.");
+    return fn(_container, _userId);
+  },
 };
 
 // ─── Container factory ────────────────────────────────────────────────────────

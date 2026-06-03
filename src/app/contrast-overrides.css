@@ -1,24 +1,24 @@
 /* 🌓 Light Mode overrides for light text on light backgrounds */
-.light .text-white:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
-.light .text-zinc-50:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
-.light .text-zinc-100:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
-.light .text-zinc-200:not(.text-white-keep):not(.keep-dark):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]) {
+.light .text-white:not(.text-white-keep):not(.keep-dark):not(.keep-dark *):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-50:not(.text-white-keep):not(.keep-dark):not(.keep-dark *):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-100:not(.text-white-keep):not(.keep-dark):not(.keep-dark *):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]),
+.light .text-zinc-200:not(.text-white-keep):not(.keep-dark):not(.keep-dark *):not(button):not(a):not(svg):not([class*="bg-zinc"]):not([class*="bg-black"]):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-red"]):not([class*="bg-violet"]):not([class*="bg-purple"]):not([class*="bg-indigo"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="bg-teal"]):not([class*="bg-fuchsia"]):not([class*="bg-pink"]):not([class*="from-"]):not([class*="to-"]) {
   color: var(--foreground) !important;
 }
 
 /* Ensure light text inside cards, surfaces, and inputs is overridden to dark foreground in light mode */
-.light .bg-card .text-white:not(.text-white-keep):not(button):not(a),
-.light .bg-surface .text-white:not(.text-white-keep):not(button):not(a),
-.light .bg-input .text-white:not(.text-white-keep):not(button):not(a),
-.light .bg-card .text-zinc-50:not(.text-white-keep):not(button):not(a),
-.light .bg-surface .text-zinc-50:not(.text-white-keep):not(button):not(a),
-.light .bg-input .text-zinc-50:not(.text-white-keep):not(button):not(a),
-.light .bg-card .text-zinc-100:not(.text-white-keep):not(button):not(a),
-.light .bg-surface .text-zinc-100:not(.text-white-keep):not(button):not(a),
-.light .bg-input .text-zinc-100:not(.text-white-keep):not(button):not(a),
-.light .bg-card .text-zinc-200:not(.text-white-keep):not(button):not(a),
-.light .bg-surface .text-zinc-200:not(.text-white-keep):not(button):not(a),
-.light .bg-input .text-zinc-200:not(.text-white-keep):not(button):not(a) {
+.light .bg-card .text-white:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-surface .text-white:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-input .text-white:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-card .text-zinc-50:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-surface .text-zinc-50:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-input .text-zinc-50:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-card .text-zinc-100:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-surface .text-zinc-100:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-input .text-zinc-100:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-card .text-zinc-200:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-surface .text-zinc-200:not(.text-white-keep):not(.keep-dark *):not(button):not(a),
+.light .bg-input .text-zinc-200:not(.text-white-keep):not(.keep-dark *):not(button):not(a) {
   color: var(--foreground) !important;
 }
 
@@ -195,8 +195,8 @@
 }
 
 .light .keep-dark {
-  background-color: transparent !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: #0f0f11 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .light .keep-dark.bg-gradient-to-br,
@@ -310,4 +310,114 @@
 /* MODAL BODY TEXT CONTRAST */
 .light .fixed .text-zinc-300 {
   color: #3f3f46 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ACCENT COLOR CONTRAST — LIGHT MODE
+   All *-400 accent text colors are too light on a white/near-white background.
+   Map them to -600 equivalents for WCAG AA compliance.
+   Exclusions: keep-dark children (terminal panel stays white-on-dark),
+   SVG icons (must stay vivid), buttons/anchors with colored backgrounds.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Emerald */
+.light .text-emerald-400:not(.keep-dark *):not(svg):not([class*="bg-emerald"]) {
+  color: #059669 !important; /* emerald-600 */
+}
+.light .text-emerald-300:not(.keep-dark *):not(svg):not([class*="bg-emerald"]) {
+  color: #059669 !important; /* emerald-600 */
+}
+
+/* Violet */
+.light .text-violet-400:not(.keep-dark *):not(svg):not([class*="bg-violet"]) {
+  color: #7c3aed !important; /* violet-600 */
+}
+.light .text-violet-300:not(.keep-dark *):not(svg):not([class*="bg-violet"]) {
+  color: #7c3aed !important; /* violet-600 */
+}
+
+/* Purple */
+.light .text-purple-400:not(.keep-dark *):not(svg):not([class*="bg-purple"]) {
+  color: #9333ea !important; /* purple-600 */
+}
+.light .text-purple-300:not(.keep-dark *):not(svg):not([class*="bg-purple"]) {
+  color: #9333ea !important; /* purple-600 */
+}
+
+/* Rose */
+.light .text-rose-400:not(.keep-dark *):not(svg):not([class*="bg-rose"]) {
+  color: #e11d48 !important; /* rose-600 */
+}
+.light .text-rose-300:not(.keep-dark *):not(svg):not([class*="bg-rose"]) {
+  color: #e11d48 !important; /* rose-600 */
+}
+
+/* Amber */
+.light .text-amber-400:not(.keep-dark *):not(svg):not([class*="bg-amber"]) {
+  color: #d97706 !important; /* amber-600 */
+}
+.light .text-amber-300:not(.keep-dark *):not(svg):not([class*="bg-amber"]) {
+  color: #d97706 !important; /* amber-600 */
+}
+
+/* Sky */
+.light .text-sky-400:not(.keep-dark *):not(svg):not([class*="bg-sky"]) {
+  color: #0284c7 !important; /* sky-600 */
+}
+.light .text-sky-300:not(.keep-dark *):not(svg):not([class*="bg-sky"]) {
+  color: #0284c7 !important; /* sky-600 */
+}
+
+/* Blue */
+.light .text-blue-400:not(.keep-dark *):not(svg):not([class*="bg-blue"]) {
+  color: #2563eb !important; /* blue-600 */
+}
+.light .text-blue-300:not(.keep-dark *):not(svg):not([class*="bg-blue"]) {
+  color: #2563eb !important; /* blue-600 */
+}
+
+/* Indigo */
+.light .text-indigo-400:not(.keep-dark *):not(svg):not([class*="bg-indigo"]) {
+  color: #4f46e5 !important; /* indigo-600 */
+}
+.light .text-indigo-300:not(.keep-dark *):not(svg):not([class*="bg-indigo"]) {
+  color: #4f46e5 !important; /* indigo-600 */
+}
+
+/* Teal */
+.light .text-teal-400:not(.keep-dark *):not(svg):not([class*="bg-teal"]) {
+  color: #0d9488 !important; /* teal-600 */
+}
+.light .text-teal-300:not(.keep-dark *):not(svg):not([class*="bg-teal"]) {
+  color: #0d9488 !important; /* teal-600 */
+}
+
+/* Cyan */
+.light .text-cyan-400:not(.keep-dark *):not(svg):not([class*="bg-cyan"]) {
+  color: #0891b2 !important; /* cyan-600 */
+}
+
+/* Green */
+.light .text-green-400:not(.keep-dark *):not(svg):not([class*="bg-green"]) {
+  color: #16a34a !important; /* green-600 */
+}
+
+/* Orange */
+.light .text-orange-400:not(.keep-dark *):not(svg):not([class*="bg-orange"]) {
+  color: #ea580c !important; /* orange-600 */
+}
+
+/* Fuchsia */
+.light .text-fuchsia-400:not(.keep-dark *):not(svg):not([class*="bg-fuchsia"]) {
+  color: #c026d3 !important; /* fuchsia-600 */
+}
+
+/* Pink */
+.light .text-pink-400:not(.keep-dark *):not(svg):not([class*="bg-pink"]) {
+  color: #db2777 !important; /* pink-600 */
+}
+
+/* Red */
+.light .text-red-400:not(.keep-dark *):not(svg):not([class*="bg-red"]) {
+  color: #dc2626 !important; /* red-600 */
 }

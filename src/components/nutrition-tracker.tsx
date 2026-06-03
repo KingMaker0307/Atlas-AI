@@ -31,6 +31,7 @@ import {
   Sparkles,
   Camera,
   Barcode,
+  Minus,
 } from "lucide-react";
 import { Card, Surface } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -651,10 +652,10 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const newQty = Math.max(0.1, +(item.quantity - 0.1).toFixed(1));
+                      const newQty = Math.max(0.1, +(item.quantity - 0.5).toFixed(1));
                       setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, quantity: newQty } : x)));
                     }}
-                    className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-600 transition font-bold text-xs"
+                    className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-350 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-650 transition font-bold text-xs"
                   >
                     -
                   </button>
@@ -664,10 +665,10 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const newQty = +(item.quantity + 0.1).toFixed(1);
+                      const newQty = +(item.quantity + 0.5).toFixed(1);
                       setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, quantity: newQty } : x)));
                     }}
-                    className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-600 transition font-bold text-xs"
+                    className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-350 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-650 transition font-bold text-xs"
                   >
                     +
                   </button>
@@ -1125,7 +1126,7 @@ Your ONLY job: analyze the provided text description and/or any uploaded image(s
 STRICT RULES:
 1. Return ONLY a raw JSON object matching the required schema. No markdown fences, no prose, no explanation.
 2. The user may provide multiple food items in the text, upload multiple images of different items, or a combination. Identify all distinct food items.
-3. For each distinct food item, estimate the nutritional values for ONE standard serving (e.g., 1 slice, 1 cup, 100g, 1 medium piece).
+3. For each distinct food item, estimate the nutritional values for ONE standard serving (e.g., 1 slice, 1 cup, 100g, 1 medium piece). If the user specified a specific quantity, number, or amount in the text (e.g., "2 eggs", "half a banana", "200g of chicken"), set the 'quantity' field to reflect that ratio relative to the standard serving (e.g., 2.0, 0.5, or 2.0). Otherwise, default it to 1.0.
 4. Determine the 'source' of each item:
    - "image" if the item is only visible in the uploaded image(s) (not mentioned in text).
    - "text" if the item is only described in the text (not visible in image(s)).
@@ -1151,7 +1152,8 @@ Required JSON schema — ALL keys required, no extra keys:
       "vitaminC": number,
       "calcium": number,
       "iron": number,
-      "source": "image" | "text" | "both"
+      "source": "image" | "text" | "both",
+      "quantity": number
     }
   ],
   "summary": "string (brief summary of findings)"
@@ -1401,7 +1403,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
       calcium: Math.round(item.calcium || 0),
       iron: +((item.iron || 0).toFixed(1)),
       source: item.source || "text",
-      quantity: 1.0,
+      quantity: typeof item.quantity === "number" ? item.quantity : 1.0,
     }));
   };
 
@@ -1482,7 +1484,8 @@ Required JSON schema:
       "vitaminC": number,
       "calcium": number,
       "iron": number,
-      "source": "image" | "text" | "both"
+      "source": "image" | "text" | "both",
+      "quantity": number
     }
   ],
   "summary": "brief summary of updates made"
@@ -1945,16 +1948,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         style={{ maxHeight: "95dvh" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-card-border">
-          <h3 className="text-base font-bold text-zinc-900 dark:text-white">Add Food</h3>
-          <button onClick={onClose} aria-label="Close modal" className="h-8 w-8 flex items-center justify-center rounded-full bg-zinc-150 dark:bg-zinc-800 text-zinc-750 dark:text-zinc-300 hover:text-foreground transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
-            <X size={16} />
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-3 border-b border-card-border">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Add Food</h3>
+          <button onClick={onClose} aria-label="Close modal" className="h-7 w-7 flex items-center justify-center rounded-full bg-zinc-150 dark:bg-zinc-800 text-zinc-755 dark:text-zinc-300 hover:text-foreground transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+            <X size={14} />
           </button>
         </div>
 
-        <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: "calc(95dvh - 120px)" }}>
+        <div className="overflow-y-auto p-3.5 space-y-3" style={{ maxHeight: "calc(95dvh - 120px)" }}>
           {/* Meal selector */}
-          <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Select meal slot">
+          <div className="grid grid-cols-4 gap-1" role="group" aria-label="Select meal slot">
             {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([key, cfg]) => {
               const Icon = cfg.icon;
               return (
@@ -1962,11 +1965,11 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   key={key}
                   onClick={() => setMeal(key)}
                   className={cn(
-                    "flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                    meal === key ? `${cfg.bg} ${cfg.color} border-opacity-100` : "border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-zinc-300 dark:hover:border-zinc-700"
+                    "flex flex-row items-center justify-center gap-1 py-1.5 px-1 rounded-xl border text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                    meal === key ? `${cfg.bg} ${cfg.color} border-opacity-100` : "border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-455 hover:border-zinc-300 dark:hover:border-zinc-700"
                   )}
                 >
-                  <Icon size={16} aria-hidden="true" />
+                  <Icon size={13} aria-hidden="true" />
                   {cfg.label}
                 </button>
               );
@@ -2042,7 +2045,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   </div>
 
                   {search.trim() ? (
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                       {filtered.map((food) => {
                         const isChecked = !!selectedItems[getItemKey(food)];
                         return (
@@ -2090,7 +2093,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                           <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
                             <Sparkles size={11} className="text-emerald-500" /> Suggested for {MEAL_LABELS[meal].label}
                           </h4>
-                          <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                          <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto pr-1">
                             {suggestions.map((food) => {
                               const isChecked = !!selectedItems[getItemKey(food)];
                               return (
@@ -2140,7 +2143,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                               Clear History
                             </button>
                           </div>
-                          <div className="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                          <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto pr-1">
                             {recentSearches.map((food, index) => {
                               const isChecked = !!selectedItems[getItemKey(food)];
                               const itemKey = food.code ? `recent-${food.code}` : `recent-${food.name}-${food.brand}-${index}`;
@@ -2247,7 +2250,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   </p>
 
                   {liveSearch.trim().length >= 3 ? (
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                       {isLoadingLive ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-2">
                           <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
@@ -2336,7 +2339,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                               Clear History
                             </button>
                           </div>
-                          <div className="grid grid-cols-1 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                          <div className="grid grid-cols-1 gap-1.5 max-h-32 overflow-y-auto pr-1">
                             {recentSearches.map((food, index) => {
                               const isChecked = !!selectedItems[getItemKey(food)];
                               const itemKey = food.code ? `recent-live-${food.code}` : `recent-live-${food.name}-${food.brand}-${index}`;
@@ -2512,51 +2515,50 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 />
               ) : (
                 <>
-                  {/* ── Multiple Image Upload for AI Vision ─────────────────────────── */}
+                  {/* ── Food Name with Inline Image Upload ────────────────────── */}
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider block mb-1.5">
-                      Photos ({customImages.length} uploaded)
-                    </label>
-
-                    {customImages.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mb-3">
-                        {customImages.map((img) => (
-                          <div key={img.id} className="relative aspect-video rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 group">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={img.dataUrl} alt="Food thumbnail" className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveImage(img.id)}
-                              className="absolute top-1 right-1 h-5 w-5 bg-black/70 hover:bg-rose-600 rounded-full flex items-center justify-center text-white transition active:scale-90"
-                              aria-label="Remove image"
-                            >
-                              <X size={10} />
-                            </button>
-                          </div>
-                        ))}
-                        {customImages.length < 5 && (
-                          <label
-                            htmlFor="customFoodImageMore"
-                            className="flex flex-col items-center justify-center aspect-video rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 transition"
-                          >
-                            <Camera size={14} className="text-zinc-400" />
-                            <span className="text-[8px] font-semibold text-zinc-500 mt-0.5">+ Add More</span>
-                          </label>
-                        )}
-                      </div>
-                    )}
-
-                    {customImages.length === 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs font-bold text-zinc-700 dark:text-zinc-200" htmlFor="customName">
+                        Food Description {customImages.length === 0 && "*"}
+                      </label>
+                      {(customName.trim().length >= 3 || customImages.length > 0) && (
+                        <button
+                          type="button"
+                          disabled={isAutofilling}
+                          onClick={handleAiAutofill}
+                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none"
+                        >
+                          {isAutofilling ? (
+                            <>
+                              <div className="h-2.5 w-2.5 border border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                              <span>{customImages.length > 0 ? "Analyzing..." : "Estimating..."}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={10} />
+                              <span>{customImages.length > 0 ? "Analyze with AI" : "Autofill with AI"}</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative flex items-center">
+                      <input
+                        id="customName"
+                        className="w-full h-9 pl-3 pr-9 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500"
+                        placeholder={customImages.length > 0 ? "e.g. Eggs and toast (optional)" : "e.g. Eggs and toast"}
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                      />
                       <label
                         htmlFor="customFoodImage"
-                        className="flex flex-col items-center justify-center gap-1.5 w-full h-[76px] rounded-xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-all mb-1"
+                        className="absolute right-2 p-1.5 rounded-lg text-zinc-500 hover:text-emerald-500 active:scale-95 transition cursor-pointer"
+                        title="Upload food photo for AI analysis"
                       >
-                        <Camera size={18} className="text-zinc-400 dark:text-zinc-500" />
-                        <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Upload food photo(s) for AI analysis</span>
-                        <span className="text-[9px] text-zinc-400 dark:text-zinc-500">JPG, PNG, HEIC supported (Up to 5 images)</span>
+                        <Camera size={16} />
                       </label>
-                    )}
-                    
+                    </div>
+
                     <input
                       id="customFoodImage"
                       type="file"
@@ -2573,40 +2575,35 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                       className="sr-only"
                       onChange={handleImagePick}
                     />
-                  </div>
 
-                  {/* ── Food Name ──────────────────────────────────────────── */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs font-bold text-zinc-700 dark:text-zinc-200" htmlFor="customName">Food Description {customImages.length === 0 && "*"}</label>
-                      {(customName.trim().length >= 3 || customImages.length > 0) && (
-                        <button
-                          type="button"
-                          disabled={isAutofilling}
-                          onClick={handleAiAutofill}
-                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none"
-                        >
-                          {isAutofilling ? (
-                            <>
-                              <div className="h-2.5 w-2.5 border border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                              <span>{customImages.length > 0 ? "Analyzing image..." : "Estimating..."}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={10} />
-                              <span>{customImages.length > 0 ? "Analyze with AI" : "Autofill with AI"}</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      id="customName"
-                      className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500"
-                      placeholder={customImages.length > 0 ? "e.g. Eggs and toast (optional)" : "e.g. Eggs and toast"}
-                      value={customName}
-                      onChange={(e) => setCustomName(e.target.value)}
-                    />
+                    {/* Small non-obtrusive image thumbnail previews */}
+                    {customImages.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {customImages.map((img) => (
+                          <div key={img.id} className="relative h-10 w-10 rounded-lg overflow-hidden border border-zinc-250 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={img.dataUrl} alt="Food thumbnail" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(img.id)}
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition rounded-lg"
+                              aria-label="Remove image"
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        ))}
+                        {customImages.length < 5 && (
+                          <label
+                            htmlFor="customFoodImageMore"
+                            className="flex items-center justify-center h-10 w-10 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/60 dark:bg-zinc-900/40 cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-600 transition"
+                          >
+                            <Plus size={14} className="text-zinc-400" />
+                          </label>
+                        )}
+                      </div>
+                    )}
+
                     {autofillError && (
                       <p className={`mt-1 text-[10px] font-medium ${
                         autofillError.startsWith("ℹ️")
@@ -2627,7 +2624,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     ].map((f) => (
                       <div key={f.id}>
                         <label className="text-[10px] font-bold text-zinc-755 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
-                        <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
+                        <input
+                          id={f.id}
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500"
+                          placeholder={f.placeholder}
+                          value={f.value}
+                          onChange={(e) => f.set(e.target.value)}
+                        />
                       </div>
                     ))}
                   </div>
@@ -2654,7 +2660,16 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                           ].map((f) => (
                             <div key={f.id}>
                               <label className="text-[10px] font-bold text-zinc-755 dark:text-zinc-300 mb-1 block" htmlFor={f.id}>{f.label}</label>
-                              <input id={f.id} type="number" min="0" className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-500" placeholder={f.placeholder} value={f.value} onChange={(e) => f.set(e.target.value)} />
+                              <input
+                                id={f.id}
+                                type="number"
+                                min="0"
+                                step="any"
+                                className="w-full h-9 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40 placeholder:text-zinc-550"
+                                placeholder={f.placeholder}
+                                value={f.value}
+                                onChange={(e) => f.set(e.target.value)}
+                              />
                             </div>
                           ))}
                         </div>
@@ -2666,11 +2681,11 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   {mode === "custom" && (
                     <Button
                       variant="primary"
-                      className="w-full mt-2"
+                      className="w-full h-9 text-xs font-bold mt-1"
                       disabled={!customName.trim() || !customCal}
                       onClick={handleAdd}
                     >
-                      <Plus size={15} /> Add to {MEAL_LABELS[meal].label}
+                      <Plus size={14} /> Add to {MEAL_LABELS[meal].label}
                     </Button>
                   )}
                 </>
@@ -2933,8 +2948,6 @@ export function NutritionTracker() {
   // Hydration custom inputs
   const [customWaterInput, setCustomWaterInput] = useState("");
 
-  // Physique guidance toggle
-  const [showBmiGuidance, setShowBmiGuidance] = useState(false);
 
   // Compute targets via the centralized Mifflin-St Jeor engine in @/lib/calculators.
   // This correctly handles: gender (BMR constant), activityLevel (PAL multiplier),
@@ -3120,74 +3133,6 @@ export function NutritionTracker() {
     };
   }, [profile?.weight, profile?.height, profile?.heightUnit, profile?.weightUnit, heightUnit, weightUnit]);
 
-  // Expandable Physiological Improvement Advisor
-  const bmiAdvice = useMemo(() => {
-    const w = profile?.weight;
-    const h = profile?.height;
-    if (!w || !h) return null;
-
-    const unit = profile.weightUnit ?? weightUnit;
-    const hUnit = profile.heightUnit ?? heightUnit;
-
-    const weightInKg = unit === "lbs" ? w / 2.20462 : w;
-    const heightInMeters = hUnit === "in" ? (h * 2.54) / 100 : h / 100;
-    const bmiValue = weightInKg / (heightInMeters * heightInMeters);
-
-    if (bmiValue < 18.5) {
-      return {
-        title: "Anabolic Recovery Strategy",
-        tips: [
-          "Caloric Hypertrophy: Maintain a structured daily caloric surplus (+300 to +500 kcal/day) focusing on high-quality nutrient-dense foods (avocados, eggs, nuts, whole grains, and lean meats).",
-          "Progressive Overload: Focus on fundamental compound strength movements (squats, chest press, deadlifts) with longer rest intervals (2-3 mins) to stimulate myofibrillar growth.",
-          "Restrict Excess Cardio: Limit high-intensity conditioning or long cardio blocks to minimize metabolic burn and preserve energy for muscle synthesis.",
-          "Sleep & Recovery: Prioritize 8-9 hours of sleep to optimize natural hormones and tissue repair."
-        ],
-        badge: "Underweight Insight",
-        color: "border-amber-500/15 dark:border-amber-500/20 bg-amber-500/5 dark:bg-amber-950/20",
-        titleColor: "text-amber-800 dark:text-amber-300",
-        badgeColor: "bg-amber-500/10 dark:bg-white/10 text-amber-700 dark:text-zinc-300"
-      };
-    } else if (bmiValue < 25) {
-      return {
-        title: "Composition Preservation Strategy",
-        tips: [
-          "Sustain Progressive Loading: Your cellular composition is optimal. Continue gradual progressive overload (intensity/volume) to advance muscle density.",
-          "Optimal Protein Target: Fuel active cell repair with 0.8g to 1.2g of protein per lb of bodyweight to maintain and build lean body mass.",
-          "Active Rest Modalities: Include brief mobility flows, stretching, or light Zone 1/2 cardio on rest days to enhance circulation and lower fatigue."
-        ],
-        badge: "Optimal Range",
-        color: "border-emerald-500/15 dark:border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-950/20",
-        titleColor: "text-emerald-800 dark:text-emerald-400",
-        badgeColor: "bg-emerald-500/10 dark:bg-white/10 text-emerald-700 dark:text-zinc-300"
-      };
-    } else if (bmiValue < 30) {
-      return {
-        title: "Body Recomposition & LISS Strategy",
-        tips: [
-          "Targeted Caloric Deficit: Maintain a moderate, sustainable caloric deficit (-250 to -400 kcal/day) while keeping protein intake elevated to safeguard active lean tissues.",
-          "Aerobic Conditioning: Incorporate 3 weekly LISS blocks (walking, stationary cycling, elliptical) in Zone 2 (60-70% max HR) to maximize fat oxidation.",
-          "Joint Integrity Protection: Target moderate lifting loads with clean, controlled tempos, minimizing heavy spinal axial loading if experiencing joint friction."
-        ],
-        badge: "Recomposition Guide",
-        color: "border-orange-500/15 dark:border-orange-500/20 bg-orange-500/5 dark:bg-orange-950/20",
-        titleColor: "text-orange-800 dark:text-orange-400",
-        badgeColor: "bg-orange-500/10 dark:bg-white/10 text-orange-700 dark:text-zinc-300"
-      };
-    } else {
-      return {
-        title: "CNS Load & Joint Preservation Strategy",
-        tips: [
-          "Guided Load Isolation: Prioritize machine-based compound exercises and seated lifts to isolate muscle groups while avoiding excessive spinal or joint pressure.",
-          "Non-Impact Cardio: Utilize swimming, rowing, or low-resistance stationary cycling to build aerobic capacity with zero lower-body joint impact.",
-          "Consistent Hydration & CNS Rest: Drink 3L+ of water daily and ensure at least 48 hours of spacing between heavy training sessions to promote recovery."
-        ],
-        badge: "Joint Safety Protocol",
-        color: "border-rose-500/15 dark:border-rose-500/20 bg-rose-500/5 dark:bg-rose-950/20",
-        titleColor: "text-rose-800 dark:text-rose-400",
-        badgeColor: "bg-rose-500/10 dark:bg-white/10 text-rose-700 dark:text-zinc-300"
-      };
-    }
-  }, [profile?.weight, profile?.height, profile?.heightUnit, profile?.weightUnit, heightUnit, weightUnit]);
 
   const calculatedProtein = useMemo(() => {
     const w = profile?.weight;
@@ -3234,7 +3179,7 @@ Your ONLY job: analyze the provided text description and/or any uploaded image(s
 STRICT RULES:
 1. Return ONLY a raw JSON object matching the required schema. No markdown fences, no prose, no explanation.
 2. The user may provide multiple food items in the text, upload multiple images of different items, or a combination. Identify all distinct food items.
-3. For each distinct food item, estimate the nutritional values for ONE standard serving (e.g., 1 slice, 1 cup, 100g, 1 medium piece).
+3. For each distinct food item, estimate the nutritional values for ONE standard serving (e.g., 1 slice, 1 cup, 100g, 1 medium piece). If the user specified a specific quantity, number, or amount in the text (e.g., "2 eggs", "half a banana", "200g of chicken"), set the 'quantity' field to reflect that ratio relative to the standard serving (e.g., 2.0, 0.5, or 2.0). Otherwise, default it to 1.0.
 4. Determine the 'source' of each item:
    - "image" if the item is only visible in the uploaded image(s) (not mentioned in text).
    - "text" if the item is only described in the text (not visible in image(s)).
@@ -3260,7 +3205,8 @@ Required JSON schema — ALL keys required, no extra keys:
       "vitaminC": number,
       "calcium": number,
       "iron": number,
-      "source": "image" | "text" | "both"
+      "source": "image" | "text" | "both",
+      "quantity": number
     }
   ],
   "summary": "string (brief summary of findings)"
@@ -3483,7 +3429,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           calcium: Math.round(item.calcium || 0),
           iron: +((item.iron || 0).toFixed(1)),
           source: item.source || "text",
-          quantity: 1.0,
+          quantity: typeof item.quantity === "number" ? item.quantity : 1.0,
         }));
 
         setQuickLogAnalyzedItems(mapped);
@@ -3598,7 +3544,8 @@ Required JSON schema:
       "vitaminC": number,
       "calcium": number,
       "iron": number,
-      "source": "image" | "text" | "both"
+      "source": "image" | "text" | "both",
+      "quantity": number
     }
   ],
   "summary": "brief summary of updates made"
@@ -3738,7 +3685,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           calcium: Math.round(item.calcium || 0),
           iron: +((item.iron || 0).toFixed(1)),
           source: item.source || "text",
-          quantity: 1.0,
+          quantity: typeof item.quantity === "number" ? item.quantity : 1.0,
         }));
         setQuickLogAnalyzedItems(mapped);
         
@@ -4011,218 +3958,160 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         >
           <div className="space-y-4">
               {/* Daily Progress Summary & Hydration Tracker */}
-              <Card className="p-5 relative overflow-hidden">
+              <Card className="p-4 relative overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch divide-y md:divide-y-0 md:divide-x divide-card-border">
+                <div className="grid grid-cols-2 gap-4 items-center divide-x divide-card-border">
                   {/* Calorie Progress Section */}
-                  <div className="flex flex-col justify-between pb-6 md:pb-0 md:pr-8 space-y-4">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
-                      {/* Radial Progress */}
-                      <div className="relative shrink-0 select-none">
-                        <RingProgress
-                          value={totals.calories}
-                          max={targets.calories}
-                          className={totals.calories > targets.calories ? "stroke-rose-450" : "stroke-emerald-450"}
-                          size={92}
-                          strokeWidth={7}
-                        />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <Flame size={20} className={totals.calories > targets.calories ? "text-rose-450 animate-bounce" : "text-emerald-450"} />
-                          <span className="text-sm font-bold text-zinc-955 mt-0.5 leading-none">
-                            {Math.round((totals.calories / targets.calories) * 100) || 0}%
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Main Calorie Numbers */}
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-955 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-450" />
-                          Daily Balance
-                        </h2>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-4xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
-                            {remainingCals.toLocaleString()}
-                          </span>
-                          <span className="text-xs text-zinc-750 font-extrabold uppercase tracking-wider">kcal left</span>
-                        </div>
-                        <p className="text-[11px] text-zinc-750 font-medium mt-1 leading-snug">
-                          Your dynamic calorie fuel target for today.
-                        </p>
+                  <div className="flex flex-col items-center text-center space-y-2">
+                    {/* Radial Progress */}
+                    <div className="relative shrink-0 select-none">
+                      <RingProgress
+                        value={totals.calories}
+                        max={targets.calories}
+                        className={totals.calories > targets.calories ? "stroke-rose-450" : "stroke-emerald-450"}
+                        size={76}
+                        strokeWidth={6}
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <Flame size={16} className={totals.calories > targets.calories ? "text-rose-450 animate-bounce" : "text-emerald-450"} />
+                        <span className="text-[10px] font-bold text-zinc-955 mt-0.5 leading-none">
+                          {Math.round((totals.calories / targets.calories) * 100) || 0}%
+                        </span>
                       </div>
                     </div>
 
-                    {/* Breakdown Justifying the Math */}
-                    <div className="grid grid-cols-3 gap-2 pt-3 border-t border-card-border">
-                      <div className="bg-surface/50 p-2 rounded-xl border border-surface-border text-center">
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-750 block mb-0.5">Budget</span>
-                        <span className="text-sm font-semibold text-zinc-955 font-sans tabular-nums">{targets.calories.toLocaleString()}</span>
-                      </div>
-                      <div className="bg-surface/50 p-2 rounded-xl border border-surface-border text-center">
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-750 block mb-0.5">Food</span>
-                        <span className="text-sm font-semibold text-rose-450 font-sans tabular-nums">-{totals.calories.toLocaleString()}</span>
-                      </div>
-                      <div className="bg-surface/50 p-2 rounded-xl border border-surface-border text-center">
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-750 block mb-0.5">Active</span>
-                        <span className="text-sm font-semibold text-emerald-450 font-sans tabular-nums">+{burnedCalories.toLocaleString()}</span>
+                    <div className="min-w-0">
+                      <h2 className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
+                        Calories
+                      </h2>
+                      <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                        <span className="text-xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
+                          {remainingCals.toLocaleString()}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase">kcal left</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Hydration Tracker Section */}
-                  <div className="flex flex-col justify-between pt-6 md:pt-0 md:pl-8 space-y-4">
-                    <style dangerouslySetInnerHTML={{__html: `
-                      @keyframes wave-slide {
-                        0% { transform: translateX(0); }
-                        100% { transform: translateX(-50%); }
-                      }
-                      .animate-wave {
-                        animation: wave-slide 4s linear infinite;
-                      }
-                    `}} />
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4">
-                      {/* Animated Water Cup with liquid wave */}
-                      <div className="relative h-24 w-16 bg-sky-500/5 dark:bg-sky-950/20 border-2 border-sky-400/35 rounded-2xl overflow-hidden flex flex-col justify-end shadow-inner shrink-0 select-none">
-                        {/* Wave container */}
-                        <motion.div
-                          className="w-full bg-sky-500/80 dark:bg-sky-500/85 relative"
-                          style={{ height: `${hydrationRatio * 100}%` }}
-                          initial={{ height: 0 }}
-                          animate={{ height: `${hydrationRatio * 100}%` }}
-                          transition={{ type: "spring", stiffness: 65, damping: 15 }}
-                        >
-                          {/* SVG Wave overlay animating on the top boundary */}
-                          {hydrationRatio > 0 && hydrationRatio < 1 && (
-                            <svg
-                              className="absolute left-0 right-0 w-[200%] h-4 -top-3.5 fill-sky-500/80 dark:fill-sky-500/85 animate-wave"
-                              viewBox="0 0 120 28"
-                              preserveAspectRatio="none"
-                              style={{
-                                transform: "translateX(0)",
-                              }}
-                            >
-                              <path d="M0 15 Q 30 0, 60 15 T 120 15 L 120 28 L 0 28 Z" />
-                            </svg>
-                          )}
-                          <div className="absolute inset-x-0 top-1 h-0.5 bg-white/35 blur-[0.5px] pointer-events-none" />
-                        </motion.div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
-                          <Droplets size={18} className={hydrationRatio > 0.4 ? "text-white drop-shadow-sm" : "text-sky-500/60"} />
-                          <span className={cn("text-[9px] font-bold font-sans tabular-nums leading-none mt-1", hydrationRatio > 0.4 ? "text-white" : "text-sky-500")}>
-                            {Math.round(hydrationRatio * 100)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Main Hydration Numbers */}
-                      <div className="flex-1 min-w-0">
-                        <h2 className="text-[11px] font-bold uppercase tracking-widest text-zinc-955 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                          Hydration Log
-                        </h2>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-4xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
-                            {totalWater.toLocaleString()}
-                          </span>
-                          <span className="text-xs text-zinc-750 font-bold uppercase tracking-wider">
-                            / {waterTarget.toLocaleString()} ml
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-zinc-750 font-medium mt-1 leading-snug">
-                          Keep your metabolism and energy active.
-                        </p>
+                  <div className="flex flex-col items-center text-center space-y-2 pl-4">
+                    {/* Radial Progress */}
+                    <div className="relative shrink-0 select-none">
+                      <RingProgress
+                        value={totalWater}
+                        max={waterTarget}
+                        className="stroke-sky-500"
+                        size={76}
+                        strokeWidth={6}
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <Droplets size={16} className="text-sky-500" />
+                        <span className="text-[10px] font-bold text-zinc-955 mt-0.5 leading-none">
+                          {Math.round((totalWater / waterTarget) * 100) || 0}%
+                        </span>
                       </div>
                     </div>
 
-                    {/* Quick Add and Custom Input Actions */}
-                    <div className="space-y-3 pt-3 border-t border-card-border">
-                      {/* Stepper adjustment row */}
-                      <div className="flex items-center justify-between gap-2.5 bg-sky-500/5 dark:bg-sky-500/10 p-1.5 rounded-2xl border border-sky-500/10 select-none">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const lastLog = activeWaterLogs[activeWaterLogs.length - 1];
-                            if (lastLog) {
-                              removeWaterLog(lastLog.id);
-                            }
-                          }}
-                          disabled={activeWaterLogs.length === 0}
-                          className="h-8 w-8 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-sky-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-40 transition active:scale-90 shadow-sm focus:outline-none"
-                          aria-label="Remove last water log"
-                        >
-                          -
-                        </button>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">Fine Adjust (Last Log)</span>
-                        <button
-                          type="button"
-                          onClick={() => addWater(250)}
-                          className="h-8 w-8 flex items-center justify-center rounded-xl bg-white dark:bg-zinc-800 text-sky-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition active:scale-90 shadow-sm focus:outline-none"
-                          aria-label="Add 250ml water"
-                        >
-                          +
-                        </button>
-                      </div>
-
-                      {/* Quick-add buttons */}
-                      <div className="flex gap-2">
-                        {[
-                          { val: 250, label: "Cup" },
-                          { val: 500, label: "Bottle" },
-                          { val: 750, label: "Shaker" },
-                        ].map(({ val, label }) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => addWater(val)}
-                            className="flex-1 flex flex-col items-center justify-center py-2 rounded-2xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-450 border border-sky-500/20 hover:border-sky-500/40 transition active:scale-[0.97] focus-visible:outline-none"
-                          >
-                            <span className="text-xs font-bold tabular-nums">+{val}ml</span>
-                            <span className="text-[10px] uppercase font-bold text-sky-550/80 dark:text-sky-400/80 mt-0.5">{label}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Custom input */}
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type="number"
-                            min="10"
-                            max="5000"
-                            placeholder="Custom amount"
-                            value={customWaterInput}
-                            onChange={(e) => setCustomWaterInput(e.target.value)}
-                            className="w-full h-10 pl-3.5 pr-10 rounded-xl border border-input-border bg-input text-xs text-zinc-955 font-sans tabular-nums placeholder:text-zinc-600 dark:placeholder:text-zinc-350 focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition duration-150"
-                            aria-label="Custom water amount in ml"
-                          />
-                          <span className="absolute right-3.5 top-3 text-[10px] text-zinc-750 font-bold uppercase tracking-wider select-none">
-                            ml
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const val = parseInt(customWaterInput);
-                            if (val > 0) {
-                              addWater(val);
-                              setCustomWaterInput("");
-                            }
-                          }}
-                          disabled={!customWaterInput || parseInt(customWaterInput) <= 0}
-                          className="h-10 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider transition active:scale-[0.97] disabled:active:scale-100 disabled:cursor-not-allowed focus-visible:outline-none shrink-0"
-                        >
-                          Log
-                        </button>
+                    <div className="min-w-0">
+                      <h2 className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
+                        Water
+                      </h2>
+                      <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                        <span className="text-xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
+                          {totalWater.toLocaleString()}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 font-bold uppercase">/ {waterTarget} ml</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Calorie Breakdown details */}
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-card-border text-center mt-3">
+                  <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Budget</span>
+                    <span className="text-xs font-semibold text-zinc-955 font-sans tabular-nums">{targets.calories.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Food</span>
+                    <span className="text-xs font-semibold text-rose-500 font-sans tabular-nums">-{totals.calories.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Active</span>
+                    <span className="text-xs font-semibold text-emerald-500 font-sans tabular-nums">+{burnedCalories.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Water Log Buttons Row */}
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-card-border mt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const lastLog = activeWaterLogs[activeWaterLogs.length - 1];
+                      if (lastLog) {
+                        removeWaterLog(lastLog.id);
+                      }
+                    }}
+                    disabled={activeWaterLogs.length === 0}
+                    className="h-8 w-8 flex items-center justify-center rounded-xl bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-40 transition text-zinc-500"
+                    aria-label="Remove last water log"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addWater(250)}
+                    className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition"
+                  >
+                    +250ml
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addWater(500)}
+                    className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition"
+                  >
+                    +500ml
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addWater(750)}
+                    className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition"
+                  >
+                    +750ml
+                  </button>
+                  
+                  {/* Compact custom input */}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      placeholder="Custom"
+                      value={customWaterInput}
+                      onChange={(e) => setCustomWaterInput(e.target.value)}
+                      className="w-16 h-8 px-2 rounded-lg border border-input-border bg-input text-[11px] font-semibold text-center focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      aria-label="Custom water ml"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = parseInt(customWaterInput);
+                        if (val > 0) {
+                          addWater(val);
+                          setCustomWaterInput("");
+                        }
+                      }}
+                      disabled={!customWaterInput || parseInt(customWaterInput) <= 0}
+                      className="h-8 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-[10px] font-bold uppercase transition"
+                    >
+                      Log
+                    </button>
+                  </div>
+                </div>
+
                 {/* Macro calorie ratio bar */}
                 {totals.calories > 0 && (
-                  <div className="mt-4 border-t border-card-border pt-3">
-                    <div className="flex h-2 rounded-full overflow-hidden gap-0.5 bg-surface">
+                  <div className="mt-3 border-t border-card-border pt-3">
+                    <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5 bg-surface">
                       {[
                         { w: (macroCalories.protein / totalMacroKcal) * 100, c: "bg-blue-455" },
                         { w: (macroCalories.carbs / totalMacroKcal) * 100, c: "bg-amber-450" },
@@ -4237,7 +4126,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                         { label: "Carbs", pct: Math.round((macroCalories.carbs / totalMacroKcal) * 100), c: "text-amber-450" },
                         { label: "Fat", pct: Math.round((macroCalories.fat / totalMacroKcal) * 100), c: "text-rose-450" },
                       ].map((m) => (
-                        <span key={m.label} className={cn("text-[10px] font-extrabold flex items-center gap-1", m.c)}>
+                        <span key={m.label} className={cn("text-[9px] font-extrabold flex items-center gap-1", m.c)}>
                           <span className={cn("h-1.5 w-1.5 rounded-full", m.c.replaceAll("text-", "bg-"))} />
                           {m.label} {m.pct}%
                         </span>
@@ -4247,92 +4136,45 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                 )}
               </Card>
 
-              {/* Physique Metrics Panel */}
-              {(calculatedBmi || calculatedProtein) && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 px-1">
-                    <Sparkles size={14} className="text-emerald-450" />
-                    <h3 className="text-xs font-bold text-zinc-755 uppercase tracking-widest">Physique Metrics</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {calculatedBmi && (
-                      <div className="p-4 rounded-2xl border border-card-border bg-card space-y-2 select-none shadow-[0_12px_40px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.24)] flex flex-col justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-755">Live Telemetry</span>
-                          <h4 className="text-sm font-bold text-zinc-955 mt-1 leading-none">Body Mass Index (BMI)</h4>
-                        </div>
-
-                        <div className="py-2 flex items-baseline gap-2">
-                          <span className="text-3xl font-bold text-zinc-955 tabular-nums leading-none">{calculatedBmi.value}</span>
-                          <span className={`text-xs font-extrabold uppercase px-2 py-0.5 rounded border ${calculatedBmi.color}`}>
+              {/* Physique Metrics Summary Strip */}
+              {(profile?.weight || calculatedBmi || calculatedProtein) && (
+                <Card className="p-3 bg-zinc-50/50 dark:bg-zinc-950/20 border-card-border shadow-sm">
+                  <div className="grid grid-cols-3 divide-x divide-card-border text-center">
+                    {profile?.weight ? (
+                      <div>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Weight</span>
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
+                          {profile.weight} <span className="text-[10px] font-normal text-zinc-500">{profile.weightUnit ?? weightUnit}</span>
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-zinc-300 dark:text-zinc-700 font-medium text-xs py-1">No weight</div>
+                    )}
+                    {calculatedBmi ? (
+                      <div>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">BMI</span>
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
+                          {calculatedBmi.value}
+                          <span className="text-[9px] block font-medium text-zinc-550 truncate px-1" title={calculatedBmi.classification}>
                             {calculatedBmi.classification}
                           </span>
-                        </div>
-
-                        <p className="text-xs text-zinc-755 leading-relaxed font-medium">
-                          Estimated tissue mass calculations. Standard healthy ranges are between 18.5 and 24.9.
-                        </p>
-
-                        {/* BMI Advice Accordion */}
-                        {bmiAdvice && (
-                          <div className="pt-2 border-t border-card-border mt-2">
-                            <button
-                              type="button"
-                              onClick={() => setShowBmiGuidance(!showBmiGuidance)}
-                              className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-zinc-755 hover:text-zinc-955 dark:text-zinc-350 dark:hover:text-white bg-zinc-50/50 dark:bg-zinc-900/60 border border-card-border px-2.5 py-1.5 rounded-xl transition duration-200"
-                            >
-                              <span>{showBmiGuidance ? "Hide Strategy Details" : `Improvement Strategy`}</span>
-                              <Info size={14} className="text-zinc-755" />
-                            </button>
-
-                            <AnimatePresence>
-                              {showBmiGuidance && (
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: "auto" }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="overflow-hidden pt-2"
-                                >
-                                  <div className={`p-3 rounded-xl border ${bmiAdvice.color} text-xs leading-relaxed space-y-1.5`}>
-                                    <div className="flex justify-between items-center select-none mb-1">
-                                      <span className={`font-bold uppercase tracking-wider ${bmiAdvice.titleColor}`}>{bmiAdvice.title}</span>
-                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${bmiAdvice.badgeColor}`}>
-                                        {bmiAdvice.badge}
-                                      </span>
-                                    </div>
-                                    <ul className="list-disc pl-3.5 space-y-1 text-zinc-755 font-medium">
-                                      {bmiAdvice.tips.map((tip, idx) => (
-                                        <li key={idx} className="leading-snug">{tip}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        )}
+                        </span>
                       </div>
+                    ) : (
+                      <div className="text-zinc-300 dark:text-zinc-700 font-medium text-xs py-1">No BMI</div>
                     )}
-
-                    {calculatedProtein && (
-                      <div className="p-4 rounded-2xl border border-card-border bg-card space-y-2 select-none shadow-[0_12px_40px_rgba(0,0,0,0.04)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.24)] flex flex-col justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-755">Optimal Fueling</span>
-                          <h4 className="text-sm font-bold text-zinc-955 mt-1 leading-none">Daily Protein Target</h4>
-                        </div>
-
-                        <div className="py-2.5 flex items-baseline gap-1.5">
-                          <span className="text-3xl font-bold text-zinc-955 tabular-nums leading-none">{calculatedProtein.value}</span>
-                          <span className="text-xs font-bold text-zinc-755">g / day</span>
-                        </div>
-
-                        <p className="text-xs text-zinc-755 leading-relaxed font-medium">
-                          Physique-goal estimate at <span className="text-zinc-955 font-bold tabular-nums">{calculatedProtein.multiplier}g</span> per lb for your <span className="text-zinc-955 font-bold">{profile?.targetPhysique || "athletic"}</span> target. Your macro bar uses a per-kg clinical target based on your activity level.
-                        </p>
+                    {calculatedProtein ? (
+                      <div>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Protein Goal</span>
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
+                          {calculatedProtein.value} <span className="text-[10px] font-normal text-zinc-500">g/day</span>
+                        </span>
                       </div>
+                    ) : (
+                      <div className="text-zinc-300 dark:text-zinc-700 font-medium text-xs py-1">No target</div>
                     )}
                   </div>
-                </div>
+                </Card>
               )}
 
               {/* Diagnostics insights */}

@@ -19,10 +19,11 @@ import {
   Heart,
   Plus,
   Minus,
-  Leaf,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { createId, todayKey } from "@/lib/id";
+import { AiSetupModal } from "@/components/ai-setup-modal";
 
 // ─── Constants ──────────────────────────────────────────────────────
 const CUP_ML = 250;
@@ -31,38 +32,190 @@ const WATER_GOAL_ML = 2000;
 // ─── Greeting helper ────────────────────────────────────────────────
 function getGreeting(name: string): { text: string; Icon: typeof Sun; iconClass: string } {
   const hour = new Date().getHours();
-  if (hour < 12)
+  if (hour >= 5 && hour < 12)
     return { text: `Good morning, ${name}! ☀️`, Icon: Sun, iconClass: "text-amber-400" };
-  if (hour < 17)
+  if (hour >= 12 && hour < 17)
     return { text: `Good afternoon, ${name}! 👋`, Icon: Sunset, iconClass: "text-orange-400" };
-  return { text: `Good evening, ${name}! 🌙`, Icon: Moon, iconClass: "text-indigo-400" };
+  if (hour >= 17)
+    return { text: `Good evening, ${name}! 🌙`, Icon: Moon, iconClass: "text-indigo-400" };
+  // Late night / early morning (midnight–5am)
+  return { text: `Still up, ${name}? 🌙`, Icon: Moon, iconClass: "text-indigo-400" };
 }
+
+// ─── Time-aware tips ─────────────────────────────────────────────────
+type TipTime = "morning" | "afternoon" | "evening" | "night";
 
 interface Tip {
   emoji: string;
   headline: string;
   body: string;
-  tags?: string[];
 }
 
-function filterTipByDiet(tip: Tip, dietaryPreferences: string): boolean {
-  const pref = (dietaryPreferences ?? "").toLowerCase();
-  const text = `${tip.headline} ${tip.body}`.toLowerCase();
-  
-  if (pref.includes("vegan")) {
-    const animalWords = ["egg", "chicken", "meat", "beef", "pork", "fish", "yogurt", "yoghurt", "milk", "cheese", "whey", "dairy", "turkey", "steak"];
-    if (animalWords.some(word => text.includes(word))) return false;
-    if (tip.tags?.some(tag => ["meat", "non-veg", "dairy"].includes(tag))) return false;
-  }
-  
-  if (pref.includes("vegetarian")) {
-    const meatWords = ["chicken", "meat", "beef", "pork", "fish", "steak", "turkey"];
-    if (meatWords.some(word => text.includes(word))) return false;
-    if (tip.tags?.some(tag => ["meat", "non-veg"].includes(tag))) return false;
-  }
-  
-  return true;
+const TIPS: Record<TipTime, Tip[]> = {
+  morning: [
+    {
+      emoji: "💧",
+      headline: "Drink water before anything else",
+      body: "A glass of water right after waking up jumpstarts your metabolism and flushes out toxins that built up overnight.",
+    },
+    {
+      emoji: "🌅",
+      headline: "Morning sunlight sets your clock",
+      body: "Just 5–10 minutes of natural light in the morning helps regulate your sleep-wake cycle and boosts mood for the whole day.",
+    },
+    {
+      emoji: "🥚",
+      headline: "Start the day with protein",
+      body: "A protein-rich breakfast keeps you fuller longer and reduces energy crashes before lunch. Fueling up early supports sustained energy and recovery.",
+    },
+    {
+      emoji: "🧘",
+      headline: "3 deep breaths before you check your phone",
+      body: "Starting with slow breaths lowers cortisol and sets a calm, focused tone for the morning. Your notifications can wait 30 seconds!",
+    },
+    {
+      emoji: "🎯",
+      headline: "Pick just one priority for today",
+      body: "Decide on the single most important thing you want to accomplish today. Everything else is a bonus.",
+    },
+    {
+      emoji: "🏃",
+      headline: "Morning movement wakes your brain",
+      body: "Even a 10-minute walk before work boosts focus and energy for hours. Your body and brain run better when they're warm.",
+    },
+    {
+      emoji: "☕",
+      headline: "Delay coffee by 90 minutes",
+      body: "Your natural cortisol peak is highest in the first 90 minutes after waking. Letting it do its job before adding caffeine means better alertness all day.",
+    },
+  ],
+  afternoon: [
+    {
+      emoji: "🥗",
+      headline: "Don't skip lunch — fuel the second half",
+      body: "A balanced midday meal prevents the 3pm energy slump. Aim for protein, healthy fats, and some slow carbs like brown rice or sweet potato.",
+    },
+    {
+      emoji: "🚶",
+      headline: "A short walk beats another coffee",
+      body: "Feeling foggy after lunch? A 10-minute walk outside clears your head better than caffeine and won't disrupt your sleep later.",
+    },
+    {
+      emoji: "💧",
+      headline: "You're probably not drinking enough water",
+      body: "Most people are mildly dehydrated by midday. Thirst often hides as hunger or fatigue — try a glass of water first!",
+    },
+    {
+      emoji: "🧠",
+      headline: "Afternoon is peak problem-solving time",
+      body: "For most people, reaction time and analytical thinking are at their best from 2–5pm. Use this window for your hardest tasks.",
+    },
+    {
+      emoji: "🐢",
+      headline: "Slow and steady beats crash and burn",
+      body: "Showing up consistently 3 days a week for a year beats going every day for a month and burning out. Pace is everything.",
+    },
+    {
+      emoji: "🍎",
+      headline: "Reach for a snack with staying power",
+      body: "Pair a carb with protein for your afternoon snack — apple with almond butter, or hummus with veggies. It keeps blood sugar steady.",
+    },
+    {
+      emoji: "📵",
+      headline: "Take a screen break every 90 minutes",
+      body: "Your brain works in natural focus cycles of about 90 minutes. Getting up, stretching, or looking outside resets your concentration.",
+    },
+  ],
+  evening: [
+    {
+      emoji: "🍽️",
+      headline: "Eat a lighter dinner for better sleep",
+      body: "Heavy meals close to bedtime make your body work hard digesting instead of recovering. Try to finish eating 2–3 hours before bed.",
+    },
+    {
+      emoji: "🛌",
+      headline: "Rest days are just as important as workout days",
+      body: "Your muscles actually grow while you rest — not during the workout itself. Recovery is where the magic happens.",
+    },
+    {
+      emoji: "📵",
+      headline: "Cut screens an hour before bed",
+      body: "Blue light from phones and laptops tricks your brain into thinking it's daytime. Try reading, stretching, or journaling instead.",
+    },
+    {
+      emoji: "🧘",
+      headline: "An evening stretch does wonders",
+      body: "5–10 minutes of light stretching before bed improves circulation, reduces soreness, and signals your body that it's time to wind down.",
+    },
+    {
+      emoji: "📝",
+      headline: "Brain dump before you sleep",
+      body: "Write down tomorrow's to-do list before bed. It offloads the mental loops keeping you awake and lets your brain fully switch off.",
+    },
+    {
+      emoji: "❄️",
+      headline: "Cool your room for deeper sleep",
+      body: "Your body temperature naturally drops as you fall asleep. A cooler room (around 18°C / 65°F) signals deeper, more restorative sleep.",
+    },
+    {
+      emoji: "😴",
+      headline: "Consistency beats duration for sleep",
+      body: "Going to bed and waking at the same time every day — even on weekends — is more powerful than sleeping in. Your body loves rhythm.",
+    },
+  ],
+  night: [
+    {
+      emoji: "🌙",
+      headline: "Your body repairs itself while you sleep",
+      body: "Deep sleep is when your muscles rebuild, your brain consolidates memories, and your immune system recharges. Prioritise getting to bed soon.",
+    },
+    {
+      emoji: "😴",
+      headline: "Sleep is your best performance tool",
+      body: "7–9 hours of quality sleep improves strength, focus, mood, and metabolism. No supplement or workout can replace it.",
+    },
+    {
+      emoji: "📵",
+      headline: "Put the phone down — for real",
+      body: "Even 30 minutes less of scrolling at night can meaningfully improve the quality and depth of your sleep. Try leaving it in another room.",
+    },
+    {
+      emoji: "💧",
+      headline: "Stay hydrated even at night",
+      body: "You lose water through breathing while you sleep. Keep a glass of water by your bed so you can hydrate easily if you wake up.",
+    },
+    {
+      emoji: "🧘",
+      headline: "Try box breathing to fall asleep faster",
+      body: "Inhale for 4 counts, hold for 4, exhale for 4, hold for 4. Repeat 4 times. This activates your parasympathetic system and calms your mind.",
+    },
+    {
+      emoji: "🌡️",
+      headline: "Listen to how your body feels right now",
+      body: "Before sleeping, check in: are you tense? Sore? Anxious? A quick 2-minute body scan helps you notice — and release — what you're holding.",
+    },
+    {
+      emoji: "🎯",
+      headline: "Tomorrow starts with tonight",
+      body: "Set your workout clothes out, prep your water bottle, and decide on breakfast now. Small evening wins make mornings effortless.",
+    },
+  ],
+};
+
+function getTipTimeOfDay(): TipTime {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 22) return "evening";
+  return "night";
 }
+
+const TIP_LABELS: Record<TipTime, string> = {
+  morning: "Morning tip",
+  afternoon: "Afternoon tip",
+  evening: "Evening tip",
+  night: "Late night tip",
+};
 
 function getDailySeed(dateStr: string): number {
   let hash = 0;
@@ -71,45 +224,6 @@ function getDailySeed(dateStr: string): number {
   }
   return Math.abs(hash);
 }
-
-// ─── Beginner tips ──────────────────────────────────────────────────
-const TIPS: Tip[] = [
-  {
-    emoji: "💧",
-    headline: "Drink water first thing in the morning",
-    body: "A glass of water right after waking up jumpstarts your body. Think of it like charging your phone overnight!",
-  },
-  {
-    emoji: "🛌",
-    headline: "Rest days are just as important as workout days",
-    body: "Your muscles actually grow while you sleep and rest — not during the workout itself. Don't feel guilty for resting!",
-  },
-  {
-    emoji: "🥚",
-    headline: "Eat some protein at every meal",
-    body: "Protein is what your muscles use to repair themselves after movement. Eggs, chicken, yoghurt, beans — all great choices.",
-  },
-  {
-    emoji: "🐢",
-    headline: "Slow and steady wins the race",
-    body: "Showing up 3 days a week consistently for a year beats going every day for one month and burning out. Progress takes time.",
-  },
-  {
-    emoji: "🧘",
-    headline: "Any movement counts",
-    body: "A 20-minute walk, gentle stretching, or even gardening — it all helps your body get stronger and healthier.",
-  },
-  {
-    emoji: "😴",
-    headline: "Sleep is your secret superpower",
-    body: "7–9 hours of sleep helps your body heal, your memory sharpen, and your energy stay high the next day.",
-  },
-  {
-    emoji: "🎯",
-    headline: "Start small and build up",
-    body: "Even 5 minutes of exercise is better than nothing. You can always do more next time — the key is to start!",
-  },
-];
 
 // ─── Water Counter ───────────────────────────────────────────────────
 function WaterStep() {
@@ -281,13 +395,27 @@ export function TodayScreen() {
   const workoutPlans = useAtlasStore((s) => s.workoutPlans);
   const activeWorkoutPlanId = useAtlasStore((s) => s.activeWorkoutPlanId);
   const setActiveTab = useAtlasStore((s) => s.setActiveTab);
-  const setHomeSubTab = useAtlasStore((s) => s.setHomeSubTab);
-  const setActiveSettingsTab = useAtlasStore((s) => s.setActiveSettingsTab);
+  const aiProviders = useAtlasStore((s) => s.aiProviders);
+  const activeProviderId = useAtlasStore((s) => s.activeProviderId);
 
-  const handleGoToDietSettings = () => {
-    setActiveTab("settings");
-    setActiveSettingsTab("profile");
+  const hasActiveAi = useMemo(() => {
+    const active = aiProviders.find((p) => p.id === activeProviderId);
+    return !!(active && (active.apiKey || active.type === "ollama" || active.type === "lmstudio"));
+  }, [aiProviders, activeProviderId]);
+
+  const [showAiModal, setShowAiModal] = useState(false);
+
+  useEffect(() => {
+    if (!hasActiveAi && localStorage.getItem("atlas_has_seen_ai_popup") !== "true") {
+      setShowAiModal(true);
+    }
+  }, [hasActiveAi]);
+
+  const handleCloseAiModal = () => {
+    localStorage.setItem("atlas_has_seen_ai_popup", "true");
+    setShowAiModal(false);
   };
+
 
   const todayDate = todayKey();
 
@@ -314,14 +442,12 @@ export function TodayScreen() {
   const todayRoutine = activePlan?.routines?.find((r) => r.day === todayDayName);
 
   const { text: greetingText, Icon: GreetingIcon, iconClass } = getGreeting(profile?.name ?? "there");
-  // Synchronous initial tip filtered for user's diet
+  const tipTime = getTipTimeOfDay();
   const initialTip = useMemo(() => {
-    const diet = profile?.dietaryPreferences ?? "";
-    const filtered = TIPS.filter(tip => filterTipByDiet(tip, diet));
-    const list = filtered.length > 0 ? filtered : TIPS;
+    const pool = TIPS[tipTime];
     const seed = getDailySeed(todayDate);
-    return list[seed % list.length];
-  }, [profile?.dietaryPreferences, todayDate]);
+    return pool[seed % pool.length];
+  }, [todayDate, tipTime]);
 
   const [dailyTip, setDailyTip] = useState<Tip>(initialTip);
 
@@ -329,34 +455,26 @@ export function TodayScreen() {
     let active = true;
     const fetchTips = async () => {
       try {
-        let res = await fetch("/api/daily-tips", {
-          cache: "no-cache"
-        });
-        if (!res.ok) {
-          res = await fetch("/daily-tips.json");
-        }
+        let res = await fetch("/api/daily-tips", { cache: "no-cache" });
+        if (!res.ok) res = await fetch("/daily-tips.json");
         if (res.ok) {
           const remoteTips = await res.json();
+          // Remote tips are expected to be a flat array; filter by time-of-day tag if present
           if (Array.isArray(remoteTips) && remoteTips.length > 0) {
-            const diet = profile?.dietaryPreferences ?? "";
-            const filtered = remoteTips.filter(tip => filterTipByDiet(tip, diet));
-            const list = filtered.length > 0 ? filtered : remoteTips;
+            const timeTagged = remoteTips.filter((t: any) => !t.time || t.time === tipTime);
+            const pool = timeTagged.length > 0 ? timeTagged : remoteTips;
             const seed = getDailySeed(todayDate);
-            const chosen = list[seed % list.length];
-            if (active && chosen) {
-              setDailyTip(chosen);
-            }
+            const chosen = pool[seed % pool.length];
+            if (active && chosen) setDailyTip(chosen);
           }
         }
       } catch (err) {
-        console.warn("Failed to fetch daily tips from internet, using local fallback.", err);
+        console.warn("Failed to fetch daily tips, using local fallback.", err);
       }
     };
     void fetchTips();
-    return () => {
-      active = false;
-    };
-  }, [profile?.dietaryPreferences, todayDate]);
+    return () => { active = false; };
+  }, [todayDate, tipTime]);
 
   // Count steps done
   const nutritionDone = mealLoggedToday && waterGoalMet;
@@ -482,6 +600,36 @@ export function TodayScreen() {
         </div>
       </DailyStep>
 
+      {/* ── AI Coach Setup Card (only if no active AI setup) ── */}
+      {!hasActiveAi && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.2 }}
+        >
+          <Card className="p-4 border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-2xl flex items-center justify-center shrink-0 shadow-sm">
+                <Cpu size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground leading-snug">Set up your AI Coach Assistant</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed max-w-md">
+                  Connect an AI provider to enable personalized program design, workout summaries, and interactive training logs.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              onClick={() => setShowAiModal(true)}
+              className="w-full sm:w-auto text-xs py-1.5 shrink-0 animate-click"
+            >
+              Configure AI Coach
+            </Button>
+          </Card>
+        </motion.div>
+      )}
+
       {/* ── Tip of the day ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -493,26 +641,21 @@ export function TodayScreen() {
             <Sparkles size={16} className="text-violet-500 shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider mb-1">
-                Did you know?
+                {TIP_LABELS[tipTime]}
               </p>
               <p className="text-xl mb-1.5">{dailyTip.emoji}</p>
               <p className="text-sm font-semibold text-foreground leading-snug mb-1">{dailyTip.headline}</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{dailyTip.body}</p>
-              {!profile?.dietaryPreferences && (
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2 select-none border-t border-violet-500/10 pt-2 leading-tight">
-                  💡 Want personalized nutrition tips? Update your{" "}
-                  <button
-                    onClick={handleGoToDietSettings}
-                    className="text-violet-500 hover:text-violet-600 dark:text-violet-400 dark:hover:text-violet-300 font-bold underline cursor-pointer inline p-0 bg-transparent border-none text-left"
-                  >
-                    Dietary Preferences in Settings
-                  </button>.
-                </p>
-              )}
             </div>
           </div>
         </Card>
       </motion.div>
+
+      <AnimatePresence>
+        {showAiModal && (
+          <AiSetupModal onClose={handleCloseAiModal} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

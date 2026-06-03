@@ -23,6 +23,9 @@ async function parseError(response: Response): Promise<never> {
   } catch {
     // Keep status text.
   }
+  if (message.includes("unregistered callers") || message.includes("API key")) {
+    message = "Invalid or inactive Gemini API Key. Google Gemini API requires a valid API key (established identity) to make this call. Please check your key.";
+  }
   throw new AiProviderError(message, response.status);
 }
 
@@ -90,10 +93,18 @@ export const geminiAdapter: AiProviderAdapter = {
     const response = await fetch(`${baseUrl(settings)}/models?key=${encodeURIComponent(apiKey)}`);
     if (!response.ok) await parseError(response);
     const body = (await response.json()) as { models?: Array<{ name: string; displayName?: string }> };
-    return (body.models ?? []).map((model) => ({
+    const rawModels = (body.models ?? []).map((model) => ({
       id: model.name.replace(/^models\//, ""),
       label: model.displayName,
     }));
+    // Keep only text-generative Gemini models; exclude embeddings, AQA, image/TTS models
+    return rawModels.filter((m) =>
+      m.id.startsWith("gemini-") &&
+      !m.id.includes("embedding") &&
+      !m.id.includes("aqa") &&
+      !m.id.includes("imagen") &&
+      !m.id.includes("text-bison")
+    );
   },
   async validate(settings: AiProviderSettings, apiKey: string): Promise<boolean> {
     await this.listModels(settings, apiKey);
