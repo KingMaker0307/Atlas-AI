@@ -48,6 +48,8 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise, Routine } from "@/types/domain";
 import { cn } from "@/lib/cn";
 import { NutritionTracker } from "@/components/nutrition-tracker";
+import { DashboardScreen } from "./dashboard-screen";
+import { AdvancedAnalyticsScreen } from "./advanced-analytics-screen";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
 import { PostWorkoutCheckinModal } from "@/components/post-workout-checkin-modal";
 import { FinishSessionModal } from "@/components/finish-session-modal";
@@ -286,6 +288,7 @@ export function WorkoutScreen() {
   const updateExerciseUnit = useAtlasStore((state) => state.updateExerciseUnit);
   const profile = useAtlasStore((state) => state.profile);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
+  const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
 
   // ─── Accordion focus state ───────────────────────────────────────────────────
   // focusedExIdx: which exercise index is currently expanded. -1 = all collapsed.
@@ -418,8 +421,6 @@ export function WorkoutScreen() {
   };
 
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
-  const [query, setQuery] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [fatigue, setFatigue] = useState(6);
   const [notes, setNotes] = useState("");
   const [remaining, setRemaining] = useState(0);
@@ -759,17 +760,6 @@ export function WorkoutScreen() {
   }, [activeWorkout?.startedAt]);
 
 
-  const filteredExercises = useMemo(() => {
-    const lowered = query.toLowerCase();
-    const list = storeExercises && storeExercises.length > 0 ? storeExercises : exercises;
-    return list.filter((exercise) => {
-      return (
-        exercise.name.toLowerCase().includes(lowered) ||
-        exercise.muscles.some((muscle) => muscle.toLowerCase().includes(lowered)) ||
-        exercise.equipment.some((equipment) => equipment.toLowerCase().includes(lowered))
-      );
-    });
-  }, [query, storeExercises]);
 
   const handleStartRoutineClick = (routine: Routine) => {
     setRoutineToStart(routine);
@@ -824,25 +814,37 @@ export function WorkoutScreen() {
         className="space-y-4 pb-28"
       >
         {/* ─── Header ─── */}
-        <section className="flex items-center justify-between">
+        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <p className="text-sm text-zinc-555">
               Manage and track your workout plans
             </p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Plans</h1>
           </div>
-          <Button
-            size="sm"
-            variant="primary"
-            icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
-            disabled={coachBusy}
-            onClick={() => {
-              setEditingWorkoutPlanId(null);
-              setActiveSubScreen("workout-plan-builder");
-            }}
-          >
-            {coachBusy ? "Generating..." : "Create Plan"}
-          </Button>
+          <div className="flex gap-2.5 w-full sm:w-auto">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="flex-1 sm:flex-initial"
+              icon={<Layers3 size={15} />}
+              onClick={() => setActiveSubScreen("exercise-database")}
+            >
+              Exercise Database
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              className="flex-1 sm:flex-initial"
+              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+              disabled={coachBusy}
+              onClick={() => {
+                setEditingWorkoutPlanId(null);
+                setActiveSubScreen("workout-plan-builder");
+              }}
+            >
+              {coachBusy ? "Generating..." : "Create Plan"}
+            </Button>
+          </div>
         </section>
 
         {/* ─── Plans Content ─── */}
@@ -1063,212 +1065,70 @@ export function WorkoutScreen() {
           </div>
         )}
 
-        {/* ─── CATEGORIZED EXERCISE DATABASE EXPLORER ─── */}
-        <Card className="p-5 border border-card-border bg-card shadow-lg">
-          <div className="mb-4 flex items-center justify-between border-b border-card-border pb-3">
-            <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white leading-tight">Exercise Database</h2>
-              <p className="text-xs text-zinc-550 dark:text-zinc-400">
-                {filteredExercises.length} exercises · Clinical cues, setup guides, and progressive overload tips
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider hidden sm:inline">Explore</span>
-              <Layers3 className="text-emerald-600 dark:text-emerald-450" size={18} />
-            </div>
-          </div>
-
-          {/* Search bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={15} />
-            <Input
-              maxLength={100}
-              placeholder="Search by name, muscle, or equipment..."
-              value={query}
-              onChange={(event) => {
-                const val = event.target.value;
-                setQuery(val);
-                // Auto-expand all categories when searching
-                if (val.trim().length > 0) {
-                  setExpandedCategories(new Set(["compound", "isolation", "cardio", "mobility"]));
-                }
-              }}
-              className="pl-9"
-            />
-          </div>
-
-          {/* Category Accordion */}
-          <div className="mt-4 space-y-2">
-            {([
-              { key: "compound", label: "Compound Movements", description: "Multi-joint exercises for strength & mass", icon: Dumbbell, color: "emerald" },
-              { key: "isolation", label: "Isolation Exercises", description: "Single-joint targeted muscle work", icon: Target, color: "sky" },
-              { key: "cardio", label: "Cardio & Conditioning", description: "Heart rate elevation & endurance", icon: Heart, color: "rose" },
-              { key: "mobility", label: "Mobility & Stability", description: "Flexibility, joint health & activation", icon: Footprints, color: "violet" },
-            ] as const).map((cat) => {
-              const categoryExercises = filteredExercises.filter((ex) => ex.category === cat.key);
-              if (categoryExercises.length === 0) return null;
-              const isExpanded = expandedCategories.has(cat.key);
-              const CategoryIcon = cat.icon;
-
-              const colorMap = {
-                emerald: {
-                  bg: "bg-emerald-500/10",
-                  border: "border-emerald-500/20",
-                  text: "text-emerald-400",
-                  icon: "text-emerald-400",
-                  badge: "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border-emerald-500/20",
-                },
-                sky: {
-                  bg: "bg-sky-500/10",
-                  border: "border-sky-500/20",
-                  text: "text-sky-400",
-                  icon: "text-sky-400",
-                  badge: "bg-sky-500/15 text-sky-500 dark:text-sky-400 border-sky-500/20",
-                },
-                rose: {
-                  bg: "bg-rose-500/10",
-                  border: "border-rose-500/20",
-                  text: "text-rose-400",
-                  icon: "text-rose-400",
-                  badge: "bg-rose-500/15 text-rose-500 dark:text-rose-400 border-rose-500/20",
-                },
-                violet: {
-                  bg: "bg-violet-500/10",
-                  border: "border-violet-500/20",
-                  text: "text-violet-400",
-                  icon: "text-violet-400",
-                  badge: "bg-violet-500/15 text-violet-500 dark:text-violet-400 border-violet-500/20",
-                },
-              };
-              const c = colorMap[cat.color];
-
-              return (
-                <div key={cat.key} className="rounded-xl border border-surface-border bg-surface/60 overflow-hidden">
-                  {/* Category Header (clickable accordion toggle) */}
-                  <button
-                    className="w-full flex items-center justify-between p-3.5 text-left hover:bg-white/[0.02] transition-colors group"
-                    onClick={() => {
-                      setExpandedCategories((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(cat.key)) {
-                          next.delete(cat.key);
-                        } else {
-                          next.add(cat.key);
-                        }
-                        return next;
-                      });
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-9 w-9 rounded-lg ${c.bg} ${c.border} border flex items-center justify-center shrink-0`}>
-                        <CategoryIcon size={18} className={c.icon} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-foreground leading-tight">{cat.label}</p>
-                        <p className="text-xs text-zinc-500 mt-0.5 leading-tight">{cat.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`px-2 py-0.5 rounded-md border text-xs font-black ${c.badge}`}>
-                        {categoryExercises.length}
-                      </span>
-                      <ChevronDown
-                        size={16}
-                        className={`text-zinc-500 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
-                          }`}
-                      />
-                    </div>
-                  </button>
-
-                  {/* Expanded exercise grid */}
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="border-t border-card-border p-3"
-                    >
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {categoryExercises.map((exercise) => {
-                          const diffColors = {
-                            beginner: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/15",
-                            intermediate: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/15",
-                            advanced: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/15",
-                          };
-                          const diffText = exercise.difficulty || "beginner";
-
-                          return (
-                            <button
-                              className="rounded-lg border border-surface-border bg-surface/50 p-3 text-left transition hover:border-card-border/80 hover:bg-surface/80 flex flex-col justify-between gap-2.5 group"
-                              key={exercise.id}
-                              onClick={() => setSelectedExercise(exercise)}
-                            >
-                              <div className="flex items-start justify-between w-full gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-[13px] font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-450 transition-colors leading-snug truncate">
-                                    {exercise.name}
-                                  </p>
-                                  <p className="mt-0.5 text-xs font-bold text-zinc-555 uppercase tracking-wide">
-                                    {exercise.muscles.slice(0, 3).join(" · ")}
-                                  </p>
-                                </div>
-                                <ChevronRight size={14} className="text-zinc-750 group-hover:text-zinc-955 shrink-0 transition-colors self-center" />
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider flex-wrap">
-                                <span className={`px-1.5 py-0.5 rounded border ${diffColors[diffText]}`}>
-                                  {diffText}
-                                </span>
-                                {exercise.equipment.slice(0, 2).map((eq) => (
-                                  <span key={eq} className="px-1.5 py-0.5 rounded border border-surface-border bg-surface text-zinc-750">
-                                    {eq}
-                                  </span>
-                                ))}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* AI Generation fallback when nothing found */}
-          {filteredExercises.length === 0 && query.trim().length > 2 && (
-            <div className="mt-5 p-4 rounded-xl bg-surface border border-surface-border text-center space-y-3">
-              <Sparkles className="h-8 w-8 text-emerald-450 mx-auto animate-pulse" />
-              <div>
-                <h3 className="text-sm font-bold text-foreground leading-tight">Can&apos;t find &quot;{query}&quot;?</h3>
-                <p className="text-xs text-zinc-550 dark:text-zinc-500 mt-1 max-w-xs mx-auto leading-normal">
-                  Our biomechanics engine can dynamically generate a full clinical-grade exercise profile covering correct setup cues, execution, breathing, mistakes, and safety advice.
-                </p>
-              </div>
-              <Button
-                size="sm"
-                variant="primary"
-                className="text-xs bg-emerald-500 hover:bg-emerald-400 text-white font-bold"
-                disabled={coachBusy}
-                onClick={async () => {
-                  try {
-                    const generated = await generateGlobalExercise(query);
-                    if (generated) {
-                      setSelectedExercise(generated);
-                      setQuery("");
-                    }
-                  } catch (err: any) {
-                    alert(err?.message || "Failed to search and generate exercise details.");
-                  }
-                }}
-              >
-                {coachBusy ? "Generating clinical cues..." : "AI Generate Exercise Profile"}
-              </Button>
-            </div>
-          )}
-        </Card>
-
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
+
+        {/* ─── WORKOUT ANALYTICS SECTION ─── */}
+        <div className="border-t border-card-border/80 my-8 pt-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Workout Analytics</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Track your volume, progressive overload, and consistency</p>
+            </div>
+            
+            {/* Segmented Control for Beginner vs Advanced */}
+            <div className="relative flex gap-1 rounded-2xl border border-surface-border bg-surface p-1 select-none self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => void setGuidedMode(true)}
+                className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
+                  guidedMode
+                    ? "text-zinc-950"
+                    : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
+              >
+                {guidedMode && (
+                  <motion.span
+                    layoutId="active-workout-analytics-mode"
+                    className="absolute inset-0 rounded-xl bg-emerald-300"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-20">Beginner 🌱</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void setGuidedMode(false)}
+                className={`relative z-10 px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-xl transition-colors duration-250 cursor-pointer min-h-[32px] flex items-center ${
+                  !guidedMode
+                    ? "text-zinc-950"
+                    : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
+              >
+                {!guidedMode && (
+                  <motion.span
+                    layoutId="active-workout-analytics-mode"
+                    className="absolute inset-0 rounded-xl bg-emerald-300"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-20">Advanced ⚡</span>
+              </button>
+            </div>
+          </div>
+          
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={guidedMode ? "beginner" : "advanced"}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {guidedMode ? <DashboardScreen /> : <AdvancedAnalyticsScreen />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
         {/* End of Plans tab content */}
         </>

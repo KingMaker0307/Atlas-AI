@@ -11,6 +11,7 @@ import { WelcomeScreen } from "@/components/screens/welcome-screen";
 import { RoutineBuilderScreen } from "@/components/screens/routine-builder-screen";
 import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
 import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
+import { ExerciseDatabaseScreen } from "@/components/screens/exercise-database-screen";
 import { AppLoader } from "@/components/ui/app-loader";
 import { HealthDisclaimer } from "@/components/ui/health-disclaimer";
 import { InstallPrompt } from "@/components/install-prompt";
@@ -148,6 +149,8 @@ export function AtlasApp() {
         return <ErrorBoundary screen="Plan Detail"><WorkoutPlanDetailScreen /></ErrorBoundary>;
       case "active-workout":
         return <ErrorBoundary screen="Active Workout"><WorkoutScreen /></ErrorBoundary>;
+      case "exercise-database":
+        return <ErrorBoundary screen="Exercise Database"><ExerciseDatabaseScreen /></ErrorBoundary>;
       default:
         return null;
     }

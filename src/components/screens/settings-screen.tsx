@@ -407,7 +407,10 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
             actualApiKey = await decryptString(draft.apiKey);
           } catch (decErr) {
             console.error("Failed to decrypt API key:", decErr);
-            actualApiKey = "";
+            setModelsError("Failed to decrypt saved API key. Please re-enter your key.");
+            setModels([]);
+            setModelsLoading(false);
+            return;
           }
         }
         const modelList = await adapter.listModels(draft, actualApiKey);
@@ -605,6 +608,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
     if (apiKey !== "") {
       setApiKey("••••••••••••••••");
     }
+    await testProvider(updatedDraft.id);
   };
 
   const handleTestProvider = async () => {
@@ -683,26 +687,48 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
       {/* ─── HORIZONTAL TAB BAR (Mobile) / SIDE PANEL (Desktop) ─── */}
 
-      {/* Mobile horizontal tabs */}
-      <div className="flex md:hidden bg-surface border border-surface-border p-1 rounded-2xl select-none gap-1 overflow-x-auto scrollbar-none scroll-smooth">
+      {/* Mobile grid tab selectors */}
+      <div className="grid grid-cols-2 gap-2.5 md:hidden select-none mb-1">
         {[
-          { id: "profile", label: "Profile", icon: <User size={14} /> },
-          { id: "ai", label: "AI Coach", icon: <Cpu size={14} /> },
-          { id: "system", label: "Data & Backup", icon: <Server size={14} /> },
-          { id: "subscription", label: "Plan", icon: <Zap size={14} /> },
+          { id: "profile", label: "Profile & Goals", icon: <User size={15} />, color: "emerald" },
+          { id: "ai", label: "AI Coach settings", icon: <Cpu size={15} />, color: "violet" },
+          { id: "system", label: "Data & Backup", icon: <Server size={15} />, color: "sky" },
+          { id: "subscription", label: "Plan & Access", icon: <Zap size={15} />, color: "amber" },
         ].map((tab) => {
           const active = activeSettingsTab === tab.id;
+          
+          const colorStyles = {
+            emerald: active 
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold shadow-sm" 
+              : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200",
+            violet: active 
+              ? "border-violet-500/30 bg-violet-500/10 text-violet-650 dark:text-violet-400 font-extrabold shadow-sm" 
+              : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200",
+            sky: active 
+              ? "border-sky-500/30 bg-sky-500/10 text-sky-650 dark:text-sky-400 font-extrabold shadow-sm" 
+              : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200",
+            amber: active 
+              ? "border-amber-500/30 bg-amber-500/10 text-amber-650 dark:text-amber-400 font-extrabold shadow-sm" 
+              : "border-surface-border bg-surface text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200",
+          }[tab.color];
+
+          const iconStyles = {
+            emerald: active ? "bg-emerald-500/15 border-emerald-500/20 text-emerald-500" : "bg-zinc-100 dark:bg-white/[0.02] border-zinc-200/50 dark:border-white/[0.03] text-zinc-500",
+            violet: active ? "bg-violet-500/15 border-violet-500/20 text-violet-550 dark:text-violet-400" : "bg-zinc-100 dark:bg-white/[0.02] border-zinc-200/50 dark:border-white/[0.03] text-zinc-500",
+            sky: active ? "bg-sky-500/15 border-sky-500/20 text-sky-550 dark:text-sky-400" : "bg-zinc-100 dark:bg-white/[0.02] border-zinc-200/50 dark:border-white/[0.03] text-zinc-500",
+            amber: active ? "bg-amber-500/15 border-amber-500/20 text-amber-550 dark:text-amber-400" : "bg-zinc-100 dark:bg-white/[0.02] border-zinc-200/50 dark:border-white/[0.03] text-zinc-500",
+          }[tab.color];
+
           return (
             <button
               key={tab.id}
               onClick={() => setActiveSettingsTab(tab.id as any)}
-              className={`flex-1 min-w-[90px] sm:min-w-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap shrink-0 ${active
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
+              className={`flex items-center gap-2.5 p-2.5 text-[10px] font-black uppercase tracking-wider rounded-2xl border transition-all active:scale-[0.98] ${colorStyles}`}
             >
-              {tab.icon}
-              <span className="truncate">{tab.label}</span>
+              <div className={`p-1.5 rounded-lg border shrink-0 flex items-center justify-center ${iconStyles}`}>
+                {tab.icon}
+              </div>
+              <span className="truncate leading-tight text-left">{tab.label}</span>
             </button>
           );
         })}
@@ -1189,7 +1215,29 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                           </Field>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className={`grid gap-4 ${(draft.type === "ollama" || draft.type === "lmstudio") ? "grid-cols-1" : "grid-cols-2"}`}>
+                          {draft.type !== "ollama" && draft.type !== "lmstudio" && (
+                            <Field label="API Key" hint={providerHints.apiKey}>
+                              <div className="relative">
+                                <Input
+                                  type={showApiKey ? "text" : "password"}
+                                  maxLength={500}
+                                  value={apiKey}
+                                  onChange={(event) => setApiKey(event.target.value)}
+                                  placeholder={draft.apiKey ? "Stored securely" : "Paste key"}
+                                  className="text-xs font-mono pr-10"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowApiKey(!showApiKey)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-350 transition-colors"
+                                >
+                                  {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                                </button>
+                              </div>
+                            </Field>
+                          )}
+
                           <Field label="Model" hint={providerHints.model}>
                             <Select
                               value={draft.model}
@@ -1207,28 +1255,6 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                               ))}
                             </Select>
                           </Field>
-
-                          {draft.type !== "ollama" && draft.type !== "lmstudio" && (
-                            <Field label="API Key" hint={providerHints.apiKey}>
-                              <div className="relative">
-                                <Input
-                                  type={showApiKey ? "text" : "password"}
-                                  maxLength={500}
-                                  value={apiKey}
-                                  onChange={(event) => setApiKey(event.target.value)}
-                                  placeholder={draft.apiKey ? "Stored securely" : "Paste key"}
-                                  className="text-xs font-mono pr-10"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setShowApiKey(!showApiKey)}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                                >
-                                  {showApiKey ? <EyeOff size={15} /> : <Eye size={15} />}
-                                </button>
-                              </div>
-                            </Field>
-                          )}
                         </div>
 
                         {aiError && <p className="text-xs text-rose-400 font-medium font-mono">{aiError}</p>}
@@ -1252,13 +1278,35 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                             <div className="space-y-1.5 text-zinc-300">
                               <p className="flex items-center gap-1">
                                 <span className="text-purple-400 font-bold">$</span>
-                                <span>ping -c 1 {draft.baseUrl || defaultBaseUrls[draft.type]}</span>
+                                <span>
+                                  ping -c 1 {(() => {
+                                    const rawUrl = draft.baseUrl || defaultBaseUrls[draft.type];
+                                    return rawUrl.replace(/^https?:\/\//, "").split("/")[0] || "localhost";
+                                  })()}
+                                </span>
                               </p>
-                              <p className="pl-3.5 text-zinc-600">PING {draft.baseUrl || defaultBaseUrls[draft.type]} (56 bytes)...</p>
+                              <p className="pl-3.5 text-zinc-600">
+                                PING {(() => {
+                                  const rawUrl = draft.baseUrl || defaultBaseUrls[draft.type];
+                                  return rawUrl.replace(/^https?:\/\//, "").split("/")[0] || "localhost";
+                                })()} (56 bytes)...
+                              </p>
 
-                              <p className="flex items-center gap-1 mt-1">
-                                <span className="text-purple-400 font-bold">$</span>
-                                <span>curl -X POST -H "Authorization: Bearer ****" -d "validate"</span>
+                              <p className="flex items-start gap-1 mt-1">
+                                <span className="text-purple-400 font-bold shrink-0 mt-0.5">$</span>
+                                <span className="font-mono text-xs break-all">
+                                  {(() => {
+                                    const rawUrl = draft.baseUrl || defaultBaseUrls[draft.type];
+                                    const url = rawUrl.replace(/\/$/, "");
+                                    if (draft.type === "gemini") {
+                                      return `curl -X GET "${url}/models?key=****"`;
+                                    }
+                                    if (draft.type === "anthropic") {
+                                      return `curl -X POST "${url}/messages" -H "x-api-key: ****" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" -d '{"model":"${draft.model || "claude-3-5-sonnet-20241022"}","messages":[]}'`;
+                                    }
+                                    return `curl -X POST "${url}/chat/completions" -H "Authorization: Bearer ****" -H "content-type: application/json" -d '{"model":"${draft.model || "gpt-4o"}","messages":[]}'`;
+                                  })()}
+                                </span>
                               </p>
 
                               {draft.lastError ? (
