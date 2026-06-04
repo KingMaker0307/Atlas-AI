@@ -159,6 +159,10 @@ export interface WorkoutPlan {
   creatorType?: "manual" | "template" | "ai";
   startDay?: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
   notes?: string;
+  /** AI-generated Exercise objects that aren't in the static database.
+   *  Persisted alongside the plan so they survive page reloads without
+   *  a dedicated exercise repository. Merged into exercises state on hydrate. */
+  customExercises?: Exercise[];
 }
 
 export interface RecoveryLog {

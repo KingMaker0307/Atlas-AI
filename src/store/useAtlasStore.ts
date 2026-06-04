@@ -307,6 +307,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         })),
       }));
 
+      // Restore AI-generated exercises embedded in plans so exerciseId references resolve correctly.
+      const customExercisesFromPlans = migratedPlans.flatMap((p: any) => p.customExercises ?? []);
+      const exerciseMap = new Map(staticExercises.map((e) => [e.id, e]));
+      customExercisesFromPlans.forEach((e: any) => { if (e?.id) exerciseMap.set(e.id, e); });
+      const restoredExercises = Array.from(exerciseMap.values());
+
       const freshSnap = freshSnapshot();
       let activeWorkout = freshSnap.activeWorkout;
       const activeWorkoutPlanId = migratedPlans[0]?.id ?? null;
@@ -500,6 +506,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         set({
           workouts: workouts ?? freshSnap.workouts,
           workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
+          exercises: restoredExercises,
           nutritionEntries: nutrition ?? freshSnap.nutritionEntries,
           waterLogs: water ?? freshSnap.waterLogs,
           bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.bodyMetrics,
@@ -644,6 +651,14 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       const cloudSecret = (enrichedProfile as any)?.deviceSecret;
       if (cloudSecret && typeof window !== "undefined") {
         setDeviceSecretValue(cloudSecret);
+      }
+
+      // Restore AI-generated exercises embedded in plans so exerciseId references resolve correctly.
+      const cloudCustomExercises = migratedPlans.flatMap((p: any) => p.customExercises ?? []);
+      if (cloudCustomExercises.length > 0) {
+        const cloudExerciseMap = new Map(get().exercises.map((e) => [e.id, e]));
+        cloudCustomExercises.forEach((e: any) => { if (e?.id) cloudExerciseMap.set(e.id, e); });
+        set({ exercises: Array.from(cloudExerciseMap.values()) });
       }
 
       // Merge into state

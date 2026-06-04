@@ -18,7 +18,11 @@ interface AiPromptCardProps {
 }
 
 export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGenerate, isBusy }) => {
-  const [targetDate, setTargetDate] = useState("");
+  const minTarget = new Date();
+  minTarget.setDate(minTarget.getDate() + 7);
+  const minDate = minTarget.toISOString().split("T")[0];
+
+  const [targetDate, setTargetDate] = useState(minDate);
   const [additionalDetails, setAdditionalDetails] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -41,10 +45,6 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
       setApiKeyBlocked(true);
     }
   }, []);
-
-  const minTarget = new Date();
-  minTarget.setDate(minTarget.getDate() + 7);
-  const minDate = minTarget.toISOString().split("T")[0];
 
   const handleSubmit = () => {
     const { activeProviderId, aiProviders } = useAtlasStore.getState();
@@ -145,7 +145,9 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
           </div>
 
           <div className="mb-4">
-            <Label>Target Date</Label>
+            <Label>
+              Target Date <span className="text-rose-500" aria-hidden="true">*</span>
+            </Label>
             <Input
               type="date"
               min={minDate}
@@ -190,7 +192,7 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
             <Button variant="secondary" onClick={onCancel}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={handleSubmit} disabled={isBusy || apiKeyBlocked}>
+            <Button variant="primary" onClick={handleSubmit} disabled={isBusy || apiKeyBlocked || !targetDate}>
               <Sparkles size={16} />
               {isBusy ? "Generating..." : "Generate Plan"}
             </Button>

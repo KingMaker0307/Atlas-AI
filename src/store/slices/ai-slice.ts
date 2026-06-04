@@ -365,6 +365,11 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           creatorType: "ai" as const,
           startDay: selectedStartDay as any,
           routines: assignedRoutines,
+          // Embed any AI-generated Exercise objects so they survive a page reload.
+          // On hydrate(), these are extracted and merged back into exercises state.
+          customExercises: Array.from(existingExercises.values()).filter(
+            (e) => !staticExercises.some((s) => s.id === e.id)
+          ),
         };
 
         if (!hasMissing) {
@@ -391,6 +396,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           }
 
           set(storeUpdate);
+          // Persist the AI-generated plan to IndexedDB + Supabase.
+          // Without this call, the plan only lives in Zustand memory and is lost on reload.
+          const { registry } = await import("@/lib/repositories/registry");
+          registry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
         } else {
           setTimeout(async () => {
             const gapMessageContent = responseContent + `\n\n**System Note:** The generated plan contains routines that reference exercise IDs (\`${missingExerciseIds.join(", ")}\`) that do not exist in the database.\nI am automatically executing a follow-up background call to fetch the complete biomechanical profiles for these exercises...`;
@@ -457,6 +466,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
                 }
 
                 set(storeUpdate);
+                // Persist follow-up resolved plan to IndexedDB + Supabase.
+                const { registry: followUpRegistry } = await import("@/lib/repositories/registry");
+                followUpRegistry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
               } else {
                 throw new Error("Invalid response format from follow-up query.");
               }
@@ -490,6 +502,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
               }
 
               set(storeUpdate);
+              // Persist plan even when follow-up exercise fetch failed — the plan structure
+              // is still valid, exercises just may be missing from the database.
+              const { registry: fallbackRegistry } = await import("@/lib/repositories/registry");
+              fallbackRegistry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
             }
           }, 50);
         }
