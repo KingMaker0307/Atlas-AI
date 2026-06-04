@@ -199,6 +199,8 @@ export function AiSetupPopup() {
   const updateProfile = useAtlasStore((s) => s.updateProfile);
   const saveProvider = useAtlasStore((s) => s.saveProvider);
   const setActiveProvider = useAtlasStore((s) => s.setActiveProvider);
+  const aiProviders = useAtlasStore((s) => s.aiProviders);
+  const activeProviderId = useAtlasStore((s) => s.activeProviderId);
 
   const [phase, setPhase] = useState<SetupPhase>("intro");
   const [selectedProvider, setSelectedProvider] = useState("gemini");
@@ -220,8 +222,9 @@ export function AiSetupPopup() {
     }
   }, [profile?.id]);
 
-  // Only show for onboarded users who haven't dismissed yet
-  if (!hasOnboarded || profile?.aiSetupDismissed || dismissedLocal) return null;
+  // Only show for onboarded users who haven't dismissed yet and don't have a provider configured
+  const hasProvider = activeProviderId || (aiProviders && aiProviders.length > 0);
+  if (!hasOnboarded || !profile || profile?.aiSetupDismissed || dismissedLocal || hasProvider) return null;
 
   const isLocalProvider = selectedProvider === "ollama" || selectedProvider === "lmstudio";
 
