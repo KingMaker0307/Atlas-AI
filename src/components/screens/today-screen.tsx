@@ -397,6 +397,8 @@ export function TodayScreen() {
   const setActiveTab = useAtlasStore((s) => s.setActiveTab);
   const aiProviders = useAtlasStore((s) => s.aiProviders);
   const activeProviderId = useAtlasStore((s) => s.activeProviderId);
+  const activeWorkout = useAtlasStore((s) => s.activeWorkout);
+  const setActiveSubScreen = useAtlasStore((s) => s.setActiveSubScreen);
 
   const hasActiveAi = useMemo(() => {
     const active = aiProviders.find((p) => p.id === activeProviderId);
@@ -536,9 +538,17 @@ export function TodayScreen() {
         step={2}
         done={workoutDoneToday}
         emoji="🏃"
-        title={workoutDoneToday ? "Movement complete!" : "Time to move your body"}
+        title={
+          activeWorkout
+            ? "Workout in Progress"
+            : workoutDoneToday
+            ? "Movement complete!"
+            : "Time to move your body"
+        }
         subtitle={
-          workoutDoneToday
+          activeWorkout
+            ? `"${activeWorkout.name}" is currently active.`
+            : workoutDoneToday
             ? "Great job! Your body will thank you. 🌟"
             : todayRoutine
             ? `${todayRoutine.name} · ${todayRoutine.exercises.length} exercises`
@@ -547,7 +557,13 @@ export function TodayScreen() {
         delay={0.1}
       >
         <div className="space-y-3">
-          {todayRoutine ? (
+          {activeWorkout ? (
+            <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/20 p-3.5 space-y-1">
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Active session</p>
+              <p className="text-sm font-bold text-foreground">{activeWorkout.name}</p>
+              <p className="text-xs text-zinc-500">Currently active in the background.</p>
+            </div>
+          ) : todayRoutine ? (
             <div className="rounded-xl bg-violet-500/8 border border-violet-500/20 p-3.5 space-y-1">
               <p className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Your routine for today</p>
               <p className="text-sm font-bold text-foreground">{todayRoutine.name}</p>
@@ -564,10 +580,15 @@ export function TodayScreen() {
           <Button
             variant="primary"
             className="w-full"
-            onClick={() => setActiveTab("workout")}
+            onClick={() => {
+              setActiveTab("workout");
+              if (activeWorkout) {
+                setActiveSubScreen("active-workout");
+              }
+            }}
           >
-            <Dumbbell size={15} className="mr-2 shrink-0" aria-hidden="true" />
-            {todayRoutine ? "Start today's workout" : "Go to workouts →"}
+            <Dumbbell size={15} className={cn("mr-2 shrink-0", activeWorkout && "animate-pulse")} aria-hidden="true" />
+            {activeWorkout ? "Resume" : todayRoutine ? "Start today's workout" : "Go to workouts →"}
           </Button>
         </div>
       </DailyStep>
@@ -719,13 +740,14 @@ function BodyCheckIn({ todayDate }: BodyCheckInProps) {
     if (navigator.vibrate) navigator.vibrate(15);
     setSaving(true);
     try {
+      const todayLog = recoveryLogs.find((r) => r.date === todayDate);
       await logRecovery({
-        id: todayDate,
+        id: todayLog?.id || createId("recovery"),
         date: todayDate,
         sleepHours: sleep,
         soreness,
         stress: 5,
-        readiness: Math.round(((sleep - 3) / 7) * 40 + ((soreness - 1) / 9) * 30 + ((energy - 1) / 9) * 30),
+        readiness: Math.max(1, Math.min(10, Math.round((((sleep - 3) / 7) * 40 + ((soreness - 1) / 9) * 30 + ((energy - 1) / 9) * 30) / 10))),
         energy,
         note: "",
       });

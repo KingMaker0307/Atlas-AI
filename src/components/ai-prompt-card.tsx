@@ -8,6 +8,7 @@ import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/input";
 import type { UserProfile } from "@/types/domain";
 import { useAtlasStore } from "@/store/useAtlasStore";
+import { checkTopicRelevance } from "@/lib/coach/topic-guard";
 
 interface AiPromptCardProps {
   profile: UserProfile;
@@ -80,6 +81,13 @@ export const AiPromptCard: FC<AiPromptCardProps> = ({ profile, onCancel, onGener
     if (additionalDetails.length > 250) {
       setError("Additional details must be 250 characters or less.");
       return;
+    }
+    if (additionalDetails.trim()) {
+      const guardResult = checkTopicRelevance(additionalDetails);
+      if (!guardResult.allowed) {
+        setError(`🚫 ${guardResult.reason}`);
+        return;
+      }
     }
     setError(null);
     onGenerate({ targetDate, additionalDetails });

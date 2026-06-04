@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
 import { parseAiWorkoutPlan } from "@/lib/ai/parser";
 import { useAtlasStore } from "@/store/useAtlasStore";
+import { checkTopicRelevance } from "@/lib/coach/topic-guard";
+import { createId } from "@/lib/id";
 
 export function CoachScreen() {
   const aiMessages = useAtlasStore((state) => state.aiMessages);
@@ -202,8 +204,31 @@ export function CoachScreen() {
             className="flex gap-2"
             onSubmit={(event) => {
               event.preventDefault();
-              if (!draft.trim() || coachBusy) return;
-              void sendCoachMessage(draft);
+              const trimmed = draft.trim();
+              if (!trimmed || coachBusy) return;
+              
+              const guardResult = checkTopicRelevance(trimmed);
+              if (!guardResult.allowed) {
+                const userMessage = {
+                  id: createId("user"),
+                  role: "user" as const,
+                  content: trimmed,
+                  createdAt: new Date().toISOString(),
+                };
+                const blockMessage = {
+                  id: createId("assistant"),
+                  role: "assistant" as const,
+                  content: `🚫 ${guardResult.reason}`,
+                  createdAt: new Date().toISOString(),
+                };
+                useAtlasStore.setState((state) => ({
+                  aiMessages: [...state.aiMessages, userMessage, blockMessage],
+                }));
+                setDraft("");
+                return;
+              }
+
+              void sendCoachMessage(trimmed);
               setDraft("");
             }}
           >

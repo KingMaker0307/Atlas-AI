@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { X } from "lucide-react";
-import { todayKey } from "@/lib/id";
+import { todayKey, createId } from "@/lib/id";
 import { cn } from "@/lib/cn";
 
 interface PreWorkoutCheckinModalProps {
@@ -20,16 +20,22 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
   const logRecovery = useAtlasStore((state) => state.logRecovery);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
 
-  const lastSleepHours = recoveryLogs.at(-1)?.sleepHours ?? 7.5;
-  const [sleepHours, setSleepHours] = useState<number | undefined>(lastSleepHours);
+  const [sleepHours, setSleepHours] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSleepHours(undefined);
+      setError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleChange = (val: string) => {
     if (val === "") {
       setSleepHours(undefined);
-      setError("Sleep hours is required or skip.");
+      setError(null);
       return;
     }
     const num = Number(val);
@@ -46,8 +52,9 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
       setError("Sleep hours must be between 0 and 24.");
       return;
     }
+    const todayLog = recoveryLogs.find((r) => r.date === todayKey());
     await logRecovery({
-      id: todayKey(), // Use today's date as ID for daily log
+      id: todayLog?.id || createId("recovery"),
       date: todayKey(),
       sleepHours: sleepHours,
       soreness: recoveryLogs.at(-1)?.soreness ?? 5, // Keep previous values or default
@@ -135,7 +142,7 @@ export function PreWorkoutCheckinModal({ isOpen, onClose, onConfirm }: PreWorkou
           <Button variant="secondary" onClick={handleSkip} className="flex-1 rounded-xl">
             Skip
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!!error} className="flex-1 rounded-xl">
+          <Button variant="primary" onClick={handleSave} disabled={sleepHours === undefined || !!error} className="flex-1 rounded-xl">
             Save &amp; Start
           </Button>
         </div>

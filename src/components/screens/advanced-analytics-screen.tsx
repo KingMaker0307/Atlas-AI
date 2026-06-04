@@ -127,7 +127,7 @@ function EmptyChart({ message }: { message: string }) {
 }
 
 // ─── Smart Tip Card ─────────────────────────────────────────────────────────
-function SmartTipCard({ guidedMode }: { guidedMode: boolean }) {
+export function SmartTipCard({ guidedMode }: { guidedMode: boolean }) {
   const profile = useAtlasStore((s) => s.profile);
   const workouts = useAtlasStore((s) => s.workouts);
   const recoveryLogs = useAtlasStore((s) => s.recoveryLogs);
@@ -141,35 +141,41 @@ function SmartTipCard({ guidedMode }: { guidedMode: boolean }) {
   if (tips.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      {tips.map((tip, idx) => {
-        const Icon = {
-          info: Info,
-          warning: AlertTriangle,
-          success: CheckCircle2,
-          tip: Sparkles,
-        }[tip.type] || Sparkles;
+    <Card className="p-4 space-y-3 shadow-sm border-card-border">
+      <div className="flex items-center gap-2 border-b border-card-border pb-2.5">
+        <Sparkles size={15} className="text-emerald-500" />
+        <h4 className="text-xs font-bold text-zinc-955">Workout Insights &amp; Tips</h4>
+      </div>
+      <div className="space-y-3">
+        {tips.map((tip, idx) => {
+          const Icon = {
+            info: Info,
+            warning: AlertTriangle,
+            success: CheckCircle2,
+            tip: Sparkles,
+          }[tip.type] || Sparkles;
 
-        const colors = {
-          info: "bg-blue-500/5 border-blue-500/15 text-blue-500",
-          warning: "bg-amber-500/5 border-amber-500/15 text-amber-500",
-          success: "bg-emerald-500/5 border-emerald-500/15 text-emerald-500",
-          tip: "bg-blue-500/5 border-blue-500/15 text-blue-500",
-        }[tip.type] || "bg-blue-500/5 border-blue-500/15 text-blue-500";
+          const colors = {
+            info: "bg-blue-500/5 border-blue-500/15 text-blue-500",
+            warning: "bg-amber-500/5 border-amber-500/15 text-amber-600 dark:text-amber-400",
+            success: "bg-emerald-500/5 border-emerald-500/15 text-emerald-500",
+            tip: "bg-blue-500/5 border-blue-500/15 text-blue-500",
+          }[tip.type] || "bg-blue-500/5 border-blue-500/15 text-blue-500";
 
-        return (
-          <div key={idx} className={`p-4 rounded-2xl border flex items-start gap-3 ${colors}`}>
-            <Icon size={16} className="shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs font-bold text-foreground">{tip.title}</p>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
-                {tip.desc}
-              </p>
+          return (
+            <div key={idx} className={`p-4 rounded-2xl border flex items-start gap-3 ${colors}`}>
+              <Icon size={16} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-foreground">{tip.title}</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed font-semibold">
+                  {tip.desc}
+                </p>
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -201,6 +207,9 @@ function BeginnerAnalytics() {
   const recoveryLogs = useAtlasStore((s) => s.recoveryLogs);
   const activeWorkoutPlanId = useAtlasStore((s) => s.activeWorkoutPlanId);
   const storeExercises = useAtlasStore((s) => s.exercises || []);
+  const [isPrsExpanded, setIsPrsExpanded] = useState(false);
+  const [isVolumeExpanded, setIsVolumeExpanded] = useState(false);
+  const setGuidedMode = useAtlasStore((s) => s.setGuidedMode);
 
   const workouts = useMemo(
     () => allWorkouts.filter((w) => w.exercises.some((ex) => ex.sets.some((s) => s.completed))),
@@ -265,43 +274,62 @@ function BeginnerAnalytics() {
 
   return (
     <div className="space-y-5">
-      {/* ── Motivational Hero Banner ─── */}
+      {/* ── Unified Workout Analytics & Progress Header ─── */}
       <Section delay={0}>
-        <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xl shadow-emerald-500/20">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.15),transparent_60%)] pointer-events-none" />
-          <div className="absolute -bottom-6 -right-4 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
-          <div className="relative flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-emerald-100 text-[11px] font-semibold uppercase tracking-widest mb-1.5">Your Progress</p>
-              <p className="text-white text-base font-bold leading-snug max-w-[260px]">{motivationalMsg}</p>
+        <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-5 shadow-sm">
+          {/* Header row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-card-border/60">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Workout Analytics</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </p>
             </div>
-            <div className="shrink-0 flex flex-col items-center gap-0.5">
-              <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-2xl font-black text-white">{streak}</span>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-100 uppercase tracking-wider">Streak</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setGuidedMode(false)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-border bg-surface hover:bg-surface/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none shrink-0"
+            >
+              <Activity size={13} className="text-emerald-500" />
+              <span>Beginner View</span>
+            </button>
           </div>
 
-          {/* Weekly calendar dots */}
-          <div className="relative flex items-center gap-1.5 mt-4">
-            {weekCalendar.map((day, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all ${
-                    day.trained
-                      ? "bg-white text-emerald-700 shadow-sm"
-                      : day.isToday
-                      ? "bg-white/30 text-white border border-white/40"
-                      : "bg-white/10 text-emerald-200"
-                  }`}
-                >
-                  {day.trained ? <CheckCircle2 size={14} /> : day.label}
-                </div>
+          {/* Progress content */}
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-zinc-450 dark:text-zinc-500 text-[10px] font-bold uppercase tracking-wider mb-1">Your Progress</p>
+                <p className="text-foreground text-sm font-semibold leading-relaxed">{motivationalMsg}</p>
               </div>
-            ))}
+              <div className="shrink-0 flex flex-col items-center gap-0.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
+                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{streak}</span>
+                </div>
+                <span className="text-[9px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Streak</span>
+              </div>
+            </div>
+
+            {/* Weekly calendar dots */}
+            <div className="flex items-center gap-1.5 pt-1">
+              {weekCalendar.map((day, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-bold transition-all ${
+                      day.trained
+                        ? "bg-emerald-500 text-white shadow-sm"
+                        : day.isToday
+                        ? "bg-zinc-100 dark:bg-zinc-800 text-foreground border border-zinc-300 dark:border-zinc-700"
+                        : "bg-zinc-50 dark:bg-zinc-900/60 text-zinc-400 dark:text-zinc-500 border border-card-border/60"
+                    }`}
+                  >
+                    {day.trained ? <CheckCircle2 size={14} /> : day.label}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </Card>
       </Section>
 
       {/* ── Core Stats Grid ─── */}
@@ -347,68 +375,128 @@ function BeginnerAnalytics() {
 
       {/* ── Weekly Volume Bar ─── */}
       <Section delay={0.12}>
-        <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-          <div className="flex items-center gap-2">
-            <BarChart2 className="text-emerald-500" size={17} />
-            <h3 className="text-sm font-bold text-foreground">Weekly Training Volume</h3>
-          </div>
-          {volumeSeries.length >= 2 ? (
-            <div className="h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={volumeSeries} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
-                  <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Volume"]}
-                  />
-                  <Bar dataKey="volume" fill="#34d399" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                </BarChart>
-              </ResponsiveContainer>
+        <Card className="p-5 border border-card-border bg-card rounded-3xl">
+          <button
+            type="button"
+            onClick={() => setIsVolumeExpanded(!isVolumeExpanded)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-2">
+              <BarChart2 className="text-emerald-500" size={17} />
+              <h3 className="text-sm font-bold text-foreground">Weekly Training Volume</h3>
             </div>
-          ) : (
-            <EmptyChart message="Complete at least 2 weeks of workouts to see your volume trend here." />
-          )}
-          <p className="text-[10px] text-zinc-400 leading-relaxed">
-            Volume = sets × reps × weight across all exercises in a week.
-          </p>
+            <motion.span
+              animate={{ rotate: isVolumeExpanded ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isVolumeExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-4 space-y-4"
+              >
+                {volumeSeries.length >= 2 ? (
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={volumeSeries} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
+                        <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                        <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={tooltipStyle}
+                          formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Volume"]}
+                        />
+                        <Bar dataKey="volume" fill="#34d399" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <EmptyChart message="Complete at least 2 weeks of workouts to see your volume trend here." />
+                )}
+                <p className="text-[10px] text-zinc-400 leading-relaxed">
+                  Volume = sets × reps × weight across all exercises in a week.
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
       </Section>
 
       {/* ── Personal Records ─── */}
       <Section delay={0.16}>
-        <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="text-amber-500" size={17} />
-            <h3 className="text-sm font-bold text-foreground">Your Personal Records</h3>
-          </div>
-          {recentPrs.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {recentPrs.map((pr, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-card-border"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                    <Star size={15} className="text-amber-500" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{pr.exerciseName}</p>
-                    <p className="text-[10px] text-emerald-500 font-semibold">{pr.value}</p>
-                    <p className="text-[9px] text-zinc-400">{pr.date}</p>
-                  </div>
-                </div>
-              ))}
+        <Card className="p-5 border border-card-border bg-card rounded-3xl">
+          <button
+            type="button"
+            onClick={() => setIsPrsExpanded(!isPrsExpanded)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-2">
+              <Trophy className="text-amber-500" size={17} />
+              <h3 className="text-sm font-bold text-foreground">Your Personal Records</h3>
             </div>
-          ) : (
-            <EmptyChart message="Finish your first workout with weights to unlock personal records here!" />
-          )}
+            <motion.span
+              animate={{ rotate: isPrsExpanded ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isPrsExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-4"
+              >
+                {recentPrs.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {recentPrs.map((pr, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-card-border"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                          <Star size={15} className="text-amber-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">{pr.exerciseName}</p>
+                          <p className="text-[10px] text-emerald-500 font-semibold">{pr.value}</p>
+                          <p className="text-[9px] text-zinc-400">{pr.date}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyChart message="Finish your first workout with weights to unlock personal records here!" />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
       </Section>
 
-      {/* ── Recent Workouts ─── */}
+      {/* ── Smart & AI Coaching Tips ─── */}
       <Section delay={0.2}>
+        <div className="space-y-4">
+          <SmartTipCard guidedMode={true} />
+          <AiWorkoutTip />
+        </div>
+      </Section>
+
+      {/* ── Recent Workouts ─── */}
+      <Section delay={0.24}>
         <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
           <div className="flex items-center gap-2">
             <Calendar className="text-blue-500" size={17} />
@@ -450,14 +538,6 @@ function BeginnerAnalytics() {
           )}
         </Card>
       </Section>
-
-      {/* ── Smart & AI Coaching Tips ─── */}
-      <Section delay={0.24}>
-        <div className="space-y-4">
-          <SmartTipCard guidedMode={true} />
-          <AiWorkoutTip />
-        </div>
-      </Section>
     </div>
   );
 }
@@ -473,6 +553,7 @@ function AdvancedAnalytics() {
   const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
   const activeWorkoutPlanId = useAtlasStore((s) => s.activeWorkoutPlanId);
   const storeExercises = useAtlasStore((s) => s.exercises || []);
+  const setGuidedMode = useAtlasStore((s) => s.setGuidedMode);
 
   const workouts = useMemo(
     () => allWorkouts.filter((w) => w.exercises.some((ex) => ex.sets.some((s) => s.completed))),
@@ -650,8 +731,30 @@ function AdvancedAnalytics() {
 
   return (
     <div className="space-y-5">
-      {/* ── 1. CNS Readiness Banner ─── */}
+      {/* ── Header Card ─── */}
       <Section delay={0}>
+        <Card className="p-5 border border-card-border bg-card shadow-sm rounded-3xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Workout Analytics</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGuidedMode(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-border bg-surface hover:bg-surface/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none shrink-0"
+            >
+              <Activity size={13} className="text-amber-500" />
+              <span>Advanced View</span>
+            </button>
+          </div>
+        </Card>
+      </Section>
+
+      {/* ── 1. CNS Readiness Banner ─── */}
+      <Section delay={0.05}>
         <Card className="p-5 relative overflow-hidden border border-card-border bg-card rounded-3xl shadow-sm">
           <div className={`absolute inset-0 bg-gradient-to-br from-${cnsDetail.color}-500/5 to-transparent pointer-events-none rounded-3xl`} />
           <div className="relative flex flex-col sm:flex-row items-center gap-5">
@@ -706,7 +809,7 @@ function AdvancedAnalytics() {
       </Section>
 
       {/* ── 2. Performance Snapshot Grid ─── */}
-      <Section delay={0.07}>
+      <Section delay={0.12}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard label="Workout Streak" value={`${streak} sessions`} sub="Consecutive days trained (≤3 day gap allowed)" icon={Flame} color="amber" delay={0.07} />
           <StatCard label="Weekly Volume" value={`${weeklyVolume.toLocaleString()} ${profile?.weightUnit ?? "kg"}`} sub="Sum of sets × reps × weight (last 7 days)" icon={Layers} color="emerald" delay={0.09} />
@@ -719,7 +822,7 @@ function AdvancedAnalytics() {
       </Section>
 
       {/* ── 3. Progressive Overload ─── */}
-      <Section delay={0.14}>
+      <Section delay={0.19}>
         <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="text-emerald-500" size={17} />
@@ -767,7 +870,7 @@ function AdvancedAnalytics() {
       {/* ── 4. Charts grid ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* 1RM Strength Trend */}
-        <Section delay={0.18}>
+        <Section delay={0.23}>
           <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4 h-full flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -812,7 +915,7 @@ function AdvancedAnalytics() {
         </Section>
 
         {/* Volume Trend */}
-        <Section delay={0.21}>
+        <Section delay={0.26}>
           <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -853,7 +956,7 @@ function AdvancedAnalytics() {
       {/* ── 5. Muscle Balance + Recovery Correlation ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Muscle volume distribution */}
-        <Section delay={0.24}>
+        <Section delay={0.29}>
           <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -969,7 +1072,7 @@ function AdvancedAnalytics() {
         </Section>
 
         {/* Recovery correlation */}
-        <Section delay={0.27}>
+        <Section delay={0.32}>
           <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
             <div className="flex items-center gap-2">
               <BrainCircuit className="text-amber-500" size={17} />
@@ -1007,7 +1110,7 @@ function AdvancedAnalytics() {
       </div>
 
       {/* ── 6. Body Composition ─── */}
-      <Section delay={0.3}>
+      <Section delay={0.35}>
         <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1046,7 +1149,7 @@ function AdvancedAnalytics() {
       </Section>
 
       {/* ── Smart & AI Coaching Tips ─── */}
-      <Section delay={0.33}>
+      <Section delay={0.38}>
         <div className="space-y-4">
           <SmartTipCard guidedMode={false} />
           <AiWorkoutTip />

@@ -12,8 +12,7 @@ import {
   ChevronUp,
   CirclePlus,
   Clock3,
-  Dumbbell,
-  Flame,
+
   Layers3,
   Search,
   Timer,
@@ -30,10 +29,7 @@ import {
   Sparkles,
   Bot,
   Target,
-  Heart,
   Footprints,
-  Mic,
-  MicOff,
   Upload,
   Scale,
 } from "lucide-react";
@@ -85,143 +81,7 @@ const getExerciseStats = (workouts: any[], exerciseId: string, weightUnit: strin
   };
 };
 
-const WORD_TO_NUM: Record<string, number> = {
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-  first: 1,
-  second: 2,
-  third: 3,
-  fourth: 4,
-  fifth: 5,
-  sixth: 6,
-  seventh: 7,
-  eighth: 8,
-  ninth: 9,
-  tenth: 10
-};
 
-function calculatePlates(targetWeight: number, unit: string) {
-  const base = unit === "kg" ? 20 : 45;
-  if (targetWeight <= base) return null;
-  const targetPerSide = (targetWeight - base) / 2;
-  const plates = unit === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
-
-  const result: number[] = [];
-  let remaining = targetPerSide;
-  for (const plate of plates) {
-    while (remaining >= plate - 0.01) {
-      result.push(plate);
-      remaining -= plate;
-    }
-  }
-  return result;
-}
-
-function parseSpeechCommand(text: string) {
-  const normalized = text.toLowerCase()
-    .replace(/[,.:;\-_!?]/g, " ") // strip punctuation common in transcripts
-    .replace(/\s+/g, " ")        // normalize multiple spaces
-    .trim();
-
-  // 1. Direct Command Matches
-  if (normalized.includes("skip exercise") || normalized.includes("skip movement") || normalized.includes("skip this")) {
-    return { command: "skip_exercise" };
-  }
-  if (normalized.includes("add set") || normalized.includes("new set") || normalized.includes("another set")) {
-    return { command: "add_set" };
-  }
-  if (normalized.includes("start rest") || normalized.includes("rest now") || normalized.includes("start timer")) {
-    return { command: "start_rest" };
-  }
-  if (normalized.includes("stop rest") || normalized.includes("stop timer") || normalized.includes("cancel rest")) {
-    return { command: "stop_rest" };
-  }
-
-  // 2. Intelligent Weight, Reps, and Set Extraction
-  let setNumber: number | null = null;
-  let weight: number | null = null;
-  let reps: number | null = null;
-
-  // Extract set number (e.g., "set 2", "set two", "first set", "2nd set")
-  const setMatch = normalized.match(/(?:log\s+)?set\s+(\w+)/i);
-  if (setMatch) {
-    const setWord = setMatch[1];
-    const parsedSetNum = parseInt(setWord, 10);
-    setNumber = !isNaN(parsedSetNum) ? parsedSetNum : (WORD_TO_NUM[setWord] || null);
-  }
-
-  if (setNumber === null) {
-    // Try word-based matching for standalone words ("first", "second", "one", "two")
-    for (const [word, num] of Object.entries(WORD_TO_NUM)) {
-      if (normalized.includes(` ${word} `) || normalized.startsWith(`${word} `) || normalized.endsWith(` ${word}`)) {
-        setNumber = num;
-        break;
-      }
-    }
-  }
-
-  if (setNumber === null) {
-    // Try ordinals like "1st", "2nd", "3rd", "4th"
-    const ordMatch = normalized.match(/(\d+)(?:st|nd|rd|th)\s+set/i);
-    if (ordMatch) {
-      setNumber = parseInt(ordMatch[1], 10);
-    }
-  }
-
-  // Extract weight/load (e.g. "135 pounds", "135 lbs", "135 kg", "weight 135", "load 135")
-  const weightMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:pounds|libs|kilos|kg|lbs|weight|load)/i)
-    || normalized.match(/(?:weight|load)\s+(\d+(?:\.\d+)?)/i);
-  if (weightMatch) {
-    weight = parseFloat(weightMatch[1]);
-  }
-
-  // Extract reps/rep/times (e.g. "8 reps", "8 rep", "8 times", "reps 8", "rep 8")
-  const repsMatch = normalized.match(/(\d+)\s*(?:reps|rep|times)/i)
-    || normalized.match(/(?:reps|rep)\s+(\d+)/i);
-  if (repsMatch) {
-    reps = parseInt(repsMatch[1], 10);
-  }
-
-  // Fallback sequential parser if weight or reps couldn't be extracted via keywords
-  if (weight === null || reps === null) {
-    const numbers = normalized.match(/\d+(?:\.\d+)?/g);
-    if (numbers) {
-      if (numbers.length >= 3) {
-        // e.g. "set 2 with 135 for 8" -> set 2, weight 135, reps 8
-        const seqSetNum = parseInt(numbers[0], 10);
-        if (setNumber === null || setNumber === seqSetNum) {
-          setNumber = seqSetNum;
-          weight = parseFloat(numbers[1]);
-          reps = parseInt(numbers[2], 10);
-        }
-      } else if (numbers.length === 2 && setNumber !== null) {
-        // e.g. "set 2: 135 for 8" (already parsed setNumber = 2) -> weight 135, reps 8
-        weight = parseFloat(numbers[0]);
-        reps = parseInt(numbers[1], 10);
-      }
-    }
-  }
-
-  // If we successfully found all three components, return the log command!
-  if (setNumber !== null && weight !== null && reps !== null) {
-    return {
-      command: "log_set",
-      setNumber,
-      weight,
-      reps
-    };
-  }
-
-  return null;
-}
 
 export function WorkoutScreen() {
   const storeExercises = useAtlasStore((state) => state.exercises);
@@ -241,6 +101,7 @@ export function WorkoutScreen() {
   const workoutPlans = useAtlasStore((state) => state.workoutPlans);
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const restTimerEndsAt = useAtlasStore((state) => state.restTimerEndsAt);
+  const restingSetId = useAtlasStore((state) => state.restingSetId);
   const startWorkout = useAtlasStore((state) => state.startWorkout);
   const updateSet = useAtlasStore((state) => state.updateSet);
   const addSet = useAtlasStore((state) => state.addSet);
@@ -272,6 +133,15 @@ export function WorkoutScreen() {
     }
     return map;
   }, [workouts]);
+
+  const incompleteExercisesCount = useMemo(() => {
+    if (!activeWorkout) return 0;
+    return activeWorkout.exercises.filter(we => {
+      if (we.skipped) return false;
+      const allCompleted = we.sets.length > 0 && we.sets.every(s => s.completed);
+      return !allCompleted;
+    }).length;
+  }, [activeWorkout]);
 
   const activeSubScreen = useAtlasStore((state) => state.activeSubScreen);
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
@@ -424,104 +294,20 @@ export function WorkoutScreen() {
   const [fatigue, setFatigue] = useState(6);
   const [notes, setNotes] = useState("");
   const [remaining, setRemaining] = useState(0);
+  const currentRemaining = restTimerEndsAt
+    ? Math.max(0, Math.ceil((new Date(restTimerEndsAt).getTime() - Date.now()) / 1000))
+    : 0;
   const [timerMaxDuration, setTimerMaxDuration] = useState(60);
   const [elapsedWorkoutTime, setElapsedWorkoutTime] = useState(0);
   const [activeSwapExercise, setActiveSwapExercise] = useState<any | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
 
-  const [isListening, setIsListening] = useState(false);
-  const [speechFeedback, setSpeechFeedback] = useState<string | null>(null);
   const planTab = useAtlasStore((state) => state.workoutTab);
   const setPlanTab = useAtlasStore((state) => state.setWorkoutTab);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as any });
   }, [planTab]);
-
-  const toggleListening = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported in this browser. Please use Chrome or Safari.");
-      return;
-    }
-
-    if (isListening) {
-      setIsListening(false);
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setSpeechFeedback("Listening... Say: 'log set 2 135 pounds 8 reps'");
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error("Speech recognition error", event.error);
-      setIsListening(false);
-      setSpeechFeedback(`Error: ${event.error}`);
-      setTimeout(() => setSpeechFeedback(null), 3000);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setSpeechFeedback(`Heard: "${transcript}"`);
-
-      const parsed = parseSpeechCommand(transcript);
-      if (parsed) {
-        handleSpeechCommand(parsed);
-      } else {
-        setSpeechFeedback(`Couldn't parse: "${transcript}". Try 'log set 1 135 pounds 8 reps'`);
-        setTimeout(() => setSpeechFeedback(null), 4000);
-      }
-    };
-
-    recognition.start();
-  };
-
-  const handleSpeechCommand = (cmd: any) => {
-    if (!activeWorkout) return;
-
-    const activeEx = activeWorkout.exercises.find(ex => !ex.skipped && ex.sets.some(s => !s.completed)) || activeWorkout.exercises[0];
-    if (!activeEx) return;
-
-    if (cmd.command === "log_set") {
-      const setIdx = cmd.setNumber - 1;
-      const targetSet = activeEx.sets[setIdx];
-      if (targetSet) {
-        void updateSet(activeEx.id, targetSet.id, {
-          weight: cmd.weight,
-          reps: cmd.reps,
-          completed: true
-        });
-        void startRestTimer(activeEx.restSeconds);
-        setSpeechFeedback(`Set ${cmd.setNumber} logged: ${cmd.weight} ${weightUnit} x ${cmd.reps} reps!`);
-      } else {
-        setSpeechFeedback(`Set ${cmd.setNumber} not found in this exercise.`);
-      }
-    } else if (cmd.command === "add_set") {
-      void addSet(activeEx.id);
-      setSpeechFeedback("Added a new set!");
-    } else if (cmd.command === "skip_exercise") {
-      void skipWorkoutExercise(activeEx.id);
-      setSpeechFeedback("Exercise skipped.");
-    } else if (cmd.command === "start_rest") {
-      void startRestTimer(activeEx.restSeconds);
-      setSpeechFeedback("Rest timer started.");
-    } else if (cmd.command === "stop_rest") {
-      void stopRestTimer();
-      setSpeechFeedback("Rest timer stopped.");
-    }
-    setTimeout(() => setSpeechFeedback(null), 3000);
-  };
 
   const originalEx = useMemo(() => {
     if (!activeSwapExercise) return null;
@@ -692,8 +478,9 @@ export function WorkoutScreen() {
 
   // Premium haptic, synthesized audio chime, and push notification on rest timer finish
   const restFinishedNotifiedRef = useRef<boolean>(false);
+
   useEffect(() => {
-    if (restTimerEndsAt && remaining === 0) {
+    if (restTimerEndsAt && currentRemaining === 0) {
       if (!restFinishedNotifiedRef.current) {
         restFinishedNotifiedRef.current = true;
         if (navigator.vibrate) {
@@ -736,11 +523,11 @@ export function WorkoutScreen() {
         // Auto-clear the rest timer in the store so it doesn't trigger again on tab re-focus/re-mount
         void stopRestTimer();
       }
-    } else if (restTimerEndsAt && remaining > 0) {
+    } else if (restTimerEndsAt && currentRemaining > 0) {
       // Reset completed trigger flag when timer resets or ticks down
       restFinishedNotifiedRef.current = false;
     }
-  }, [remaining, restTimerEndsAt, stopRestTimer]);
+  }, [currentRemaining, restTimerEndsAt, stopRestTimer]);
 
   // Effect for workout duration timer
   useEffect(() => {
@@ -785,10 +572,6 @@ export function WorkoutScreen() {
     setShowPostWorkoutModal(true); // Proceed to PostWorkoutCheckinModal
   };
 
-  const handleFinishSessionDiscard = () => {
-    void discardWorkout();
-    setShowFinishSessionModal(false);
-  };
 
   const handlePostWorkoutConfirm = (
     energy: number,
@@ -897,17 +680,6 @@ export function WorkoutScreen() {
           return null;
         })()}
 
-        {activeWorkout && (
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-200 text-sm flex items-center justify-between">
-            <div>
-              <p className="font-semibold">Workout in Progress</p>
-              <p className="text-zinc-750 text-xs mt-0.5">"{activeWorkout.name}" is currently active in the background.</p>
-            </div>
-            <Button size="sm" variant="primary" onClick={() => setActiveSubScreen("active-workout")}>
-              Resume Workout
-            </Button>
-          </div>
-        )}
 
         {isLimitReached && !activeWorkout && (
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-200 text-sm space-y-2">
@@ -1111,27 +883,7 @@ export function WorkoutScreen() {
         {/* ─── WORKOUT ANALYTICS SECTION ─── */}
         {workoutPlans.length > 0 && (
           <div className="border-t border-card-border/80 my-8 pt-8 space-y-5">
-            {/* Header card */}
-            <Card className="p-5 border border-card-border bg-card shadow-sm rounded-3xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">Workout Analytics</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setGuidedMode(!guidedMode)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-border bg-surface hover:bg-surface/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none shrink-0"
-                >
-                  <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500"} />
-                  <span>{guidedMode ? "Beginner View" : "Advanced View"}</span>
-                </button>
-              </div>
-            </Card>
-
-            {/* Analytics content — mode managed internally */}
+            {/* Analytics content — header card and view switching are managed internally */}
             <AdvancedAnalyticsScreen />
           </div>
         )}
@@ -1237,15 +989,6 @@ export function WorkoutScreen() {
       <Card className="fixed inset-x-0 md:left-64 top-0 z-20 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 px-3 sm:px-4 sm:py-3 bg-header border-b border-card-border rounded-none shadow-xl backdrop-blur-md">
         <div className="flex items-center justify-between gap-2 max-w-5xl mx-auto flex-nowrap">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white shrink-0 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-lg active:scale-95 transition-all"
-              onClick={() => setActiveSubScreen(null)}
-              aria-label="Back to plans"
-            >
-              <ArrowLeft size={18} />
-            </Button>
             <div className="min-w-0">
               <h1 className="text-sm sm:text-base font-extrabold text-foreground truncate max-w-[130px] sm:max-w-[320px] leading-tight capitalize">
                 {activeWorkout.name}
@@ -1257,112 +1000,27 @@ export function WorkoutScreen() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-end flex-nowrap">
-            {/* Hands-Free Voice Logger Button */}
-            <Button
-              size="icon"
-              className={cn(
-                "h-9 w-9 rounded-lg shrink-0 transition-all border border-surface-border hidden min-[380px]:inline-flex items-center justify-center active:scale-95",
-                isListening
-                  ? "bg-rose-500/20 text-rose-500 animate-pulse border-rose-500/35"
-                  : "bg-transparent text-zinc-555 hover:text-zinc-955 hover:bg-surface"
-              )}
-              onClick={toggleListening}
-              aria-label="Voice command logger"
-              title="Voice command logging"
-            >
-              {isListening ? <Mic size={16} className="text-rose-500 animate-pulse" /> : <MicOff size={16} />}
-            </Button>
-
             {/* Active Timer badge (Inline space-saving) */}
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold select-none h-9 shrink-0">
               <Timer size={15} className="shrink-0" />
               <span>{formatDuration(elapsedWorkoutTime)}</span>
             </div>
 
-            {/* Rest state container (Interactive space-saving) */}
-            <div
-              onClick={() => {
-                if (navigator.vibrate) navigator.vibrate(6);
-                if (remaining > 0) void stopRestTimer();
-                else void startRestTimer(60);
-              }}
-              className={cn(
-                "flex items-center gap-1.5 px-2 py-1 rounded-lg border font-mono text-xs font-bold select-none h-9 shrink-0 cursor-pointer transition-all active:scale-95 shadow-sm",
-                remaining > 0
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-300 animate-pulse"
-                  : "bg-surface border-surface-border text-zinc-555 hover:bg-surface/80"
-              )}
-              title={remaining > 0 ? "Tap to stop rest" : "Tap to start quick 60s rest"}
-            >
-              <Clock3 size={15} className="shrink-0" />
-              <span>{remaining > 0 ? formatTimer(remaining) : "Rest"}</span>
-            </div>
-
-            {/* Quick Finish Button */}
+            {/* Quick Discard Button */}
             <Button
               size="sm"
-              variant="primary"
-              className="h-9 px-3.5 text-xs font-bold shrink-0 bg-emerald-500 text-zinc-955 hover:bg-emerald-400 rounded-lg flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all"
-              onClick={handleFinishSessionClick}
+              variant="secondary"
+              className="h-9 px-3.5 text-xs font-bold shrink-0 border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 rounded-lg flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer"
+              onClick={() => {
+                if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
+                  void discardWorkout();
+                }
+              }}
             >
-              Finish
+              Discard
             </Button>
           </div>
         </div>
-
-        {/* Voice Logger Transcription Feedback Alert Banner */}
-        {speechFeedback && (
-          <div className="mt-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-semibold max-w-5xl mx-auto flex items-center gap-1.5 animate-pulse shadow-sm">
-            <Sparkles size={15} className="text-emerald-450 dark:text-emerald-450 shrink-0" />
-            <span>{speechFeedback}</span>
-          </div>
-        )}
-
-        {/* Floating rest-timer action controllers */}
-        {restTimerEndsAt && remaining > 0 && (
-          <div className="mt-2.5 pt-2.5 border-t border-card-border flex items-center justify-between gap-2 max-w-5xl mx-auto select-none">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Adjust Rest:</span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
-                variant="secondary"
-                onClick={() => void adjustRestTimer(-15)}
-              >
-                -15s
-              </Button>
-              <Button
-                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
-                variant="secondary"
-                onClick={() => void adjustRestTimer(15)}
-              >
-                +15s
-              </Button>
-              <Button
-                className="h-8 px-2.5 text-xs font-bold bg-btn-secondary border-btn-secondary-border text-foreground hover:bg-btn-secondary-hover rounded-lg active:scale-95 transition-all"
-                variant="secondary"
-                onClick={() => void adjustRestTimer(60)}
-              >
-                +60s
-              </Button>
-              <Button
-                className="h-8 px-3 text-xs font-extrabold bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-300 hover:bg-rose-500/20 rounded-lg active:scale-95 transition-all"
-                variant="secondary"
-                onClick={() => void stopRestTimer()}
-              >
-                Stop
-              </Button>
-            </div>
-          </div>
-        )}
-        {/* Thin countdown progress bar at the bottom of the card */}
-        {restTimerEndsAt && remaining > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-1000 ease-linear"
-              style={{ width: `${timerMaxDuration > 0 ? (remaining / timerMaxDuration) * 100 : 0}%` }}
-            />
-          </div>
-        )}
       </Card>
 
       {/* Active Workout Exercises mapping — smart accordion flow */}
@@ -1390,6 +1048,15 @@ export function WorkoutScreen() {
           // Per-exercise unit: persisted in the workout exercise data
           const exUnit = workoutExercise.weightUnit ?? weightUnit;
 
+          const isRestingForThisExercise = !!(
+            restTimerEndsAt &&
+            currentRemaining > 0 &&
+            workoutExercise.sets.some(s => s.id === restingSetId)
+          );
+
+          // Check if ANY global rest timer is running (for global bar)
+          const isGlobalRestActive = !!(restTimerEndsAt && currentRemaining > 0);
+
           // Helper: handle completing a set with auto-advance and value propagation
           const handleCompleteSet = async (setId: string, currentlyCompleted: boolean) => {
             if (navigator.vibrate) navigator.vibrate(currentlyCompleted ? 6 : 14);
@@ -1397,7 +1064,6 @@ export function WorkoutScreen() {
             const targetSetIdx = workoutExercise.sets.findIndex(s => s.id === setId);
             const targetSet = workoutExercise.sets[targetSetIdx];
             if (targetSet && !currentlyCompleted) {
-              const prevSet = targetSetIdx > 0 ? workoutExercise.sets[targetSetIdx - 1] : null;
               const isTimeBased = exercise.category === "mobility" || /s\b|sec|min/i.test(workoutExercise.targetReps) || /hold/i.test(exercise.name) || /plank/i.test(exercise.name);
               const exerciseKey = workoutExercise.exerciseId.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
               const prevSessionSets = lastWorkoutForExercise[exerciseKey];
@@ -1407,8 +1073,22 @@ export function WorkoutScreen() {
               const prevReps = prevSessionSet ? prevSessionSet.reps : defaultReps;
               const prevWeight = prevSessionSet ? prevSessionSet.weight : 0;
 
-              const displayReps = targetSet.reps === 0 ? (prevSet ? (prevSet.reps === 0 ? prevReps : prevSet.reps) : prevReps) : targetSet.reps;
-              const displayWeight = targetSet.weight === 0 ? (prevSet ? (prevSet.weight === 0 ? prevWeight : prevSet.weight) : prevWeight) : targetSet.weight;
+              let lastLoggedReps = 0;
+              let lastLoggedWeight = 0;
+              for (let i = targetSetIdx - 1; i >= 0; i--) {
+                if (workoutExercise.sets[i].reps > 0 && lastLoggedReps === 0) {
+                  lastLoggedReps = workoutExercise.sets[i].reps;
+                }
+                if (workoutExercise.sets[i].weight > 0 && lastLoggedWeight === 0) {
+                  lastLoggedWeight = workoutExercise.sets[i].weight;
+                }
+                if (lastLoggedReps > 0 && lastLoggedWeight > 0) {
+                  break;
+                }
+              }
+
+              const displayReps = targetSet.reps === 0 ? (lastLoggedReps > 0 ? lastLoggedReps : prevReps) : targetSet.reps;
+              const displayWeight = targetSet.weight === 0 ? (lastLoggedWeight > 0 ? lastLoggedWeight : prevWeight) : targetSet.weight;
 
               await updateSet(workoutExercise.id, setId, {
                 completed: true,
@@ -1416,11 +1096,17 @@ export function WorkoutScreen() {
                 weight: displayWeight
               });
             } else {
+              if (restingSetId === setId) {
+                void stopRestTimer();
+              }
               await updateSet(workoutExercise.id, setId, { completed: !currentlyCompleted });
             }
 
             if (!currentlyCompleted) {
-              void startRestTimer(workoutExercise.restSeconds);
+              const restTime = workoutExercise.restSeconds ?? 60;
+              if (restTime > 0) {
+                void startRestTimer(restTime, setId);
+              }
 
               // Reset manual focus so it naturally falls back to firstUncheckedSetIdx sequentially
               setManualActiveSetIdx(prev => {
@@ -1464,7 +1150,7 @@ export function WorkoutScreen() {
                     setFocusedExIdx(nextIdx);
                     setTimeout(() => {
                       exerciseCardRefs.current[nextIdx]?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }, 150);
+                    }, 300);
                   }, 400); // brief delay so user sees the ✓ animation
                 }
               }
@@ -1486,6 +1172,23 @@ export function WorkoutScreen() {
             await updateExerciseUnit(workoutExercise.id, next);
           };
 
+          // Helper: toggle rest timer for this exercise — instant single-handler, no debounce
+          const handleToggleRest = () => {
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            if (navigator.vibrate) navigator.vibrate(6);
+
+            // If ANY rest timer is currently running, stop it
+            if (isGlobalRestActive) {
+              void stopRestTimer();
+            } else {
+              const activeSet = workoutExercise.sets.find(s => !s.completed) || workoutExercise.sets.at(-1);
+              const setId = activeSet ? activeSet.id : null;
+              void startRestTimer(workoutExercise.restSeconds || 60, setId);
+            }
+          };
+
           const isCardio = exercise.category === "cardio" || exercise.category === "steady-state";
           const isTreadmill = exercise.equipment.includes("treadmill");
           const hasResistance = isCardio && (
@@ -1501,6 +1204,7 @@ export function WorkoutScreen() {
             <div
               key={workoutExercise.id}
               ref={el => { exerciseCardRefs.current[exerciseIndex] = el; }}
+              className="scroll-mt-24"
             >
               <Card
                 className={`transition-all duration-300 relative overflow-hidden rounded-none sm:rounded-2xl border-x-0 sm:border-x ${
@@ -1524,9 +1228,31 @@ export function WorkoutScreen() {
                 )}
 
                 {/* ── Accordion Header (always visible, always tappable) ── */}
-                <button
-                  className="w-full text-left p-3.5 sm:p-4 flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-[inherit] min-h-[64px]"
-                  onClick={() => setFocusedExIdx(isExpanded ? -1 : exerciseIndex)}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="w-full text-left p-3.5 sm:p-4 flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-[inherit] min-h-[64px] cursor-pointer"
+                  onClick={() => {
+                    const nextExpanded = !isExpanded;
+                    setFocusedExIdx(nextExpanded ? exerciseIndex : -1);
+                    if (nextExpanded) {
+                      setTimeout(() => {
+                        exerciseCardRefs.current[exerciseIndex]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 300);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      const nextExpanded = !isExpanded;
+                      setFocusedExIdx(nextExpanded ? exerciseIndex : -1);
+                      if (nextExpanded) {
+                        setTimeout(() => {
+                          exerciseCardRefs.current[exerciseIndex]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }, 300);
+                      }
+                    }
+                  }}
                   aria-expanded={isExpanded}
                 >
                   {/* Exercise completion badge / number */}
@@ -1560,31 +1286,51 @@ export function WorkoutScreen() {
                         </span>
                       )}
                     </div>
-                    <p className="text-base sm:text-lg font-bold text-foreground leading-snug truncate">
+                    <p className="text-base sm:text-lg font-bold text-foreground leading-snug mt-0.5 truncate">
                       {exercise.name}
                     </p>
                     {/* Progress summary when collapsed */}
                     {!isExpanded && (
-                      <p className="text-xs text-zinc-555 mt-0.5">
-                        {isCardio ? (
-                          allSetsCompleted ? "Session completed ✓" : "Steady state cardio"
-                        ) : allSetsCompleted
-                          ? `All ${totalSetsCount} sets done ✓`
-                          : completedSetsCount > 0
-                          ? `${completedSetsCount}/${totalSetsCount} sets done`
-                          : exercise.muscles.slice(0, 3).join(" · ")}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-zinc-555">
+                          {allSetsCompleted ? (
+                            isCardio ? "Session completed ✓" : `All ${totalSetsCount} sets done ✓`
+                          ) : (
+                            `${completedSetsCount} completed, ${totalSetsCount - completedSetsCount} remaining`
+                          )}
+                        </p>
+                        {/* Timer badge on collapsed card when rest is active for this exercise */}
+                        {isRestingForThisExercise && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-[10px] font-bold font-mono animate-pulse">
+                            <Clock3 size={10} className="animate-spin" style={{ animationDuration: '3s' }} />
+                            {formatTimer(currentRemaining)}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
 
-                  {/* Expand/collapse chevron */}
-                  <div className="shrink-0 ml-1">
+                  {/* Expand/collapse chevron + Guide button */}
+                  <div className="flex items-center gap-2 shrink-0 ml-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedExercise(exercise);
+                      }}
+                      className="h-8 px-2.5 rounded-xl border border-surface-border bg-surface text-[10px] font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1 shrink-0 shadow-sm active:scale-95 cursor-pointer"
+                      title="View Guide"
+                      aria-label="View step-by-step instructions"
+                    >
+                      <Info size={13} className="text-zinc-500 dark:text-zinc-400" />
+                      <span>Guide</span>
+                    </button>
                     {isExpanded
                       ? <ChevronUp size={20} className="text-emerald-500" />
                       : <ChevronDown size={20} className="text-zinc-555" />
                     }
                   </div>
-                </button>
+                </div>
 
                 {/* ── Expanded Content ── */}
                 <AnimatePresence initial={false}>
@@ -1598,6 +1344,43 @@ export function WorkoutScreen() {
                       style={{ overflow: "hidden" }}
                     >
                       <div className="px-3.5 sm:px-4 pb-4 space-y-3 border-t border-card-border/60 pt-3">
+                        {/* Inline Rest Timer when running */}
+                        {restTimerEndsAt && currentRemaining > 0 && (
+                          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-2 animate-pulse mb-3 select-none">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Clock3 size={16} className="text-amber-500 animate-spin shrink-0" style={{ animationDuration: '3s' }} />
+                              <span className="text-xs font-black text-amber-600 dark:text-amber-400 font-mono tabular-nums truncate">
+                                Rest Timer: {formatTimer(currentRemaining)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                className="h-7 px-2 text-[10px] font-extrabold bg-surface hover:bg-surface/80 border border-surface-border text-foreground rounded-lg active:scale-95 transition-all cursor-pointer"
+                                style={{ touchAction: "manipulation" }}
+                                onPointerDown={(e) => { e.preventDefault(); void adjustRestTimer(-15); }}
+                              >
+                                −15s
+                              </button>
+                              <button
+                                type="button"
+                                className="h-7 px-2 text-[10px] font-extrabold bg-surface hover:bg-surface/80 border border-surface-border text-foreground rounded-lg active:scale-95 transition-all cursor-pointer"
+                                style={{ touchAction: "manipulation" }}
+                                onPointerDown={(e) => { e.preventDefault(); void adjustRestTimer(15); }}
+                              >
+                                +15s
+                              </button>
+                              <button
+                                type="button"
+                                className="h-7 px-2.5 text-[10px] font-black bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20 rounded-lg active:scale-95 transition-all cursor-pointer"
+                                style={{ touchAction: "manipulation" }}
+                                onPointerDown={(e) => { e.preventDefault(); void stopRestTimer(); }}
+                              >
+                                Skip
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Muscle chips + action buttons row */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-card-border/60 pb-3">
@@ -1614,6 +1397,36 @@ export function WorkoutScreen() {
 
                           {/* Action buttons row: scrollable on mobile for premium high-fidelity native feeling, wraps on desktop */}
                           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 shrink-0 justify-start sm:justify-end -mx-3.5 px-3.5 sm:mx-0 sm:px-0 select-none w-[calc(100%+1.75rem)] sm:w-auto">
+                            {/* Rest Button — single onPointerDown handler for instant response */}
+                            {!isSkipped && (
+                              <button
+                                type="button"
+                                onPointerDown={(e) => {
+                                  e.preventDefault();
+                                  handleToggleRest();
+                                }}
+                                className={cn(
+                                  "h-9 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer",
+                                  isRestingForThisExercise
+                                    ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 animate-pulse"
+                                    : isGlobalRestActive
+                                    ? "bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/15"
+                                    : "bg-surface border-surface-border text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-white/5"
+                                )}
+                                style={{ touchAction: "manipulation" }}
+                                aria-label="Rest timer"
+                              >
+                                <Timer size={15} className={isRestingForThisExercise ? "text-amber-500 animate-spin" : isGlobalRestActive ? "text-rose-500" : "text-zinc-500 dark:text-zinc-400"} style={isRestingForThisExercise ? { animationDuration: '3s' } : undefined} />
+                                <span>
+                                  {isRestingForThisExercise
+                                    ? `Resting: ${formatTimer(currentRemaining)}`
+                                    : isGlobalRestActive
+                                    ? "Stop Timer"
+                                    : `Rest (${workoutExercise.restSeconds || 60}s)`}
+                                </span>
+                              </button>
+                            )}
+
                             {/* kg/lbs toggle button */}
                             {!isCardio && (
                               <button
@@ -1626,46 +1439,6 @@ export function WorkoutScreen() {
                                 <span>{exUnit.toUpperCase()}</span>
                               </button>
                             )}
-
-                            {/* Step-by-Step Info */}
-                            <button
-                              type="button"
-                              onClick={() => setSelectedExercise(exercise)}
-                              className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
-                              aria-label="View step-by-step instructions"
-                            >
-                              <Info size={15} className="text-zinc-500 dark:text-zinc-400" />
-                              <span>Guide</span>
-                            </button>
-
-                            {/* Swap */}
-                            {!isSkipped && (
-                              <button
-                                type="button"
-                                onClick={() => { setActiveSwapExercise(workoutExercise); setSwapSearch(""); }}
-                                className="h-9 px-3 rounded-xl border border-surface-border bg-surface text-xs font-bold text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-zinc-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer"
-                                aria-label="Swap exercise"
-                              >
-                                <Shuffle size={15} className="text-zinc-500 dark:text-zinc-400" />
-                                <span>Swap</span>
-                              </button>
-                            )}
-
-                            {/* Skip/Resume */}
-                            <button
-                              type="button"
-                              onClick={() => void skipWorkoutExercise(workoutExercise.id)}
-                              className={cn(
-                                "h-9 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-sm active:scale-95 cursor-pointer",
-                                isSkipped
-                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15"
-                                  : "bg-surface border-surface-border text-zinc-755 hover:border-emerald-500/40 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-white/5"
-                              )}
-                              aria-label={isSkipped ? "Resume exercise" : "Skip exercise"}
-                            >
-                              <SkipForward size={15} className={isSkipped ? "text-amber-500 animate-pulse" : "text-zinc-500 dark:text-zinc-400"} />
-                              <span>{isSkipped ? "Resume" : "Skip"}</span>
-                            </button>
 
                             {/* Add Set */}
                             {!isSkipped && !isCardio && (
@@ -1720,6 +1493,8 @@ export function WorkoutScreen() {
 
                                   // ─── Case 1: Completed Set ───
                                   if (set.completed) {
+
+
                                     return (
                                       <div
                                         key={set.id}
@@ -1794,7 +1569,7 @@ export function WorkoutScreen() {
                                               onClick={() => void handleCompleteSet(set.id, set.completed)}
                                             >
                                               <Check size={16} className="stroke-[3px]" />
-                                              Check
+                                              Next Set
                                             </Button>
                                           </div>
                                         </div>
@@ -1907,11 +1682,40 @@ export function WorkoutScreen() {
                                         className="h-9 px-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
                                       >
                                         <Check size={15} className="stroke-[3px]" />
-                                        Check
+                                        Next Set
                                       </button>
                                     </div>
                                   );
                                 })}
+
+                                {/* Bottom action bar */}
+                                <div className="mt-2.5 flex gap-2 flex-wrap">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className={cn(
+                                      "text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border active:scale-95 transition-all shadow-sm cursor-pointer",
+                                      isSkipped
+                                        ? "bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                                        : "border-surface-border text-zinc-755 hover:text-zinc-955 hover:bg-surface"
+                                    )}
+                                    icon={<SkipForward size={16} className={isSkipped ? "text-amber-500 animate-pulse" : "text-zinc-500 dark:text-zinc-400"} />}
+                                    onClick={() => void skipWorkoutExercise(workoutExercise.id)}
+                                  >
+                                    {isSkipped ? "Resume Exercise" : "Skip Exercise"}
+                                  </Button>
+                                  {!isSkipped && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border text-zinc-755 hover:text-zinc-955 hover:bg-surface active:scale-95 transition-all shadow-sm cursor-pointer"
+                                      icon={<Shuffle size={16} className="text-zinc-500 dark:text-zinc-400" />}
+                                      onClick={() => { setActiveSwapExercise(workoutExercise); setSwapSearch(""); }}
+                                    >
+                                      Swap Exercise
+                                    </Button>
+                                  )}
+                                </div>
                               </>
                             ) : (
                               /* ── Strength exercises ── */
@@ -1930,8 +1734,22 @@ export function WorkoutScreen() {
                                     const prevReps = prevSessionSet ? prevSessionSet.reps : defaultReps;
                                     const prevWeight = prevSessionSet ? prevSessionSet.weight : 0;
 
-                                    const displayReps = set.reps === 0 ? (prevSet ? (prevSet.reps === 0 ? prevReps : prevSet.reps) : prevReps) : set.reps;
-                                    const displayWeight = set.weight === 0 ? (prevSet ? (prevSet.weight === 0 ? prevWeight : prevSet.weight) : prevWeight) : set.weight;
+                                    let lastLoggedReps = 0;
+                                    let lastLoggedWeight = 0;
+                                    for (let i = setIndex - 1; i >= 0; i--) {
+                                      if (workoutExercise.sets[i].reps > 0 && lastLoggedReps === 0) {
+                                        lastLoggedReps = workoutExercise.sets[i].reps;
+                                      }
+                                      if (workoutExercise.sets[i].weight > 0 && lastLoggedWeight === 0) {
+                                        lastLoggedWeight = workoutExercise.sets[i].weight;
+                                      }
+                                      if (lastLoggedReps > 0 && lastLoggedWeight > 0) {
+                                        break;
+                                      }
+                                    }
+
+                                    const displayReps = set.reps === 0 ? (lastLoggedReps > 0 ? lastLoggedReps : prevReps) : set.reps;
+                                    const displayWeight = set.weight === 0 ? (lastLoggedWeight > 0 ? lastLoggedWeight : prevWeight) : set.weight;
 
                                     // ─── Case 1: Completed Set ───
                                     if (set.completed) {
@@ -1941,9 +1759,7 @@ export function WorkoutScreen() {
                                           className="flex items-center gap-3 px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-xs select-none transition-all min-h-[44px]"
                                         >
                                           <span className="font-black text-emerald-500 shrink-0">#{setIndex + 1}</span>
-                                          {set.isDropSet && (
-                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
-                                          )}
+
                                           <span className="flex-1 font-semibold text-emerald-700 dark:text-emerald-300 truncate text-left">
                                             {isTimeBased ? `${set.reps}s` : `${set.reps} reps`} · {set.weight === 0 ? "bodyweight" : `${set.weight} ${exUnit}`}
                                             {set.rir !== undefined ? ` · RIR ${set.rir}` : ""}
@@ -1986,9 +1802,7 @@ export function WorkoutScreen() {
                                                 SET #{setIndex + 1} (ACTIVE)
                                               </span>
                                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                              {set.isDropSet && (
-                                                <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/25 text-[10px] font-black uppercase tracking-wider text-amber-500">Drop</span>
-                                              )}
+
                                               {prevSessionSet && (
                                                 <span className="text-[10px] font-black text-zinc-555">
                                                   Last: {prevSessionSet.weight === 0 ? "BW" : `${prevSessionSet.weight}${exUnit}`} x {prevSessionSet.reps}
@@ -2010,7 +1824,7 @@ export function WorkoutScreen() {
                                                 onClick={() => void handleCompleteSet(set.id, set.completed)}
                                               >
                                                 <Check size={16} className="stroke-[3px]" />
-                                                Check
+                                                Next Set
                                               </Button>
                                             </div>
                                           </div>
@@ -2068,7 +1882,10 @@ export function WorkoutScreen() {
                                                   type="button"
                                                   onClick={() => {
                                                     if (navigator.vibrate) navigator.vibrate(6);
-                                                    const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                    const isBodyweight = exercise.equipment.includes("bodyweight") || exercise.equipment.includes("band");
+                                                    const step = isBodyweight
+                                                      ? (exUnit === "kg" ? 1.0 : 2.5)
+                                                      : (exUnit === "kg" ? 2.5 : 5.0);
                                                     const v = parseFloat(Math.max(0, displayWeight - step).toFixed(1));
                                                     void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
@@ -2091,7 +1908,10 @@ export function WorkoutScreen() {
                                                   type="button"
                                                   onClick={() => {
                                                     if (navigator.vibrate) navigator.vibrate(6);
-                                                    const step = exUnit === "kg" ? 1.0 : 2.5;
+                                                    const isBodyweight = exercise.equipment.includes("bodyweight") || exercise.equipment.includes("band");
+                                                    const step = isBodyweight
+                                                      ? (exUnit === "kg" ? 1.0 : 2.5)
+                                                      : (exUnit === "kg" ? 2.5 : 5.0);
                                                     const v = parseFloat(Math.min(2000, displayWeight + step).toFixed(1));
                                                     void updateSet(workoutExercise.id, set.id, { weight: v });
                                                   }}
@@ -2105,59 +1925,41 @@ export function WorkoutScreen() {
                                             
                                             <div>
                                               <label className="block text-[10px] font-black uppercase text-zinc-750 tracking-wider mb-1.5">RIR</label>
-                                              {guidedMode ? (
-                                                <div className="bg-surface border border-surface-border rounded-xl overflow-hidden shadow-sm focus-within:border-emerald-500/50 h-11 flex items-center">
-                                                  <Select
-                                                    value={set.rir === 8 ? "easy" : set.rir === 0 ? "hard" : "moderate"}
-                                                    onChange={e => {
-                                                      if (navigator.vibrate) navigator.vibrate(6);
-                                                      const v = e.target.value === "easy" ? 8 : e.target.value === "hard" ? 0 : 4;
-                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                    }}
-                                                    className="h-10 py-0.5 px-2 text-center font-bold bg-transparent border-0 text-xs w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
-                                                  >
-                                                    <option value="easy">Easy (8)</option>
-                                                    <option value="moderate">Mod (4)</option>
-                                                    <option value="hard">Hard (0)</option>
-                                                  </Select>
-                                                </div>
-                                              ) : (
-                                                <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      if (navigator.vibrate) navigator.vibrate(6);
-                                                      const v = Math.max(0, (set.rir ?? 2) - 1);
-                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                    }}
-                                                    className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                    aria-label="Decrease RIR"
-                                                  >
-                                                    <Minus size={14} className="stroke-[3px]" />
-                                                  </button>
-                                                  <Input
-                                                    inputMode="numeric" type="number" min={0} max={10}
-                                                    className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
-                                                    value={set.rir ?? 2}
-                                                    onChange={e => {
-                                                      const v = Math.min(10, Math.max(0, Number(e.target.value)));
-                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                    }}
-                                                  />
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      if (navigator.vibrate) navigator.vibrate(6);
-                                                      const v = Math.min(10, (set.rir ?? 2) + 1);
-                                                      void updateSet(workoutExercise.id, set.id, { rir: v });
-                                                    }}
-                                                    className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
-                                                    aria-label="Increase RIR"
-                                                  >
-                                                    <Plus size={14} className="stroke-[3px]" />
-                                                  </button>
-                                                </div>
-                                              )}
+                                              <div className="flex items-center bg-surface border border-surface-border rounded-xl px-1 py-0.5 select-none shadow-sm focus-within:border-emerald-500/50 transition-colors h-11">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = Math.max(0, (set.rir ?? 2) - 1);
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Decrease RIR"
+                                                >
+                                                  <Minus size={14} className="stroke-[3px]" />
+                                                </button>
+                                                <Input
+                                                  inputMode="numeric" type="number" min={0} max={10}
+                                                  className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
+                                                  value={set.rir ?? 2}
+                                                  onChange={e => {
+                                                    const v = Math.min(10, Math.max(0, Number(e.target.value)));
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (navigator.vibrate) navigator.vibrate(6);
+                                                    const v = Math.min(10, (set.rir ?? 2) + 1);
+                                                    void updateSet(workoutExercise.id, set.id, { rir: v });
+                                                  }}
+                                                  className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
+                                                  aria-label="Increase RIR"
+                                                >
+                                                  <Plus size={14} className="stroke-[3px]" />
+                                                </button>
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
@@ -2172,9 +1974,7 @@ export function WorkoutScreen() {
                                         className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface/30 border border-surface-border text-xs text-zinc-750 transition-all select-none hover:bg-surface/50 cursor-pointer min-h-[44px]"
                                       >
                                         <span className="font-bold text-zinc-555 shrink-0">#{setIndex + 1}</span>
-                                        {set.isDropSet && (
-                                          <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider">Drop</span>
-                                        )}
+
                                         <span className="flex-1 text-left font-medium truncate">
                                           Target {displayReps}{isTimeBased ? "s" : " reps"} · {displayWeight === 0 ? "bodyweight" : `${displayWeight} ${exUnit}`}
                                         </span>
@@ -2187,7 +1987,7 @@ export function WorkoutScreen() {
                                           className="h-11 px-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 cursor-pointer shrink-0 shadow-sm"
                                         >
                                           <Check size={15} className="stroke-[3px]" />
-                                          Check
+                                          Next Set
                                         </button>
                                       </div>
                                     );
@@ -2197,97 +1997,65 @@ export function WorkoutScreen() {
                                 {/* Bottom action bar */}
                                 <div className="mt-2.5 flex gap-2 flex-wrap">
                                   <Button
-                                    size="sm" variant="ghost"
-                                    className="text-xs font-bold text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border active:scale-95 transition-all shadow-sm"
-                                    icon={<Flame size={16} className="text-amber-500 animate-pulse" />}
-                                    onClick={() => {
-                                      const last = workoutExercise.sets.at(-1);
-                                      if (!last) return;
-                                      void updateSet(workoutExercise.id, last.id, { isDropSet: !last.isDropSet });
-                                    }}
+                                    size="sm"
+                                    variant="ghost"
+                                    className={cn(
+                                      "text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border active:scale-95 transition-all shadow-sm cursor-pointer",
+                                      isSkipped
+                                        ? "bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                                        : "border-surface-border text-zinc-755 hover:text-zinc-955 hover:bg-surface"
+                                    )}
+                                    icon={<SkipForward size={16} className={isSkipped ? "text-amber-500 animate-pulse" : "text-zinc-500 dark:text-zinc-400"} />}
+                                    onClick={() => void skipWorkoutExercise(workoutExercise.id)}
                                   >
-                                    Dropset
+                                    {isSkipped ? "Resume Exercise" : "Skip Exercise"}
                                   </Button>
-                                  <Button
-                                    size="sm" variant="ghost"
-                                    className="text-xs font-bold text-zinc-750 hover:text-zinc-955 hover:bg-surface py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border active:scale-95 transition-all shadow-sm"
-                                    icon={<Timer size={16} />}
-                                    onClick={() => void startRestTimer(workoutExercise.restSeconds)}
-                                  >
-                                    Rest {Math.round(workoutExercise.restSeconds / 60)}m
-                                  </Button>
+                                  {!isSkipped && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1.5 h-9 border border-surface-border text-zinc-755 hover:text-zinc-955 hover:bg-surface active:scale-95 transition-all shadow-sm cursor-pointer"
+                                      icon={<Shuffle size={16} className="text-zinc-500 dark:text-zinc-400" />}
+                                      onClick={() => { setActiveSwapExercise(workoutExercise); setSwapSearch(""); }}
+                                    >
+                                      Swap Exercise
+                                    </Button>
+                                  )}
                                 </div>
 
-                                {/* Plate loader + RIR advisor */}
+                                {/* RIR advisor */}
                                 {(() => {
-                                  const isBarbell = exercise.equipment.includes("barbell");
-                                  const activeSet = workoutExercise.sets.find(s => !s.completed) || workoutExercise.sets.at(-1);
-                                  const activeWeight = activeSet?.weight || 0;
-                                  const platesList = isBarbell && activeWeight ? calculatePlates(activeWeight, exUnit) : null;
                                   const lastDoneSet = [...workoutExercise.sets].reverse().find(s => s.completed);
                                   const rirVal = lastDoneSet?.rir;
-                                  if (!platesList && rirVal === undefined) return null;
-
-                                  const getPlateStyles = (plate: number) => {
-                                    const p = Number(plate);
-                                    if (p >= 45 || p === 25) return "bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border-rose-500/30";
-                                    if (p === 35 || p === 20) return "bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30";
-                                    if (p === 25 || p === 15) return "bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30";
-                                    if (p === 10) return "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
-                                    if (p === 5) return "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-300 dark:border-zinc-700";
-                                    return "bg-zinc-900/10 dark:bg-white/10 text-zinc-800 dark:text-zinc-200 border-zinc-500/30";
-                                  };
+                                  if (rirVal === undefined) return null;
 
                                   return (
-                                    <div className="mt-2.5 p-3.5 rounded-xl bg-surface/40 border border-surface-border space-y-3 text-xs select-none">
-                                      {platesList && platesList.length > 0 && (
-                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-card-border pb-2.5">
-                                          <div className="flex items-center gap-2 text-zinc-755 font-bold">
-                                            <Dumbbell size={15} className="text-emerald-400 shrink-0" />
-                                            <span>Plates per side ({activeWeight} {exUnit}):</span>
-                                          </div>
-                                          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end">
-                                            {platesList.map((plate, idx) => (
-                                              <span
-                                                key={idx}
-                                                className={cn(
-                                                  "inline-flex items-center justify-center h-8 w-8 rounded-full border text-[10px] font-black font-mono shadow-sm transition-all",
-                                                  getPlateStyles(plate)
-                                                )}
-                                              >
-                                                {plate}
-                                              </span>
-                                            ))}
-                                          </div>
+                                    <div className="mt-2.5 p-3.5 rounded-xl bg-surface/40 border border-surface-border text-xs select-none">
+                                      <div className={cn(
+                                        "flex items-start gap-2.5 p-2.5 rounded-xl border select-none transition-all duration-300",
+                                        rirVal <= 1
+                                          ? "bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 ring-1 ring-rose-500/10"
+                                          : rirVal >= 4
+                                          ? "bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/20"
+                                          : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
+                                      )}>
+                                        <Sparkles size={14} className={cn(
+                                          "mt-0.5 shrink-0",
+                                          rirVal <= 1 ? "text-rose-500" : rirVal >= 4 ? "text-sky-500" : "text-emerald-500"
+                                        )} />
+                                        <div>
+                                          <p className="font-extrabold text-foreground leading-tight text-[11px] uppercase tracking-wide">
+                                            Stimulus Advisory (Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} · RIR {rirVal}):
+                                          </p>
+                                          <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
+                                            {rirVal <= 1
+                                              ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
+                                              : rirVal >= 4
+                                              ? "Low-intensity stimulus. Consider increasing load by 5–10% to target hypertrophy."
+                                              : "Moderate stimulus — perfect sweet spot for safe progressive overload."}
+                                          </p>
                                         </div>
-                                      )}
-                                      {rirVal !== undefined && (
-                                        <div className={cn(
-                                          "flex items-start gap-2.5 p-2.5 rounded-xl border select-none transition-all duration-300",
-                                          rirVal <= 1
-                                            ? "bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 ring-1 ring-rose-500/10"
-                                            : rirVal >= 4
-                                            ? "bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/20"
-                                            : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
-                                        )}>
-                                          <Sparkles size={14} className={cn(
-                                            "mt-0.5 shrink-0",
-                                            rirVal <= 1 ? "text-rose-500" : rirVal >= 4 ? "text-sky-500" : "text-emerald-500"
-                                          )} />
-                                          <div>
-                                            <p className="font-extrabold text-foreground leading-tight text-[11px] uppercase tracking-wide">
-                                              Stimulus Advisory (Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} · RIR {rirVal}):
-                                            </p>
-                                            <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
-                                              {rirVal <= 1
-                                                ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
-                                                : rirVal >= 4
-                                                ? "Low-intensity stimulus. Consider increasing load by 5–10% to target hypertrophy."
-                                                : "Moderate stimulus — perfect sweet spot for safe progressive overload."}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      )}
+                                      </div>
                                     </div>
                                   );
                                 })()}
@@ -2325,17 +2093,15 @@ export function WorkoutScreen() {
         })}
       </div>
 
+
+
       <div className="mt-8 mb-12 flex justify-center px-4">
         <Button
-          variant="secondary"
-          className="w-full max-w-md border-rose-500/20 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-350 py-2.5 h-11 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm cursor-pointer"
-          onClick={() => {
-            if (window.confirm("Are you sure you want to discard this active workout? All tracked sets will be deleted and this session won't be saved in your history.")) {
-              void discardWorkout();
-            }
-          }}
+          variant="primary"
+          className="w-full max-w-md bg-emerald-500 text-zinc-955 hover:bg-emerald-400 py-2.5 h-11 text-xs font-black uppercase tracking-wider rounded-xl shadow-sm cursor-pointer"
+          onClick={handleFinishSessionClick}
         >
-          Discard Workout Session
+          Finish Workout Session
         </Button>
       </div>
 
@@ -2449,9 +2215,9 @@ export function WorkoutScreen() {
         isOpen={showFinishSessionModal}
         onClose={() => setShowFinishSessionModal(false)}
         onConfirm={handleFinishSessionConfirm}
-        onDiscard={handleFinishSessionDiscard}
         initialFatigue={fatigue}
         initialNotes={notes}
+        incompleteCount={incompleteExercisesCount}
       />
 
       <PostWorkoutCheckinModal

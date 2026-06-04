@@ -11,20 +11,16 @@ import { createId } from "@/lib/id";
 import type { Workout } from "@/types/domain";
 
 type TimeRange =
-  | "Last Workout"
-  | "Last 3 Days"
   | "Last Week"
-  | "Last Month"
-  | "Last 3 Months"
-  | "All Time";
+  | "1 Month"
+  | "3 Months"
+  | "1 Year";
 
 const RANGES: TimeRange[] = [
-  "Last Workout",
-  "Last 3 Days",
   "Last Week",
-  "Last Month",
-  "Last 3 Months",
-  "All Time",
+  "1 Month",
+  "3 Months",
+  "1 Year",
 ];
 
 export function AiWorkoutTip() {
@@ -69,17 +65,13 @@ export function AiWorkoutTip() {
     );
     if (completed.length === 0) return [];
 
-    if (selectedRange === "Last Workout") {
-      return [completed[completed.length - 1]];
-    }
-
     const now = Date.now();
     let days = 0;
-    if (selectedRange === "Last 3 Days") days = 3;
-    else if (selectedRange === "Last Week") days = 7;
-    else if (selectedRange === "Last Month") days = 30;
-    else if (selectedRange === "Last 3 Months") days = 90;
-    else return completed; // All time
+    if (selectedRange === "Last Week") days = 7;
+    else if (selectedRange === "1 Month") days = 30;
+    else if (selectedRange === "3 Months") days = 90;
+    else if (selectedRange === "1 Year") days = 365;
+    else return completed;
 
     const limitTime = now - days * 24 * 60 * 60 * 1000;
     return completed.filter((w) => new Date(w.startedAt).getTime() >= limitTime);
@@ -118,13 +110,13 @@ export function AiWorkoutTip() {
         .join("\n\n");
 
       const prompt = `You are Atlas Biomechanics Coach, a clinical-grade sports physiotherapist and strength coach.
-Based on the following ${selectedRange} of training data, provide 2-3 specific, highly actionable coaching tips.
-Focus on:
-- What's going well (positive reinforcement, progression)
-- What needs improvement (imbalances, volume distribution, frequency, technique advice)
-- One specific actionable next step for the next workout
+Based on the following ${selectedRange} of training data, provide a proper improvement analysis and specific, highly actionable training recommendations.
+Analyze the logged exercises, sets, reps, and weights to identify:
+1. Progression & Performance: Highlight specific lifts that are progressing well or areas of solid consistency.
+2. Areas for Improvement: Identify any volume imbalances, potential overtraining of specific muscles, or recovery/fatigue needs based on RIR (Reps in Reserve) if provided.
+3. Actionable Next Step: Give exactly one clear, simple directive for the athlete's next workout.
 
-Format the output cleanly in markdown with short bullet points. Keep the total response under 150 words. Do not include introductory or concluding conversational filler (e.g. "Here are your tips:"). Go straight to the bullet points.
+Format the output cleanly in markdown with short bullet points. Keep the response simple, direct, and under 150 words. Do not use generic filler. Go straight to the points.
 
 Athlete Profile:
 - Goal: ${profile?.goal || "Not specified"} (Training Style: ${profile?.trainingStyle || "Not specified"}, Experience: ${profile?.experience || "beginner"})
@@ -232,6 +224,12 @@ ${workoutsFormatted || "No workouts logged in this period."}
         ) : error ? (
           <div className="p-3 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-[10px] text-rose-500 font-semibold leading-relaxed">
             {error}
+          </div>
+        ) : filteredWorkouts.length === 0 ? (
+          <div className="py-4 flex flex-col items-center justify-center gap-1.5 text-center">
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 max-w-[285px] leading-relaxed">
+              No workouts logged in this period. Log your workouts to unlock personalized AI analysis for this timeframe.
+            </p>
           </div>
         ) : currentTip ? (
           <div className="prose dark:prose-invert prose-p:leading-relaxed prose-li:my-0.5 max-w-none text-[11px] text-zinc-600 dark:text-zinc-350">

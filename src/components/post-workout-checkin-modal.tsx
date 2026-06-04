@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { X } from "lucide-react";
-import { todayKey } from "@/lib/id";
+import { todayKey, createId } from "@/lib/id";
 
 interface PostWorkoutCheckinModalProps {
   isOpen: boolean;
@@ -26,24 +26,39 @@ export function PostWorkoutCheckinModal({
 
   const lastRecovery = recoveryLogs.at(-1);
 
-  const [energy, setEnergy] = useState<number>(lastRecovery?.energy ?? 5);
-  const [soreness, setSoreness] = useState<number>(lastRecovery?.soreness ?? 5);
-  const [stress, setStress] = useState<number>(lastRecovery?.stress ?? 5);
-  const [readiness, setReadiness] = useState<number>(lastRecovery?.readiness ?? 5);
+  const [energy, setEnergy] = useState<number | undefined>(undefined);
+  const [soreness, setSoreness] = useState<number | undefined>(undefined);
+  const [stress, setStress] = useState<number | undefined>(undefined);
+  const [readiness, setReadiness] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEnergy(undefined);
+      setSoreness(undefined);
+      setStress(undefined);
+      setReadiness(undefined);
+      setError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const validateScores = (eng: number, sor: number, str: number, read: number): boolean => {
-    if (isNaN(eng) || eng < 1 || eng > 10) return false;
-    if (isNaN(sor) || sor < 1 || sor > 10) return false;
-    if (isNaN(str) || str < 1 || str > 10) return false;
-    if (isNaN(read) || read < 1 || read > 10) return false;
+  const validateScores = (
+    eng: number | undefined,
+    sor: number | undefined,
+    str: number | undefined,
+    read: number | undefined
+  ): boolean => {
+    if (eng === undefined || isNaN(eng) || eng < 1 || eng > 10) return false;
+    if (sor === undefined || isNaN(sor) || sor < 1 || sor > 10) return false;
+    if (str === undefined || isNaN(str) || str < 1 || str > 10) return false;
+    if (read === undefined || isNaN(read) || read < 1 || read > 10) return false;
     return true;
   };
 
   const handleFieldChange = (field: string, val: string) => {
-    const num = Number(val);
+    const num = val === "" ? undefined : Number(val);
     let nextEnergy = energy;
     let nextSoreness = soreness;
     let nextStress = stress;
@@ -63,7 +78,7 @@ export function PostWorkoutCheckinModal({
       nextReadiness = num;
     }
 
-    if (!validateScores(nextEnergy, nextSoreness, nextStress, nextReadiness)) {
+    if (val !== "" && (num === undefined || isNaN(num) || num < 1 || num > 10)) {
       setError("All metrics must be numbers between 1 and 10.");
     } else {
       setError(null);
@@ -75,17 +90,18 @@ export function PostWorkoutCheckinModal({
       setError("Please ensure all metrics are numbers between 1 and 10.");
       return;
     }
+    const todayLog = recoveryLogs.find((r) => r.date === todayKey());
     await logRecovery({
-      id: todayKey(),
+      id: todayLog?.id || createId("recovery"),
       date: todayKey(),
       sleepHours: lastRecovery?.sleepHours ?? 0,
-      energy,
-      soreness,
-      stress,
-      readiness,
+      energy: energy!,
+      soreness: soreness!,
+      stress: stress!,
+      readiness: readiness!,
       note: workoutNotes, // Use workoutNotes for recovery note
     });
-    onConfirm(energy, soreness, stress, readiness);
+    onConfirm(energy!, soreness!, stress!, readiness!);
   };
 
   return (
@@ -146,7 +162,7 @@ export function PostWorkoutCheckinModal({
 
         {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
 
-        <Button variant="primary" onClick={handleSave} disabled={!!error} className="w-full">
+        <Button variant="primary" onClick={handleSave} disabled={!validateScores(energy, soreness, stress, readiness) || !!error} className="w-full">
           Log Recovery
         </Button>
       </Card>

@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -19,6 +19,28 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
+
+  useEffect(() => {
+    const handleReset = () => {
+      setGoogleLoading(false);
+    };
+
+    window.addEventListener("focus", handleReset);
+    window.addEventListener("pageshow", handleReset);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleReset();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleReset);
+      window.removeEventListener("pageshow", handleReset);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
 
   const passwordStrength = (pw: string) => {
     if (pw.length === 0) return 0;
@@ -98,6 +120,27 @@ export default function SignUpPage() {
           <Link href="/sign-in" className="auth-link-block">
             Back to Sign In
           </Link>
+          {typeof window !== "undefined" && window.location.hostname === "localhost" && (
+            <div style={{
+              marginTop: "1.5rem",
+              padding: "1rem",
+              borderRadius: "0.75rem",
+              border: "1px solid rgba(16, 185, 129, 0.15)",
+              backgroundColor: "rgba(16, 185, 129, 0.03)",
+              color: "rgba(255, 255, 255, 0.6)",
+              fontSize: "0.75rem",
+              textAlign: "left",
+              lineHeight: "1.45",
+              maxWidth: "320px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+            }}>
+              <p style={{ fontWeight: "700", color: "#34d399", marginBottom: "0.35rem", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <span>💡</span> Local Testing Notice
+              </p>
+              Since the app is running on localhost, clicking the confirmation link from a mobile email app will fail to load the redirect page. <strong>Don't worry!</strong> Supabase still verifies your email when clicked. You can return here and sign in.
+            </div>
+          )}
+
         </div>
       </div>
     );

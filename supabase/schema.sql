@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   theme TEXT DEFAULT 'system',
   guided_mode BOOLEAN DEFAULT TRUE,
   has_onboarded BOOLEAN DEFAULT FALSE,
+  ai_setup_dismissed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

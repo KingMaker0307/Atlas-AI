@@ -874,6 +874,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                       className="text-xs font-bold px-3 py-1.5 h-auto self-center shrink-0 border border-zinc-200 dark:border-white/5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white"
                       onClick={async () => {
                         try {
+                          // Clear local state + IndexedDB before signing out
+                          await resetLocalData();
                           const { createClient } = await import("@/lib/supabase/client");
                           await createClient().auth.signOut();
                           window.location.href = "/sign-in";
@@ -1725,7 +1727,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                             return;
                           }
 
-                          // Clear local state + redirect to sign-in
+                          // Clear local state + IndexedDB + redirect to sign-in
+                          await resetLocalData();
                           const { createClient } = await import("@/lib/supabase/client");
                           await createClient().auth.signOut();
                           window.location.href = "/sign-in";

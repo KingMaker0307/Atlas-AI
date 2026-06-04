@@ -3,13 +3,22 @@
 export const dynamic = "force-dynamic";
 
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="auth-page"><div className="auth-card"><p className="auth-subtitle">Loading...</p></div></div>}>
+      <SignInContent />
+    </Suspense>
+  );
+}
+
+function SignInContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -17,6 +26,39 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    const callbackError = searchParams.get("error");
+    if (callbackError) {
+      const messages: Record<string, string> = {
+        auth_callback_failed: "Authentication failed. Please try signing in again.",
+        access_denied: "Access was denied. Please try again.",
+      };
+      setError(messages[callbackError] || `Authentication error: ${callbackError}`);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleReset = () => {
+      setGoogleLoading(false);
+    };
+
+    window.addEventListener("focus", handleReset);
+    window.addEventListener("pageshow", handleReset);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleReset();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleReset);
+      window.removeEventListener("pageshow", handleReset);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
 
   async function handleEmailSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -42,14 +84,20 @@ export default function SignInPage() {
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (oauthError) {
-      setError(oauthError.message);
+    setError(null);
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        setGoogleLoading(false);
+      }
+    } catch (err: any) {
+      setError("Unable to open Google sign-in. Please check your popup blocker settings.");
       setGoogleLoading(false);
     }
   }

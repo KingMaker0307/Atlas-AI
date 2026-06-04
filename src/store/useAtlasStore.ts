@@ -14,7 +14,7 @@ import { createId } from "@/lib/id";
 import { decryptExport, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
 import { findFirstSupportedModel } from "@/providers";
 import { registry, createProductionContainer, drainSyncQueue, nullContainer } from "@/lib/repositories/registry";
-import { getProgressionRecommendations } from "@/lib/progression/engine";
+import { getProgressionRecommendations, calculateRecoveryScore } from "@/lib/progression/engine";
 import type {
   AiMessage,
   AiProviderSettings,
@@ -126,6 +126,8 @@ function freshSnapshot(): StoredSnapshot {
     heightUnit: "in",
     hasOnboarded: false,
     guidedMode: true,
+    restTimerEndsAt: undefined,
+    restingSetId: null,
     updatedAt: new Date().toISOString(),
     startupChoice: null,
     activeSubScreen: null,
@@ -169,6 +171,7 @@ function snapshotFromState(state: AtlasStoreState): StoredSnapshot {
     hasOnboarded: state.hasOnboarded,
     guidedMode: state.guidedMode,
     restTimerEndsAt: state.restTimerEndsAt,
+    restingSetId: state.restingSetId,
     updatedAt: new Date().toISOString(),
     startupChoice: state.startupChoice,
     activeSubScreen: state.activeSubScreen,
@@ -322,7 +325,14 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         const { getDb } = await import("@/lib/storage/db");
         const db = await getDb();
         const allProfiles = await db.getAll("profiles");
-        guestProfileRecord = allProfiles.find((p) => p.id !== user.id);
+        // Only migrate genuine guest/anonymous profiles — not leftover data
+        // from a different authenticated user who signed out without clearing.
+        // A genuine guest profile won't have an email or capturedProvider set.
+        guestProfileRecord = allProfiles.find((p) =>
+          p.id !== user.id &&
+          !p.email &&
+          !p.capturedProvider
+        );
       } catch (migErr) {
         console.error("[Migration] Failed to query local profiles:", migErr);
       }
@@ -443,8 +453,8 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
             workoutPlans: newMigratedPlans.length > 0 ? newMigratedPlans : freshSnap.workoutPlans,
             nutritionEntries: newNutrition ?? [],
             waterLogs: newWater ?? [],
-            bodyMetrics: newBodyMetrics ?? [],
-            recoveryLogs: newRecovery ?? [],
+            bodyMetrics: [...(newBodyMetrics ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
+            recoveryLogs: [...(newRecovery ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
             profile: newProfile ? migrateProfile(newProfile as any) : (migratedProfile as any),
             heightUnit: newProfile?.heightUnit ?? (migratedProfile?.heightUnit ?? get().heightUnit),
             weightUnit: newProfile?.weightUnit ?? (migratedProfile?.weightUnit ?? get().weightUnit),
@@ -479,40 +489,80 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       }
 
       // Populate Zustand state with local data instantly
-      set({
-        workouts: workouts ?? freshSnap.workouts,
-        workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
-        nutritionEntries: nutrition ?? freshSnap.nutritionEntries,
-        waterLogs: water ?? freshSnap.waterLogs,
-        bodyMetrics: bodyMetrics ?? freshSnap.bodyMetrics,
-        recoveryLogs: recovery ?? freshSnap.recoveryLogs,
-        profile: enrichedProfile || (freshSnap.profile ?? defaultProfile),
-        heightUnit: enrichedProfile?.heightUnit ?? (freshSnap.profile?.heightUnit ?? get().heightUnit),
-        weightUnit: enrichedProfile?.weightUnit ?? (freshSnap.profile?.weightUnit ?? get().weightUnit),
-        hasOnboarded: !!profile,
-        activeWorkoutPlanId,
-        activeWorkout,
-        hydrated: true,
-        startupChoice: "cloud",
-        activeTab: "dashboard",
-        activeSettingsTab: "profile",
-        coachBusy: false,
-        providerBusy: false,
-        user: { 
-          id: user.id, 
-          email: user.email ?? "", 
-          name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
-        },
-      } as any);
+      if (profile) {
+        set({
+          workouts: workouts ?? freshSnap.workouts,
+          workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
+          nutritionEntries: nutrition ?? freshSnap.nutritionEntries,
+          waterLogs: water ?? freshSnap.waterLogs,
+          bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.bodyMetrics,
+          recoveryLogs: recovery ? [...recovery].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.recoveryLogs,
+          profile: enrichedProfile || (freshSnap.profile ?? defaultProfile),
+          heightUnit: enrichedProfile?.heightUnit ?? (freshSnap.profile?.heightUnit ?? get().heightUnit),
+          weightUnit: enrichedProfile?.weightUnit ?? (freshSnap.profile?.weightUnit ?? get().weightUnit),
+          hasOnboarded: true,
+          activeWorkoutPlanId,
+          activeWorkout,
+          hydrated: true,
+          startupChoice: "cloud",
+          activeTab: "dashboard",
+          activeSettingsTab: "profile",
+          coachBusy: false,
+          providerBusy: false,
+          user: { 
+            id: user.id, 
+            email: user.email ?? "", 
+            name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
+          },
+        } as any);
 
-      // 2. Setup composite container & trigger remote sync in background
-      const container = await createProductionContainer(supabase, user.id);
-      registry.set(user.id, container);
+        // 2. Setup composite container & trigger remote sync in background
+        const container = await createProductionContainer(supabase, user.id);
+        registry.set(user.id, container);
 
-      void (async () => {
-        await drainSyncQueue();
-        await get().pullCloudUpdate();
-      })().catch((err) => console.warn("[Sync] Background startup sync error:", err));
+        void (async () => {
+          await drainSyncQueue();
+          await get().pullCloudUpdate();
+        })().catch((err) => console.warn("[Sync] Background startup sync error:", err));
+      } else {
+        // Local profile is null — wait for cloud sync to complete first to avoid onboarding screen flash
+        set({
+          workouts: workouts ?? freshSnap.workouts,
+          workoutPlans: migratedPlans.length > 0 ? migratedPlans : freshSnap.workoutPlans,
+          nutritionEntries: nutrition ?? freshSnap.nutritionEntries,
+          waterLogs: water ?? freshSnap.waterLogs,
+          bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.bodyMetrics,
+          recoveryLogs: recovery ? [...recovery].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.recoveryLogs,
+          profile: null,
+          hasOnboarded: false,
+          activeWorkoutPlanId,
+          activeWorkout,
+          hydrated: false,
+          startupChoice: "cloud",
+          activeTab: "dashboard",
+          activeSettingsTab: "profile",
+          coachBusy: false,
+          providerBusy: false,
+          user: { 
+            id: user.id, 
+            email: user.email ?? "", 
+            name: user.user_metadata?.full_name || user.user_metadata?.name || "" 
+          },
+        } as any);
+
+        // 2. Setup composite container
+        const container = await createProductionContainer(supabase, user.id);
+        registry.set(user.id, container);
+
+        try {
+          await drainSyncQueue();
+          await get().pullCloudUpdate();
+        } catch (err) {
+          console.warn("[Sync] Initial startup sync error:", err);
+        } finally {
+          set({ hydrated: true });
+        }
+      }
 
       if (typeof window !== "undefined") {
         window.addEventListener("online", () => {
@@ -520,7 +570,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         }, { once: false });
       }
     } else {
-      set({ hydrated: true, coachBusy: false, providerBusy: false });
+      set({ hydrated: true, coachBusy: false, providerBusy: false, user: null });
     }
   },
 
@@ -595,14 +645,15 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         workoutPlans: migratedPlans.length > 0 ? migratedPlans : get().workoutPlans,
         nutritionEntries: nutrition ?? get().nutritionEntries,
         waterLogs: water ?? get().waterLogs,
-        bodyMetrics: bodyMetrics ?? get().bodyMetrics,
-        recoveryLogs: recovery ?? get().recoveryLogs,
+        bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : get().bodyMetrics,
+        recoveryLogs: recovery ? [...recovery].sort((a, b) => a.date.localeCompare(b.date)) : get().recoveryLogs,
         profile: enrichedProfile ?? get().profile,
         heightUnit: enrichedProfile?.heightUnit ?? get().heightUnit,
         weightUnit: enrichedProfile?.weightUnit ?? get().weightUnit,
         aiProviders: (dbProviders && dbProviders.length > 0) ? dbProviders : get().aiProviders,
         activeProviderId: (dbProviders && dbProviders.length > 0) ? (dbProviders.find((p: any) => p.enabled)?.id || dbProviders[0]?.id) : get().activeProviderId,
         lastSyncedAt: new Date().toISOString(),
+        hasOnboarded: enrichedProfile ? true : get().hasOnboarded,
       } as any);
 
       console.log("[Sync Pull] Successfully synced latest data from cloud.");
@@ -790,7 +841,18 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
   },
 
   resetLocalData: async () => {
-    set({ ...freshSnapshot(), hydrated: true });
+    // Clear IndexedDB for the current user to prevent stale data
+    // from contaminating a different user's session.
+    const currentUser = get().user;
+    if (currentUser) {
+      try {
+        const { clearAllUserData } = await import("@/lib/storage/db");
+        await clearAllUserData(currentUser.id);
+      } catch (err) {
+        console.warn("[Reset] Failed to clear IndexedDB:", err);
+      }
+    }
+    set({ ...freshSnapshot(), hydrated: true, user: null });
   },
 }));
 
@@ -809,14 +871,6 @@ if (typeof window !== "undefined") {
 export function useProgressionRecommendations() {
   const { workouts, recoveryLogs } = useAtlasStore();
   const latestRecovery = recoveryLogs.at(-1);
-  const score = latestRecovery
-    ? Math.round(
-        (latestRecovery.sleepHours / 8) * 30 +
-          (10 - latestRecovery.soreness) * 1.8 +
-          (10 - latestRecovery.stress) * 1.6 +
-          latestRecovery.readiness * 2 +
-          latestRecovery.energy * 1.6,
-      )
-    : 72;
+  const score = calculateRecoveryScore(latestRecovery);
   return getProgressionRecommendations(workouts, score);
 }

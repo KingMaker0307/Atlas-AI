@@ -8,6 +8,7 @@ import { getProviderAdapter } from "@/providers";
 import { decryptString } from "@/lib/security/crypto";
 import { createId } from "@/lib/id";
 import type { NutritionEntry } from "@/types/domain";
+import { checkTopicRelevance } from "@/lib/coach/topic-guard";
 
 type TimeRange = "Today" | "Last 3 Days" | "Last Week" | "Last Month" | "All Time";
 
@@ -66,6 +67,15 @@ export function AiNutritionTip() {
     if (!activeProvider) return;
     setLoading(true);
     setError(null);
+
+    if (avoidInput.trim()) {
+      const guardResult = checkTopicRelevance(avoidInput);
+      if (!guardResult.allowed) {
+        setError(`🚫 ${guardResult.reason}`);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";

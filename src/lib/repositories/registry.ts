@@ -218,6 +218,13 @@ export async function drainSyncQueue(): Promise<void> {
         continue;
       }
 
+      if (item.userId !== _userId) {
+        // Drop items belonging to a different user session to prevent RLS violations
+        console.warn(`[SyncQueue] Dropping leftover queue item for user ${item.userId} (logged in as ${_userId}):`, item);
+        await removeFromQueue(item.id!);
+        continue;
+      }
+
       try {
         if (item.operation === "delete") {
           // Route to correct delete method

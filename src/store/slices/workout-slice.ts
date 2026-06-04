@@ -8,6 +8,7 @@ export interface WorkoutSlice {
   workouts: Workout[];
   activeWorkout: Workout | null;
   restTimerEndsAt?: string;
+  restingSetId?: string | null;
   workoutPlans: WorkoutPlan[];
   activeWorkoutPlanId: string | null;
   editingWorkoutPlanId: string | null;
@@ -33,7 +34,7 @@ export interface WorkoutSlice {
   discardWorkout: () => Promise<void>;
   swapWorkoutExercise: (workoutExerciseId: string, newExerciseId: string) => Promise<void>;
   skipWorkoutExercise: (workoutExerciseId: string) => Promise<void>;
-  startRestTimer: (seconds: number) => Promise<void>;
+  startRestTimer: (seconds: number, setId?: string | null) => Promise<void>;
   stopRestTimer: () => Promise<void>;
   adjustRestTimer: (seconds: number) => Promise<void>;
   saveWorkoutPlan: (plan: WorkoutPlan) => Promise<void>;
@@ -114,6 +115,7 @@ export const createWorkoutSlice: StateCreator<
   workouts: [],
   activeWorkout: null,
   restTimerEndsAt: undefined,
+  restingSetId: null,
   workoutPlans: [],
   activeWorkoutPlanId: null,
   editingWorkoutPlanId: null,
@@ -129,10 +131,12 @@ export const createWorkoutSlice: StateCreator<
     const activeWorkout = get().activeWorkout;
     let nextActiveWorkout = activeWorkout;
     let nextRestTimer = get().restTimerEndsAt;
+    let nextRestingSetId = get().restingSetId;
     let nextSubScreen = get().activeSubScreen;
     if (activeWorkout) {
       nextActiveWorkout = null;
       nextRestTimer = undefined;
+      nextRestingSetId = null;
       if (get().activeSubScreen === "active-workout") {
         nextSubScreen = null;
       }
@@ -141,6 +145,7 @@ export const createWorkoutSlice: StateCreator<
       activeWorkoutPlanId: id,
       activeWorkout: nextActiveWorkout,
       restTimerEndsAt: nextRestTimer,
+      restingSetId: nextRestingSetId,
       activeSubScreen: nextSubScreen,
     });
   },
@@ -163,6 +168,7 @@ export const createWorkoutSlice: StateCreator<
         workouts: [...get().workouts, completedWorkout],
         activeWorkout: null,
         restTimerEndsAt: undefined,
+        restingSetId: null,
         aiMessages: [
           ...get().aiMessages,
           {
@@ -237,10 +243,12 @@ export const createWorkoutSlice: StateCreator<
     const activeWorkout = get().activeWorkout;
     let nextActiveWorkout = activeWorkout;
     let nextRestTimer = get().restTimerEndsAt;
+    let nextRestingSetId = get().restingSetId;
     let nextSubScreen = get().activeSubScreen;
     if (activeWorkout && activeWorkout.planId === planId) {
       nextActiveWorkout = null;
       nextRestTimer = undefined;
+      nextRestingSetId = null;
       if (get().activeSubScreen === "active-workout") {
         nextSubScreen = null;
       }
@@ -251,6 +259,7 @@ export const createWorkoutSlice: StateCreator<
       activeWorkoutPlanId: activeId,
       activeWorkout: nextActiveWorkout,
       restTimerEndsAt: nextRestTimer,
+      restingSetId: nextRestingSetId,
       activeSubScreen: nextSubScreen,
     });
     const registry = await import("@/lib/repositories/registry").then(m => m.registry);
@@ -432,6 +441,7 @@ export const createWorkoutSlice: StateCreator<
       workouts: [...get().workouts, completedWorkout],
       activeWorkout: null,
       restTimerEndsAt: undefined,
+      restingSetId: null,
       aiMessages: [
         ...get().aiMessages,
         {
@@ -453,6 +463,7 @@ export const createWorkoutSlice: StateCreator<
     set({
       activeWorkout: null,
       restTimerEndsAt: undefined,
+      restingSetId: null,
       activeSubScreen: null,
       workoutTab: "plans",
     });
@@ -539,12 +550,18 @@ export const createWorkoutSlice: StateCreator<
     });
   },
 
-  startRestTimer: async (seconds) => {
-    set({ restTimerEndsAt: new Date(Date.now() + seconds * 1000).toISOString() });
+  startRestTimer: async (seconds, setId = null) => {
+    set({ 
+      restTimerEndsAt: new Date(Date.now() + seconds * 1000).toISOString(),
+      restingSetId: setId
+    });
   },
 
   stopRestTimer: async () => {
-    set({ restTimerEndsAt: undefined });
+    set({ 
+      restTimerEndsAt: undefined,
+      restingSetId: null
+    });
   },
 
   adjustRestTimer: async (seconds) => {

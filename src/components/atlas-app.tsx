@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { useAtlasStore, type AtlasTab } from "@/store/useAtlasStore";
 import { drainSyncQueue } from "@/lib/repositories/registry";
+import { AiSetupPopup } from "@/components/ai-setup-popup";
 
 // Unified navigation items list
 const navItems: Array<{ id: AtlasTab; label: string; icon: typeof Home }> = [
@@ -41,7 +42,11 @@ export function AtlasApp() {
   const activeTab = useAtlasStore((state) => state.activeTab);
   const setActiveTab = useAtlasStore((state) => state.setActiveTab);
   const activeSubScreen = useAtlasStore((state) => state.activeSubScreen);
+  const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
+  const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const hasOnboarded = useAtlasStore((state) => state.hasOnboarded);
+  const user = useAtlasStore((state) => state.user);
+  const profile = useAtlasStore((state) => state.profile);
   const theme = useAtlasStore((state) => state.theme);
   const setTheme = useAtlasStore((state) => state.setTheme);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
@@ -140,7 +145,7 @@ export function AtlasApp() {
 
   if (blocked) return <BlockedBlockerScreen />;
   if (!hydrated) return <AppLoader visible={true} />;
-  if (!startupChoice) return <WelcomeScreen />;
+  if (!user) return <WelcomeScreen />;
   if (!hasOnboarded) return <Onboarding />;
 
   const renderSubScreen = () => {
@@ -166,6 +171,7 @@ export function AtlasApp() {
     <div className="min-h-dvh bg-background text-foreground selection:bg-emerald-300 selection:text-zinc-955 md:pl-64">
       <PwaRegistrar />
       <HealthDisclaimer />
+      {!profile?.aiSetupDismissed && <AiSetupPopup />}
       
       {/* ─── DESKTOP SIDEBAR NAVIGATION PANEL (Hidden on mobile) ─── */}
       <aside
@@ -190,18 +196,28 @@ export function AtlasApp() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = resolvedTab === item.id;
+            const isWorkoutResume = item.id === "workout" && activeWorkout;
+            const label = item.label;
+            const isNavDisabled = activeTab === "workout" && activeSubScreen === "active-workout" && !active;
             return (
               <button
                 key={item.id}
+                disabled={isNavDisabled}
                 onClick={() => {
                   if (navigator.vibrate) navigator.vibrate(8);
                   setActiveTab(item.id);
+                  if (isWorkoutResume) {
+                    setActiveSubScreen("active-workout");
+                  }
                 }}
                 aria-current={active ? "page" : undefined}
-                aria-label={item.label}
+                aria-label={label}
                 className={cn(
                   "relative flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-wider transition w-full justify-start leading-none min-h-[44px]",
-                  active ? "text-emerald-500 dark:text-emerald-250 font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
+                  active 
+                    ? (isWorkoutResume ? "text-emerald-500 dark:text-emerald-250 font-black" : "text-emerald-500 dark:text-emerald-250 font-bold") 
+                    : (isWorkoutResume ? "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 animate-pulse font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"),
+                  isNavDisabled && "opacity-25 cursor-not-allowed hover:text-zinc-500 hover:bg-transparent"
                 )}
               >
                 {active ? (
@@ -211,7 +227,7 @@ export function AtlasApp() {
                   />
                 ) : null}
                 <Icon className="relative shrink-0" size={17} />
-                <span className="relative">{item.label}</span>
+                <span className="relative">{label}</span>
               </button>
             );
           })}
@@ -275,6 +291,21 @@ export function AtlasApp() {
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0 justify-end flex-nowrap pl-2">
+              {activeWorkout && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.vibrate) navigator.vibrate(8);
+                    setActiveTab("workout");
+                    setActiveSubScreen("active-workout");
+                  }}
+                  className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-650 dark:text-emerald-400 text-xs font-bold transition active:scale-95 cursor-pointer shrink-0 animate-pulse shadow-sm mr-1"
+                  aria-label="Resume workout session"
+                >
+                  <ClipboardList size={14} className="stroke-[2.5px] text-emerald-500 dark:text-emerald-400" />
+                  <span>Resume</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -338,18 +369,28 @@ export function AtlasApp() {
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = resolvedTab === item.id;
+            const isWorkoutResume = item.id === "workout" && activeWorkout;
+            const label = item.label;
+            const isNavDisabled = activeTab === "workout" && activeSubScreen === "active-workout" && !active;
             return (
               <button
+                disabled={isNavDisabled}
                 className={cn(
                   "relative flex flex-col items-center justify-center gap-0.5 sm:gap-1 rounded-2xl text-[9px] min-[360px]:text-[10px] sm:text-[11px] font-medium transition min-h-[44px] overflow-hidden",
-                  active ? "text-emerald-500 dark:text-emerald-200" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200",
+                  active 
+                    ? (isWorkoutResume ? "text-emerald-500 dark:text-emerald-250 font-black" : "text-emerald-500 dark:text-emerald-200") 
+                    : (isWorkoutResume ? "text-emerald-500/80 dark:text-emerald-400/80 animate-pulse font-bold" : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"),
+                  isNavDisabled && "opacity-25 cursor-not-allowed"
                 )}
                 key={item.id}
                 aria-current={active ? "page" : undefined}
-                aria-label={item.label}
+                aria-label={label}
                 onClick={() => {
                   if (navigator.vibrate) navigator.vibrate(8);
                   setActiveTab(item.id);
+                  if (isWorkoutResume) {
+                    setActiveSubScreen("active-workout");
+                  }
                 }}
               >
                 {active ? (
@@ -359,7 +400,7 @@ export function AtlasApp() {
                   />
                 ) : null}
                 <Icon className="relative shrink-0" size={20} />
-                <span className="relative leading-none whitespace-nowrap text-center hidden min-[360px]:block">{item.label}</span>
+                <span className="relative leading-none whitespace-nowrap text-center hidden min-[360px]:block">{label}</span>
               </button>
             );
           })}

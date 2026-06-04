@@ -83,6 +83,32 @@ describe("progression/engine.ts business logic", () => {
       };
       expect(calculateRecoveryScore(log)).toBe(36);
     });
+
+    it("should clamp recovery score and stay bounded in [0, 100] even with extreme values", () => {
+      const maxLog: RecoveryLog = {
+        id: "log-max",
+        date: "2026-06-01",
+        sleepHours: 24,
+        soreness: -5,
+        stress: -10,
+        readiness: 50,
+        energy: 40,
+      };
+      expect(calculateRecoveryScore(maxLog)).toBe(100);
+
+      const minLog: RecoveryLog = {
+        id: "log-min",
+        date: "2026-06-01",
+        sleepHours: 0,
+        soreness: 20,
+        stress: 20,
+        readiness: -5,
+        energy: -10,
+      };
+      expect(calculateRecoveryScore(minLog)).toBe(11);
+      expect(calculateRecoveryScore(minLog)).toBeGreaterThanOrEqual(0);
+      expect(calculateRecoveryScore(minLog)).toBeLessThanOrEqual(100);
+    });
   });
 
   describe("calculateWorkoutVolume", () => {
@@ -178,9 +204,11 @@ describe("progression/engine.ts business logic", () => {
   });
 
   describe("estimateOneRepMax", () => {
-    it("should return 0 if weight or reps is 0", () => {
+    it("should return 0 if weight or reps is 0 or negative", () => {
       expect(estimateOneRepMax(0, 5)).toBe(0);
       expect(estimateOneRepMax(100, 0)).toBe(0);
+      expect(estimateOneRepMax(-50, 5)).toBe(0);
+      expect(estimateOneRepMax(100, -5)).toBe(0);
     });
 
     it("should estimate correctly for normal ranges using Brzycki formula", () => {
@@ -286,6 +314,21 @@ describe("progression/engine.ts business logic", () => {
       });
 
       expect(getTrainingConsistency(workouts, 3, "plan-1")).toBe(47);
+    });
+
+    it("should return 0 consistency score for zero or negative daysPerWeek values", () => {
+      const workouts: Workout[] = [
+        {
+          id: "w-1",
+          name: "W-1",
+          planId: "plan-1",
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          exercises: [{ id: "we-1", exerciseId: "bp", targetSets: 1, targetReps: "1", restSeconds: 90, sets: [{ id: "s-1", reps: 1, weight: 10, completed: true }] }],
+        },
+      ];
+      expect(getTrainingConsistency(workouts, 0, "plan-1")).toBe(0);
+      expect(getTrainingConsistency(workouts, -2, "plan-1")).toBe(0);
     });
   });
 

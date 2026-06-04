@@ -13,18 +13,6 @@ import { createId } from "@/lib/id";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { HeightUnit, WeightUnit, BodyType, Physique, EquipmentPreference } from "@/types/domain";
 
-const providerTypes = [
-  "none",
-  "openai",
-  "anthropic",
-  "gemini",
-  "grok",
-  "deepseek",
-  "openrouter",
-  "ollama",
-  "lmstudio",
-  "custom",
-] as const;
 
 const onboardingSchema = z.object({
   name: z.string().min(1, "Name is required").max(30, "Name must be 30 characters or less"),
@@ -42,8 +30,6 @@ const onboardingSchema = z.object({
   height: z.coerce.number().min(20, "Height too low").max(300, "Height too high"),
   weight: z.coerce.number().min(20, "Weight too low").max(1000, "Weight too high"),
   equipment: z.enum(["full gym", "home gym", "bodyweight"]),
-  providerType: z.enum(providerTypes),
-  apiKey: z.string().max(500, "API key too long").optional(),
   injuries: z.string().max(100, "Limit description to 100 characters").optional(),
   workoutDuration: z.coerce.number().min(15, "Minimum 15 minutes").max(180, "Maximum 180 minutes"),
 });
@@ -99,100 +85,6 @@ const durationOptions = [
   { value: "90", label: "Extended (90 min)", desc: "High volume strength routines. Best for longer rests." },
 ] as const;
 
-function getProviderInstructions(provider: string) {
-  switch (provider) {
-    case "openai":
-      return {
-        title: "OpenAI Configuration",
-        steps: [
-          "Sign in to your account at platform.openai.com.",
-          "Go to API Keys on the left sidebar navigation.",
-          "Click '+ Create new secret key' and select permissions.",
-          "Copy the key (starts with 'sk-') and paste it below."
-        ],
-        url: "https://platform.openai.com/api-keys"
-      };
-    case "anthropic":
-      return {
-        title: "Anthropic Configuration",
-        steps: [
-          "Log in to the console at console.anthropic.com.",
-          "Click on 'API Keys' in your dashboard.",
-          "Generate a new secret key, naming it appropriately.",
-          "Copy the key (starts with 'sk-ant-') and paste it below."
-        ],
-        url: "https://console.anthropic.com/"
-      };
-    case "gemini":
-      return {
-        title: "Google Gemini Configuration",
-        steps: [
-          "Navigate to Google AI Studio at aistudio.google.com.",
-          "Sign in with your Google account.",
-          "Click on the 'Get API key' button in the upper left.",
-          "Click 'Create API key' (either in a new or existing project) and copy it."
-        ],
-        url: "https://aistudio.google.com/"
-      };
-    case "grok":
-      return {
-        title: "xAI Grok Configuration",
-        steps: [
-          "Go to the xAI Console at console.x.ai.",
-          "Sign in using your account credentials.",
-          "Select API Keys from the sidebar navigation.",
-          "Click 'Create API Key' and copy it."
-        ],
-        url: "https://console.x.ai/"
-      };
-    case "deepseek":
-      return {
-        title: "DeepSeek Configuration",
-        steps: [
-          "Sign in to platform.deepseek.com.",
-          "Navigate to 'API Keys' in the menu sidebar.",
-          "Click 'Create new API key', choose a name, and copy it."
-        ],
-        url: "https://platform.deepseek.com/"
-      };
-    case "openrouter":
-      return {
-        title: "OpenRouter Configuration",
-        steps: [
-          "Go to openrouter.ai and log in.",
-          "Click on your profile or Keys in the top-right menu.",
-          "Select 'Keys' and click 'Create Key'.",
-          "Copy the generated key (starts with 'sk-or-') and paste it below."
-        ],
-        url: "https://openrouter.ai/keys"
-      };
-    case "ollama":
-      return {
-        title: "Ollama Local Configuration",
-        steps: [
-          "Ensure Ollama is downloaded and running on your local machine.",
-          "Ensure you have pulled a model (e.g., run 'ollama run llama3' in terminal).",
-          "The default local server address is http://localhost:11434.",
-          "No API Key is required. You can leave the API key field blank."
-        ],
-        url: "https://ollama.com"
-      };
-    case "lmstudio":
-      return {
-        title: "LM Studio Local Configuration",
-        steps: [
-          "Open LM Studio on your local machine.",
-          "Go to the Local Server tab (double-headed arrow icon).",
-          "Select and load a GGUF model in the top dropdown.",
-          "Click 'Start Server' (it defaults to port 1234).",
-          "No API Key is required. You can leave the API key field blank."
-        ],
-        url: "https://lmstudio.ai"
-      };
-    default:
-      return null;
-  }
-}
 
 export function Onboarding() {
   const completeOnboarding = useAtlasStore((state) => state.completeOnboarding);
@@ -252,8 +144,6 @@ export function Onboarding() {
       weightUnit: "lbs",
       heightUnit: "in",
       equipment: "full gym",
-      providerType: "none",
-      apiKey: "",
       injuries: "",
       workoutDuration: 60,
     },
@@ -261,8 +151,6 @@ export function Onboarding() {
 
   const selectedWeightUnit = watch("weightUnit");
   const selectedHeightUnit = watch("heightUnit");
-  const selectedProvider = watch("providerType");
-  const startupChoice = useAtlasStore((state) => state.startupChoice);
 
   const steps = useMemo(() => [
     { id: 1, label: "Basics" },
@@ -389,10 +277,7 @@ export function Onboarding() {
               }
               setSubmitError(null);
               try {
-                const finalValues = {
-                  ...values,
-                  providerType: "none" as const,
-                };
+                const finalValues = { ...values };
                 await completeOnboarding({
                   id: user?.id || createId("user"),
                   createdAt: new Date().toISOString(),
@@ -400,10 +285,9 @@ export function Onboarding() {
                   ...finalValues,
                   email: user?.email || "",
                   emailVerified: !!user?.email,
-                  capturedProvider: startupChoice === "google-drive" ? "google" : "email",
                 });
               } catch (e: any) {
-                setSubmitError(e.message || "Failed to initialize provider. Please verify your API key or local model server configuration.");
+                setSubmitError(e.message || "Failed to save your profile. Please try again.");
               }
             })}
           >

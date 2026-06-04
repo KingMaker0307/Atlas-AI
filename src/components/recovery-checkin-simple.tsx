@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { todayKey } from "@/lib/id";
+import { todayKey, createId } from "@/lib/id";
 
 interface RecoveryCheckinSimpleProps {
   onSaved?: () => void;
@@ -99,19 +99,20 @@ export function RecoveryCheckinSimple({ onSaved, compact = false }: RecoveryChec
   const handleSave = async () => {
     setSaving(true);
     try {
+      const todayLog = recoveryLogs.find((r) => r.date === todayKey());
       await logRecovery({
-        id: todayKey(),
+        id: todayLog?.id || createId("recovery"),
         date: todayKey(),
         sleepHours: values.sleep,
         soreness: values.soreness,
-        stress: last?.stress ?? 5,
-        readiness: Math.round(
-          ((values.sleep - 3) / 7) * 40 +
+        stress: todayLog?.stress ?? last?.stress ?? 5,
+        readiness: Math.max(1, Math.min(10, Math.round(
+          (((values.sleep - 3) / 7) * 40 +
           ((values.soreness - 1) / 9) * 30 +
-          ((values.energy - 1) / 9) * 30
-        ),
+          ((values.energy - 1) / 9) * 30) / 10
+        ))),
         energy: values.energy,
-        note: "",
+        note: todayLog?.note ?? "",
       });
       setSaved(true);
       setTimeout(() => {

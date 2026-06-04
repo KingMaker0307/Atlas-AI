@@ -154,3 +154,40 @@ export async function incrementQueueRetry(id: number): Promise<void> {
   }
   await tx.done;
 }
+
+/**
+ * Clears ALL IndexedDB data for a given userId across every entity store,
+ * plus removes their pending sync queue entries.
+ * Used during sign-out to prevent stale data from contaminating a different
+ * user's session on the same device.
+ */
+export async function clearAllUserData(userId: string): Promise<void> {
+  const db = await getDb();
+  const entityStores = [
+    "profiles",
+    "workouts",
+    "workout_plans",
+    "nutrition_entries",
+    "water_logs",
+    "body_metrics",
+    "recovery_logs",
+  ] as const;
+
+  for (const storeName of entityStores) {
+    const all = await (db as any).getAll(storeName);
+    for (const record of all) {
+      // Records are keyed by their `id` field; filter by _userId
+      if (record._userId === userId || record.id === userId) {
+        await (db as any).delete(storeName, record.id ?? record._userId);
+      }
+    }
+  }
+
+  // Clear sync queue for this user
+  const queueItems = await (db as any).getAll("sync_queue") as SyncQueueItem[];
+  for (const item of queueItems) {
+    if (item.userId === userId) {
+      await (db as any).delete("sync_queue", item.id!);
+    }
+  }
+}

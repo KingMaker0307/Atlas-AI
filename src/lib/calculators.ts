@@ -49,14 +49,15 @@ export function calculateNutritionTargets(profile: UserProfile | null): Nutritio
   }
 
   // Convert weight to kg and height to cm
-  const w = profile.weightUnit === "lbs" ? profile.weight * 0.453592 : profile.weight;
-  const h = profile.heightUnit === "in" ? (profile.height || 70) * 2.54 : profile.height || 170;
+  const w = Math.max(20, profile.weightUnit === "lbs" ? profile.weight * 0.453592 : profile.weight);
+  const h = Math.max(50, profile.heightUnit === "in" ? (profile.height || 70) * 2.54 : profile.height || 170);
 
   // Mifflin-St Jeor formula for BMR
   const isFemale = profile.gender 
     ? profile.gender === "female" 
     : (profile.goal || "").toLowerCase().includes("female");
-  const bmr = Math.round(10 * w + 6.25 * h - 5 * profile.age + (isFemale ? -161 : 5));
+  const bmrVal = Math.round(10 * w + 6.25 * h - 5 * profile.age + (isFemale ? -161 : 5));
+  const bmr = Math.max(500, bmrVal);
 
   // Determine TDEE activity factor
   let activityMultiplier = 1.55; // Default moderate
@@ -101,15 +102,15 @@ export function calculateNutritionTargets(profile: UserProfile | null): Nutritio
     goalType = "gain";
   }
 
-  const calorieTarget = tdee + calorieAdjustment;
+  const calorieTarget = Math.max(1000, tdee + calorieAdjustment);
 
   // Macros:
   // Protein: 2.2g per kg (or 2.4g if cutting, 2.0g if gaining)
-  const proteinTarget = Math.round(w * (goalType === "lose" ? 2.4 : 2.0));
+  const proteinTarget = Math.max(40, Math.round(w * (goalType === "lose" ? 2.4 : 2.0)));
   // Fat: 25% of total calories
-  const fatTarget = Math.round((calorieTarget * 0.25) / 9);
+  const fatTarget = Math.max(30, Math.round((calorieTarget * 0.25) / 9));
   // Carbs: remainder
-  const carbsTarget = Math.round((calorieTarget - (proteinTarget * 4 + fatTarget * 9)) / 4);
+  const carbsTarget = Math.max(50, Math.round((calorieTarget - (proteinTarget * 4 + fatTarget * 9)) / 4));
 
   // Iron RDA: 18mg for pre-menopausal females (19–50), 8mg for males (NIH/USDA)
   const ironTarget = isFemale ? 18 : 8;

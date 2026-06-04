@@ -345,10 +345,12 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         const activeWorkout = get().activeWorkout;
         let nextActiveWorkout = activeWorkout;
         let nextRestTimer = get().restTimerEndsAt;
+        let nextRestingSetId = get().restingSetId;
         let nextSubScreen = get().activeSubScreen;
         if (activeWorkout) {
           nextActiveWorkout = null;
           nextRestTimer = undefined;
+          nextRestingSetId = null;
           if (get().activeSubScreen === "active-workout") {
             nextSubScreen = null;
           }
@@ -378,6 +380,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
             activeWorkoutPlanId: plan.id,
             activeWorkout: nextActiveWorkout,
             restTimerEndsAt: nextRestTimer,
+            restingSetId: nextRestingSetId,
             activeSubScreen: nextSubScreen,
           };
 
@@ -439,6 +442,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
                   activeWorkoutPlanId: plan.id,
                   activeWorkout: nextActiveWorkout,
                   restTimerEndsAt: nextRestTimer,
+                  restingSetId: nextRestingSetId,
                   activeSubScreen: nextSubScreen,
                   aiMessages: get().aiMessages.map((m) =>
                     m.id === assistantId ? { ...m, content: successMessageContent } : m
@@ -471,6 +475,7 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
                 activeWorkoutPlanId: plan.id,
                 activeWorkout: nextActiveWorkout,
                 restTimerEndsAt: nextRestTimer,
+                restingSetId: nextRestingSetId,
                 activeSubScreen: nextSubScreen,
                 aiMessages: get().aiMessages.map((m) =>
                   m.id === assistantId ? { ...m, content: failMessageContent } : m

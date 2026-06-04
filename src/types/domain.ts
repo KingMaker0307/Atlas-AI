@@ -68,6 +68,8 @@ export interface UserProfile {
   /** Encryption password used to derive the AES key for AI provider API keys.
    *  Stored in Supabase (protected by RLS) so keys can be decrypted on any device. */
   deviceSecret?: string;
+  /** Whether the user has dismissed the one-time AI setup popup shown after onboarding. */
+  aiSetupDismissed?: boolean;
 }
 
 export interface Exercise {
@@ -245,6 +247,7 @@ export interface AtlasSnapshot {
   hasOnboarded: boolean;
   guidedMode?: boolean;
   restTimerEndsAt?: string;
+  restingSetId?: string | null;
   updatedAt: string;
   apiCallCount: number; // Added to AtlasSnapshot
   tokenCount: number; // Added to AtlasSnapshot

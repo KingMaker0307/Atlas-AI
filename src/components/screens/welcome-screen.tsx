@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Dumbbell, Flame, Mail } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -13,17 +13,46 @@ export function WelcomeScreen() {
   const router = useRouter();
   const supabase = createClient();
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleReset = () => {
+      setGoogleLoading(false);
+    };
+
+    window.addEventListener("focus", handleReset);
+    window.addEventListener("pageshow", handleReset);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleReset();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleReset);
+      window.removeEventListener("pageshow", handleReset);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      console.error("Google Sign In Error:", error.message);
+    setError(null);
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        setGoogleLoading(false);
+      }
+    } catch (err: any) {
+      setError("Unable to open Google sign-in. Please check your popup blocker settings.");
       setGoogleLoading(false);
     }
   }
@@ -105,6 +134,12 @@ export function WelcomeScreen() {
               <Mail size={16} />
               Continue with Email &amp; Password
             </button>
+
+            {error && (
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-xs text-rose-500 font-medium text-center">
+                {error}
+              </div>
+            )}
           </div>
         </div>
       </Card>

@@ -122,4 +122,53 @@ describe("calculateNutritionTargets", () => {
     // Calories = 2316 - 500 = 1816
     expect(targets.calories).toBe(1816);
   });
+
+  it("should handle extreme and invalid inputs safely by applying calculation floors", () => {
+    const extremeProfile: UserProfile = {
+      id: "user-extreme",
+      name: "Extreme User",
+      goal: "lose weight",
+      experience: "intermediate",
+      trainingStyle: "general",
+      daysPerWeek: 5,
+      weightUnit: "kg",
+      heightUnit: "cm",
+      weight: 1, // extremely low weight
+      height: 1, // extremely low height
+      age: 200,   // extremely old age
+      gender: "female",
+      activityLevel: "sedentary",
+      createdAt: new Date().toISOString(),
+    };
+
+    const targets = calculateNutritionTargets(extremeProfile);
+
+    // BMR formula raw: 10 * 20 (clamped w) + 6.25 * 50 (clamped h) - 5 * 200 - 161
+    // = 200 + 312.5 - 1000 - 161 = -648.5
+    // Clamped BMR should be at least 500
+    expect(targets.bmr).toBe(500);
+
+    // TDEE = 500 * 1.2 = 600
+    expect(targets.tdee).toBe(600);
+
+    // Calories: TDEE - 500 = 100, but clamped to a floor of 1000 kcal
+    expect(targets.calories).toBe(1000);
+
+    // Protein target: 20kg (clamped weight) * 2.4 = 48g.
+    // If it were below 40g, it would clamp to 40g. Here it is 48g.
+    expect(targets.protein).toBe(48);
+
+    // Fat: (1000 * 0.25) / 9 = 27.7g, clamped to a floor of 30g
+    expect(targets.fat).toBe(30);
+
+    // Carbs: (1000 - (48 * 4 + 30 * 9)) / 4 = (1000 - 462) / 4 = 134.5g (rounds to 135)
+    // Clamped to floor of 50g. Here it is 135g.
+    expect(targets.carbs).toBe(135);
+
+    // Verify all targets are strictly positive and bounded
+    expect(targets.calories).toBeGreaterThanOrEqual(1000);
+    expect(targets.protein).toBeGreaterThanOrEqual(40);
+    expect(targets.fat).toBeGreaterThanOrEqual(30);
+    expect(targets.carbs).toBeGreaterThanOrEqual(50);
+  });
 });

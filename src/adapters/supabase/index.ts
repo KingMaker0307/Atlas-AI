@@ -67,43 +67,53 @@ export class SupabaseUserRepository implements UserRepository {
       gender: data.gender,
       activityLevel: data.activity_level,
       hasOnboarded: data.has_onboarded,
+      aiSetupDismissed: data.ai_setup_dismissed,
       // Encryption password for AI provider API keys — enables cross-device decryption
       deviceSecret: data.device_secret ?? undefined,
     } as UserProfile;
   }
 
   async saveProfile(userId: string, profile: UserProfile): Promise<void> {
-    const { error } = await this.supabase.from("profiles").upsert(
-      {
-        id: userId,
-        name: profile.name ?? "",
-        goal: profile.goal,
-        experience: profile.experience,
-        gender: profile.gender,
-        age: profile.age,
-        height: profile.height,
-        weight: profile.weight,
-        weight_unit: profile.weightUnit,
-        height_unit: profile.heightUnit,
-        activity_level: profile.activityLevel,
-        dietary_preferences: profile.dietaryPreferences,
-        equipment: profile.equipment,
-        training_style: profile.trainingStyle,
-        days_per_week: profile.daysPerWeek,
-        target_physique: profile.targetPhysique,
-        body_type: profile.bodyType,
-        custom_goal: profile.customGoal,
-        injuries: profile.injuries,
-        workout_duration: profile.workoutDuration,
-        theme: "system",
-        has_onboarded: true,
-        updated_at: new Date().toISOString(),
-        // Persist encryption password so API keys can be decrypted on any device
-        ...(profile.deviceSecret ? { device_secret: profile.deviceSecret } : {}),
-      },
-      { onConflict: "id" },
-    );
-    if (error) throw error;
+    const payload: any = {
+      id: userId,
+      name: profile.name ?? "",
+      goal: profile.goal,
+      experience: profile.experience,
+      gender: profile.gender,
+      age: profile.age,
+      height: profile.height,
+      weight: profile.weight,
+      weight_unit: profile.weightUnit,
+      height_unit: profile.heightUnit,
+      activity_level: profile.activityLevel,
+      dietary_preferences: profile.dietaryPreferences,
+      equipment: profile.equipment,
+      training_style: profile.trainingStyle,
+      days_per_week: profile.daysPerWeek,
+      target_physique: profile.targetPhysique,
+      body_type: profile.bodyType,
+      custom_goal: profile.customGoal,
+      injuries: profile.injuries,
+      workout_duration: profile.workoutDuration,
+      theme: "system",
+      has_onboarded: true,
+      ai_setup_dismissed: profile.aiSetupDismissed ?? false,
+      updated_at: new Date().toISOString(),
+      // Persist encryption password so API keys can be decrypted on any device
+      ...(profile.deviceSecret ? { device_secret: profile.deviceSecret } : {}),
+    };
+
+    const { error } = await this.supabase.from("profiles").upsert(payload, { onConflict: "id" });
+    if (error) {
+      if (error.code === "PGRST204" || error.message?.includes("ai_setup_dismissed")) {
+        console.warn("[SupabaseUserRepository] 'ai_setup_dismissed' column not found in schema cache. Retrying upsert without it.");
+        const { ai_setup_dismissed, ...fallbackPayload } = payload;
+        const { error: retryError } = await this.supabase.from("profiles").upsert(fallbackPayload, { onConflict: "id" });
+        if (retryError) throw retryError;
+      } else {
+        throw error;
+      }
+    }
   }
 
   async deleteProfile(userId: string): Promise<void> {

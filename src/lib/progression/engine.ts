@@ -33,14 +33,15 @@ export function calculateRecoveryScore(log?: RecoveryLog): number {
   if (!log) return 72;
 
   const sleep = clamp((log.sleepHours / 8) * 100, 35, 100);
-  const soreness = 100 - log.soreness * 10;
-  const stress = 100 - log.stress * 10;
-  const readiness = log.readiness * 10;
-  const energy = log.energy * 10;
+  const soreness = clamp(100 - log.soreness * 10, 0, 100);
+  const stress = clamp(100 - log.stress * 10, 0, 100);
+  const readiness = clamp(log.readiness * 10, 0, 100);
+  const energy = clamp(log.energy * 10, 0, 100);
 
-  return Math.round(
+  const rawScore = Math.round(
     sleep * 0.3 + soreness * 0.18 + stress * 0.16 + readiness * 0.2 + energy * 0.16,
   );
+  return clamp(rawScore, 0, 100);
 }
 
 export function calculateWorkoutVolume(workout: Workout): number {
@@ -89,7 +90,7 @@ export function getBodyweightSeries(metrics: BodyMetric[]): Array<{ date: string
 }
 
 export function estimateOneRepMax(weight: number, reps: number): number {
-  if (!weight || !reps) return 0;
+  if (!weight || !reps || weight <= 0 || reps <= 0) return 0;
   if (reps >= 37) return weight; // prevent divide-by-zero or negative bounds
   return Math.round(weight * (36 / (37 - reps)));
 }
@@ -184,7 +185,7 @@ export function getCurrentStreak(workouts: Workout[], planId: string | null): nu
 }
 
 export function getTrainingConsistency(workouts: Workout[], daysPerWeek: number, planId: string | null): number {
-  if (!planId) return 0;
+  if (!planId || daysPerWeek <= 0) return 0;
   
   const planWorkouts = workouts.filter(
     (w) =>
@@ -196,6 +197,7 @@ export function getTrainingConsistency(workouts: Workout[], daysPerWeek: number,
 
   // Target workouts in the last 30 days is (daysPerWeek * 30 / 7)
   const targetWorkouts = (daysPerWeek * 30) / 7;
+  if (targetWorkouts <= 0) return 0;
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
