@@ -12,7 +12,7 @@ import {
   ChevronUp,
   CirclePlus,
   Clock3,
-
+  Dumbbell,
   Layers3,
   Search,
   Timer,
@@ -608,7 +608,7 @@ export function WorkoutScreen() {
           <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
             <Button
               size="sm"
-              className="w-full sm:w-auto sm:flex-initial bg-violet-600 hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-450 text-white border-transparent font-bold shadow-md"
+              className="hidden sm:inline-flex w-full sm:w-auto sm:flex-initial bg-violet-600 hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-450 text-white border-transparent font-bold shadow-md"
               icon={<Layers3 size={15} />}
               onClick={() => setActiveSubScreen("exercise-database")}
             >
@@ -968,6 +968,19 @@ export function WorkoutScreen() {
             </Card>
           </div>
         )}
+
+        {/* Floating Action Button (FAB) for Exercise Database on mobile */}
+        <button
+          type="button"
+          onClick={() => {
+            if (navigator.vibrate) navigator.vibrate(8);
+            setActiveSubScreen("exercise-database");
+          }}
+          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg active:scale-90 transition focus:outline-none md:hidden border border-violet-400/20 cursor-pointer"
+          aria-label="Open exercise database"
+        >
+          <Dumbbell size={22} className="stroke-[2.5px]" />
+        </button>
       </motion.div>
     );
   }

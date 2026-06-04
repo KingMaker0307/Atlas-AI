@@ -240,7 +240,13 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
     
     // Quick session resolution using local cache
     const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user ?? null;
+    let user = session?.user ?? null;
+
+    // Fallback to server-side cookie verification if local cache is empty (crucial for OAuth callback routes)
+    if (!user) {
+      const { data: { user: serverUser } } = await supabase.auth.getUser();
+      user = serverUser;
+    }
 
     if (user) {
       // 1. STALE-WHILE-REVALIDATE: Load local IndexedDB state instantly first to bypass slow network

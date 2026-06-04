@@ -14,6 +14,7 @@ export interface UiSlice {
   theme: ThemeMode;
   guidedMode: boolean;
   homeSubTab: "today" | "analytics";
+  globalAddFoodOpen: boolean;
 
   setBlocked: (blocked: boolean) => void;
   setActiveSettingsTab: (tab: "profile" | "ai" | "system" | "subscription") => void;
@@ -23,6 +24,7 @@ export interface UiSlice {
   setTheme: (theme: ThemeMode) => Promise<void>;
   setGuidedMode: (guidedMode: boolean) => Promise<void>;
   setHomeSubTab: (subTab: "today" | "analytics") => void;
+  setGlobalAddFoodOpen: (open: boolean) => void;
 }
 
 export const createUiSlice: StateCreator<
@@ -40,6 +42,7 @@ export const createUiSlice: StateCreator<
   theme: typeof window !== "undefined" ? readLocalSetting<ThemeMode>("theme", "system") : "system",
   guidedMode: true,
   homeSubTab: "today",
+  globalAddFoodOpen: false,
 
   setBlocked: (blocked) => set({ blocked }),
   setActiveSettingsTab: (tab) => set({ activeSettingsTab: tab }),
@@ -52,4 +55,5 @@ export const createUiSlice: StateCreator<
   },
   setGuidedMode: async (guidedMode) => set({ guidedMode }),
   setHomeSubTab: (homeSubTab) => set({ homeSubTab }),
+  setGlobalAddFoodOpen: (globalAddFoodOpen) => set({ globalAddFoodOpen }),
 });

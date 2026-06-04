@@ -2905,9 +2905,20 @@ export function NutritionTracker() {
   const addWaterLogAction = useAtlasStore((s) => s.addWaterLog);
   const deleteWaterLogAction = useAtlasStore((s) => s.deleteWaterLog);
   const setActiveSubScreen = useAtlasStore((s) => s.setActiveSubScreen);
+  const globalAddFoodOpen = useAtlasStore((s) => s.globalAddFoodOpen);
+  const setGlobalAddFoodOpen = useAtlasStore((s) => s.setGlobalAddFoodOpen);
 
   // Assign to local variable to avoid renaming throughout the file
   const entries = nutritionEntries;
+
+  // Listen for global quick action trigger to open Add Food modal
+  useEffect(() => {
+    if (globalAddFoodOpen) {
+      setSelectedAddMeal(getCurrentMealTimeSlot());
+      setShowAddModal(true);
+      setGlobalAddFoodOpen(false);
+    }
+  }, [globalAddFoodOpen, setGlobalAddFoodOpen]);
 
   // States
   const activeProviderId = useAtlasStore((s) => s.activeProviderId);
@@ -3880,7 +3891,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto self-stretch sm:self-auto">
           <Button
             size="sm"
-            className="font-bold flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 w-full sm:w-auto sm:flex-initial bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-450 text-white border-transparent shadow-md"
+            className="hidden sm:flex font-bold items-center justify-center gap-1.5 rounded-xl px-4 py-2 w-full sm:w-auto sm:flex-initial bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-450 text-white border-transparent shadow-md"
             onClick={() => setActiveSubScreen("nutrition-analytics")}
           >
             <BarChart3 size={15} />
@@ -4371,6 +4382,19 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           />
         )}
       </AnimatePresence>
+
+      {/* Floating Action Button (FAB) for Nutrition Analytics on mobile */}
+      <button
+        type="button"
+        onClick={() => {
+          if (navigator.vibrate) navigator.vibrate(8);
+          setActiveSubScreen("nutrition-analytics");
+        }}
+        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg active:scale-90 transition focus:outline-none md:hidden border border-indigo-400/20 cursor-pointer"
+        aria-label="Open nutrition analytics"
+      >
+        <BarChart3 size={22} className="stroke-[2.5px]" />
+      </button>
     </div>
   );
 }

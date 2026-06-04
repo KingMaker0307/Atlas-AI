@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { BarChart3, Bot, CalendarCheck, ClipboardList, Home, LayoutDashboard, Settings, ShieldAlert, Sun, Moon, Flame, X } from "lucide-react";
+import { Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon, Flame } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { HomeScreen } from "@/components/screens/home-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
@@ -54,6 +54,7 @@ export function AtlasApp() {
   const guidedMode = useAtlasStore((state) => state.guidedMode);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
   const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
+  const setGlobalAddFoodOpen = useAtlasStore((state) => state.setGlobalAddFoodOpen);
   // For backwards compatibility and routing: 'today' redirects to unified 'dashboard' Home screen
   const resolvedTab = activeTab === "today" ? "dashboard" : activeTab;
 
@@ -119,6 +120,52 @@ export function AtlasApp() {
     }, 10000); // Check every 10 seconds
     return () => clearInterval(interval);
   }, [hydrated, checkAndAutoStopActiveWorkout]);
+
+  // Edge swipe back gesture handler for mobile one-handed navigation
+  useEffect(() => {
+    if (!hydrated) return;
+
+    let startX = 0;
+    let startY = 0;
+    const thresholdX = 60; // Min horizontal distance for swipe
+    const maxDistanceY = 50; // Max vertical deviation to ensure horizontal swipe
+    const edgeOffset = 30; // Touch must start within 30px of left edge
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.changedTouches.length !== 1) return;
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - startX;
+      const deltaY = Math.abs(touch.clientY - startY);
+
+      // Edge swipe right: startX must be close to left screen edge
+      if (startX <= edgeOffset && deltaX >= thresholdX && deltaY <= maxDistanceY) {
+        // Go back if there is an active subscreen, EXCEPT active-workout (workscreen)
+        if (activeSubScreen && activeSubScreen !== "active-workout") {
+          if (navigator.vibrate) navigator.vibrate(8); // Subtle haptics
+          if (activeSubScreen === "routine-builder") {
+            setActiveSubScreen("workout-plan-detail");
+          } else {
+            setActiveSubScreen(null);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [hydrated, activeSubScreen, setActiveSubScreen]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -406,7 +453,6 @@ export function AtlasApp() {
           })}
         </div>
       </nav>
-
 
     </div>
   );
