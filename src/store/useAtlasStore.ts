@@ -238,8 +238,9 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     
-    // Quick session resolution
-    const { data: { user } } = await supabase.auth.getUser();
+    // Quick session resolution using local cache
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
 
     if (user) {
       // 1. STALE-WHILE-REVALIDATE: Load local IndexedDB state instantly first to bypass slow network
