@@ -58,7 +58,8 @@ export function BeginnerWorkoutWizard({ onComplete }: BeginnerWorkoutWizardProps
         goal === "lose_weight"  ? "endurance" :
                                   "general";
 
-      const prompt = `Generate a complete ${days}-day per week beginner workout plan for someone who wants to "${goalText}". Equipment: ${equipment}. Training style: ${style}. Duration per session: ${profile?.workoutDuration ?? 45} minutes. Experience: beginner. Keep all exercise names simple and beginner-friendly.`;
+      const prompt = `Generate a complete ${days}-day per week beginner workout plan for someone who wants to "${goalText}". Equipment: ${equipment}. Training style: ${style}. Duration per session: ${profile?.workoutDuration ?? 45} minutes. Experience: beginner. Keep all exercise names simple and beginner-friendly.
+You MUST output the structured workout plan in a valid JSON block wrapped in \`\`\`json ... \`\`\`. Do not include any warning or description outside of the JSON block.`;
 
       await sendCoachMessage(prompt, { isRoutineGeneration: true, startDay: "Monday" });
       onComplete();

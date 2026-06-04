@@ -75,6 +75,31 @@ export function assignRoutinesToDays(routines: Routine[], startDay: string): Rou
   });
 }
 
+export function createPlaceholderExercise(id: string): Exercise {
+  const cleanName = id
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+  return {
+    id,
+    name: cleanName,
+    category: "compound",
+    muscles: ["full body"],
+    equipment: ["bodyweight"],
+    difficulty: "beginner",
+    setup: ["Prepare space and equipment."],
+    instructions: [`Perform the ${cleanName} exercise with proper form.`],
+    execution: ["Execute the movement under control through a full range of motion."],
+    breathing: "Exhale on exertion, inhale on release.",
+    tempo: "Controlled tempo.",
+    commonMistakes: ["Using momentum or poor posture."],
+    safetyTips: ["Stop if you feel any sharp pain."],
+    progressionTips: ["Gradually increase weight or repetitions as you get stronger."]
+  };
+}
+
+
 export const createAiSlice: StateCreator<
   AtlasStoreState,
   [],
@@ -319,14 +344,25 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           }
         });
 
-        const planExercises = plan.exercises || [];
+        // 1. Identify missing exercise IDs (needs background fetch).
         missingExerciseIds = Array.from(referencedExerciseIds).filter((id) => {
           const inStatic = staticExercises.some((e) => e.id === id);
           const inStore = get().exercises.some((e) => e.id === id);
-          const inPlan = planExercises.some((e) => e.id === id);
-          return !inStatic && !inStore && !inPlan;
+          return !inStatic && !inStore;
         });
         hasMissing = missingExerciseIds.length > 0;
+
+        // 2. Generate placeholder exercises immediately for referenced IDs that don't exist in static, store, or plan.exercises.
+        const planExercises = plan.exercises || [];
+        referencedExerciseIds.forEach((id) => {
+          const inStatic = staticExercises.some((e) => e.id === id);
+          const inStore = get().exercises.some((e) => e.id === id);
+          const inPlan = planExercises.some((e) => e.id === id);
+          if (!inStatic && !inStore && !inPlan) {
+            planExercises.push(createPlaceholderExercise(id));
+          }
+        });
+        plan.exercises = planExercises;
       }
 
       const finalMessage = { ...assistantMessage, content: responseContent };
@@ -365,44 +401,47 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
           creatorType: "ai" as const,
           startDay: selectedStartDay as any,
           routines: assignedRoutines,
-          // Embed any AI-generated Exercise objects so they survive a page reload.
-          // On hydrate(), these are extracted and merged back into exercises state.
           customExercises: Array.from(existingExercises.values()).filter(
             (e) => !staticExercises.some((s) => s.id === e.id)
           ),
         };
 
-        if (!hasMissing) {
-          const existingPlans = get().workoutPlans;
-          const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
-          const nextPlans = exists
-            ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
-            : [...existingPlans, fullyConfiguredPlan];
+        // Immediately update state and save plan
+        const existingPlans = get().workoutPlans;
+        const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
+        const nextPlans = exists
+          ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
+          : [...existingPlans, fullyConfiguredPlan];
 
-          const storeUpdate: Partial<AtlasStoreState> = {
-            workoutPlans: nextPlans,
-            exercises: Array.from(existingExercises.values()),
-            activeWorkoutPlanId: plan.id,
-            activeWorkout: nextActiveWorkout,
-            restTimerEndsAt: nextRestTimer,
-            restingSetId: nextRestingSetId,
-            activeSubScreen: nextSubScreen,
-          };
+        const storeUpdate: Partial<AtlasStoreState> = {
+          workoutPlans: nextPlans,
+          exercises: Array.from(existingExercises.values()),
+          activeWorkoutPlanId: plan.id,
+          activeWorkout: nextActiveWorkout,
+          restTimerEndsAt: nextRestTimer,
+          restingSetId: nextRestingSetId,
+          activeSubScreen: nextSubScreen,
+        };
 
-          if (options?.isRoutineGeneration) {
-            storeUpdate.activeTab = "workout";
-            storeUpdate.editingWorkoutPlanId = plan.id;
-            storeUpdate.activeSubScreen = "workout-plan-detail";
-          }
+        if (options?.isRoutineGeneration) {
+          storeUpdate.activeTab = "workout";
+          storeUpdate.editingWorkoutPlanId = plan.id;
+          storeUpdate.activeSubScreen = "workout-plan-detail";
+        }
 
-          set(storeUpdate);
-          // Persist the AI-generated plan to IndexedDB + Supabase.
-          // Without this call, the plan only lives in Zustand memory and is lost on reload.
-          const { registry } = await import("@/lib/repositories/registry");
-          registry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
-        } else {
+        set(storeUpdate);
+
+        // Persist the AI-generated plan immediately (non-blocking)
+        const saveImmediate = async () => {
+          const { registry: immediateRegistry } = await import("@/lib/repositories/registry");
+          immediateRegistry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
+        };
+        void saveImmediate();
+
+        // If there were missing exercise profiles, execute the background fetch
+        if (hasMissing) {
           setTimeout(async () => {
-            const gapMessageContent = responseContent + `\n\n**System Note:** The generated plan contains routines that reference exercise IDs (\`${missingExerciseIds.join(", ")}\`) that do not exist in the database.\nI am automatically executing a follow-up background call to fetch the complete biomechanical profiles for these exercises...`;
+            const gapMessageContent = responseContent + `\n\n**System Note:** Fetching complete biomechanical profiles for missing exercises: \`${missingExerciseIds.join(", ")}\`...`;
             
             set({
               aiMessages: get().aiMessages.map((m) =>
@@ -436,39 +475,39 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
                     existingExercises.set(e.id, e);
                   }
                 });
+
+                // Update plan.exercises with the resolved exercises
+                const updatedPlanExercises = plan.exercises.map((pEx) => {
+                  const resolved = parsedFollowUp.find((e: any) => e.id === pEx.id);
+                  return resolved || pEx;
+                });
+                plan.exercises = updatedPlanExercises;
                 
                 const successMessageContent = gapMessageContent + `\n\n**System Update:** Successfully fetched biomechanical profiles for: \`${missingExerciseIds.join(", ")}\`. The workout plan has been successfully finalized!`;
                 
-                const existingPlans = get().workoutPlans;
-                const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
-                const nextPlans = exists
-                  ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
-                  : [...existingPlans, fullyConfiguredPlan];
+                const updatedConfiguredPlan = {
+                  ...fullyConfiguredPlan,
+                  exercises: updatedPlanExercises,
+                  customExercises: Array.from(existingExercises.values()).filter(
+                    (e) => !staticExercises.some((s) => s.id === e.id)
+                  ),
+                };
 
-                const storeUpdate: Partial<AtlasStoreState> = {
+                const currentPlans = get().workoutPlans;
+                const nextPlans = currentPlans.map(p => p.id === updatedConfiguredPlan.id ? updatedConfiguredPlan : p);
+
+                set({
                   exercises: Array.from(existingExercises.values()),
                   workoutPlans: nextPlans,
-                  activeWorkoutPlanId: plan.id,
-                  activeWorkout: nextActiveWorkout,
-                  restTimerEndsAt: nextRestTimer,
-                  restingSetId: nextRestingSetId,
-                  activeSubScreen: nextSubScreen,
                   aiMessages: get().aiMessages.map((m) =>
                     m.id === assistantId ? { ...m, content: successMessageContent } : m
                   ),
                   coachBusy: false,
-                };
+                });
 
-                if (options?.isRoutineGeneration) {
-                  storeUpdate.activeTab = "workout";
-                  storeUpdate.editingWorkoutPlanId = plan.id;
-                  storeUpdate.activeSubScreen = "workout-plan-detail";
-                }
-
-                set(storeUpdate);
-                // Persist follow-up resolved plan to IndexedDB + Supabase.
+                // Save follow-up resolved plan to IndexedDB + Supabase.
                 const { registry: followUpRegistry } = await import("@/lib/repositories/registry");
-                followUpRegistry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
+                followUpRegistry.save((r, uid) => r.plan.savePlan(uid, updatedConfiguredPlan));
               } else {
                 throw new Error("Invalid response format from follow-up query.");
               }
@@ -476,36 +515,12 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
               console.error("Follow-up correction failed:", followUpErr);
               const failMessageContent = gapMessageContent + `\n\n**System Warning:** Failed to fetch the missing exercise profiles in the background. You can manually edit the plan or check your connection.`;
               
-              const existingPlans = get().workoutPlans;
-              const exists = existingPlans.some(p => p.id === fullyConfiguredPlan.id);
-              const nextPlans = exists
-                ? existingPlans.map(p => p.id === fullyConfiguredPlan.id ? fullyConfiguredPlan : p)
-                : [...existingPlans, fullyConfiguredPlan];
-
-              const storeUpdate: Partial<AtlasStoreState> = {
-                workoutPlans: nextPlans,
-                activeWorkoutPlanId: plan.id,
-                activeWorkout: nextActiveWorkout,
-                restTimerEndsAt: nextRestTimer,
-                restingSetId: nextRestingSetId,
-                activeSubScreen: nextSubScreen,
+              set({
                 aiMessages: get().aiMessages.map((m) =>
                   m.id === assistantId ? { ...m, content: failMessageContent } : m
                 ),
                 coachBusy: false,
-              };
-
-              if (options?.isRoutineGeneration) {
-                storeUpdate.activeTab = "workout";
-                storeUpdate.editingWorkoutPlanId = plan.id;
-                storeUpdate.activeSubScreen = "workout-plan-detail";
-              }
-
-              set(storeUpdate);
-              // Persist plan even when follow-up exercise fetch failed — the plan structure
-              // is still valid, exercises just may be missing from the database.
-              const { registry: fallbackRegistry } = await import("@/lib/repositories/registry");
-              fallbackRegistry.save((r, uid) => r.plan.savePlan(uid, fullyConfiguredPlan));
+              });
             }
           }, 50);
         }

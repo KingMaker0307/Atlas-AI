@@ -441,6 +441,7 @@ export function WorkoutPlanBuilderScreen() {
     };
     saveWorkoutPlan(newPlan);
     setActiveSubScreen(null);
+    setActiveTab("workout");
   };
 
   const handleSeedSplit = (type: "ppl" | "upper-lower" | "full-body") => {
@@ -572,7 +573,7 @@ export function WorkoutPlanBuilderScreen() {
   const handleGeneratePlan = async ({ targetDate, additionalDetails, startDay }: { targetDate: string; additionalDetails: string; startDay: string }) => {
     setShowAiCard(false);
     setActiveSubScreen(null);
-    setActiveTab("dashboard");
+    setActiveTab("workout");
     if (!profile) return;
 
     const { experience, bodyType, age, height, weight, heightUnit, weightUnit, trainingStyle, daysPerWeek, goal } = profile;
@@ -594,54 +595,59 @@ export function WorkoutPlanBuilderScreen() {
     Additional Details: ${additionalDetails || "None"}
 
     CRITICAL INSTRUCTIONS:
-    1. First, calculate if their goal is realistically achievable by the Target Date: ${targetDate}.
-       - If the goal is NOT realistically achievable within this timeframe (e.g. losing 15kg in 2 weeks, or building 10kg of muscle in a month), or if the target date is less than 7 days in the future, you MUST write a prominent and friendly warning explanation at the very beginning of your message (before the JSON block), warning them about the risks/unrealistic nature of the timeline, and giving clear suggestions to use as feedback to change the target date or give the normal aggressive training state understanding.
-       - If the goal is achievable, write a brief, encouraging confirmation.
+    1. Goal Realism & Target Date Pacing:
+       - You MUST calculate if their goal is realistically achievable by the Target Date: ${targetDate}.
+       - Even if the goal is extremely complicated, or if the target date is unrealistically short (e.g., less than 7 days, or even 1 day), you MUST STILL generate a complete, functional workout plan. Do NOT refuse to generate the plan under any circumstances.
+       - If the timeline is unrealistic or goal is too complex, write a clear, prominent warning/explanation and recommendations (e.g., suggesting an adjusted target date or warning about overtraining/limits) inside the JSON payload's "notes" property.
+       - If the goal is achievable, write a brief, encouraging confirmation inside the JSON payload's "notes" property.
+       - NEVER write raw text warning messages outside of the JSON block that would cause the response to omit or fail to include the JSON block. The JSON block is mandatory.
     
-    2. YOU MUST INCLUDE the complete Exercise profile details inside the \`exercises\` JSON array for EVERY single exerciseId referenced in the \`routines\` array. Under no circumstances should you reference an exercise ID in a routine without including its full biomechanical definition in the \`exercises\` array.
+    2. Exercises Completeness:
+       - YOU MUST INCLUDE the complete Exercise profile details inside the \`exercises\` JSON array for EVERY single exerciseId referenced in the \`routines\` array. Under no circumstances should you reference an exercise ID in a routine without including its full biomechanical definition in the \`exercises\` array.
     
-    3. Then, output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
-    {
-      "id": "generated-plan-id",
-      "name": "Plan Name",
-      "goal": "A summary of the workout plan goal",
-      "notes": "A detailed warning, suggestion to change the target date, or explanation of the normal aggressive program requirements if the target date or calculation of the workout is not achievable. Leave as null or empty string if it is realistically achievable.",
-      "routines": [
-        {
-          "id": "routine-1",
-          "name": "Day 1: Upper Focus",
-          "focus": "Strength",
-          "estimatedMinutes": 60,
-          "day": "Day 1",
-          "exercises": [
-            {
-              "exerciseId": "bench-press",
-              "targetSets": 4,
-              "targetReps": "8-12",
-              "restSeconds": 90
-            }
-          ]
-        }
-      ],
-      "exercises": [
-        {
-          "id": "bench-press",
-          "name": "Bench Press",
-          "category": "compound",
-          "muscles": ["chest", "triceps", "shoulders"],
-          "equipment": ["barbell"],
-          "difficulty": "intermediate",
-          "setup": ["Plant feet, set shoulder blades down and back.", "Grip slightly wider than shoulder-width."],
-          "instructions": ["Lower the bar to lower chest under control.", "Press up and slightly back."],
-          "execution": ["Unrack with locked shoulders.", "Touch chest without bouncing.", "Finish with elbows extended."],
-          "breathing": "Brace before the descent, hold through the press, reset at the top.",
-          "tempo": "2-3 seconds down, soft touch, powerful press.",
-          "commonMistakes": ["Flaring elbows early", "Bouncing off the chest"],
-          "safetyTips": ["Use a spotter or safeties for hard sets."],
-          "progressionTips": ["Add 2.5 lb when top-set reps exceed the target range."]
-        }
-      ]
-    }`;
+    3. Output Format:
+       - You MUST output the structured workout plan in a JSON block wrapped in \`\`\`json ... \`\`\` matching this format:
+       {
+         "id": "generated-plan-id",
+         "name": "Plan Name",
+         "goal": "A summary of the workout plan goal",
+         "notes": "A detailed warning, suggestion to change the target date, or explanation of the normal aggressive program requirements if the target date or calculation of the workout is not achievable. Leave as null or empty string if it is realistically achievable.",
+         "routines": [
+           {
+             "id": "routine-1",
+             "name": "Day 1: Upper Focus",
+             "focus": "Strength",
+             "estimatedMinutes": 60,
+             "day": "Day 1",
+             "exercises": [
+               {
+                 "exerciseId": "bench-press",
+                 "targetSets": 4,
+                 "targetReps": "8-12",
+                 "restSeconds": 90
+               }
+             ]
+           }
+         ],
+         "exercises": [
+           {
+             "id": "bench-press",
+             "name": "Bench Press",
+             "category": "compound",
+             "muscles": ["chest", "triceps", "shoulders"],
+             "equipment": ["barbell"],
+             "difficulty": "intermediate",
+             "setup": ["Plant feet, set shoulder blades down and back.", "Grip slightly wider than shoulder-width."],
+             "instructions": ["Lower the bar to lower chest under control.", "Press up and slightly back."],
+             "execution": ["Unrack with locked shoulders.", "Touch chest without bouncing.", "Finish with elbows extended."],
+             "breathing": "Brace before the descent, hold through the press, reset at the top.",
+             "tempo": "2-3 seconds down, soft touch, powerful press.",
+             "commonMistakes": ["Flaring elbows early", "Bouncing off the chest"],
+             "safetyTips": ["Use a spotter or safeties for hard sets."],
+             "progressionTips": ["Add 2.5 lb when top-set reps exceed the target range."]
+           }
+         ]
+       }`;
     
     const displayedContent = additionalDetails 
       ? `Generate a new workout plan for me starting on ${startDay} with the following additional details: ${additionalDetails}`
@@ -1156,7 +1162,7 @@ export function WorkoutPlanBuilderScreen() {
                 Cancel
               </Button>
               <Button variant="primary" onClick={handleConfirmStartDay} className="flex-1">
-                Confirm &amp; Create
+                Confirm
               </Button>
             </div>
           </Card>

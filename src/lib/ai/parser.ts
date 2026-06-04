@@ -55,10 +55,7 @@ export function parseAiWorkoutPlan(response: string): AiWorkoutPlan | null {
         const cleanedStr = cleanJsonString(match[1].trim());
         const parsed = JSON.parse(cleanedStr);
         if (isAiWorkoutPlan(parsed)) {
-          if (!parsed.id || typeof parsed.id !== "string") {
-            parsed.id = "plan_" + Math.random().toString(36).substring(2, 9);
-          }
-          return parsed;
+          return normalizeAiWorkoutPlan(parsed);
         }
       } catch (e) {
         // Continue to check other blocks if this one failed to parse
@@ -74,10 +71,7 @@ export function parseAiWorkoutPlan(response: string): AiWorkoutPlan | null {
         const cleanedStr = cleanJsonString(potentialJson.trim());
         const parsed = JSON.parse(cleanedStr);
         if (isAiWorkoutPlan(parsed)) {
-          if (!parsed.id || typeof parsed.id !== "string") {
-            parsed.id = "plan_" + Math.random().toString(36).substring(2, 9);
-          }
-          return parsed;
+          return normalizeAiWorkoutPlan(parsed);
         }
       } catch (e) {
         // Fail-through
@@ -90,11 +84,25 @@ export function parseAiWorkoutPlan(response: string): AiWorkoutPlan | null {
   }
 }
 
-function isAiWorkoutPlan(data: any): data is AiWorkoutPlan {
+function isAiWorkoutPlan(data: any): boolean {
   return (
     data &&
     typeof data === "object" &&
-    typeof data.name === "string" &&
-    Array.isArray(data.routines)
+    (typeof data.name === "string" ||
+      typeof data.title === "string" ||
+      typeof data.planName === "string")
   );
+}
+
+function normalizeAiWorkoutPlan(parsed: any): AiWorkoutPlan {
+  const plan = parsed as any;
+  plan.name = plan.name || plan.title || plan.planName || "AI Workout Plan";
+  plan.goal = plan.goal || plan.description || plan.primaryGoal || "Fitness Goal";
+  plan.notes = plan.notes || plan.warning || plan.feedback || "";
+  plan.routines = Array.isArray(plan.routines) ? plan.routines : [];
+  plan.exercises = Array.isArray(plan.exercises) ? plan.exercises : [];
+  if (!plan.id || typeof plan.id !== "string") {
+    plan.id = "plan_" + Math.random().toString(36).substring(2, 9);
+  }
+  return plan;
 }
