@@ -11,13 +11,13 @@ import { z } from "zod";
 import { createId } from "@/lib/id";
 import type { BodyMetric } from "@/types/domain";
 
-const bodySchema = z.object({
+export const bodySchema = z.object({
   bodyweight: z.number().min(20, "Must be at least 20").max(1000, "Must be at most 1000"),
   waist: z.number().min(5, "Must be at least 5").max(200, "Must be at most 200"),
   bodyFat: z.number().min(1, "Must be at least 1%").max(70, "Must be at most 70%"),
 });
 
-type BodyForm = z.infer<typeof bodySchema>;
+export type BodyForm = z.infer<typeof bodySchema>;
 
 interface DailyBodyMetricModalProps {
   isOpen: boolean;
@@ -40,12 +40,16 @@ export function DailyBodyMetricModal({
 
   const form = useForm<BodyForm>({
     resolver: zodResolver(bodySchema),
+    mode: "onChange",
     defaultValues: {
       bodyweight: dailyBodyMetric?.bodyweight || latestBodyweight || 0,
       waist: dailyBodyMetric?.waist ?? 0,
       bodyFat: dailyBodyMetric?.bodyFat ?? 0,
     },
   });
+
+  const isFormValid = bodySchema.safeParse(form.watch()).success;
+
 
   useEffect(() => {
     form.reset({
@@ -90,17 +94,23 @@ export function DailyBodyMetricModal({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="bodyweight">Weight</Label>
+              <Label htmlFor="bodyweight">
+                Weight <span className="text-rose-500" aria-hidden="true">*</span>
+              </Label>
               <Input type="number" step="0.1" min={20} max={1000} {...form.register("bodyweight", { valueAsNumber: true })} />
               {form.formState.errors.bodyweight && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.bodyweight.message}</p>}
             </div>
             <div>
-              <Label htmlFor="waist">Waist</Label>
+              <Label htmlFor="waist">
+                Waist <span className="text-rose-500" aria-hidden="true">*</span>
+              </Label>
               <Input type="number" step="0.1" min={5} max={200} {...form.register("waist", { valueAsNumber: true })} />
               {form.formState.errors.waist && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.waist.message}</p>}
             </div>
             <div>
-              <Label htmlFor="bodyFat">Body fat</Label>
+              <Label htmlFor="bodyFat">
+                Body fat <span className="text-rose-500" aria-hidden="true">*</span>
+              </Label>
               <Input type="number" step="0.1" min={1} max={70} {...form.register("bodyFat", { valueAsNumber: true })} />
               {form.formState.errors.bodyFat && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400 leading-normal">{form.formState.errors.bodyFat.message}</p>}
             </div>
@@ -143,7 +153,7 @@ export function DailyBodyMetricModal({
             )}
           </div>
 
-          <Button type="submit" variant="primary" icon={<Scale size={16} />} className="w-full">
+          <Button type="submit" variant="primary" icon={<Scale size={16} />} className="w-full" disabled={!isFormValid}>
             {dailyBodyMetric ? "Update Metrics" : "Save Metrics"}
           </Button>
         </form>

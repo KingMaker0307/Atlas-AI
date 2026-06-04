@@ -154,7 +154,9 @@ function SignInContent() {
         {/* Email/Password form */}
         <form id="signin-form" onSubmit={handleEmailSignIn} className="auth-form">
           <div className="auth-field">
-            <label htmlFor="signin-email" className="auth-label">Email</label>
+            <label htmlFor="signin-email" className="auth-label">
+              Email <span style={{ color: "#ef4444" }}>*</span>
+            </label>
             <input
               id="signin-email"
               type="email"
@@ -170,7 +172,9 @@ function SignInContent() {
 
           <div className="auth-field">
             <div className="auth-label-row">
-              <label htmlFor="signin-password" className="auth-label">Password</label>
+              <label htmlFor="signin-password" className="auth-label">
+                Password <span style={{ color: "#ef4444" }}>*</span>
+              </label>
               <Link href="/forgot-password" className="auth-link auth-link--sm">
                 Forgot password?
               </Link>
@@ -202,7 +206,7 @@ function SignInContent() {
             id="signin-submit-btn"
             type="submit"
             className="auth-primary-btn"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || !email.trim() || !password.trim()}
           >
             {loading ? <span className="auth-spinner" /> : "Sign In"}
           </button>

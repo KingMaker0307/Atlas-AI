@@ -228,7 +228,11 @@ export function RoutineBuilderScreen() {
             {editingRoutineId ? "Edit Routine" : "Create Routine"}
           </h1>
         </div>
-        <Button onClick={handleSave}>Save</Button>
+        <Button
+          onClick={handleSave}
+          disabled={!routine.name.trim() || routine.exercises.length === 0}
+          title={!routine.name.trim() ? "Routine name is required" : routine.exercises.length === 0 ? "Add at least one exercise" : undefined}
+        >Save</Button>
       </section>
 
       {errorMessage && (
@@ -241,7 +245,9 @@ export function RoutineBuilderScreen() {
       )}
 
       <Card className="p-4">
-        <Label>Routine Name</Label>
+        <Label>
+          Routine Name <span className="text-rose-500" aria-hidden="true">*</span>
+        </Label>
         <Input
           value={routine.name}
           maxLength={40}

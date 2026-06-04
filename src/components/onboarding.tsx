@@ -152,6 +152,28 @@ export function Onboarding() {
   const selectedWeightUnit = watch("weightUnit");
   const selectedHeightUnit = watch("heightUnit");
 
+  const watchedName = watch("name");
+  const watchedAge = watch("age");
+  const watchedWeight = watch("weight");
+  const watchedHeight = watch("height");
+  const watchedGoal = watch("customGoal");
+  const watchedDays = watch("daysPerWeek");
+
+  const currentStepIsValid = useMemo(() => {
+    if (step === 1) {
+      const a = Number(watchedAge);
+      const w = Number(watchedWeight);
+      const h = Number(watchedHeight);
+      return !!watchedName?.trim() && a >= 13 && a <= 120 && w >= 20 && w <= 1000 && h >= 20 && h <= 300;
+    }
+    if (step === 2) {
+      const d = Number(watchedDays);
+      return !!watchedGoal?.trim() && d >= 1 && d <= 7;
+    }
+    return true;
+  }, [step, watchedName, watchedAge, watchedWeight, watchedHeight, watchedGoal, watchedDays]);
+
+
   const steps = useMemo(() => [
     { id: 1, label: "Basics" },
     { id: 2, label: "Focus & Plan" },
@@ -312,7 +334,9 @@ export function Onboarding() {
                   </div>
 
                   <div>
-                    <Label htmlFor="name">Preferred Name</Label>
+                    <Label htmlFor="name">
+                      Preferred Name <span className="text-rose-500" aria-hidden="true">*</span>
+                    </Label>
                     <p className="text-zinc-500 text-xs mb-1.5 leading-relaxed">
                       How should Atlas AI address you? (e.g. in greetings, motivation)
                     </p>
@@ -402,7 +426,9 @@ export function Onboarding() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Age */}
                     <div>
-                      <Label htmlFor="age">Age</Label>
+                      <Label htmlFor="age">
+                        Age <span className="text-rose-500" aria-hidden="true">*</span>
+                      </Label>
                       <div className="mt-1.5">
                         <Input id="age" type="number" min={13} max={120} {...register("age")} placeholder="e.g., 25" className="text-xs font-sans font-medium" />
                         {errors.age && <p className="mt-1 text-xs text-rose-300">{errors.age.message}</p>}
@@ -443,7 +469,9 @@ export function Onboarding() {
 
                     {/* Weight */}
                     <div>
-                      <Label htmlFor="weight">Weight ({selectedWeightUnit})</Label>
+                      <Label htmlFor="weight">
+                        Weight ({selectedWeightUnit}) <span className="text-rose-500" aria-hidden="true">*</span>
+                      </Label>
                       <div className="mt-1.5">
                         <Input
                           id="weight"
@@ -460,7 +488,9 @@ export function Onboarding() {
 
                     {/* Height */}
                     <div className="sm:col-span-2 space-y-1.5">
-                      <Label>Height ({selectedHeightUnit === "in" ? "ft & in" : "cm"})</Label>
+                      <Label>
+                        Height ({selectedHeightUnit === "in" ? "ft & in" : "cm"}) <span className="text-rose-500" aria-hidden="true">*</span>
+                      </Label>
                       <div className="mt-1.5">
                         {selectedHeightUnit === "in" ? (
                           <div className="grid grid-cols-2 gap-2 animate-fadeIn">
@@ -540,7 +570,9 @@ export function Onboarding() {
                   </div>
 
                   <div>
-                    <Label htmlFor="customGoal">Your Workout Goal</Label>
+                    <Label htmlFor="customGoal">
+                      Your Workout Goal <span className="text-rose-500" aria-hidden="true">*</span>
+                    </Label>
                     <p className="text-zinc-500 text-xs mb-1.5 leading-relaxed">
                       Select your primary fitness objective used to customize your training plan.
                     </p>
@@ -578,7 +610,9 @@ export function Onboarding() {
 
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <Label htmlFor="daysPerWeek">Weekly Frequency (Days/Week)</Label>
+                      <Label htmlFor="daysPerWeek">
+                        Weekly Frequency (Days/Week) <span className="text-rose-500" aria-hidden="true">*</span>
+                      </Label>
                       <p className="text-zinc-500 text-xs mb-1.5">
                         How many training sessions can you realistically complete each week?
                       </p>
@@ -751,13 +785,14 @@ export function Onboarding() {
                   Back
                 </Button>
               )}
-              {step < steps.length ? (
+               {step < steps.length ? (
                 <Button
                   type="button"
                   variant="primary"
                   className="ml-auto"
                   onClick={nextStep}
                   icon={<ArrowRight size={16} />}
+                  disabled={!currentStepIsValid}
                 >
                   Continue
                 </Button>
@@ -766,7 +801,7 @@ export function Onboarding() {
                   type="submit"
                   variant="primary"
                   className="ml-auto w-full sm:w-auto"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !currentStepIsValid}
                   icon={isSubmitting ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
                   ) : (

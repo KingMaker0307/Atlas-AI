@@ -198,7 +198,9 @@ export default function SignUpPage() {
         {/* Email/Password form */}
         <form id="signup-form" onSubmit={handleEmailSignUp} className="auth-form">
           <div className="auth-field">
-            <label htmlFor="signup-email" className="auth-label">Email</label>
+            <label htmlFor="signup-email" className="auth-label">
+              Email <span style={{ color: "#ef4444" }}>*</span>
+            </label>
             <input
               id="signup-email"
               type="email"
@@ -213,7 +215,9 @@ export default function SignUpPage() {
           </div>
 
           <div className="auth-field">
-            <label htmlFor="signup-password" className="auth-label">Password</label>
+            <label htmlFor="signup-password" className="auth-label">
+              Password <span style={{ color: "#ef4444" }}>*</span>
+            </label>
             <input
               id="signup-password"
               type="password"
@@ -246,7 +250,9 @@ export default function SignUpPage() {
           </div>
 
           <div className="auth-field">
-            <label htmlFor="signup-confirm" className="auth-label">Confirm Password</label>
+            <label htmlFor="signup-confirm" className="auth-label">
+              Confirm Password <span style={{ color: "#ef4444" }}>*</span>
+            </label>
             <input
               id="signup-confirm"
               type="password"
@@ -274,7 +280,7 @@ export default function SignUpPage() {
             id="signup-submit-btn"
             type="submit"
             className="auth-primary-btn"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || !email.trim() || !password.trim() || !confirmPassword.trim()}
           >
             {loading ? <span className="auth-spinner" /> : "Create Account"}
           </button>

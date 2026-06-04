@@ -974,7 +974,12 @@ export function WorkoutPlanBuilderScreen() {
                 {editingWorkoutPlanId ? "Edit Plan" : "New Plan"}
               </h1>
             </div>
-            <Button onClick={handleSave} className="gap-1.5">
+            <Button
+              onClick={handleSave}
+              className="gap-1.5"
+              disabled={!plan.name.trim()}
+              title={!plan.name.trim() ? "Plan name is required" : undefined}
+            >
               <Check size={14} />
               Save
             </Button>
@@ -996,7 +1001,9 @@ export function WorkoutPlanBuilderScreen() {
           )}
 
           <Card className="p-4">
-            <Label>Plan Name</Label>
+            <Label>
+              Plan Name <span className="text-rose-500" aria-hidden="true">*</span>
+            </Label>
             <Input
               value={plan.name}
               maxLength={40}

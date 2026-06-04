@@ -353,6 +353,24 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
     }
   }, [draft, prevDraftId]);
 
+  const isAiProviderFormValid = useMemo(() => {
+    if (!draft) return false;
+    if (!draft.label.trim()) return false;
+    if (!draft.model.trim()) return false;
+
+    const isLocal = draft.type === "ollama" || draft.type === "lmstudio";
+    if (isLocal) {
+      return !!draft.baseUrl?.trim();
+    }
+
+    if (draft.type === "custom") {
+      return !!draft.baseUrl?.trim();
+    }
+
+    return !!apiKey.trim();
+  }, [draft, apiKey]);
+
+
   // Initialize selected type and draft based on active provider.
   // Also handles the cloud-sync race: pullCloudUpdate() runs after hydrate() and may
   // load the real provider (with stored API key) AFTER initialized=true is set.
@@ -959,7 +977,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="sm:col-span-2">
-                        <Field label="Full Name">
+                        <Field label="Full Name" required>
                           <Input
                             type="text"
                             maxLength={30}
@@ -998,7 +1016,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                         </div>
                       </div>
 
-                      <Field label="Age">
+                      <Field label="Age" required>
                         <Input
                           type="number"
                           min={13}
@@ -1047,7 +1065,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                         const activeHeightUnit = draftProfile.heightUnit ?? heightUnit;
                         return (
                           <>
-                            <Field label={`Weight (${activeWeightUnit})`}>
+                            <Field label={`Weight (${activeWeightUnit})`} required>
                               <Input
                                 type="number"
                                 min={20}
@@ -1064,7 +1082,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                               onChange={(value) => void handleWeightUnitChange(value)}
                             />
 
-                            <Field label={`Height (${activeHeightUnit === "in" ? "ft & in" : "cm"})`}>
+                            <Field label={`Height (${activeHeightUnit === "in" ? "ft & in" : "cm"})`} required>
                               {activeHeightUnit === "in" ? (
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
@@ -1145,7 +1163,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                             className="text-xs font-medium"
                           />
                         </Field>
-                        <Field label="Workout Duration (min)">
+                        <Field label="Workout Duration (min)" required>
                           <Input
                             type="number"
                             min={15}
@@ -1207,7 +1225,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                           </Select>
                         </Field>
 
-                        <Field label="Weekly Frequency (Days/Week)">
+                        <Field label="Weekly Frequency (Days/Week)" required>
                           <Input
                             type="number"
                             min={1}
@@ -1338,8 +1356,8 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                         })()}
 
                         {/* Endpoint config form */}
-                        {(draft.type === "custom" || draft.type === "ollama" || draft.type === "lmstudio") && (
-                          <Field label="Base URL" hint={providerHints.baseUrl}>
+                         {draft.type === "custom" || draft.type === "ollama" || draft.type === "lmstudio" ? (
+                          <Field label="Base URL" hint={providerHints.baseUrl} required>
                             <Input
                               maxLength={200}
                               value={draft.baseUrl ?? ""}
@@ -1348,11 +1366,11 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                               className="text-xs font-mono font-bold"
                             />
                           </Field>
-                        )}
+                        ) : null}
 
                         <div className={`grid gap-4 ${(draft.type === "ollama" || draft.type === "lmstudio") ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-                          {draft.type !== "ollama" && draft.type !== "lmstudio" && (
-                            <Field label="API Key" hint={providerHints.apiKey}>
+                           {draft.type !== "ollama" && draft.type !== "lmstudio" && (
+                            <Field label="API Key" hint={providerHints.apiKey} required>
                               <div className="relative">
                                 <Input
                                   type={showApiKey ? "text" : "password"}
@@ -1373,7 +1391,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                             </Field>
                           )}
 
-                          <Field label="Model" hint={providerHints.model}>
+                           <Field label="Model" hint={providerHints.model} required>
                             <div className="space-y-2">
                               {(() => {
                                 const displayModels = models.length > 0 ? models : (DEFAULT_MODELS_BY_PROVIDER[draft.type] || []);
@@ -1497,13 +1515,14 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                             icon={<Save size={15} />}
                             onClick={handleSaveProvider}
                             title={providerHints.save}
+                            disabled={!isAiProviderFormValid}
                             className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
                           >
                             {isSaved ? (isActive ? "Update Provider" : "Update & Activate") : "Save & Activate"}
                           </Button>
                           <Button
                             icon={<LinkIcon size={15} />}
-                            disabled={providerBusy}
+                            disabled={providerBusy || !isAiProviderFormValid}
                             onClick={handleTestProvider}
                             title={providerHints.test}
                             className="h-10 sm:h-8 text-xs sm:text-xs font-bold uppercase"
@@ -1878,11 +1897,14 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
   );
 }
 
-function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+function Field({ label, children, hint, required }: { label: React.ReactNode; children: React.ReactNode; hint?: string; required?: boolean }) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1.5 select-none">
-        <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">{label}</Label>
+        <Label className="mb-0 text-xs font-bold uppercase tracking-wider text-zinc-400">
+          {label}
+          {required && <span className="text-rose-500 ml-1" aria-hidden="true">*</span>}
+        </Label>
         {hint && (
           <Tooltip content={hint}>
             <Info size={14} className="text-zinc-500 hover:text-zinc-300 transition-colors" />
