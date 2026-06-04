@@ -288,10 +288,10 @@ function BeginnerAnalytics() {
             <button
               type="button"
               onClick={() => setGuidedMode(false)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-border bg-surface hover:bg-surface/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none shrink-0"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm select-none w-full sm:w-auto shrink-0 border border-transparent bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-450"
             >
-              <Activity size={13} className="text-emerald-500" />
-              <span>Beginner View</span>
+              <Activity size={13} className="text-amber-200" />
+              <span>Advanced Mode</span>
             </button>
           </div>
 
@@ -744,10 +744,10 @@ function AdvancedAnalytics() {
             <button
               type="button"
               onClick={() => setGuidedMode(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-border bg-surface hover:bg-surface/60 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none shrink-0"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm select-none w-full sm:w-auto shrink-0 border border-transparent bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-450"
             >
-              <Activity size={13} className="text-amber-500" />
-              <span>Advanced View</span>
+              <Activity size={13} className="text-emerald-250" />
+              <span>Beginner Mode</span>
             </button>
           </div>
         </Card>

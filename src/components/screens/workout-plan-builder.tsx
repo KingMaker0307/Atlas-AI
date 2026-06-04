@@ -853,7 +853,7 @@ export function WorkoutPlanBuilderScreen() {
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all capitalize ${
                     filterExperience === exp
                       ? "border-violet-500/50 bg-violet-500/20 text-violet-450"
-                      : "border-surface-border bg-surface/30 text-zinc-750 hover:bg-surface/80"
+                      : "border-surface-border bg-surface text-zinc-750 hover:bg-surface/80"
                   }`}
                 >
                   <User size={12} className="inline mr-1" />
@@ -871,7 +871,7 @@ export function WorkoutPlanBuilderScreen() {
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
                     filterDays === d
                       ? "border-violet-500/50 bg-violet-500/20 text-violet-450"
-                      : "border-surface-border bg-surface/30 text-zinc-750 hover:bg-surface/80"
+                      : "border-surface-border bg-surface text-zinc-750 hover:bg-surface/80"
                   }`}
                 >
                   {d}×/wk
@@ -888,7 +888,7 @@ export function WorkoutPlanBuilderScreen() {
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
                     filterDuration === m
                       ? "border-violet-500/50 bg-violet-500/20 text-violet-450"
-                      : "border-surface-border bg-surface/30 text-zinc-750 hover:bg-surface/80"
+                      : "border-surface-border bg-surface text-zinc-750 hover:bg-surface/80"
                   }`}
                 >
                   {m}m
@@ -920,9 +920,9 @@ export function WorkoutPlanBuilderScreen() {
             </div>
           ) : (
             <Card className="p-8 flex flex-col items-center gap-3 text-center">
-              <Search size={32} className="text-zinc-600" />
-              <p className="text-sm text-zinc-400">No programs match your filters.</p>
-              <p className="text-xs text-zinc-600">Try adjusting your search or filter criteria.</p>
+              <Search size={32} className="text-zinc-500 dark:text-zinc-400" />
+              <p className="text-sm font-bold text-foreground">No programs match your filters.</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Try adjusting your search or filter criteria.</p>
               <Button
                 variant="ghost"
                 size="sm"

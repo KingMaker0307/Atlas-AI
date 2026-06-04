@@ -514,16 +514,20 @@ export function NutritionAnalyticsScreen() {
 
         {/* 2. Today's Macronutrient & Micronutrient Progress (Macros + Micros RDA inside it) */}
         <Card className="p-4 space-y-4">
-          <div className="flex items-center justify-between border-b border-card-border pb-2.5 gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-card-border pb-2.5 gap-2.5">
             <h4 className="text-xs font-bold text-zinc-955">Today's Macronutrient Progress</h4>
 
             {/* Experience Mode Toggle */}
             <button
               type="button"
               onClick={() => setGuidedMode(!guidedMode)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm"
+              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm w-full sm:w-auto select-none border border-transparent ${
+                guidedMode
+                  ? "bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-450"
+                  : "bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-450"
+              }`}
             >
-              <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
+              <Activity size={13} className={guidedMode ? "text-emerald-250" : "text-amber-250"} />
               <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
             </button>
           </div>

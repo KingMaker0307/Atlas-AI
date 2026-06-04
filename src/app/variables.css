@@ -23,14 +23,17 @@
   --zinc-450: #71717a;
   --zinc-555: #52525b;
   --zinc-750: #3f3f46;
+  --zinc-755: #3f3f46;
   --zinc-850: #27272a;
   --zinc-955: #09090b;
 
   --emerald-450: #059669;
+  --emerald-455: #047857;
   --violet-450: #7c3aed;
   --violet-455: #6d28d9;
   --blue-455: #1d4ed8;
   --rose-450: #dc2626;
+  --rose-455: #be123c;
   --amber-450: #d97706;
 }
 
@@ -59,14 +62,17 @@
   --zinc-450: #a1a1aa;
   --zinc-555: #d4d4d8;
   --zinc-750: #a1a1aa;
+  --zinc-755: #d4d4d8;
   --zinc-850: #d4d4d8;
   --zinc-955: #f4f4f5;
 
   --emerald-450: #34d399;
+  --emerald-455: #34d399;
   --violet-450: #a78bfa;
   --violet-455: #c084fc;
   --blue-455: #60a5fa;
   --rose-450: #f87171;
+  --rose-455: #fb7185;
   --amber-450: #fbbf24;
 }
 
@@ -91,14 +97,17 @@
   --color-zinc-450: var(--zinc-450);
   --color-zinc-555: var(--zinc-555);
   --color-zinc-750: var(--zinc-750);
+  --color-zinc-755: var(--zinc-755);
   --color-zinc-850: var(--zinc-850);
   --color-zinc-955: var(--zinc-955);
 
   --color-emerald-450: var(--emerald-450);
+  --color-emerald-455: var(--emerald-455);
   --color-violet-450: var(--violet-450);
   --color-violet-455: var(--violet-455);
   --color-blue-455: var(--blue-455);
   --color-rose-450: var(--rose-450);
+  --color-rose-455: var(--rose-455);
   --color-amber-450: var(--amber-450);
 }
 

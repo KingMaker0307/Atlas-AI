@@ -175,12 +175,12 @@ export function WorkoutPlanDetailScreen() {
         const lastCompletedWorkout = workouts.filter(w => w.completedAt).at(-1);
         if (lastCompletedWorkout?.notes?.includes("Force stopped")) {
           return (
-            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 text-xs space-y-1">
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-900 dark:text-rose-200 text-xs space-y-1">
               <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-xs">
-                <AlertTriangle size={16} className="text-rose-400 shrink-0" />
+                <AlertTriangle size={16} className="text-rose-600 dark:text-rose-400 shrink-0" />
                 <span>Last Workout Session Force Stopped</span>
               </div>
-              <p className="text-zinc-300 leading-normal">
+              <p className="text-rose-800 dark:text-rose-200/90 leading-normal">
                 Your last session ("{lastCompletedWorkout.name}") was automatically stopped because it exceeded the maximum 3-hour limit.
               </p>
             </div>
@@ -190,12 +190,12 @@ export function WorkoutPlanDetailScreen() {
       })()}
 
       {isLimitReached && !activeWorkout && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1">
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs space-y-1">
           <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-xs">
-            <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+            <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
             <span>Daily Workout Limit Reached (3/3)</span>
           </div>
-          <p className="text-zinc-400 leading-normal">
+          <p className="text-amber-800 dark:text-amber-200/90 leading-normal">
             You have logged 3 workouts today. Doing more than 3 sessions a day can trigger overtraining syndrome—causing elevated cortisol, severe muscle strain, and decreased performance. Protect your muscles; your body grows during rest!
           </p>
         </div>

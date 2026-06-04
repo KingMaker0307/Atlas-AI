@@ -1168,7 +1168,7 @@ export function ExerciseDetail({
                     </p>
                   </div>
                 </div>
-                <p className="mt-2.5 text-xs text-zinc-300 leading-relaxed font-semibold">
+                <p className="mt-2.5 text-xs text-zinc-755 leading-relaxed font-semibold">
                   {exercise.tempo || (isCardio ? "Maintain steady state cadence (e.g. 80-90 RPM / 150-180 SPM)" : "3-0-1-0 (3s Eccentric, 0s Stretch, 1s Concentric, 0s Lock)")}
                 </p>
               </div>
@@ -1188,7 +1188,7 @@ export function ExerciseDetail({
                     </p>
                   </div>
                 </div>
-                <p className="mt-2.5 text-xs text-zinc-300 leading-relaxed font-semibold">
+                <p className="mt-2.5 text-xs text-zinc-755 leading-relaxed font-semibold">
                   {exercise.breathing || (isCardio ? "Deep diaphragmatic breathing. Inhale through nose for 2 strides, exhale through mouth for 2 strides." : "Inhale on eccentric loading phase, brace core, and exhale past sticking midrange.")}
                 </p>
               </div>
@@ -1209,7 +1209,7 @@ export function ExerciseDetail({
                       </p>
                     </div>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-zinc-400">
+                  <ul className="space-y-1.5 text-xs text-zinc-755">
                     {exercise.progressionTips.map((tip, idx) => (
                       <li key={idx} className="flex gap-2 leading-relaxed">
                         <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
@@ -1235,7 +1235,7 @@ export function ExerciseDetail({
                       Critical Form Pitfalls
                     </h4>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-zinc-400 font-semibold">
+                  <ul className="space-y-1.5 text-xs text-zinc-755 font-semibold">
                     {exercise.commonMistakes.map((mistake, idx) => (
                       <li key={idx} className="flex gap-2 items-start leading-relaxed">
                         <span className="mt-1 text-rose-500">•</span>
@@ -1255,7 +1255,7 @@ export function ExerciseDetail({
                       Injury Prevention Protocols
                     </h4>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-zinc-400 font-semibold">
+                  <ul className="space-y-1.5 text-xs text-zinc-755 font-semibold">
                     {exercise.safetyTips.map((tip, idx) => (
                       <li key={idx} className="flex gap-2 items-start leading-relaxed">
                         <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400" />

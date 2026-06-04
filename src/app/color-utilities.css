@@ -144,3 +144,28 @@
 .dark .text-sky-400 {
   color: #7dd3fc !important;
 }
+
+/* Added for Workout & Nutrition Theme Visibility Fixes */
+.text-zinc-755 {
+  color: var(--zinc-755) !important;
+}
+
+.text-emerald-455 {
+  color: var(--emerald-455) !important;
+}
+
+.bg-emerald-455 {
+  background-color: var(--emerald-455) !important;
+}
+
+.text-rose-455 {
+  color: var(--rose-455) !important;
+}
+
+.bg-rose-455 {
+  background-color: var(--rose-455) !important;
+}
+
+.stroke-rose-455 {
+  stroke: var(--rose-455) !important;
+}

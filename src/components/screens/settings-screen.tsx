@@ -888,6 +888,47 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                     </Button>
                   </Card>
 
+                  {/* App Preferences Panel */}
+                  <Card className="p-5 shadow-2xl space-y-5">
+                    <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <Palette className="text-emerald-500 dark:text-emerald-400" size={18} />
+                        <h2 className="text-base font-bold text-zinc-900 dark:text-white tracking-tight">App Preferences</h2>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 select-none w-full">
+                      <SegmentedSetting<ThemeMode>
+                        label="App Display Theme"
+                        value={theme}
+                        values={["dark", "light", "system"]}
+                        onChange={(value) => void setTheme(value)}
+                        icons={{
+                          dark: <Moon size={14} />,
+                          light: <Sun size={14} />,
+                          system: <Monitor size={14} />,
+                        }}
+                      />
+                      <div>
+                        <Label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Experience Mode</Label>
+                        <div className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => void setGuidedMode(!guidedMode)}
+                            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm select-none min-h-[36px] w-full sm:w-auto border border-transparent ${
+                              guidedMode
+                                ? "bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-450"
+                                : "bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-450"
+                            }`}
+                          >
+                            <Activity size={13} className={guidedMode ? "text-emerald-250" : "text-amber-250"} />
+                            <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
                   {/* Physical Biometrics Panel */}
                   <Card className="p-5 shadow-2xl space-y-5">
                     <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/5 pb-3">
@@ -1216,7 +1257,6 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                     </div>
                   </Card>
 
-
                 </div>
               )}
 
@@ -1485,34 +1525,7 @@ export function SettingsScreen({ onClose }: { onClose?: () => void }) {
                     <div className="flex items-center justify-between border-b border-card-border pb-3">
                       <div className="flex items-center gap-2.5">
                         <Server className="text-orange-500 dark:text-orange-400" size={18} />
-                        <h2 className="text-base font-bold text-foreground tracking-tight">App Preferences &amp; Storage Telemetry</h2>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-3 border-b border-white/5 select-none w-full">
-                      <SegmentedSetting<ThemeMode>
-                        label="App Display Theme"
-                        value={theme}
-                        values={["dark", "light", "system"]}
-                        onChange={(value) => void setTheme(value)}
-                        icons={{
-                          dark: <Moon size={14} />,
-                          light: <Sun size={14} />,
-                          system: <Monitor size={14} />,
-                        }}
-                      />
-                      <div>
-                        <Label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-400">Experience Mode</Label>
-                        <div className="flex items-center">
-                          <button
-                            type="button"
-                            onClick={() => void setGuidedMode(!guidedMode)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-surface-border bg-card hover:bg-surface/50 text-xs font-bold text-zinc-700 dark:text-zinc-300 transition active:scale-95 shadow-sm select-none min-h-[36px]"
-                          >
-                            <Activity size={13} className={guidedMode ? "text-emerald-500" : "text-amber-500 animate-pulse"} />
-                            <span>{guidedMode ? "Beginner Mode" : "Advanced Mode"}</span>
-                          </button>
-                        </div>
+                        <h2 className="text-base font-bold text-foreground tracking-tight">Storage &amp; Diagnostic Telemetry</h2>
                       </div>
                     </div>
 

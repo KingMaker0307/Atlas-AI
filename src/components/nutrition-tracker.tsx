@@ -3877,11 +3877,10 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto self-stretch sm:self-auto">
           <Button
             size="sm"
-            variant="secondary"
-            className="font-bold flex items-center gap-1.5 rounded-xl px-4 py-2"
+            className="font-bold flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 w-full sm:w-auto sm:flex-initial bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-450 text-white border-transparent shadow-md"
             onClick={() => setActiveSubScreen("nutrition-analytics")}
           >
             <BarChart3 size={15} />
@@ -3891,7 +3890,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           <Button
             size="sm"
             variant="primary"
-            className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center gap-1.5 rounded-xl px-4 py-2 shadow-md focus-visible:ring-emerald-500"
+            className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 shadow-md focus-visible:ring-emerald-500 w-full sm:w-auto sm:flex-initial"
             onClick={() => { setSelectedAddMeal("breakfast"); setShowAddModal(true); }}
           >
             <Plus size={16} />

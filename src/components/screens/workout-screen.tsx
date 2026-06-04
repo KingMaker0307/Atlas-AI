@@ -43,6 +43,7 @@ import { ExerciseDetail } from "@/components/exercise-detail";
 import { exercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import type { Exercise, Routine } from "@/types/domain";
+import { getStimulusAdvisory } from "@/lib/coach/stimulus-advisory";
 import { cn } from "@/lib/cn";
 import { NutritionTracker } from "@/components/nutrition-tracker";
 import { AdvancedAnalyticsScreen } from "./advanced-analytics-screen";
@@ -604,11 +605,10 @@ export function WorkoutScreen() {
             </p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Plans</h1>
           </div>
-          <div className="flex gap-2.5 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
             <Button
               size="sm"
-              variant="secondary"
-              className="flex-1 sm:flex-initial"
+              className="w-full sm:w-auto sm:flex-initial bg-violet-600 hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-450 text-white border-transparent font-bold shadow-md"
               icon={<Layers3 size={15} />}
               onClick={() => setActiveSubScreen("exercise-database")}
             >
@@ -617,7 +617,7 @@ export function WorkoutScreen() {
             <Button
               size="sm"
               variant="primary"
-              className="flex-1 sm:flex-initial"
+              className="w-full sm:w-auto sm:flex-initial"
               icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
               disabled={coachBusy}
               onClick={() => {
@@ -694,7 +694,7 @@ export function WorkoutScreen() {
         )}
 
         {workoutPlans.length === 0 ? (
-          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border bg-zinc-50/20 dark:bg-white/[0.01] shadow-md">
+          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border shadow-md">
             <ClipboardList className="h-12 w-12 text-emerald-500/80 dark:text-emerald-400/80 mb-4" />
             <h2 className="text-xl font-bold text-foreground">No workout programs found</h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
@@ -1930,7 +1930,7 @@ export function WorkoutScreen() {
                                                   type="button"
                                                   onClick={() => {
                                                     if (navigator.vibrate) navigator.vibrate(6);
-                                                    const v = Math.max(0, (set.rir ?? 2) - 1);
+                                                    const v = Math.max(0, Math.min(4, set.rir ?? 2) - 1);
                                                     void updateSet(workoutExercise.id, set.id, { rir: v });
                                                   }}
                                                   className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
@@ -1939,11 +1939,11 @@ export function WorkoutScreen() {
                                                   <Minus size={14} className="stroke-[3px]" />
                                                 </button>
                                                 <Input
-                                                  inputMode="numeric" type="number" min={0} max={10}
+                                                  inputMode="numeric" type="number" min={0} max={4}
                                                   className="h-9 px-1 text-center font-bold bg-transparent border-0 shadow-none text-sm w-full text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none"
                                                   value={set.rir ?? 2}
                                                   onChange={e => {
-                                                    const v = Math.min(10, Math.max(0, Number(e.target.value)));
+                                                    const v = Math.min(4, Math.max(0, Number(e.target.value)));
                                                     void updateSet(workoutExercise.id, set.id, { rir: v });
                                                   }}
                                                 />
@@ -1951,7 +1951,7 @@ export function WorkoutScreen() {
                                                   type="button"
                                                   onClick={() => {
                                                     if (navigator.vibrate) navigator.vibrate(6);
-                                                    const v = Math.min(10, (set.rir ?? 2) + 1);
+                                                    const v = Math.min(4, (set.rir ?? 2) + 1);
                                                     void updateSet(workoutExercise.id, set.id, { rir: v });
                                                   }}
                                                   className="h-10 w-10 rounded-lg flex items-center justify-center text-zinc-555 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/5 active:scale-90 transition-all shrink-0 cursor-pointer"
@@ -2029,30 +2029,36 @@ export function WorkoutScreen() {
                                   const rirVal = lastDoneSet?.rir;
                                   if (rirVal === undefined) return null;
 
+                                  const setNumber = workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1;
+                                  const totalSets = workoutExercise.sets.length;
+                                  const advisory = getStimulusAdvisory({
+                                    rir: rirVal,
+                                    setNumber,
+                                    totalSets,
+                                    category: exercise.category,
+                                    exerciseName: exercise.name,
+                                  });
+
                                   return (
                                     <div className="mt-2.5 p-3.5 rounded-xl bg-surface/40 border border-surface-border text-xs select-none">
                                       <div className={cn(
                                         "flex items-start gap-2.5 p-2.5 rounded-xl border select-none transition-all duration-300",
-                                        rirVal <= 1
+                                        advisory.level === "warning"
                                           ? "bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/20 ring-1 ring-rose-500/10"
-                                          : rirVal >= 4
-                                          ? "bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/20"
-                                          : "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
+                                          : advisory.level === "success"
+                                          ? "bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/20"
+                                          : "bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/20"
                                       )}>
                                         <Sparkles size={14} className={cn(
                                           "mt-0.5 shrink-0",
-                                          rirVal <= 1 ? "text-rose-500" : rirVal >= 4 ? "text-sky-500" : "text-emerald-500"
+                                          advisory.level === "warning" ? "text-rose-500" : advisory.level === "success" ? "text-emerald-500" : "text-sky-500"
                                         )} />
                                         <div>
                                           <p className="font-extrabold text-foreground leading-tight text-[11px] uppercase tracking-wide">
-                                            Stimulus Advisory (Set {workoutExercise.sets.findIndex(s => s.id === lastDoneSet?.id) + 1} · RIR {rirVal}):
+                                            Stimulus Advisory (Set {setNumber} · RIR {rirVal}):
                                           </p>
                                           <p className="text-zinc-600 dark:text-zinc-300 leading-normal mt-1 text-[11px] font-medium">
-                                            {rirVal <= 1
-                                              ? "Optimal hypertrophy threshold reached! Maintain weight or increase +2.5% next session."
-                                              : rirVal >= 4
-                                              ? "Low-intensity stimulus. Consider increasing load by 5–10% to target hypertrophy."
-                                              : "Moderate stimulus — perfect sweet spot for safe progressive overload."}
+                                            {advisory.message}
                                           </p>
                                         </div>
                                       </div>

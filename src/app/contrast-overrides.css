@@ -421,3 +421,8 @@
 .light .text-red-400:not(.keep-dark *):not(svg):not([class*="bg-red"]) {
   color: #dc2626 !important; /* red-600 */
 }
+
+/* Tooltip Arrow Discrepancy Fix */
+.light .border-t-zinc-955 {
+  border-top-color: #ffffff !important;
+}
