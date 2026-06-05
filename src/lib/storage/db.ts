@@ -27,6 +27,8 @@ import type {
   WaterLogEntry,
   BodyMetric,
   RecoveryLog,
+  AiMessage,
+  CommonFoodItem,
 } from "@/types/domain";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -40,6 +42,9 @@ interface AtlasDbV2 extends DBSchema {
   body_metrics: { key: string; value: BodyMetric & { _userId: string } };
   recovery_logs: { key: string; value: RecoveryLog & { _userId: string } };
   sync_queue: { key: number; value: SyncQueueItem };
+  chat_messages: { key: string; value: AiMessage & { date: string; _userId: string } };
+  recent_food_searches: { key: string; value: CommonFoodItem & { id: string; _userId: string } };
+  ai_response_cache: { key: string; value: { id: string; category: string; queryKey: string; responsePayload: unknown; _userId: string } };
 }
 
 export interface SyncQueueItem {
@@ -54,7 +59,7 @@ export interface SyncQueueItem {
 }
 
 const DB_NAME = "atlas-ai-coach";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORES = [
   "profiles",
   "workouts",
@@ -64,6 +69,9 @@ const STORES = [
   "body_metrics",
   "recovery_logs",
   "sync_queue",
+  "chat_messages",
+  "recent_food_searches",
+  "ai_response_cache",
 ] as const;
 
 // ─── Local settings (unchanged — uses localStorage) ───────────────────────────
@@ -171,6 +179,9 @@ export async function clearAllUserData(userId: string): Promise<void> {
     "water_logs",
     "body_metrics",
     "recovery_logs",
+    "chat_messages",
+    "recent_food_searches",
+    "ai_response_cache",
   ] as const;
 
   for (const storeName of entityStores) {

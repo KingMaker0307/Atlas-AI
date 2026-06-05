@@ -7,7 +7,7 @@ import type {
   Routine,
   EncryptedSecret,
 } from "@/types/domain";
-import { createId } from "@/lib/id";
+import { createId, todayKey } from "@/lib/id";
 import { decryptString, encryptString } from "@/lib/security/crypto";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
 import { registry } from "@/lib/repositories/registry";
@@ -41,6 +41,7 @@ export interface AiSlice {
   generateGlobalExercise: (name: string) => Promise<Exercise | null>;
   setAiWorkoutTipCache: (range: string, tip: string) => void;
   setAiNutritionTipCache: (range: string, tip: string) => void;
+  loadMessagesForDate: (date: string) => Promise<void>;
 }
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -295,6 +296,8 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   },
 
   sendCoachMessage: async (content, options) => {
+    const user = get().user;
+    const date = get().selectedDate;
     const userMessage: AiMessage = {
       id: createId("user"),
       role: "user",
@@ -313,20 +316,60 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
       coachBusy: true,
       apiCallCount: get().apiCallCount + 1,
     });
+    if (user) {
+      registry.save((r, uid) => r.chat.saveMessage(uid, date, userMessage));
+    }
     const context = buildCoachContext(get());
     const activeProvider = get().aiProviders.find((provider) => provider.id === get().activeProviderId);
-    try {
-      if (!activeProvider) throw new Error("No active AI provider found.");
+    let apiKey = "";
+    let adapter: any = null;
+    if (activeProvider) {
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
-      if (!isLocal && !activeProvider.apiKey) throw new Error("API key is missing or invalid.");
-      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
-      const adapter = getProviderAdapter(activeProvider.type);
-      const { content: responseContent, tokenCount: responseTokenCount } = await adapter.chat({
-        provider: activeProvider,
-        apiKey,
-        messages: get().aiMessages.filter((m) => m.id !== assistantId && m.content.trim() !== ""),
-        systemContext: context,
-      });
+      if (isLocal || activeProvider.apiKey) {
+        try {
+          apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+          adapter = getProviderAdapter(activeProvider.type);
+        } catch (err) {
+          console.warn("[sendCoachMessage] Failed to decrypt API key:", err);
+        }
+      }
+    }
+
+    try {
+      let responseContent = "";
+      let responseTokenCount = 0;
+      
+      /* WORKOUT PLAN CACHING - DISABLED FOR NOW
+      let cached: any = null;
+      if (options?.isRoutineGeneration && user) {
+        cached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "workout_plan", content.trim()));
+      }
+      */
+
+      // Always call the AI provider for now
+      if (false) { // Keep TS compiled branch dead code
+        /*
+        responseContent = cached as string;
+        set({ apiCallCount: Math.max(0, get().apiCallCount - 1) });
+        */
+      } else {
+        if (!activeProvider) throw new Error("No active AI provider found.");
+        if (!adapter) throw new Error("API key is missing or invalid.");
+        const chatResult = await adapter.chat({
+          provider: activeProvider,
+          apiKey,
+          messages: get().aiMessages.filter((m) => m.id !== assistantId && m.content.trim() !== ""),
+          systemContext: context,
+        });
+        responseContent = chatResult.content;
+        responseTokenCount = chatResult.tokenCount ?? 0;
+
+        /* WORKOUT PLAN CACHING - DISABLED FOR NOW
+        if (options?.isRoutineGeneration && user) {
+          registry.save((r, uid) => r.aiCache.saveResponse(uid, "workout_plan", content.trim(), responseContent));
+        }
+        */
+      }
       const plan = parseAiWorkoutPlan(responseContent);
       let hasMissing = false;
       let missingExerciseIds: string[] = [];
@@ -371,6 +414,9 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         coachBusy: hasMissing,
         tokenCount: get().tokenCount + (responseTokenCount ?? 0),
       });
+      if (user) {
+        registry.save((r, uid) => r.chat.saveMessage(uid, date, finalMessage));
+      }
 
       if (plan) {
         const existingExercises = new Map(get().exercises.map(e => [e.id, e]));
@@ -504,6 +550,10 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
                   ),
                   coachBusy: false,
                 });
+                if (user) {
+                  const updatedMessage = { ...assistantMessage, content: successMessageContent };
+                  registry.save((r, uid) => r.chat.saveMessage(uid, date, updatedMessage));
+                }
 
                 // Save follow-up resolved plan to IndexedDB + Supabase.
                 const { registry: followUpRegistry } = await import("@/lib/repositories/registry");
@@ -521,23 +571,45 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
                 ),
                 coachBusy: false,
               });
+              if (user) {
+                const updatedMessage = { ...assistantMessage, content: failMessageContent };
+                registry.save((r, uid) => r.chat.saveMessage(uid, date, updatedMessage));
+              }
             }
           }, 50);
         }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      const finalMessage = {
+        ...assistantMessage,
+        content: `I couldn't connect to the AI provider. Please check your API key and network connection in Settings.\n\n**Error:** ${errorMessage}`,
+      };
       set({
         aiMessages: get().aiMessages.map((m) =>
-          m.id === assistantId
-            ? {
-                ...m,
-                content: `I couldn't connect to the AI provider. Please check your API key and network connection in Settings.\n\n**Error:** ${errorMessage}`,
-              }
-            : m,
+          m.id === assistantId ? finalMessage : m
         ),
         coachBusy: false,
       });
+      if (user) {
+        registry.save((r, uid) => r.chat.saveMessage(uid, date, finalMessage));
+      }
+    }
+  },
+
+  loadMessagesForDate: async (date) => {
+    const user = get().user;
+    if (!user) return;
+    const messages = await registry.load((r, uid) => r.chat.getMessages(uid, date));
+    if (messages && messages.length > 0) {
+      set({ aiMessages: messages });
+    } else {
+      const today = todayKey();
+      if (date === today) {
+        set({ aiMessages: initialAiMessages });
+      } else {
+        set({ aiMessages: [] });
+      }
     }
   },
 

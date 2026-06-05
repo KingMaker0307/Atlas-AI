@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Sparkles, Loader2, Cpu, ArrowRight, ShieldAlert } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useAtlasStore } from "@/store/useAtlasStore";
@@ -10,8 +10,13 @@ import { createId } from "@/lib/id";
 import type { NutritionEntry } from "@/types/domain";
 import { checkTopicRelevance } from "@/lib/coach/topic-guard";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+
+const getPreviousDateString = (dateStr: string): string => {
+  const date = new Date(dateStr + "T00:00:00");
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
 
 type TimeRange = "Today" | "Last 3 Days" | "Last Week" | "Last Month";
 
@@ -31,6 +36,23 @@ export function AiNutritionTip() {
   const setActiveSettingsTab = useAtlasStore((s) => s.setActiveSettingsTab);
   const aiNutritionTipsCache = useAtlasStore((s) => s.aiNutritionTipsCache || {});
   const setAiNutritionTipCache = useAtlasStore((s) => s.setAiNutritionTipCache);
+  const selectedDate = useAtlasStore((s) => s.selectedDate);
+  const user = useAtlasStore((s) => s.user);
+
+  useEffect(() => {
+    const checkCache = async () => {
+      if (!user?.id) return;
+      const { registry } = await import("@/lib/repositories/registry");
+      const cacheKey = `nutrition:${selectedDate}:${selectedRange}:${avoidInput.trim().toLowerCase()}`;
+      const cached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "daily_insight", cacheKey));
+      if (cached) {
+        setAiNutritionTipCache(selectedRange, cached as string);
+      } else {
+        setAiNutritionTipCache(selectedRange, "");
+      }
+    };
+    checkCache();
+  }, [selectedDate, selectedRange, avoidInput, user?.id]);
 
   const activeProvider = useMemo(() => {
     return aiProviders.find((p) => p.id === activeProviderId && p.enabled);
@@ -80,6 +102,18 @@ export function AiNutritionTip() {
     }
 
     try {
+      // Check cache first to avoid calling AI for the same day and range
+      if (user?.id) {
+        const { registry } = await import("@/lib/repositories/registry");
+        const cacheKey = `nutrition:${selectedDate}:${selectedRange}:${avoidInput.trim().toLowerCase()}`;
+        const cached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "daily_insight", cacheKey));
+        if (cached) {
+          setAiNutritionTipCache(selectedRange, cached as string);
+          setLoading(false);
+          return;
+        }
+      }
+
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
       const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
       const adapter = getProviderAdapter(activeProvider.type);
@@ -91,23 +125,39 @@ export function AiNutritionTip() {
         })
         .join("\n");
 
+      // Fetch previous day's cached insight to provide continuity
+      let previousDayInsight = "";
+      if (user?.id) {
+        const { registry } = await import("@/lib/repositories/registry");
+        const prevDate = getPreviousDateString(selectedDate);
+        const prevCacheKey = `nutrition:${prevDate}:${selectedRange}:${avoidInput.trim().toLowerCase()}`;
+        const prevCached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "daily_insight", prevCacheKey));
+        if (prevCached) previousDayInsight = prevCached as string;
+      }
+
+      const previousInsightBlock = previousDayInsight
+        ? `\n\nPrevious Day's Nutrition Insight (use this as context to build upon — do NOT repeat it, instead advance the advice and track progress):\n${previousDayInsight}`
+        : "";
+
       const prompt = `You are a sports nutritionist and clinical dietitian.
 Analyze the athlete's nutrition logs for the chosen range: ${selectedRange}.
 Dietary Style: ${profile?.dietaryPreferences || "Not specified"}
 Foods / Allergies to Avoid: ${avoidInput || "None specified"}
 
-Provide 2-3 specific, highly actionable nutrition tips. Focus on:
-- What they are lacking or doing well based on macro/micro logs.
-- Safe food suggestions matching their dietary style (${profile?.dietaryPreferences || "Not specified"}) while strictly avoiding ${avoidInput || "None specified"}.
-- One specific next step.
+Provide 2-3 mindful, highly actionable, and genuine nutrition recommendations. Focus on:
+- A constructive critique of their actual calorie and macro intake relative to their fitness goals.
+- Specific food suggestions or adjustments matching their dietary style (${profile?.dietaryPreferences || "Not specified"}) while strictly respecting their allergy constraints (${avoidInput || "none"}).
+- A concrete, helpful action plan for today.
+
+IMPORTANT: Your response must be specific to THIS athlete's actual logged food data. Do not give generic advice. Reference their actual meals, calorie counts, and macro ratios. Be encouraging but honest. Every recommendation must be actionable and grounded in their logged intake.
 
 CRITICAL WARNING: If the user listed any food allergies/avoids (${avoidInput || "None"}), you MUST ensure no suggested food contains those ingredients.
 Always include a brief disclaimer at the end: "Consult a healthcare professional for clinical advice."
 
-Keep it under 150 words. Format with markdown bullet points. Do not include introductory conversational filler.
+Format with clean markdown bullet points, keeping it under 150 words. Be direct, mindful, and avoid generic filler.
 
 Nutrition logs:
-${formattedLogs || "No foods logged in this period."}
+${formattedLogs || "No foods logged in this period."}${previousInsightBlock}
 `;
 
       const { content, tokenCount } = await adapter.chat({
@@ -118,6 +168,14 @@ ${formattedLogs || "No foods logged in this period."}
       });
 
       const cleanedContent = content.trim();
+
+      // Save to db cache
+      if (user?.id) {
+        const { registry } = await import("@/lib/repositories/registry");
+        const cacheKey = `nutrition:${selectedDate}:${selectedRange}:${avoidInput.trim().toLowerCase()}`;
+        registry.save((r, uid) => r.aiCache.saveResponse(uid, "daily_insight", cacheKey, cleanedContent));
+      }
+
       setAiNutritionTipCache(selectedRange, cleanedContent);
 
       // Update store counters
@@ -161,14 +219,19 @@ ${formattedLogs || "No foods logged in this period."}
   }
 
   return (
-    <Card className="p-4 space-y-4 shadow-sm border-emerald-500/15 bg-emerald-500/[0.02] dark:bg-emerald-500/[0.01]">
-      <div className="flex items-center justify-between gap-2 border-b border-card-border pb-2.5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="text-emerald-500" size={15} />
-          <h4 className="text-xs font-bold text-zinc-955">AI Nutrition Coach</h4>
+    <Card className="p-5 space-y-5 shadow-md border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.04] via-teal-500/[0.02] to-transparent dark:from-emerald-500/[0.03] dark:via-teal-500/[0.01]">
+      <div className="flex items-center justify-between gap-2 border-b border-emerald-500/10 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-sm">
+            <Sparkles className="text-white" size={14} />
+          </div>
+          <div>
+            <h4 className="text-sm font-extrabold text-foreground tracking-tight">AI Nutrition Coach</h4>
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Personalised meal insights</p>
+          </div>
         </div>
         {activeProvider && (
-          <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500">
+          <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg">
             via {activeProvider.label}
           </span>
         )}
@@ -198,7 +261,7 @@ ${formattedLogs || "No foods logged in this period."}
       </div>
 
       {/* Standardized range selectors */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-2 px-2 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-2 px-2 scrollbar-none">
         {RANGES.map((r) => {
           const isSelected = selectedRange === r;
           return (
@@ -208,10 +271,10 @@ ${formattedLogs || "No foods logged in this period."}
                 setSelectedRange(r);
                 setError(null);
               }}
-              className={`h-9 px-3.5 rounded-xl border text-xs font-bold flex items-center justify-center transition-all min-h-[36px] whitespace-nowrap ${
+              className={`h-9 px-4 rounded-xl border text-[11px] font-extrabold flex items-center justify-center transition-all min-h-[36px] whitespace-nowrap tracking-wide ${
                 isSelected
-                  ? "bg-emerald-600 border-emerald-600 text-white shadow-sm"
-                  : "bg-surface border-surface-border text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-500 border-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                  : "bg-surface border-surface-border text-zinc-500 hover:text-zinc-800 hover:border-emerald-500/40 dark:text-zinc-400 dark:hover:text-zinc-200"
               }`}
             >
               {r}
@@ -223,30 +286,38 @@ ${formattedLogs || "No foods logged in this period."}
       {/* Action / Result container */}
       <div className="space-y-3">
         {loading ? (
-          <div className="py-6 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="animate-spin text-emerald-500" size={20} />
-            <p className="text-xs text-zinc-500 font-bold">Analyzing nutrition logs...</p>
+          <div className="py-8 flex flex-col items-center justify-center gap-2.5">
+            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <Loader2 className="animate-spin text-emerald-500" size={20} />
+            </div>
+            <p className="text-xs text-zinc-500 font-bold tracking-wide">Analyzing nutrition logs...</p>
           </div>
         ) : error ? (
-          <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/10 text-xs text-rose-500 font-semibold leading-relaxed">
+          <div className="p-3.5 rounded-xl bg-rose-500/5 border border-rose-500/10 text-xs text-rose-500 font-semibold leading-relaxed">
             {error}
           </div>
         ) : currentTip ? (
-          <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:prose-a:text-emerald-300 max-w-none text-xs text-zinc-700 dark:text-zinc-300 font-medium">
-            {currentTip}
-          </ReactMarkdown>
+          <div className="rounded-xl bg-surface/50 border border-surface-border p-4">
+            <ReactMarkdown className="prose dark:prose-invert prose-p:leading-relaxed prose-a:text-emerald-600 dark:prose-a:text-emerald-300 prose-strong:text-foreground max-w-none text-[13px] text-zinc-700 dark:text-zinc-300 font-medium">
+              {currentTip}
+            </ReactMarkdown>
+          </div>
         ) : (
-          <div className="py-2 flex flex-col items-center justify-center gap-3">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-[280px] font-semibold leading-relaxed">
-              Ready to analyze {filteredEntries.length} logged food item{filteredEntries.length === 1 ? "" : "s"} for the chosen range.
+          <div className="py-4 flex flex-col items-center justify-center gap-4">
+            <p className="text-[13px] text-zinc-500 dark:text-zinc-400 text-center max-w-[280px] font-semibold leading-relaxed">
+              {filteredEntries.length === 0
+                ? "No foods logged in this period. Log your meals to unlock personalised insights."
+                : `Ready to analyze ${filteredEntries.length} logged food item${filteredEntries.length === 1 ? "" : "s"} for the chosen range.`}
             </p>
-            <Button
-              onClick={generateTip}
-              variant="primary"
-              className="w-full max-w-[200px] text-xs font-bold"
-            >
-              Generate AI Nutrition Tip
-            </Button>
+            {filteredEntries.length > 0 && (
+              <button
+                onClick={generateTip}
+                className="group flex items-center justify-center gap-2.5 w-full max-w-[220px] py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-[13px] font-extrabold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 min-h-[44px] transition-all active:scale-[0.97] tracking-wide"
+              >
+                <Sparkles size={15} className="group-hover:animate-pulse" />
+                Generate Nutrition Insight
+              </button>
+            )}
           </div>
         )}
       </div>

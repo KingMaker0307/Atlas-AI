@@ -16,6 +16,7 @@ import {
   UtensilsCrossed,
   Moon,
   Search,
+  AlertTriangle,
   X,
   Check,
   Info,
@@ -348,6 +349,50 @@ const parseServingWeight = (servingText: string): number => {
   }
   
   return 100;
+};
+
+export const KNOWN_BRANDS = [
+  "chobani", "kirkland", "quest", "clif", "oreo", "quaker", "trader joe's", "trader joes",
+  "fairlife", "halo top", "premier protein", "rxbar", "kind", "nature valley", "starbucks",
+  "beyond meat", "impossible", "kraft", "heinz", "tyson", "nestle", "kellogg", "gatorade",
+  "powerade", "silk", "alpro", "fage", "siggi", "dannon", "yoplait", "barilla", "dole",
+  "del monte", "smucker", "jif", "skippy", "nutella", "hershey", "cadbury", "mars",
+  "snickers", "twix", "kit kat", "reese", "m&m", "lays", "doritos", "ruffles", "pringles",
+  "cheetos", "fritos", "sunchips", "skinnypop", "cheez-it", "goldfish", "ritz", "triscuit",
+  "wheat thins", "chips ahoy", "goya", "mccormick", "campbell", "progresso", "knorr",
+  "ragu", "prego", "classico", "taco bell", "mission", "guerrero", "tostitos", "popcorners",
+  "smartfood", "kettle brand", "utz", "wise", "snyder", "stacy", "nilla", "animal crackers",
+  "pillsbury", "betty crocker", "myprotein", "optimum nutrition", "on", "ghost", "ryse",
+  "dymatize", "muscle milk", "cellucor", "c4", "redcon1", "bsn", "isopure", "orgain",
+  "vega", "garden of life", "sunwarrior", "vital proteins", "huel", "soylent"
+];
+
+export const extractItemName = (query: string): string => {
+  const qLower = query.toLowerCase().trim();
+  
+  // Try matching known brands (possibly multi-word)
+  for (const brand of KNOWN_BRANDS) {
+    const escapedBrand = brand.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const regex = new RegExp(`\\b${escapedBrand}\\b`, "gi");
+    if (regex.test(qLower)) {
+      const rest = query.replace(regex, "").trim();
+      const cleaned = rest.replace(/^[:\-\s,]+|[:\-\s,]+$/g, "").trim();
+      if (cleaned.length >= 3) {
+        return cleaned;
+      }
+    }
+  }
+  
+  // Fallback: strip the first word if it has multiple words
+  const words = query.trim().split(/\s+/);
+  if (words.length > 1) {
+    const rest = words.slice(1).join(" ");
+    if (rest.length >= 3) {
+      return rest;
+    }
+  }
+  
+  return query;
 };
 
 // Map Open Food Facts product structure to our CommonFoodItem shape
@@ -1106,8 +1151,21 @@ const AddFoodModal: FC<{
     }
 
     try {
-      const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
-      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+      const queryKey = customName.trim().toLowerCase();
+      const isTextOnly = customImages.length === 0 && queryKey.length > 0;
+      let cached = null;
+      const { registry } = await import("@/lib/repositories/registry");
+      const cacheRepo = user?.id ? registry.repos.aiCache : null;
+      if (isTextOnly && cacheRepo && user?.id) {
+        cached = await cacheRepo.getCachedResponse(user.id, "nutrition_estimation", queryKey);
+      }
+
+      let rawContent: string;
+      if (cached) {
+        rawContent = cached as string;
+      } else {
+        const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+        const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
 
       const uploadedImages = await Promise.all(
         customImages.map(async (img) => {
@@ -1121,7 +1179,7 @@ const AddFoodModal: FC<{
 
       // STRICT system prompt for breakdown
       const strictSystemPrompt = `You are a precision clinical nutrition AI for a fitness tracking app.
-Your ONLY job: analyze the provided text description and/or any uploaded image(s) to identify all food items and estimate their nutrition.
+Your ONLY job: analyze the provided text description and/or any uploaded image(s) to identify all food items and estimate their nutrition with strict precision.
 
 STRICT RULES:
 1. Return ONLY a raw JSON object matching the required schema. No markdown fences, no prose, no explanation.
@@ -1160,8 +1218,6 @@ Required JSON schema — ALL keys required, no extra keys:
 }
 
 Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassium/calcium/iron/vitaminC=milligrams.`;
-
-      let rawContent: string;
 
       if (customImages.length > 0 && (activeProvider.type === "gemini" || activeProvider.type === "openai" || activeProvider.type === "anthropic" || activeProvider.type === "openrouter")) {
         const imageParts = customImages.map((img) => ({
@@ -1326,7 +1382,12 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         rawContent = content;
       }
 
-      let cleanContent = rawContent.trim();
+      if (isTextOnly && cacheRepo && user?.id && rawContent) {
+        await cacheRepo.saveResponse(user.id, "nutrition_estimation", queryKey, rawContent);
+      }
+    }
+
+    let cleanContent = rawContent.trim();
       const fenceMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (fenceMatch) cleanContent = fenceMatch[1].trim();
       const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
@@ -1453,7 +1514,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
       })));
 
       const refinementSystemPrompt = `You are a precision clinical nutrition AI. The user has already analyzed their meal, and you generated a breakdown.
-Now, they are giving you feedback/corrections. Update the breakdown of food items based on their feedback.
+Now, they are giving you feedback/corrections. Update the breakdown of food items based on their feedback with strict precision.
 
 Current items breakdown:
 ${currentItemsJson}
@@ -1944,18 +2005,18 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
-        className="w-full sm:max-w-md bg-card border border-card-border rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
-        style={{ maxHeight: "95dvh" }}
+        className="flex flex-col w-full sm:max-w-md bg-card border border-card-border rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+        style={{ maxHeight: "90dvh" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-3.5 pb-3 border-b border-card-border">
+        <div className="flex items-center justify-between px-4 pt-3.5 pb-3 border-b border-card-border shrink-0">
           <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Add Food</h3>
           <button onClick={onClose} aria-label="Close modal" className="h-7 w-7 flex items-center justify-center rounded-full bg-zinc-150 dark:bg-zinc-800 text-zinc-755 dark:text-zinc-300 hover:text-foreground transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
             <X size={14} />
           </button>
         </div>
 
-        <div className="overflow-y-auto p-3.5 space-y-3" style={{ maxHeight: "calc(95dvh - 120px)" }}>
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-3">
           {/* Meal selector */}
           <div className="grid grid-cols-4 gap-1" role="group" aria-label="Select meal slot">
             {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([key, cfg]) => {
@@ -1965,11 +2026,11 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                   key={key}
                   onClick={() => setMeal(key)}
                   className={cn(
-                    "flex flex-row items-center justify-center gap-1 py-1.5 px-1 rounded-xl border text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
+                    "flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 py-1.5 px-1 sm:px-2 rounded-xl border text-[10px] sm:text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                     meal === key ? `${cfg.bg} ${cfg.color} border-opacity-100` : "border-zinc-200 dark:border-zinc-800 text-zinc-650 dark:text-zinc-455 hover:border-zinc-300 dark:hover:border-zinc-700"
                   )}
                 >
-                  <Icon size={13} aria-hidden="true" />
+                  <Icon size={13} aria-hidden="true" className="shrink-0" />
                   {cfg.label}
                 </button>
               );
@@ -2679,14 +2740,22 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
                   {/* Render standard single Add button for Custom Entry mode only */}
                   {mode === "custom" && (
-                    <Button
-                      variant="primary"
-                      className="w-full h-9 text-xs font-bold mt-1"
-                      disabled={!customName.trim() || !customCal}
-                      onClick={handleAdd}
-                    >
-                      <Plus size={14} /> Add to {MEAL_LABELS[meal].label}
-                    </Button>
+                    <>
+                      <div className="text-[10px] text-zinc-550 dark:text-zinc-400 bg-zinc-100/50 dark:bg-zinc-900/50 rounded-xl p-2.5 border border-zinc-200 dark:border-zinc-800 leading-normal flex items-start gap-2 mb-2 select-none">
+                        <Info size={12} className="text-emerald-500 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Mindful Tip:</strong> Be precise! Estimating portions is notoriously hard. If you don't weigh your food, you might be underestimating calories by 15-30%. Use a kitchen scale when possible!
+                        </span>
+                      </div>
+                      <Button
+                        variant="primary"
+                        className="w-full h-9 text-xs font-bold mt-1"
+                        disabled={!customName.trim() || !customCal}
+                        onClick={handleAdd}
+                      >
+                        <Plus size={14} /> Add to {MEAL_LABELS[meal].label}
+                      </Button>
+                    </>
                   )}
                 </>
               )}
@@ -2953,8 +3022,22 @@ export function NutritionTracker() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAddMeal, setSelectedAddMeal] = useState<NutritionEntry["meal"]>("breakfast");
   const [expandedMeal, setExpandedMeal] = useState<NutritionEntry["meal"] | null>("breakfast");
-  // Custom Date state (Defaults to today, allows selecting any day in history)
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  // Custom Date state synced with Zustand global selectedDate state
+  const selectedDateStr = useAtlasStore((state) => state.selectedDate);
+  const setSelectedDateGlobal = useAtlasStore((state) => state.setSelectedDate);
+
+  const selectedDate = useMemo(() => {
+    return new Date(selectedDateStr + "T12:00:00");
+  }, [selectedDateStr]);
+
+  const setSelectedDate = (date: Date | ((prev: Date) => Date)) => {
+    if (typeof date === "function") {
+      const nextDate = date(selectedDate);
+      void setSelectedDateGlobal(getLocalDateString(nextDate));
+    } else {
+      void setSelectedDateGlobal(getLocalDateString(date));
+    }
+  };
 
   // Hydration custom inputs
   const [customWaterInput, setCustomWaterInput] = useState("");
@@ -3185,7 +3268,7 @@ export function NutritionTracker() {
         const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
 
         const strictSystemPrompt = `You are a precision clinical nutrition AI for a fitness tracking app.
-Your ONLY job: analyze the provided text description and/or any uploaded image(s) to identify all food items and estimate their nutrition.
+Your ONLY job: analyze the provided text description and/or any uploaded image(s) to identify all food items and estimate their nutrition with strict precision.
 
 STRICT RULES:
 1. Return ONLY a raw JSON object matching the required schema. No markdown fences, no prose, no explanation.
@@ -3524,7 +3607,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
       })));
 
       const refinementSystemPrompt = `You are a precision clinical nutrition AI. The user has already analyzed their meal, and you generated a breakdown.
-Now, they are giving you feedback/corrections. Update the breakdown of food items based on their feedback.
+Now, they are giving you feedback/corrections. Update the breakdown of food items based on their feedback with strict precision.
 
 Current items breakdown:
 ${currentItemsJson}
@@ -4207,6 +4290,22 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-450">Nutritional Diagnostics</p>
                   </div>
                   <div className="space-y-2 text-xs text-zinc-755 leading-snug">
+                    {/* Goal-specific general checks */}
+                    {targets.goalType === "lose" && totals.calories > targets.calories && (
+                      <p className="flex items-start gap-2 text-rose-500 font-semibold">
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                        <span>Daily calorie target exceeded ({totals.calories} vs limit of {targets.calories} kcal). Lower portion sizes to maintain your weight loss deficit.</span>
+                      </p>
+                    )}
+
+                    {targets.goalType === "gain" && totals.calories < targets.calories * 0.9 && (
+                      <p className="flex items-start gap-2 text-blue-500">
+                        <Info size={12} className="mt-0.5 shrink-0" />
+                        <span>Calorie surplus is low ({totals.calories} vs target {targets.calories} kcal). Boost healthy fats/carbs to support muscle growth.</span>
+                      </p>
+                    )}
+
+                    {/* Standard Macro and Fiber goals */}
                     {totals.protein >= targets.protein * 0.9 ? (
                       <p className="flex items-start gap-2"><Check size={12} className="text-emerald-450 mt-0.5 shrink-0" /> <span>Protein goal is met ({totals.protein}g). Muscle repair is properly supported. 💪</span></p>
                     ) : (
@@ -4215,9 +4314,41 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     {totals.fiber < targets.fiber * 0.5 && (
                       <p className="flex items-start gap-2"><Info size={12} className="text-amber-450 mt-0.5 shrink-0" /> <span>Dietary fiber intake is low ({totals.fiber}g). Add legumes, vegetables, or oats.</span></p>
                     )}
-                    {totals.calories < targets.calories * 0.8 && (
+                    {totals.calories < targets.calories * 0.8 && targets.goalType !== "lose" && (
                       <p className="flex items-start gap-2"><Zap size={12} className="text-sky-400 mt-0.5 shrink-0" /> <span>Daily energy deficit is deep. You can eat another {remainingCals} kcal to power your metabolic rates.</span></p>
                     )}
+
+                    {/* Specific food-choice checks based on the daily goal */}
+                    {activeEntries.map((entry) => {
+                      const lowerName = entry.name.toLowerCase();
+                      const isHighSugar = entry.sugar > 12 || lowerName.includes("soda") || lowerName.includes("coke") || lowerName.includes("candy") || lowerName.includes("cookie") || lowerName.includes("juice") || lowerName.includes("sweet");
+                      const isHighFat = entry.fat > 18 && !lowerName.includes("salmon") && !lowerName.includes("avocado") && !lowerName.includes("nuts") && !lowerName.includes("seed") && !lowerName.includes("olive oil") && !lowerName.includes("peanut butter");
+                      const isProcessed = lowerName.includes("chips") || lowerName.includes("fries") || lowerName.includes("pizza") || lowerName.includes("burger") || lowerName.includes("donut") || lowerName.includes("cake") || lowerName.includes("pastry") || lowerName.includes("fast food");
+
+                      if (targets.goalType === "lose" && (isHighSugar || isHighFat || isProcessed)) {
+                        return (
+                          <p key={`avoid-${entry.id}`} className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
+                            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                            <span>
+                              <strong>Avoid / Limit:</strong> "{entry.name}" is high in calories, sugar/fat density, or processed. Prioritize whole foods to stay on track.
+                            </span>
+                          </p>
+                        );
+                      }
+                      
+                      if (targets.goalType === "gain" && (isHighSugar || isProcessed)) {
+                        return (
+                          <p key={`avoid-${entry.id}`} className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
+                            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                            <span>
+                              <strong>Clean Bulk:</strong> "{entry.name}" contains empty sugar or high-glycemic calories. Choose complex carbs and clean proteins instead.
+                            </span>
+                          </p>
+                        );
+                      }
+
+                      return null;
+                    })}
                   </div>
                 </Card>
               )}

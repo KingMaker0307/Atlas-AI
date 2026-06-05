@@ -29,6 +29,7 @@ import { useAtlasStore } from "@/store/useAtlasStore";
 import { calculateNutritionTargets } from "@/lib/calculators";
 import { getSmartNutritionTips } from "@/lib/coach/smart-nutrition-tips";
 import { AiNutritionTip } from "@/components/ai-nutrition-tip";
+import type { NutritionEntry } from "@/types/domain";
 
 // Helper to format Date as YYYY-MM-DD
 const getLocalDateString = (dateOrStr: Date | string) => {
@@ -66,40 +67,139 @@ const RingProgress: FC<{ value: number; max: number; className?: string; size?: 
 };
 
 // ─── Macro Bar ───────────────────────────────────────────────────
-const MacroBar: FC<{ label: string; value: number; max: number; unit: string; color: string; icon: FC<any>; iconColor: string; tooltip?: string }> = ({
-  label, value, max, unit, color, icon: Icon, iconColor, tooltip,
+const MacroBar: FC<{
+  label: string;
+  value: number;
+  max: number;
+  unit: string;
+  color: string;
+  icon: FC<any>;
+  iconColor: string;
+  tooltip?: string;
+  guidedMode: boolean;
+  activeEntries: NutritionEntry[];
+  nutrientKey: "protein" | "carbs" | "fat" | "fiber";
+}> = ({
+  label, value, max, unit, color, icon: Icon, iconColor, tooltip, guidedMode, activeEntries, nutrientKey
 }) => {
-  const guidedMode = useAtlasStore((s) => s.guidedMode);
+  const [isOpen, setIsOpen] = useState(false);
   const pct = Math.min((value / max) * 100, 100);
   const isOver = value > max;
 
+  // Filter and map sources
+  const sources = useMemo(() => {
+    return activeEntries
+      .filter((e) => e[nutrientKey] > 0)
+      .map((e) => ({
+        name: e.name,
+        amount: e[nutrientKey],
+        meal: e.meal,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [activeEntries, nutrientKey]);
+
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5">
-          <Icon size={13} className={iconColor} aria-hidden="true" />
-          <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
-          {guidedMode && tooltip && (
-            <span className="text-[10px] text-zinc-500 font-medium font-sans select-none" title={tooltip}>
-              ({tooltip})
+    <div className={cn("rounded-2xl border transition-all duration-200 overflow-hidden", 
+      !guidedMode 
+        ? "border-card-border hover:border-emerald-500/30 bg-zinc-50/20 dark:bg-zinc-900/40" 
+        : "border-transparent bg-transparent"
+    )}>
+      {/* Clickable trigger if in Advanced Mode */}
+      {!guidedMode ? (
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full text-left p-3 flex flex-col gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+        >
+          <div className="flex items-center justify-between text-xs w-full">
+            <div className="flex items-center gap-1.5">
+              <Icon size={13} className={iconColor} aria-hidden="true" />
+              <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
+                {value.toFixed(1)}<span className="font-normal text-zinc-500 dark:text-zinc-400">/{max}{unit}</span>
+              </span>
+              <motion.span
+                animate={{ rotate: isOpen ? 90 : 0 }}
+                transition={{ duration: 0.18 }}
+                className="text-zinc-400"
+              >
+                <ChevronRight size={12} />
+              </motion.span>
+            </div>
+          </div>
+          <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800/80 overflow-hidden" aria-hidden="true">
+            <motion.div
+              className={cn("h-full rounded-full", isOver ? "bg-rose-500" : color)}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            />
+          </div>
+        </button>
+      ) : (
+        <div className="p-1 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <Icon size={13} className={iconColor} aria-hidden="true" />
+              <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
+              {tooltip && (
+                <span className="text-[10px] text-zinc-500 font-medium font-sans select-none" title={tooltip}>
+                  ({tooltip})
+                </span>
+              )}
+            </div>
+            <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
+              {value.toFixed(1)}<span className="font-normal text-zinc-655 dark:text-zinc-400">/{max}{unit}</span>
             </span>
-          )}
+          </div>
+          <div className="h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800/80 overflow-hidden" aria-hidden="true">
+            <motion.div
+              className={cn("h-full rounded-full", isOver ? "bg-rose-500" : color)}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            />
+          </div>
         </div>
-        <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
-          {value.toFixed(1)}<span className="font-normal text-zinc-600 dark:text-zinc-400">/{max}{unit}</span>
-        </span>
-      </div>
-      <div className="h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800/80 overflow-hidden" aria-hidden="true">
-        <motion.div
-          className={cn("h-full rounded-full", isOver ? "bg-rose-500" : color)}
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-        />
-      </div>
+      )}
+
+      {/* Expandable sources list */}
+      <AnimatePresence>
+        {isOpen && !guidedMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/60 border-t border-card-border"
+          >
+            <div className="p-3 space-y-2">
+              <p className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider">Food Sources ({sources.length})</p>
+              {sources.length === 0 ? (
+                <p className="text-[10px] text-zinc-500 italic">No logged sources for this nutrient today</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {sources.map((src, i) => (
+                    <div key={i} className="flex justify-between items-center text-xs text-foreground bg-white/40 dark:bg-black/15 p-2 rounded-xl border border-card-border/40">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold truncate">{src.name}</span>
+                        <span className="text-[9px] text-zinc-500 capitalize">{src.meal}</span>
+                      </div>
+                      <span className="font-bold text-zinc-700 dark:text-zinc-300 tabular-nums shrink-0 ml-2">{src.amount.toFixed(1)}{unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
 
 // ─── Micro Badge ─────────────────────────────────────────────────
 const MicroBadge: FC<{ label: string; value: number; max: number; unit: string; className: string }> = ({
@@ -185,6 +285,7 @@ export function NutritionAnalyticsScreen() {
   const waterLogs = useAtlasStore((s) => s.waterLogs || []);
   const setActiveSubScreen = useAtlasStore((s) => s.setActiveSubScreen);
   const setGuidedMode = useAtlasStore((s) => s.setGuidedMode);
+  const [expandedMicro, setExpandedMicro] = useState<string | null>(null);
 
 
 
@@ -532,11 +633,11 @@ export function NutritionAnalyticsScreen() {
             </button>
           </div>
           <div className="space-y-4">
-            <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" />
-            <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" tooltip="gives you energy ⚡" />
-            <MacroBar label="Fat" value={totals.fat} max={targets.fat} unit="g" color="bg-rose-455" icon={Droplets} iconColor="text-rose-455" tooltip="keeps you healthy 🫀" />
+            <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="protein" />
+            <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" tooltip="gives you energy ⚡" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="carbs" />
+            <MacroBar label="Fat" value={totals.fat} max={targets.fat} unit="g" color="bg-rose-455" icon={Droplets} iconColor="text-rose-455" tooltip="keeps you healthy 🫀" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="fat" />
             {!guidedMode && (
-              <MacroBar label="Fiber" value={totals.fiber} max={targets.fiber} unit="g" color="bg-emerald-455" icon={Leaf} iconColor="text-emerald-455" />
+              <MacroBar label="Fiber" value={totals.fiber} max={targets.fiber} unit="g" color="bg-emerald-455" icon={Leaf} iconColor="text-emerald-455" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="fiber" />
             )}
           </div>
 
@@ -550,39 +651,97 @@ export function NutritionAnalyticsScreen() {
 
               <div className="divide-y divide-card-border">
                 {[
-                  { label: "Sodium", value: totals.sodium, max: targets.sodium, unit: "mg", color: "stroke-amber-450", desc: "Keep below 2,300 mg (prevents fluid retention)" },
-                  { label: "Potassium", value: totals.potassium, max: targets.potassium, unit: "mg", color: "stroke-violet-455", desc: "Aim for 4,700 mg (supports heart/muscle function)" },
-                  { label: "Vitamin C", value: totals.vitaminC, max: targets.vitaminC, unit: "mg", color: "stroke-amber-450", desc: "Aim for 90 mg (promotes immune health)" },
-                  { label: "Calcium", value: totals.calcium, max: targets.calcium, unit: "mg", color: "stroke-blue-455", desc: "Aim for 1,000 mg (essential for bone structure)" },
-                  { label: "Iron", value: totals.iron, max: targets.iron, unit: "mg", color: "stroke-rose-455", desc: `Aim for ${targets.iron} mg (supports blood oxygenation)` },
+                  { label: "Sodium", value: totals.sodium, max: targets.sodium, unit: "mg", color: "stroke-amber-450", desc: "Keep below 2,300 mg (prevents fluid retention)", key: "sodium" as const },
+                  { label: "Potassium", value: totals.potassium, max: targets.potassium, unit: "mg", color: "stroke-violet-455", desc: "Aim for 4,700 mg (supports heart/muscle function)", key: "potassium" as const },
+                  { label: "Vitamin C", value: totals.vitaminC, max: targets.vitaminC, unit: "mg", color: "stroke-amber-450", desc: "Aim for 90 mg (promotes immune health)", key: "vitaminC" as const },
+                  { label: "Calcium", value: totals.calcium, max: targets.calcium, unit: "mg", color: "stroke-blue-455", desc: "Aim for 1,000 mg (essential for bone structure)", key: "calcium" as const },
+                  { label: "Iron", value: totals.iron, max: targets.iron, unit: "mg", color: "stroke-rose-455", desc: `Aim for ${targets.iron} mg (supports blood oxygenation)`, key: "iron" as const },
                 ].map((micro) => {
                   const pct = Math.min((micro.value / micro.max) * 100, 100);
                   const isOver = micro.value > micro.max;
+                  const isMicroOpen = expandedMicro === micro.key;
+
+                  const microSources = activeEntries
+                    .filter((e) => e[micro.key] > 0)
+                    .map((e) => ({
+                      name: e.name,
+                      amount: e[micro.key],
+                      meal: e.meal,
+                    }))
+                    .sort((a, b) => b.amount - a.amount);
+
                   return (
-                    <div key={micro.label} className="flex items-center gap-3.5 py-3 first:pt-0 last:pb-0">
-                      <div className="relative shrink-0 select-none">
-                        <RingProgress
-                          value={micro.value}
-                          max={micro.max}
-                          className={isOver ? "stroke-rose-600 dark:stroke-rose-500" : micro.color}
-                          size={42}
-                          strokeWidth={4.5}
-                        />
-                        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-zinc-955 leading-none">
-                          {Math.round(pct)}%
-                        </span>
-                      </div>
+                    <div key={micro.label} className="border-b border-card-border last:border-0">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedMicro(isMicroOpen ? null : micro.key)}
+                        className="w-full flex items-center gap-3.5 py-3 text-left hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50"
+                      >
+                        <div className="relative shrink-0 select-none">
+                          <RingProgress
+                            value={micro.value}
+                            max={micro.max}
+                            className={isOver ? "stroke-rose-600 dark:stroke-rose-500" : micro.color}
+                            size={42}
+                            strokeWidth={4.5}
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-zinc-955 leading-none">
+                            {Math.round(pct)}%
+                          </span>
+                        </div>
 
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-zinc-955 leading-none">{micro.label}</p>
-                        <p className="text-[10px] text-zinc-755 mt-1 truncate">{micro.desc}</p>
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-zinc-955 leading-none">{micro.label}</p>
+                          <p className="text-[10px] text-zinc-755 mt-1 truncate">{micro.desc}</p>
+                        </div>
 
-                      <div className="text-right shrink-0">
-                        <span className={cn("text-xs font-bold font-sans tabular-nums block", isOver ? "text-rose-500" : "text-zinc-955")}>
-                          {micro.value.toFixed(0)} <span className="text-[10px] font-normal text-zinc-755">/ {micro.max} {micro.unit}</span>
-                        </span>
-                      </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="text-right">
+                            <span className={cn("text-xs font-bold font-sans tabular-nums block", isOver ? "text-rose-500" : "text-zinc-955")}>
+                              {micro.value.toFixed(0)} <span className="text-[10px] font-normal text-zinc-755">/ {micro.max} {micro.unit}</span>
+                            </span>
+                          </div>
+                          <motion.span
+                            animate={{ rotate: isMicroOpen ? 90 : 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="text-zinc-400 shrink-0"
+                          >
+                            <ChevronRight size={12} />
+                          </motion.span>
+                        </div>
+                      </button>
+
+                      {/* Expandable micro sources */}
+                      <AnimatePresence>
+                        {isMicroOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2, ease: "easeInOut" }}
+                            className="overflow-hidden bg-zinc-50/30 dark:bg-zinc-900/40"
+                          >
+                            <div className="px-3.5 pb-3 pt-1 space-y-2">
+                              <p className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider font-sans">Food Sources ({microSources.length})</p>
+                              {microSources.length === 0 ? (
+                                <p className="text-[10px] text-zinc-500 italic">No logged sources for this nutrient today</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {microSources.map((src, i) => (
+                                    <div key={i} className="flex justify-between items-center text-xs text-foreground bg-white/40 dark:bg-black/15 p-2 rounded-xl border border-card-border/40">
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="font-bold truncate">{src.name}</span>
+                                        <span className="text-[9px] text-zinc-500 capitalize">{src.meal}</span>
+                                      </div>
+                                      <span className="font-bold text-zinc-700 dark:text-zinc-300 tabular-nums shrink-0 ml-2">{src.amount.toFixed(1)}{micro.unit}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}

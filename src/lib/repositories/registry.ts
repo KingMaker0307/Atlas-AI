@@ -27,6 +27,9 @@ import type {
   RecoveryRepository,
   AiProviderRepository,
   SubscriptionRepository,
+  ChatRepository,
+  RecentFoodSearchRepository,
+  AiCacheRepository,
 } from "@/ports/repositories";
 
 // ─── Container type ───────────────────────────────────────────────────────────
@@ -41,6 +44,9 @@ export interface RepositoryContainer {
   recovery: RecoveryRepository;
   aiProvider: AiProviderRepository;
   subscription: SubscriptionRepository;
+  chat: ChatRepository;
+  recentSearch: RecentFoodSearchRepository;
+  aiCache: AiCacheRepository;
 }
 
 // ─── Null container (safe no-ops for unauthenticated state) ───────────────────
@@ -62,6 +68,9 @@ export const nullContainer: RepositoryContainer = {
     checkRateLimit: async () => ({ allowed: true, remaining: 60 }),
     incrementUsage: noop,
   },
+  chat: { getMessages: emptyArr as any, saveMessage: noop, deleteMessagesForDate: noop },
+  recentSearch: { getRecentSearches: emptyArr as any, addRecentSearch: noop, clearRecentSearches: noop },
+  aiCache: { getCachedResponse: async () => null, saveResponse: noop },
 };
 
 // ─── Registry singleton ────────────────────────────────────────────────────────
@@ -140,13 +149,16 @@ export async function createProductionContainer(
   const [
     { SupabaseUserRepository, SupabaseWorkoutRepository, SupabaseWorkoutPlanRepository,
       SupabaseNutritionRepository, SupabaseWaterRepository, SupabaseBodyMetricRepository,
-      SupabaseRecoveryRepository, SupabaseAiProviderRepository, SupabaseSubscriptionRepository },
+      SupabaseRecoveryRepository, SupabaseAiProviderRepository, SupabaseSubscriptionRepository,
+      SupabaseChatRepository, SupabaseRecentFoodSearchRepository, SupabaseAiCacheRepository },
     { IndexedDbUserRepository, IndexedDbWorkoutRepository, IndexedDbWorkoutPlanRepository,
       IndexedDbNutritionRepository, IndexedDbWaterRepository, IndexedDbBodyMetricRepository,
-      IndexedDbRecoveryRepository },
+      IndexedDbRecoveryRepository, IndexedDbChatRepository, IndexedDbRecentFoodSearchRepository,
+      IndexedDbAiCacheRepository },
     { CompositeUserRepository, CompositeWorkoutRepository, CompositeWorkoutPlanRepository,
       CompositeNutritionRepository, CompositeWaterRepository, CompositeBodyMetricRepository,
-      CompositeRecoveryRepository, PassthroughAiProviderRepository, PassthroughSubscriptionRepository },
+      CompositeRecoveryRepository, PassthroughAiProviderRepository, PassthroughSubscriptionRepository,
+      CompositeChatRepository, CompositeRecentFoodSearchRepository, CompositeAiCacheRepository },
   ] = await Promise.all([
     import("@/adapters/supabase/index"),
     import("@/adapters/indexeddb/index"),
@@ -164,6 +176,9 @@ export async function createProductionContainer(
     recovery: new SupabaseRecoveryRepository(supabase),
     aiProvider: new SupabaseAiProviderRepository(supabase),
     subscription: new SupabaseSubscriptionRepository(supabase),
+    chat: new SupabaseChatRepository(supabase),
+    recentSearch: new SupabaseRecentFoodSearchRepository(supabase),
+    aiCache: new SupabaseAiCacheRepository(supabase),
   };
 
   // Instantiate IDB adapters
@@ -175,6 +190,9 @@ export async function createProductionContainer(
     water: new IndexedDbWaterRepository(),
     body: new IndexedDbBodyMetricRepository(),
     recovery: new IndexedDbRecoveryRepository(),
+    chat: new IndexedDbChatRepository(),
+    recentSearch: new IndexedDbRecentFoodSearchRepository(),
+    aiCache: new IndexedDbAiCacheRepository(),
   };
 
   // Wrap in composite (write-through cache)
@@ -186,6 +204,9 @@ export async function createProductionContainer(
     water: new CompositeWaterRepository(local.water, supa.water, userId),
     body: new CompositeBodyMetricRepository(local.body, supa.body, userId),
     recovery: new CompositeRecoveryRepository(local.recovery, supa.recovery, userId),
+    chat: new CompositeChatRepository(local.chat, supa.chat, userId),
+    recentSearch: new CompositeRecentFoodSearchRepository(local.recentSearch, supa.recentSearch, userId),
+    aiCache: new CompositeAiCacheRepository(local.aiCache, supa.aiCache, userId),
     // Cloud-only (no local cache — security & billing)
     aiProvider: new PassthroughAiProviderRepository(supa.aiProvider),
     subscription: new PassthroughSubscriptionRepository(supa.subscription),
@@ -240,6 +261,11 @@ export async function drainSyncQueue(): Promise<void> {
             await _container.body.deleteMetric(item.userId, item.recordId);
           } else if (item.store === "recovery_logs") {
             await _container.recovery.deleteLog(item.userId, item.recordId);
+          } else if (item.store === "chat_messages") {
+            const date = item.recordId.startsWith("date:") ? item.recordId.split("date:")[1] : item.recordId;
+            await _container.chat.deleteMessagesForDate(item.userId, date);
+          } else if (item.store === "recent_food_searches") {
+            await _container.recentSearch.clearRecentSearches(item.userId);
           }
         } else if (item.operation === "upsert" && item.payload) {
           if (item.store === "workouts") {
@@ -256,6 +282,14 @@ export async function drainSyncQueue(): Promise<void> {
             await _container.recovery.addLog(item.userId, item.payload as any);
           } else if (item.store === "profiles") {
             await _container.user.saveProfile(item.userId, item.payload as any);
+          } else if (item.store === "chat_messages") {
+            const { date, message } = item.payload as { date: string; message: any };
+            await _container.chat.saveMessage(item.userId, date, message);
+          } else if (item.store === "recent_food_searches") {
+            await _container.recentSearch.addRecentSearch(item.userId, item.payload as any);
+          } else if (item.store === "ai_response_cache") {
+            const { category, queryKey, payload } = item.payload as { category: string; queryKey: string; payload: unknown };
+            await _container.aiCache.saveResponse(item.userId, category, queryKey, payload);
           }
         }
         await removeFromQueue(item.id!);

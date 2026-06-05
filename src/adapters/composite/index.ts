@@ -28,6 +28,9 @@ import type {
   RecoveryRepository,
   AiProviderRepository,
   SubscriptionRepository,
+  ChatRepository,
+  RecentFoodSearchRepository,
+  AiCacheRepository,
 } from "@/ports/repositories";
 import type {
   UserProfile,
@@ -38,6 +41,8 @@ import type {
   BodyMetric,
   RecoveryLog,
   AiProviderSettings,
+  AiMessage,
+  CommonFoodItem,
 } from "@/types/domain";
 import { enqueueSync } from "@/lib/storage/db";
 import { registry } from "@/lib/repositories/registry";
@@ -371,4 +376,150 @@ export class PassthroughSubscriptionRepository implements SubscriptionRepository
   getPlan(userId: string) { return this.remote.getPlan(userId); }
   checkRateLimit(userId: string) { return this.remote.checkRateLimit(userId); }
   incrementUsage(userId: string) { return this.remote.incrementUsage(userId); }
+}
+
+// ─── Day-Based Chat Messages ────────────────────────────────────────────────
+
+export class CompositeChatRepository implements ChatRepository {
+  constructor(
+    private local: ChatRepository,
+    private remote: ChatRepository,
+    private userId: string,
+  ) {}
+
+  async getMessages(userId: string, date: string): Promise<AiMessage[]> {
+    if (isOnline()) {
+      try {
+        const messages = await this.remote.getMessages(userId, date);
+        await Promise.all(messages.map((m) => this.local.saveMessage(userId, date, m)));
+        return messages;
+      } catch (err) {
+        console.warn("[Composite] Remote getMessages failed:", err);
+      }
+    }
+    return this.local.getMessages(userId, date);
+  }
+
+  async saveMessage(userId: string, date: string, message: AiMessage): Promise<void> {
+    await this.local.saveMessage(userId, date, message);
+    await remoteWrite(
+      () => this.remote.saveMessage(userId, date, message),
+      () => enqueueSync({
+        userId,
+        store: "chat_messages",
+        operation: "upsert",
+        recordId: message.id,
+        payload: { date, message },
+      }),
+    );
+  }
+
+  async deleteMessagesForDate(userId: string, date: string): Promise<void> {
+    await this.local.deleteMessagesForDate(userId, date);
+    await remoteWrite(
+      () => this.remote.deleteMessagesForDate(userId, date),
+      () => enqueueSync({
+        userId,
+        store: "chat_messages",
+        operation: "delete",
+        recordId: `date:${date}`,
+      }),
+    );
+  }
+}
+
+// ─── Recent Food Searches ───────────────────────────────────────────────────
+
+export class CompositeRecentFoodSearchRepository implements RecentFoodSearchRepository {
+  constructor(
+    private local: RecentFoodSearchRepository,
+    private remote: RecentFoodSearchRepository,
+    private userId: string,
+  ) {}
+
+  async getRecentSearches(userId: string): Promise<CommonFoodItem[]> {
+    if (isOnline()) {
+      try {
+        const searches = await this.remote.getRecentSearches(userId);
+        await Promise.all(searches.map((s) => this.local.addRecentSearch(userId, s)));
+        return searches;
+      } catch (err) {
+        console.warn("[Composite] Remote getRecentSearches failed:", err);
+      }
+    }
+    return this.local.getRecentSearches(userId);
+  }
+
+  async addRecentSearch(userId: string, item: CommonFoodItem): Promise<void> {
+    await this.local.addRecentSearch(userId, item);
+    await remoteWrite(
+      () => this.remote.addRecentSearch(userId, item),
+      () => enqueueSync({
+        userId,
+        store: "recent_food_searches",
+        operation: "upsert",
+        recordId: item.name,
+        payload: item,
+      }),
+    );
+  }
+
+  async clearRecentSearches(userId: string): Promise<void> {
+    await this.local.clearRecentSearches(userId);
+    await remoteWrite(
+      () => this.remote.clearRecentSearches(userId),
+      () => enqueueSync({
+        userId,
+        store: "recent_food_searches",
+        operation: "delete",
+        recordId: "all",
+      }),
+    );
+  }
+}
+
+// ─── AI Response Cache ───────────────────────────────────────────────────────
+
+export class CompositeAiCacheRepository implements AiCacheRepository {
+  constructor(
+    private local: AiCacheRepository,
+    private remote: AiCacheRepository,
+    private userId: string,
+  ) {}
+
+  async getCachedResponse(userId: string, category: string, queryKey: string): Promise<unknown | null> {
+    try {
+      const localCached = await this.local.getCachedResponse(userId, category, queryKey);
+      if (localCached) return localCached;
+    } catch (err) {
+      console.warn("[Composite] Local getCachedResponse failed:", err);
+    }
+
+    if (isOnline()) {
+      try {
+        const remoteCached = await this.remote.getCachedResponse(userId, category, queryKey);
+        if (remoteCached) {
+          await this.local.saveResponse(userId, category, queryKey, remoteCached);
+          return remoteCached;
+        }
+      } catch (err) {
+        console.warn("[Composite] Remote getCachedResponse failed:", err);
+      }
+    }
+    return null;
+  }
+
+  async saveResponse(userId: string, category: string, queryKey: string, payload: unknown): Promise<void> {
+    await this.local.saveResponse(userId, category, queryKey, payload);
+    await remoteWrite(
+      () => this.remote.saveResponse(userId, category, queryKey, payload),
+      () => enqueueSync({
+        userId,
+        store: "ai_response_cache",
+        operation: "upsert",
+        recordId: `${category}:${queryKey}`,
+        payload: { category, queryKey, payload },
+      }),
+    );
+  }
 }

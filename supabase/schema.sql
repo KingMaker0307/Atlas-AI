@@ -184,3 +184,59 @@ CREATE INDEX IF NOT EXISTS ai_usage_user_time ON ai_usage_logs(user_id, created_
 -- Auto-cleanup: delete usage logs older than 24 hours (keep table small)
 -- Run this as a cron job in Supabase Dashboard → Database → Cron Jobs:
 -- DELETE FROM ai_usage_logs WHERE created_at < NOW() - INTERVAL '24 hours';
+
+-- ─── Chat Messages (Day-Based) ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS chat_messages_user_date ON chat_messages(user_id, date, created_at ASC);
+
+-- ─── Recent Food Searches ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS recent_food_searches (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  brand TEXT,
+  calories FLOAT DEFAULT 0,
+  protein FLOAT DEFAULT 0,
+  carbs FLOAT DEFAULT 0,
+  fat FLOAT DEFAULT 0,
+  fiber FLOAT DEFAULT 0,
+  sugar FLOAT DEFAULT 0,
+  sodium FLOAT DEFAULT 0,
+  potassium FLOAT DEFAULT 0,
+  vitamin_c FLOAT DEFAULT 0,
+  calcium FLOAT DEFAULT 0,
+  iron FLOAT DEFAULT 0,
+  serving_unit TEXT DEFAULT 'serving',
+  serving_weight FLOAT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS recent_food_searches_user ON recent_food_searches(user_id, created_at DESC);
+
+-- ─── AI Response Cache ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ai_response_cache (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('workout_plan', 'nutrition_estimation', 'daily_insight', 'coach_response')),
+  query_key TEXT NOT NULL,
+  response_payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_response_cache_user_query ON ai_response_cache(user_id, category, query_key);
+
+-- ─── Grants ────────────────────────────────────────────────────
+GRANT ALL ON TABLE chat_messages TO authenticated;
+GRANT ALL ON TABLE chat_messages TO service_role;
+
+GRANT ALL ON TABLE recent_food_searches TO authenticated;
+GRANT ALL ON TABLE recent_food_searches TO service_role;
+
+GRANT ALL ON TABLE ai_response_cache TO authenticated;
+GRANT ALL ON TABLE ai_response_cache TO service_role;
+

@@ -32,7 +32,7 @@ export const createUiSlice: StateCreator<
   [],
   [],
   UiSlice
-> = (set) => ({
+> = (set, get) => ({
   hydrated: false,
   activeTab: "dashboard",
   activeSubScreen: null,
@@ -52,8 +52,16 @@ export const createUiSlice: StateCreator<
   setTheme: async (theme) => {
     writeLocalSetting("theme", theme);
     set({ theme });
+    if (get().profile) {
+      await get().updateProfile({ theme });
+    }
   },
-  setGuidedMode: async (guidedMode) => set({ guidedMode }),
+  setGuidedMode: async (guidedMode) => {
+    set({ guidedMode });
+    if (get().profile) {
+      await get().updateProfile({ guidedMode });
+    }
+  },
   setHomeSubTab: (homeSubTab) => set({ homeSubTab }),
   setGlobalAddFoodOpen: (globalAddFoodOpen) => set({ globalAddFoodOpen }),
 });

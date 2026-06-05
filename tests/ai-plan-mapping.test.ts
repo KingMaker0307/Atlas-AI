@@ -83,6 +83,9 @@ describe("AI Plan Mapping & Prompt Hardening", () => {
       recovery: {} as any,
       aiProvider: {} as any,
       subscription: {} as any,
+      chat: { getMessages: vi.fn(async () => []), saveMessage: vi.fn(async () => {}), deleteMessagesForDate: vi.fn(async () => {}) } as any,
+      recentSearch: { getRecentSearches: vi.fn(async () => []), addRecentSearch: vi.fn(async () => {}), clearRecentSearches: vi.fn(async () => {}) } as any,
+      aiCache: { getCachedResponse: vi.fn(async () => null), saveResponse: vi.fn(async () => {}) } as any,
     });
   });
 

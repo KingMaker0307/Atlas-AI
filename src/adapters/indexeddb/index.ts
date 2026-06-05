@@ -13,6 +13,9 @@ import type {
   WaterRepository,
   BodyMetricRepository,
   RecoveryRepository,
+  ChatRepository,
+  RecentFoodSearchRepository,
+  AiCacheRepository,
 } from "@/ports/repositories";
 import type {
   UserProfile,
@@ -22,6 +25,8 @@ import type {
   WaterLogEntry,
   BodyMetric,
   RecoveryLog,
+  AiMessage,
+  CommonFoodItem,
 } from "@/types/domain";
 import { getDb, getAll } from "@/lib/storage/db";
 
@@ -161,5 +166,69 @@ export class IndexedDbRecoveryRepository implements RecoveryRepository {
   async deleteLog(userId: string, logId: string): Promise<void> {
     const db = await getDb();
     await (db as any).delete("recovery_logs", logId);
+  }
+}
+
+export class IndexedDbChatRepository implements ChatRepository {
+  async getMessages(userId: string, date: string): Promise<AiMessage[]> {
+    const db = await getDb();
+    const records = await (db as any).getAll("chat_messages") as (AiMessage & { date: string; _userId: string })[];
+    return records
+      .filter((r) => r._userId === userId && r.date === date)
+      .map(({ date: _d, _userId: _u, ...msg }) => msg as AiMessage)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  async saveMessage(userId: string, date: string, message: AiMessage): Promise<void> {
+    const db = await getDb();
+    await (db as any).put("chat_messages", { ...message, date, _userId: userId }, message.id);
+  }
+
+  async deleteMessagesForDate(userId: string, date: string): Promise<void> {
+    const db = await getDb();
+    const records = await (db as any).getAll("chat_messages") as (AiMessage & { date: string; _userId: string })[];
+    const toDelete = records.filter((r) => r._userId === userId && r.date === date);
+    await Promise.all(toDelete.map((msg) => (db as any).delete("chat_messages", msg.id)));
+  }
+}
+
+export class IndexedDbRecentFoodSearchRepository implements RecentFoodSearchRepository {
+  async getRecentSearches(userId: string): Promise<CommonFoodItem[]> {
+    const records = await getAll<CommonFoodItem & { id: string; _userId: string }>("recent_food_searches", userId);
+    return records.map(({ id: _i, _userId: _u, ...item }) => item as CommonFoodItem);
+  }
+
+  async addRecentSearch(userId: string, item: CommonFoodItem): Promise<void> {
+    const db = await getDb();
+    const id = item.name;
+    await (db as any).put("recent_food_searches", { ...item, id, _userId: userId }, id);
+  }
+
+  async clearRecentSearches(userId: string): Promise<void> {
+    const db = await getDb();
+    const records = await (db as any).getAll("recent_food_searches") as (CommonFoodItem & { id: string; _userId: string })[];
+    const toDelete = records.filter((r) => r._userId === userId);
+    await Promise.all(toDelete.map((r) => (db as any).delete("recent_food_searches", r.id)));
+  }
+}
+
+export class IndexedDbAiCacheRepository implements AiCacheRepository {
+  async getCachedResponse(userId: string, category: string, queryKey: string): Promise<unknown | null> {
+    const db = await getDb();
+    const records = await (db as any).getAll("ai_response_cache") as { id: string; category: string; queryKey: string; responsePayload: unknown; _userId: string }[];
+    const match = records.find((r) => r._userId === userId && r.category === category && r.queryKey === queryKey);
+    return match ? match.responsePayload : null;
+  }
+
+  async saveResponse(userId: string, category: string, queryKey: string, payload: unknown): Promise<void> {
+    const db = await getDb();
+    const id = `${category}:${queryKey}`;
+    await (db as any).put("ai_response_cache", {
+      id,
+      category,
+      queryKey,
+      responsePayload: payload,
+      _userId: userId,
+    }, id);
   }
 }

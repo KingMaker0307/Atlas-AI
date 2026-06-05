@@ -10,7 +10,7 @@ import {
   sampleRecoveryLogs,
   sampleWorkouts,
 } from "@/data/seed";
-import { createId } from "@/lib/id";
+import { createId, todayKey } from "@/lib/id";
 import { decryptExport, encryptForExport, encryptString, getDeviceSecretValue, setDeviceSecretValue } from "@/lib/security/crypto";
 import { findFirstSupportedModel } from "@/providers";
 import { registry, createProductionContainer, drainSyncQueue, nullContainer } from "@/lib/repositories/registry";
@@ -74,7 +74,9 @@ export interface RootState {
   hasOnboarded: boolean;
   lastSyncedAt: string | null;
   workoutTab: "plans" | "nutrition";
+  selectedDate: string;
 
+  setSelectedDate: (date: string) => Promise<void>;
   setWorkoutTab: (tab: "plans" | "nutrition") => void;
   hydrate: () => Promise<void>;
   pullCloudUpdate: () => Promise<boolean>;
@@ -231,7 +233,15 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
   hasOnboarded: false,
   lastSyncedAt: null,
   workoutTab: "plans",
+  selectedDate: todayKey(),
 
+  setSelectedDate: async (date) => {
+    set({ selectedDate: date });
+    const user = get().user;
+    if (user) {
+      await get().loadMessagesForDate(date);
+    }
+  },
   setWorkoutTab: (tab) => set({ workoutTab: tab }),
 
   hydrate: async () => {
@@ -257,7 +267,10 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         IndexedDbNutritionRepository, 
         IndexedDbWaterRepository, 
         IndexedDbBodyMetricRepository,
-        IndexedDbRecoveryRepository 
+        IndexedDbRecoveryRepository,
+        IndexedDbChatRepository,
+        IndexedDbRecentFoodSearchRepository,
+        IndexedDbAiCacheRepository,
       } = await import("@/adapters/indexeddb/index");
 
       const local = {
@@ -268,6 +281,9 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         water: new IndexedDbWaterRepository(),
         body: new IndexedDbBodyMetricRepository(),
         recovery: new IndexedDbRecoveryRepository(),
+        chat: new IndexedDbChatRepository(),
+        recentSearch: new IndexedDbRecentFoodSearchRepository(),
+        aiCache: new IndexedDbAiCacheRepository(),
       };
 
       // Set temporary local container in registry for immediate local operations
@@ -280,11 +296,14 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         water: local.water,
         body: local.body,
         recovery: local.recovery,
+        chat: local.chat,
+        recentSearch: local.recentSearch,
+        aiCache: local.aiCache,
       } as any;
       registry.set(user.id, localContainer);
 
       // Fetch from local IndexedDB cache instantly
-      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile] =
+      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile, recentFoodSearches] =
         await Promise.all([
           local.workout.getWorkouts(user.id),
           local.plan.getPlans(user.id),
@@ -293,6 +312,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           local.body.getMetrics(user.id),
           local.recovery.getLogs(user.id),
           local.user.getProfile(user.id),
+          local.recentSearch.getRecentSearches(user.id),
         ]);
 
       const migratedPlans = ((plans ?? []) as any[]).map((plan: any) => ({
@@ -424,6 +444,15 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
             }
           }
 
+          const guestRecentSearches = await db.getAll("recent_food_searches");
+          for (const rs of guestRecentSearches) {
+            if (rs._userId === guestId) {
+              const migratedSearch = { ...rs };
+              delete (migratedSearch as any)._userId;
+              await local.recentSearch.addRecentSearch(user.id, migratedSearch);
+            }
+          }
+
           await db.delete("profiles", guestId);
 
           // Clean up guest sync queue
@@ -438,7 +467,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
             console.warn("[Migration] Non-fatal: Failed to clean up guest sync_queue:", queueErr);
           }
 
-          const [newWorkouts, newPlans, newNutrition, newWater, newBodyMetrics, newRecovery, newProfile] =
+          const [newWorkouts, newPlans, newNutrition, newWater, newBodyMetrics, newRecovery, newProfile, newRecentSearches] =
             await Promise.all([
               local.workout.getWorkouts(user.id),
               local.plan.getPlans(user.id),
@@ -447,6 +476,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
               local.body.getMetrics(user.id),
               local.recovery.getLogs(user.id),
               local.user.getProfile(user.id),
+              local.recentSearch.getRecentSearches(user.id),
             ]);
 
           const newMigratedPlans = ((newPlans ?? []) as any[]).map((plan: any, i: number) => ({
@@ -468,9 +498,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
             waterLogs: newWater ?? [],
             bodyMetrics: [...(newBodyMetrics ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
             recoveryLogs: [...(newRecovery ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
+            recentFoodSearches: newRecentSearches ?? [],
             profile: newProfile ? migrateProfile(newProfile as any) : (migratedProfile as any),
             heightUnit: newProfile?.heightUnit ?? (migratedProfile?.heightUnit ?? get().heightUnit),
             weightUnit: newProfile?.weightUnit ?? (migratedProfile?.weightUnit ?? get().weightUnit),
+            theme: newProfile?.theme ?? (migratedProfile?.theme ?? get().theme),
+            guidedMode: newProfile?.guidedMode ?? (migratedProfile?.guidedMode ?? get().guidedMode),
             hasOnboarded: true,
             activeWorkoutPlanId: newMigratedPlans[0]?.id ?? null,
             activeWorkout,
@@ -490,6 +523,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           // 2. Setup composite container & trigger remote sync in background
           const container = await createProductionContainer(supabase, user.id);
           registry.set(user.id, container);
+          await get().loadMessagesForDate(get().selectedDate);
 
           void (async () => {
             await drainSyncQueue();
@@ -511,9 +545,12 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           waterLogs: water ?? freshSnap.waterLogs,
           bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.bodyMetrics,
           recoveryLogs: recovery ? [...recovery].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.recoveryLogs,
+          recentFoodSearches: recentFoodSearches ?? freshSnap.recentFoodSearches,
           profile: enrichedProfile || (freshSnap.profile ?? defaultProfile),
           heightUnit: enrichedProfile?.heightUnit ?? (freshSnap.profile?.heightUnit ?? get().heightUnit),
           weightUnit: enrichedProfile?.weightUnit ?? (freshSnap.profile?.weightUnit ?? get().weightUnit),
+          theme: enrichedProfile?.theme ?? get().theme,
+          guidedMode: enrichedProfile?.guidedMode ?? get().guidedMode,
           hasOnboarded: true,
           activeWorkoutPlanId,
           activeWorkout,
@@ -533,6 +570,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         // 2. Setup composite container & trigger remote sync in background
         const container = await createProductionContainer(supabase, user.id);
         registry.set(user.id, container);
+        await get().loadMessagesForDate(get().selectedDate);
 
         void (async () => {
           await drainSyncQueue();
@@ -547,6 +585,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           waterLogs: water ?? freshSnap.waterLogs,
           bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.bodyMetrics,
           recoveryLogs: recovery ? [...recovery].sort((a, b) => a.date.localeCompare(b.date)) : freshSnap.recoveryLogs,
+          recentFoodSearches: recentFoodSearches ?? freshSnap.recentFoodSearches,
           profile: null,
           hasOnboarded: false,
           activeWorkoutPlanId,
@@ -567,6 +606,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         // 2. Setup composite container
         const container = await createProductionContainer(supabase, user.id);
         registry.set(user.id, container);
+        await get().loadMessagesForDate(get().selectedDate);
 
         try {
           await drainSyncQueue();
@@ -612,7 +652,8 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
       if (!registry.isAuthenticated) return false;
 
       // Pull latest datasets in parallel
-      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile, dbProviders] =
+      // Pull latest datasets in parallel
+      const [workouts, plans, nutrition, water, bodyMetrics, recovery, profile, dbProviders, recentFoodSearches] =
         await Promise.all([
           registry.load((r, uid) => r.workout.getWorkouts(uid, 30)),
           registry.load((r, uid) => r.plan.getPlans(uid)),
@@ -622,6 +663,7 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
           registry.load((r, uid) => r.recovery.getLogs(uid)),
           registry.load((r, uid) => r.user.getProfile(uid)),
           registry.load((r, uid) => r.aiProvider.getProviders(uid)),
+          registry.load((r, uid) => r.recentSearch.getRecentSearches(uid)),
         ]);
 
       // Migrate plans structure if needed
@@ -669,14 +711,19 @@ export const useAtlasStore = create<AtlasStoreState>()((set, get, store) => ({
         waterLogs: water ?? get().waterLogs,
         bodyMetrics: bodyMetrics ? [...bodyMetrics].sort((a, b) => a.date.localeCompare(b.date)) : get().bodyMetrics,
         recoveryLogs: recovery ? [...recovery].sort((a, b) => a.date.localeCompare(b.date)) : get().recoveryLogs,
+        recentFoodSearches: recentFoodSearches ?? get().recentFoodSearches,
         profile: enrichedProfile ?? get().profile,
         heightUnit: enrichedProfile?.heightUnit ?? get().heightUnit,
         weightUnit: enrichedProfile?.weightUnit ?? get().weightUnit,
+        theme: enrichedProfile?.theme ?? get().theme,
+        guidedMode: enrichedProfile?.guidedMode ?? get().guidedMode,
         aiProviders: (dbProviders && dbProviders.length > 0) ? dbProviders : get().aiProviders,
         activeProviderId: (dbProviders && dbProviders.length > 0) ? (dbProviders.find((p: any) => p.enabled)?.id || dbProviders[0]?.id) : get().activeProviderId,
         lastSyncedAt: new Date().toISOString(),
         hasOnboarded: enrichedProfile ? true : get().hasOnboarded,
       } as any);
+
+      await get().loadMessagesForDate(get().selectedDate);
 
       console.log("[Sync Pull] Successfully synced latest data from cloud.");
       return true;

@@ -70,6 +70,8 @@ export interface UserProfile {
   deviceSecret?: string;
   /** Whether the user has dismissed the one-time AI setup popup shown after onboarding. */
   aiSetupDismissed?: boolean;
+  theme?: ThemeMode;
+  guidedMode?: boolean;
 }
 
 export interface Exercise {

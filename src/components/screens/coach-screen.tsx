@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, Send, User, Info, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Bot, Send, User, Info, X, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { cn } from "@/lib/cn";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Card, Surface } from "@/components/ui/card";
@@ -22,8 +23,35 @@ export function CoachScreen() {
   const apiCallCount = useAtlasStore((state) => state.apiCallCount);
   const tokenCount = useAtlasStore((state) => state.tokenCount);
   const guidedMode = useAtlasStore((state) => state.guidedMode);
+  const selectedDate = useAtlasStore((state) => state.selectedDate);
+  const setSelectedDate = useAtlasStore((state) => state.setSelectedDate);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+
+  const navigateDayOffset = (offset: number) => {
+    const d = new Date(selectedDate + "T12:00:00");
+    d.setDate(d.getDate() + offset);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const nextStr = `${yyyy}-${mm}-${dd}`;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (nextStr > todayStr) return;
+    void setSelectedDate(nextStr);
+  };
+
+  const dateLabel = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    if (selectedDate === todayStr) return "Today";
+    if (selectedDate === yesterdayStr) return "Yesterday";
+    
+    const d = new Date(selectedDate + "T12:00:00");
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }, [selectedDate]);
   
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).coachPrompt) {
@@ -50,11 +78,62 @@ export function CoachScreen() {
       exit={{ opacity: 0, y: -8 }}
       className="flex h-[calc(100dvh-15rem)] md:h-[calc(100dvh-8rem)] flex-col gap-3"
     >
-      <section className="shrink-0">
-        <p className="text-xs sm:text-sm text-zinc-400">
-          {guidedMode ? "Ask me anything about fitness 🏃" : "Intelligent guidance"}
-        </p>
-        <h1 className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">Coach</h1>
+      <section className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-xs sm:text-sm text-zinc-400">
+            {guidedMode ? "Ask me anything about fitness 🏃" : "Intelligent guidance"}
+          </p>
+          <h1 className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-semibold tracking-normal text-foreground">Coach</h1>
+        </div>
+
+        {/* Date Selector Switcher */}
+        <div className="flex items-center justify-between p-1 bg-input border border-input-border rounded-2xl select-none sm:w-auto w-full">
+          <button
+            onClick={() => navigateDayOffset(-1)}
+            aria-label="Previous day"
+            type="button"
+            className="h-9 w-9 flex items-center justify-center rounded-xl transition hover:bg-white dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-300 active:scale-95"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          <div className="relative">
+            <input
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              value={selectedDate}
+              onChange={(e) => {
+                if (e.target.value) {
+                  void setSelectedDate(e.target.value);
+                }
+              }}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+              aria-label="Select custom date"
+            />
+            <button
+              type="button"
+              className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-455 shadow-sm border border-input-border text-xs font-bold uppercase tracking-wider focus-visible:outline-none"
+            >
+              <Calendar size={13} aria-hidden="true" />
+              <span>{dateLabel}</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => navigateDayOffset(1)}
+            disabled={selectedDate === new Date().toISOString().slice(0, 10)}
+            aria-label="Next day"
+            type="button"
+            className={cn(
+              "h-9 w-9 flex items-center justify-center rounded-xl transition active:scale-95",
+              selectedDate === new Date().toISOString().slice(0, 10)
+                ? "text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50"
+                : "hover:bg-white dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-300"
+            )}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </section>
 
       <Surface className="p-3.5 bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10 text-zinc-700 dark:text-zinc-300 rounded-xl flex gap-3 items-start select-none shrink-0">

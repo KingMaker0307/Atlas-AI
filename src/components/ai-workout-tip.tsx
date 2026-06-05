@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Sparkles, Loader2, Cpu, ArrowRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useAtlasStore } from "@/store/useAtlasStore";
@@ -9,6 +9,12 @@ import { decryptString } from "@/lib/security/crypto";
 import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import { createId } from "@/lib/id";
 import type { Workout } from "@/types/domain";
+
+const getPreviousDateString = (dateStr: string): string => {
+  const date = new Date(dateStr + "T00:00:00");
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
 
 type TimeRange =
   | "Last Week"
@@ -37,6 +43,23 @@ export function AiWorkoutTip() {
   const setActiveSettingsTab = useAtlasStore((s) => s.setActiveSettingsTab);
   const aiWorkoutTipsCache = useAtlasStore((s) => s.aiWorkoutTipsCache);
   const setAiWorkoutTipCache = useAtlasStore((s) => s.setAiWorkoutTipCache);
+  const selectedDate = useAtlasStore((s) => s.selectedDate);
+  const user = useAtlasStore((s) => s.user);
+
+  useEffect(() => {
+    const checkCache = async () => {
+      if (!user?.id) return;
+      const { registry } = await import("@/lib/repositories/registry");
+      const cacheKey = `workout:${selectedDate}:${selectedRange}`;
+      const cached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "daily_insight", cacheKey));
+      if (cached) {
+        setAiWorkoutTipCache(selectedRange, cached as string);
+      } else {
+        setAiWorkoutTipCache(selectedRange, "");
+      }
+    };
+    checkCache();
+  }, [selectedDate, selectedRange, user?.id]);
 
   const getExerciseById = (id: string) => {
     const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -83,6 +106,18 @@ export function AiWorkoutTip() {
     setError(null);
 
     try {
+      // Check cache first to avoid calling AI for the same day and range
+      if (user?.id) {
+        const { registry } = await import("@/lib/repositories/registry");
+        const cacheKey = `workout:${selectedDate}:${selectedRange}`;
+        const cached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "daily_insight", cacheKey));
+        if (cached) {
+          setAiWorkoutTipCache(selectedRange, cached as string);
+          setLoading(false);
+          return;
+        }
+      }
+
       const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
       const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
       const adapter = getProviderAdapter(activeProvider.type);
@@ -109,14 +144,30 @@ export function AiWorkoutTip() {
         })
         .join("\n\n");
 
-      const prompt = `You are Atlas Biomechanics Coach, a clinical-grade sports physiotherapist and strength coach.
-Based on the following ${selectedRange} of training data, provide a proper improvement analysis and specific, highly actionable training recommendations.
-Analyze the logged exercises, sets, reps, and weights to identify:
-1. Progression & Performance: Highlight specific lifts that are progressing well or areas of solid consistency.
-2. Areas for Improvement: Identify any volume imbalances, potential overtraining of specific muscles, or recovery/fatigue needs based on RIR (Reps in Reserve) if provided.
-3. Actionable Next Step: Give exactly one clear, simple directive for the athlete's next workout.
+      // Fetch previous day's cached insight to provide continuity
+      let previousDayInsight = "";
+      if (user?.id) {
+        const { registry } = await import("@/lib/repositories/registry");
+        const prevDate = getPreviousDateString(selectedDate);
+        const prevCacheKey = `workout:${prevDate}:${selectedRange}`;
+        const prevCached = await registry.load((r, uid) => r.aiCache.getCachedResponse(uid, "daily_insight", prevCacheKey));
+        if (prevCached) previousDayInsight = prevCached as string;
+      }
 
-Format the output cleanly in markdown with short bullet points. Keep the response simple, direct, and under 150 words. Do not use generic filler. Go straight to the points.
+      const previousInsightBlock = previousDayInsight
+        ? `\n\nPrevious Day's Coach Insight (use this as context to build upon — do NOT repeat it, instead advance the advice):\n${previousDayInsight}`
+        : "";
+
+      const prompt = `You are Atlas Biomechanics Coach, a clinical-grade sports physiotherapist and strength coach.
+Based on the following ${selectedRange} of training data, provide a mindful, highly personalized, and genuine improvement analysis.
+Analyze the logged exercises, sets, reps, and weights to identify:
+1. Progression & Execution: Provide a thoughtful critique of specific lifts, consistency patterns, and intensity (RIR) quality.
+2. Recovery & Balance: Identify volume imbalances, overtraining risks, or recovery needs. Provide mindful, biomechanics-aware advice.
+3. Actionable Next Step: Give exactly one clear, concrete directive for the athlete's next workout session that genuinely moves them forward.
+
+IMPORTANT: Your response must be specific to THIS athlete's actual data. Do not give generic advice. Reference their actual exercises, weights, and patterns. Be encouraging but honest. Every recommendation must be actionable and grounded in their logged performance.
+
+Format the output cleanly in markdown with short bullet points. Keep the response under 150 words. Be direct, mindful, and avoid generic filler.
 
 Athlete Profile:
 - Goal: ${profile?.goal || "Not specified"} (Training Style: ${profile?.trainingStyle || "Not specified"}, Experience: ${profile?.experience || "beginner"})
@@ -124,7 +175,7 @@ Athlete Profile:
 - Weight: ${profile?.weight ? `${profile.weight} ${profile.weightUnit}` : "Not specified"}
 
 Training Volume Data for ${selectedRange}:
-${workoutsFormatted || "No workouts logged in this period."}
+${workoutsFormatted || "No workouts logged in this period."}${previousInsightBlock}
 `;
 
       const { content, tokenCount } = await adapter.chat({
@@ -135,6 +186,14 @@ ${workoutsFormatted || "No workouts logged in this period."}
       });
 
       const cleanedContent = content.trim();
+
+      // Save to db cache
+      if (user?.id) {
+        const { registry } = await import("@/lib/repositories/registry");
+        const cacheKey = `workout:${selectedDate}:${selectedRange}`;
+        registry.save((r, uid) => r.aiCache.saveResponse(uid, "daily_insight", cacheKey, cleanedContent));
+      }
+
       setAiWorkoutTipCache(selectedRange, cleanedContent);
 
       // Update store counters

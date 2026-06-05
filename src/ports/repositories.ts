@@ -16,6 +16,8 @@ import type {
   BodyMetric,
   RecoveryLog,
   AiProviderSettings,
+  AiMessage,
+  CommonFoodItem,
 } from "@/types/domain";
 
 // ─── User / Profile ────────────────────────────────────────────────────────
@@ -82,3 +84,24 @@ export interface SubscriptionRepository {
   checkRateLimit(userId: string): Promise<{ allowed: boolean; remaining: number }>;
   incrementUsage(userId: string): Promise<void>;
 }
+
+// ─── Day-Based Chat Messages ────────────────────────────────────────────────
+export interface ChatRepository {
+  getMessages(userId: string, date: string): Promise<AiMessage[]>;
+  saveMessage(userId: string, date: string, message: AiMessage): Promise<void>;
+  deleteMessagesForDate(userId: string, date: string): Promise<void>;
+}
+
+// ─── Recent Food Searches ───────────────────────────────────────────────────
+export interface RecentFoodSearchRepository {
+  getRecentSearches(userId: string): Promise<CommonFoodItem[]>;
+  addRecentSearch(userId: string, item: CommonFoodItem): Promise<void>;
+  clearRecentSearches(userId: string): Promise<void>;
+}
+
+// ─── AI Response Cache ──────────────────────────────────────────────────────
+export interface AiCacheRepository {
+  getCachedResponse(userId: string, category: string, queryKey: string): Promise<unknown | null>;
+  saveResponse(userId: string, category: string, queryKey: string, payload: unknown): Promise<void>;
+}
+

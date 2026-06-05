@@ -521,17 +521,60 @@ export function TodayScreen() {
         )}
       </AnimatePresence>
 
-      {/* ── Step 1: How are you feeling? ── */}
-      <DailyStep
-        step={1}
-        done={checkedInToday}
-        emoji="🌡️"
-        title="How does your body feel today?"
-        subtitle={checkedInToday ? "Check-in saved ✓" : "Takes just 30 seconds — no gym knowledge needed!"}
-        delay={0.05}
-      >
-        <BodyCheckIn todayDate={todayDate} />
-      </DailyStep>
+      {/* ── Step 1: How are you feeling? (Morning only) ── */}
+      {(() => {
+        const hour = new Date().getHours();
+        const isMorning = hour >= 5 && hour < 12;
+        if (checkedInToday) {
+          // Already checked in — show the done state regardless of time
+          return (
+            <DailyStep
+              step={1}
+              done={true}
+              emoji="🌡️"
+              title="How does your body feel today?"
+              subtitle="Check-in saved ✓"
+              delay={0.05}
+            >
+              <BodyCheckIn todayDate={todayDate} />
+            </DailyStep>
+          );
+        }
+        if (!isMorning) {
+          // Not morning and not yet checked in — show a gentle nudge
+          return (
+            <DailyStep
+              step={1}
+              done={false}
+              emoji="🌅"
+              title="Morning check-in"
+              subtitle="Available between 5 AM – 12 PM"
+              delay={0.05}
+            >
+              <div className="flex flex-col items-center gap-2 py-4 text-center">
+                <span className="text-3xl">🌙</span>
+                <p className="text-sm font-bold text-foreground">Check back in the morning</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-[280px] leading-relaxed">
+                  Your body check-in is most accurate when done first thing in the morning — before caffeine, food, or exercise affect how you feel.
+                </p>
+              </div>
+            </DailyStep>
+          );
+        }
+        // Morning + not checked in — show the check-in form
+        return (
+          <DailyStep
+            step={1}
+            done={false}
+            emoji="🌡️"
+            title="How does your body feel today?"
+            subtitle="Takes just 30 seconds — no gym knowledge needed!"
+            delay={0.05}
+          >
+            <BodyCheckIn todayDate={todayDate} />
+          </DailyStep>
+        );
+      })()}
 
       {/* ── Step 2: Move your body ── */}
       <DailyStep

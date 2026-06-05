@@ -148,10 +148,20 @@ export const createNutritionSlice: StateCreator<
     );
     const updated = [item, ...filtered].slice(0, 10);
     set({ recentFoodSearches: updated });
+    const user = get().user;
+    if (user) {
+      const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+      registry.save((r, uid) => r.recentSearch.addRecentSearch(uid, item));
+    }
   },
 
   clearRecentFoodSearches: async () => {
     set({ recentFoodSearches: [] });
+    const user = get().user;
+    if (user) {
+      const registry = await import("@/lib/repositories/registry").then(m => m.registry);
+      registry.save((r, uid) => r.recentSearch.clearRecentSearches(uid));
+    }
   },
 
   removeRecentFoodSearch: async (item) => {

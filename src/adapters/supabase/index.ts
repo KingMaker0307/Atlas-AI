@@ -17,6 +17,9 @@ import type {
   RecoveryRepository,
   AiProviderRepository,
   SubscriptionRepository,
+  ChatRepository,
+  RecentFoodSearchRepository,
+  AiCacheRepository,
 } from "@/ports/repositories";
 import type {
   UserProfile,
@@ -27,6 +30,8 @@ import type {
   BodyMetric,
   RecoveryLog,
   AiProviderSettings,
+  AiMessage,
+  CommonFoodItem,
 } from "@/types/domain";
 
 // ─── Rate limit constants ───────────────────────────────────────────────────
@@ -68,6 +73,8 @@ export class SupabaseUserRepository implements UserRepository {
       activityLevel: data.activity_level,
       hasOnboarded: data.has_onboarded,
       aiSetupDismissed: data.ai_setup_dismissed,
+      theme: data.theme,
+      guidedMode: data.guided_mode,
       // Encryption password for AI provider API keys — enables cross-device decryption
       deviceSecret: data.device_secret ?? undefined,
     } as UserProfile;
@@ -95,7 +102,8 @@ export class SupabaseUserRepository implements UserRepository {
       custom_goal: profile.customGoal,
       injuries: profile.injuries,
       workout_duration: profile.workoutDuration,
-      theme: "system",
+      theme: profile.theme ?? "system",
+      guided_mode: profile.guidedMode ?? true,
       has_onboarded: true,
       ai_setup_dismissed: profile.aiSetupDismissed ?? false,
       updated_at: new Date().toISOString(),
@@ -608,5 +616,149 @@ export class SupabaseSubscriptionRepository implements SubscriptionRepository {
     await this.supabase
       .from("ai_usage_logs")
       .insert({ user_id: userId });
+  }
+}
+
+// ─── Day-Based Chat Messages ────────────────────────────────────────────────
+
+export class SupabaseChatRepository implements ChatRepository {
+  constructor(private supabase: SupabaseClient) {}
+
+  async getMessages(userId: string, date: string): Promise<AiMessage[]> {
+    const { data, error } = await this.supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("date", date)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data || []).map((row) => ({
+      id: row.id,
+      role: row.role,
+      content: row.content,
+      createdAt: row.created_at,
+    }));
+  }
+
+  async saveMessage(userId: string, date: string, message: AiMessage): Promise<void> {
+    const { error } = await this.supabase.from("chat_messages").upsert(
+      {
+        id: message.id,
+        user_id: userId,
+        role: message.role,
+        content: message.content,
+        date: date,
+        created_at: message.createdAt,
+      },
+      { onConflict: "id" }
+    );
+    if (error) throw error;
+  }
+
+  async deleteMessagesForDate(userId: string, date: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("chat_messages")
+      .delete()
+      .eq("user_id", userId)
+      .eq("date", date);
+    if (error) throw error;
+  }
+}
+
+// ─── Recent Food Searches ───────────────────────────────────────────────────
+
+export class SupabaseRecentFoodSearchRepository implements RecentFoodSearchRepository {
+  constructor(private supabase: SupabaseClient) {}
+
+  async getRecentSearches(userId: string): Promise<CommonFoodItem[]> {
+    const { data, error } = await this.supabase
+      .from("recent_food_searches")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map((row) => ({
+      name: row.name,
+      brand: row.brand,
+      calories: row.calories ?? 0,
+      protein: row.protein ?? 0,
+      carbs: row.carbs ?? 0,
+      fat: row.fat ?? 0,
+      fiber: row.fiber ?? 0,
+      sugar: row.sugar ?? 0,
+      sodium: row.sodium ?? 0,
+      potassium: row.potassium ?? 0,
+      vitaminC: row.vitamin_c ?? 0,
+      calcium: row.calcium ?? 0,
+      iron: row.iron ?? 0,
+      servingUnit: row.serving_unit ?? "serving",
+      servingWeight: row.serving_weight,
+    }));
+  }
+
+  async addRecentSearch(userId: string, item: CommonFoodItem): Promise<void> {
+    const { error } = await this.supabase.from("recent_food_searches").upsert(
+      {
+        id: `${userId}:${item.name}`,
+        user_id: userId,
+        name: item.name,
+        brand: item.brand,
+        calories: item.calories,
+        protein: item.protein,
+        carbs: item.carbs,
+        fat: item.fat,
+        fiber: item.fiber,
+        sugar: item.sugar,
+        sodium: item.sodium,
+        potassium: item.potassium,
+        vitamin_c: item.vitaminC,
+        calcium: item.calcium,
+        iron: item.iron,
+        serving_unit: item.servingUnit,
+        serving_weight: item.servingWeight,
+      },
+      { onConflict: "id" }
+    );
+    if (error) throw error;
+  }
+
+  async clearRecentSearches(userId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("recent_food_searches")
+      .delete()
+      .eq("user_id", userId);
+    if (error) throw error;
+  }
+}
+
+// ─── AI Response Cache ───────────────────────────────────────────────────────
+
+export class SupabaseAiCacheRepository implements AiCacheRepository {
+  constructor(private supabase: SupabaseClient) {}
+
+  async getCachedResponse(userId: string, category: string, queryKey: string): Promise<unknown | null> {
+    const { data, error } = await this.supabase
+      .from("ai_response_cache")
+      .select("response_payload")
+      .eq("user_id", userId)
+      .eq("category", category)
+      .eq("query_key", queryKey)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? data.response_payload : null;
+  }
+
+  async saveResponse(userId: string, category: string, queryKey: string, payload: unknown): Promise<void> {
+    const { error } = await this.supabase.from("ai_response_cache").upsert(
+      {
+        id: `${userId}:${category}:${queryKey}`,
+        user_id: userId,
+        category,
+        query_key: queryKey,
+        response_payload: payload,
+      },
+      { onConflict: "id" }
+    );
+    if (error) throw error;
   }
 }

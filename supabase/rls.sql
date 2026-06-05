@@ -68,3 +68,29 @@ CREATE POLICY "ai_usage_insert_own" ON ai_usage_logs
 
 CREATE POLICY "ai_usage_read_own" ON ai_usage_logs
   FOR SELECT USING (auth.uid() = user_id);
+
+-- Enable RLS
+ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recent_food_searches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_response_cache ENABLE ROW LEVEL SECURITY;
+
+-- Create Policies
+CREATE POLICY "chat_messages_own" ON chat_messages
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "recent_food_searches_own" ON recent_food_searches
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "ai_response_cache_own" ON ai_response_cache
+  FOR ALL USING (auth.uid() = user_id);
+
+-- ─── Grants ────────────────────────────────────────────────────
+GRANT ALL ON TABLE chat_messages TO authenticated;
+GRANT ALL ON TABLE chat_messages TO service_role;
+
+GRANT ALL ON TABLE recent_food_searches TO authenticated;
+GRANT ALL ON TABLE recent_food_searches TO service_role;
+
+GRANT ALL ON TABLE ai_response_cache TO authenticated;
+GRANT ALL ON TABLE ai_response_cache TO service_role;
+
