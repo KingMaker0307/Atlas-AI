@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
           goal: row.goal,
           targetDate: row.target_date,
           routines: row.routines ?? [],
+          customExercises: row.custom_exercises ?? [],
           creatorType: row.creator_type ?? "manual",
           startDay: row.start_day ?? "Monday",
           notes: row.notes,

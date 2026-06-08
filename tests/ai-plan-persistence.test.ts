@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { registry } from "@/lib/repositories/registry";
+import { SupabaseWorkoutPlanRepository } from "@/adapters/supabase";
 import type { WorkoutPlan, Exercise } from "@/types/domain";
 
 // ─── Shared mock data ─────────────────────────────────────────────────────────
@@ -267,5 +268,114 @@ describe("AI Plan Persistence", () => {
 
       expect(useAtlasStore.getState().activeWorkoutPlanId).toBe("plan-2");
     });
+  });
+});
+
+describe("SupabaseWorkoutPlanRepository Custom Exercises Integration", () => {
+  it("should save plan with customExercises to custom_exercises DB column", async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+    const mockFrom = vi.fn().mockReturnValue({ upsert: mockUpsert });
+    const mockSupabase = { from: mockFrom } as any;
+
+    const repository = new SupabaseWorkoutPlanRepository(mockSupabase);
+    const plan: WorkoutPlan = {
+      id: "plan-123",
+      name: "Strength Plan",
+      goal: "Get Stronger",
+      routines: [],
+      customExercises: [aiGeneratedExercise],
+    };
+
+    await repository.savePlan("user-123", plan);
+
+    expect(mockFrom).toHaveBeenCalledWith("workout_plans");
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "plan-123",
+        custom_exercises: [aiGeneratedExercise],
+      }),
+      { onConflict: "id" }
+    );
+  });
+
+  it("should fall back to empty array for custom_exercises if customExercises is missing in savePlan", async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+    const mockFrom = vi.fn().mockReturnValue({ upsert: mockUpsert });
+    const mockSupabase = { from: mockFrom } as any;
+
+    const repository = new SupabaseWorkoutPlanRepository(mockSupabase);
+    const plan: WorkoutPlan = {
+      id: "plan-123",
+      name: "Strength Plan",
+      goal: "Get Stronger",
+      routines: [],
+    };
+
+    await repository.savePlan("user-123", plan);
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        custom_exercises: [],
+      }),
+      { onConflict: "id" }
+    );
+  });
+
+  it("should map custom_exercises from DB to customExercises in getPlans", async () => {
+    const dbRows = [
+      {
+        id: "plan-123",
+        user_id: "user-123",
+        name: "Strength Plan",
+        goal: "Get Stronger",
+        routines: [],
+        custom_exercises: [aiGeneratedExercise],
+        creator_type: "ai",
+        start_day: "Monday",
+        notes: "Some notes",
+      },
+    ];
+
+    const mockOrder = vi.fn().mockResolvedValue({ data: dbRows, error: null });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockSupabase = { from: mockFrom } as any;
+
+    const repository = new SupabaseWorkoutPlanRepository(mockSupabase);
+    const plans = await repository.getPlans("user-123");
+
+    expect(mockFrom).toHaveBeenCalledWith("workout_plans");
+    expect(mockSelect).toHaveBeenCalledWith("*");
+    expect(mockEq).toHaveBeenCalledWith("user_id", "user-123");
+    expect(plans).toHaveLength(1);
+    expect(plans[0].customExercises).toEqual([aiGeneratedExercise]);
+  });
+
+  it("should map missing custom_exercises from DB to empty array in getPlans", async () => {
+    const dbRows = [
+      {
+        id: "plan-123",
+        user_id: "user-123",
+        name: "Strength Plan",
+        goal: "Get Stronger",
+        routines: [],
+        creator_type: "ai",
+        start_day: "Monday",
+        notes: "Some notes",
+      },
+    ];
+
+    const mockOrder = vi.fn().mockResolvedValue({ data: dbRows, error: null });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockSupabase = { from: mockFrom } as any;
+
+    const repository = new SupabaseWorkoutPlanRepository(mockSupabase);
+    const plans = await repository.getPlans("user-123");
+
+    expect(plans).toHaveLength(1);
+    expect(plans[0].customExercises).toEqual([]);
   });
 });

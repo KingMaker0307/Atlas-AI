@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS workout_plans (
   goal TEXT,
   target_date DATE,
   routines JSONB NOT NULL DEFAULT '[]',
+  custom_exercises JSONB NOT NULL DEFAULT '[]'::jsonb,
   creator_type TEXT DEFAULT 'manual',
   start_day TEXT DEFAULT 'Monday',
   notes TEXT,

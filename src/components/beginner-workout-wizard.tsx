@@ -97,7 +97,7 @@ You MUST output the structured workout plan in a valid JSON block wrapped in \`\
 
       <AnimatePresence mode="wait">
         {/* Step 1 — Goal */}
-        {step === 1 && (
+        {step === 1 ? (
           <motion.div
             key="step1"
             initial={{ opacity: 0, x: 16 }}
@@ -129,10 +129,8 @@ You MUST output the structured workout plan in a valid JSON block wrapped in \`\
               ))}
             </div>
           </motion.div>
-        )}
-
-        {/* Step 2 — Days */}
-        {step === 2 && (
+        ) : step === 2 ? (
+          /* Step 2 — Days */
           <motion.div
             key="step2"
             initial={{ opacity: 0, x: 16 }}
@@ -163,10 +161,8 @@ You MUST output the structured workout plan in a valid JSON block wrapped in \`\
               <ArrowLeft size={12} /> Back
             </button>
           </motion.div>
-        )}
-
-        {/* Step 3 — Equipment */}
-        {step === 3 && (
+        ) : (
+          /* Step 3 — Equipment */
           <motion.div
             key="step3"
             initial={{ opacity: 0, x: 16 }}

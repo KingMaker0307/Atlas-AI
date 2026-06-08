@@ -314,7 +314,7 @@ export function Onboarding() {
             })}
           >
             <AnimatePresence mode="wait">
-              {step === 1 && (
+              {step === 1 ? (
                 <motion.div
                   key="step1"
                   initial={{ opacity: 0, x: 10 }}
@@ -548,9 +548,7 @@ export function Onboarding() {
                     Why we ask: Age, height, and weight are used to establish relative strength ratios and estimate energy expenditure.
                   </p>
                 </motion.div>
-              )}
-
-              {step === 2 && (
+              ) : step === 2 ? (
                 <motion.div
                   key="step2"
                   initial={{ opacity: 0, x: 10 }}
@@ -658,9 +656,7 @@ export function Onboarding() {
                     />
                   </div>
                 </motion.div>
-              )}
-
-              {step === 3 && (
+              ) : (
                 <motion.div
                   key="step3"
                   initial={{ opacity: 0, x: 10 }}
@@ -768,8 +764,6 @@ export function Onboarding() {
                   </div>
                 </motion.div>
               )}
-
-
             </AnimatePresence>
 
             {/* Bottom Actions Row */}

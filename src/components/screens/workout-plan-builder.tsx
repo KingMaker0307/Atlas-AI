@@ -696,7 +696,7 @@ export function WorkoutPlanBuilderScreen() {
 
       <AnimatePresence mode="wait">
         {/* ── Choose Method ── */}
-        {view === "choose-method" && (
+        {view === "choose-method" ? (
         <motion.div
           key="choose"
           initial={{ opacity: 0, y: 12 }}
@@ -795,10 +795,9 @@ export function WorkoutPlanBuilderScreen() {
             </Card>
           </motion.div>
         </motion.div>
-      )}
-
-      {/* ── Template Browser ── */}
-      {view === "templates" && !selectedTemplate && (
+      ) : view === "templates" ? (
+        /* ── Template Browser ── */
+        !selectedTemplate ? (
         <motion.div
           key="templates"
           initial={{ opacity: 0, x: 30 }}
@@ -945,10 +944,7 @@ export function WorkoutPlanBuilderScreen() {
             </Card>
           )}
         </motion.div>
-      )}
-
-      {/* ── Template Detail ── */}
-      {view === "templates" && selectedTemplate && (
+      ) : (
         <TemplateDetailView
           key="detail"
           template={selectedTemplate}
@@ -960,10 +956,8 @@ export function WorkoutPlanBuilderScreen() {
             setShowStartDayModal(true);
           }}
         />
-      )}
-
-      {/* ── Manual Form ── */}
-      {view === "manual-form" && (
+      )
+    ) : view === "manual-form" ? (
         <motion.div
           key="manual"
           initial={{ opacity: 0, y: 12 }}
@@ -1123,7 +1117,8 @@ export function WorkoutPlanBuilderScreen() {
             </div>
           )}
         </motion.div>
-      )}
+      ) : null}
+    </AnimatePresence>
 
       {showStartDayModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/85 backdrop-blur-sm p-4">
@@ -1239,7 +1234,6 @@ export function WorkoutPlanBuilderScreen() {
           </Card>
         </div>
       )}
-    </AnimatePresence>
     </>
   );
 }
