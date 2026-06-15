@@ -47,8 +47,19 @@ async function uploadImageToSupabase(dataUrl: string, userId: string): Promise<s
   try {
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
+    
+    // Parse data URL to Blob locally to prevent browser "TypeError: Load failed" block on local data: URIs
+    const arr = dataUrl.split(",");
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const blob = new Blob([u8arr], { type: mime });
+
     const fileExt = dataUrl.split(";")[0].split("/")[1]?.split("+")[0] || "jpeg";
     const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
 
