@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -72,6 +72,43 @@ const tooltipStyle = {
   fontSize: 11,
   fontWeight: "bold",
 };
+
+// ─── Safe Responsive Container to prevent Recharts SSR & initial dimension warnings ───
+function SafeResponsiveContainer({ children, height = "100%" }: { children: React.ReactNode; width?: string | number; height?: string | number; minWidth?: string | number; minHeight?: string | number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      if (!entries || entries.length === 0) return;
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) {
+        setDimensions({ width, height });
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const heightStyle = typeof height === "number" ? `${height}px` : height;
+
+  return (
+    <div ref={containerRef} style={{ width: "100%", height: heightStyle, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+      {dimensions && dimensions.width > 0 && dimensions.height > 0 ? (
+        React.cloneElement(React.Children.only(children) as React.ReactElement<any>, {
+          width: dimensions.width,
+          height: dimensions.height,
+        })
+      ) : null}
+    </div>
+  );
+}
 
 // ─── Animated stat card ─────────────────────────────────────────────────────
 function StatCard({
@@ -405,7 +442,7 @@ function BeginnerAnalytics() {
               >
                 {volumeSeries.length >= 2 ? (
                   <div className="h-40">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <SafeResponsiveContainer width="100%" height="100%">
                       <BarChart data={volumeSeries} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
                         <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
@@ -416,7 +453,7 @@ function BeginnerAnalytics() {
                         />
                         <Bar dataKey="volume" fill="#34d399" radius={[6, 6, 0, 0]} maxBarSize={36} />
                       </BarChart>
-                    </ResponsiveContainer>
+                    </SafeResponsiveContainer>
                   </div>
                 ) : (
                   <EmptyChart message="Complete at least 2 weeks of workouts to see your volume trend here." />
@@ -890,7 +927,7 @@ function AdvancedAnalytics() {
             <div className="flex-1">
               {strengthSeries.length >= 2 ? (
                 <div className="h-44">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <SafeResponsiveContainer width="100%" height="100%">
                     <AreaChart data={strengthSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
                       <defs>
                         <linearGradient id="strengthGrad" x1="0" y1="0" x2="0" y2="1">
@@ -904,7 +941,7 @@ function AdvancedAnalytics() {
                       <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Est. 1RM"]} />
                       <Area type="monotone" dataKey="estimated1rm" stroke="#10b981" strokeWidth={2.5} fill="url(#strengthGrad)" dot={{ r: 3.5, stroke: "#10b981", strokeWidth: 1.5, fill: "#fff" }} />
                     </AreaChart>
-                  </ResponsiveContainer>
+                  </SafeResponsiveContainer>
                 </div>
               ) : (
                 <EmptyChart message="Need 2+ sessions with this exercise to draw the strength trend." />
@@ -931,7 +968,7 @@ function AdvancedAnalytics() {
             <div className="flex-1">
               {volumeSeries.length >= 2 ? (
                 <div className="h-44">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <SafeResponsiveContainer width="100%" height="100%">
                     <BarChart data={volumeSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
                       <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
@@ -942,7 +979,7 @@ function AdvancedAnalytics() {
                         <ReferenceLine y={targetVolume} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={1.5} label={{ value: "Overload Line", position: "insideTopRight", fill: "#ef4444", fontSize: 9, fontWeight: "bold" }} />
                       )}
                     </BarChart>
-                  </ResponsiveContainer>
+                  </SafeResponsiveContainer>
                 </div>
               ) : (
                 <EmptyChart message="Complete workouts over 2+ weeks to unlock your volume trend." />
@@ -1080,7 +1117,7 @@ function AdvancedAnalytics() {
             </div>
             {recoveryVolumeSeries.length >= 2 ? (
               <div className="h-44">
-                <ResponsiveContainer width="100%" height="100%">
+                <SafeResponsiveContainer width="100%" height="100%">
                   <AreaChart data={recoveryVolumeSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
                     <defs>
                       <linearGradient id="recVolGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1096,7 +1133,7 @@ function AdvancedAnalytics() {
                     <Area yAxisId="l" type="monotone" dataKey="volume" name="Volume" stroke="#10b981" strokeWidth={2} fill="transparent" />
                     <Area yAxisId="r" type="monotone" dataKey="recovery" name="Recovery" stroke="#f59e0b" strokeWidth={2} fill="url(#recVolGrad)" />
                   </AreaChart>
-                </ResponsiveContainer>
+                </SafeResponsiveContainer>
               </div>
             ) : (
               <EmptyChart message="Log recovery scores and complete workouts to unlock correlation." />
@@ -1125,7 +1162,7 @@ function AdvancedAnalytics() {
           </div>
           {bodyweightSeries.length >= 2 ? (
             <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
+              <SafeResponsiveContainer width="100%" height="100%">
                 <AreaChart data={bodyweightSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
                   <defs>
                     <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1139,7 +1176,7 @@ function AdvancedAnalytics() {
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Weight"]} />
                   <Area type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2.5} fill="url(#bwGrad)" dot={{ r: 3.5, stroke: "#3b82f6", strokeWidth: 1.5, fill: "#fff" }} />
                 </AreaChart>
-              </ResponsiveContainer>
+              </SafeResponsiveContainer>
             </div>
           ) : (
             <EmptyChart message="Log your body weight in Today's check-in or Settings to track composition changes over time." />

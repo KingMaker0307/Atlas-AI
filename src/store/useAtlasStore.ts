@@ -144,12 +144,29 @@ function freshSnapshot(): StoredSnapshot {
   };
 }
 
-function isValidSnapshot(data: any): data is StoredSnapshot {
-  return (
-    data &&
-    typeof data === "object" &&
-    "profile" in data
-  );
+export function isValidSnapshot(data: any): data is StoredSnapshot {
+  if (!data || typeof data !== "object") return false;
+  if (!("profile" in data) || !data.profile || typeof data.profile !== "object") return false;
+
+  const p = data.profile;
+  if (typeof p.id !== "string" || !p.id.trim()) return false;
+
+  if (p.age !== undefined && p.age !== null) {
+    const age = Number(p.age);
+    if (Number.isNaN(age) || age < 13 || age > 120) return false;
+  }
+
+  if (p.weight !== undefined && p.weight !== null) {
+    const weight = Number(p.weight);
+    if (Number.isNaN(weight) || weight < 20 || weight > 1000) return false;
+  }
+
+  if (p.height !== undefined && p.height !== null) {
+    const height = Number(p.height);
+    if (Number.isNaN(height) || height < 20 || height > 300) return false;
+  }
+
+  return true;
 }
 
 function snapshotFromState(state: AtlasStoreState): StoredSnapshot {

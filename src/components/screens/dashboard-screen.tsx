@@ -65,7 +65,7 @@ import {
 } from "@/lib/progression/engine";
 import { useAtlasStore } from "@/store/useAtlasStore";
 import { parseAiWorkoutPlan } from "@/lib/ai/parser";
-import { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { UserProfile, RecoveryLog, BodyMetric, Workout } from "@/types/domain";
 import { createId } from "@/lib/id";
@@ -93,6 +93,43 @@ function getVolumeForWorkout(workout: Workout): number {
       return setVolume + (set.completed ? (set.reps || 0) * (set.weight || 0) : 0);
     }, 0);
   }, 0);
+}
+
+// ─── Safe Responsive Container to prevent Recharts SSR & initial dimension warnings ───
+function SafeResponsiveContainer({ children, height = "100%" }: { children: React.ReactNode; width?: string | number; height?: string | number; minWidth?: string | number; minHeight?: string | number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      if (!entries || entries.length === 0) return;
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) {
+        setDimensions({ width, height });
+      }
+    });
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const heightStyle = typeof height === "number" ? `${height}px` : height;
+
+  return (
+    <div ref={containerRef} style={{ width: "100%", height: heightStyle, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+      {dimensions && dimensions.width > 0 && dimensions.height > 0 ? (
+        React.cloneElement(React.Children.only(children) as React.ReactElement<any>, {
+          width: dimensions.width,
+          height: dimensions.height,
+        })
+      ) : null}
+    </div>
+  );
 }
 
 export function DashboardScreen() {
@@ -1018,7 +1055,7 @@ export function DashboardScreen() {
                 <p className="text-xs text-zinc-500">Your bodyweight history this year</p>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={140}>
+            <SafeResponsiveContainer width="100%" height={140} minWidth={0} minHeight={0}>
               <AreaChart data={bodyweightSeries} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                 <defs>
                   <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1035,7 +1072,7 @@ export function DashboardScreen() {
                 />
                 <Area type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} fill="url(#bwGrad)" dot={false} />
               </AreaChart>
-            </ResponsiveContainer>
+            </SafeResponsiveContainer>
           </Card>
         )}
 
@@ -1049,7 +1086,7 @@ export function DashboardScreen() {
                 <p className="text-xs text-zinc-500">Total weight lifted each week — bigger is better!</p>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={130}>
+            <SafeResponsiveContainer width="100%" height={130} minWidth={0} minHeight={0}>
               <BarChart data={yearVolumeSeries} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
@@ -1060,7 +1097,7 @@ export function DashboardScreen() {
                 />
                 <Bar dataKey="volume" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </SafeResponsiveContainer>
           </Card>
         )}
 

@@ -44,19 +44,31 @@ export const DEFAULT_TARGETS: NutritionTargets = {
  * Micronutrient targets follow USDA/NIH RDAs including gender-specific iron.
  */
 export function calculateNutritionTargets(profile: UserProfile | null): NutritionTargets {
-  if (!profile || !profile.weight || !profile.age) {
+  if (!profile) {
+    return DEFAULT_TARGETS;
+  }
+
+  const age = Number(profile.age);
+  const weight = Number(profile.weight);
+  const height = Number(profile.height || 0);
+
+  if (
+    Number.isNaN(age) || age <= 0 ||
+    Number.isNaN(weight) || weight <= 0 ||
+    Number.isNaN(height) || height <= 0
+  ) {
     return DEFAULT_TARGETS;
   }
 
   // Convert weight to kg and height to cm
-  const w = Math.max(20, profile.weightUnit === "lbs" ? profile.weight * 0.453592 : profile.weight);
-  const h = Math.max(50, profile.heightUnit === "in" ? (profile.height || 70) * 2.54 : profile.height || 170);
+  const w = Math.max(20, profile.weightUnit === "lbs" ? weight * 0.453592 : weight);
+  const h = Math.max(50, profile.heightUnit === "in" ? height * 2.54 : height);
 
   // Mifflin-St Jeor formula for BMR
   const isFemale = profile.gender 
     ? profile.gender === "female" 
     : (profile.goal || "").toLowerCase().includes("female");
-  const bmrVal = Math.round(10 * w + 6.25 * h - 5 * profile.age + (isFemale ? -161 : 5));
+  const bmrVal = Math.round(10 * w + 6.25 * h - 5 * age + (isFemale ? -161 : 5));
   const bmr = Math.max(500, bmrVal);
 
   // Determine TDEE activity factor

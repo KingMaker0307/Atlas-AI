@@ -29,3 +29,83 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .font-display-atlas {
   font-family: var(--font-atlas-display) !important;
 }
+
+/* Base Typographic Element Styling with override-friendly specificity */
+@layer base {
+  :where(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-atlas-display);
+    color: var(--foreground);
+    line-height: 1.25;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  :where(h1) {
+    font-size: clamp(2rem, 1.5rem + 2.5vw, 3rem);
+  }
+
+  :where(h2) {
+    font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem);
+    letter-spacing: -0.02em;
+  }
+
+  :where(h3) {
+    font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.75rem);
+    letter-spacing: -0.015em;
+  }
+
+  :where(h4) {
+    font-size: clamp(1.1rem, 1rem + 0.5vw, 1.35rem);
+    letter-spacing: -0.01em;
+  }
+
+  :where(h5) {
+    font-size: 1.125rem;
+  }
+
+  :where(h6) {
+    font-size: 1rem;
+  }
+
+  :where(p) {
+    font-family: var(--font-atlas-sans);
+    line-height: 1.5;
+    text-wrap: pretty;
+    color: var(--zinc-755);
+  }
+
+  :where(small) {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: var(--zinc-555);
+  }
+
+  :where(strong, b) {
+    font-weight: 600;
+    color: var(--zinc-955);
+  }
+
+  :where(a) {
+    color: var(--emerald-450);
+    text-decoration-line: none;
+    transition: color 0.2s ease;
+  }
+
+  :where(a):hover {
+    color: var(--emerald-455);
+    text-decoration-line: underline;
+  }
+
+  :where(label) {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--zinc-755);
+  }
+
+  :where(code, pre) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85em;
+  }
+}
+
