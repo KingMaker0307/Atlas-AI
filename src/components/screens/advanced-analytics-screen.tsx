@@ -63,6 +63,8 @@ import { format } from "date-fns";
 import { AlertTriangle, Info } from "lucide-react";
 import { getSmartTips } from "@/lib/coach/smart-tips";
 import { AiWorkoutTip } from "@/components/ai-workout-tip";
+import { MuscleHeatmap } from "@/components/muscle-heatmap";
+import { CnsCircadianPlanner } from "@/components/cns-circadian-planner";
 
 // ─── Shared tooltip style ───────────────────────────────────────────────────
 const tooltipStyle = {
@@ -994,14 +996,16 @@ function AdvancedAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Muscle volume distribution */}
         <Section delay={0.29}>
-          <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="text-violet-500" size={17} />
-                <h3 className="text-sm font-bold text-foreground">Weekly Muscle Balance</h3>
+          <div className="space-y-4">
+            <MuscleHeatmap workouts={allWorkouts} getExerciseById={getExerciseById} />
+            <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="text-violet-500" size={17} />
+                  <h3 className="text-sm font-bold text-foreground">Muscle Volume Breakdown</h3>
+                </div>
+                <span className="text-[10px] text-zinc-400 font-medium">Tap row to see sources</span>
               </div>
-              <span className="text-[10px] text-zinc-400 font-medium">Tap row to see sources</span>
-            </div>
 
             {weeklySetsPerMuscle.length > 0 ? (
               <div className="space-y-1">
@@ -1106,11 +1110,14 @@ function AdvancedAnalytics() {
               <EmptyChart message="Train this week to see your muscle volume distribution." />
             )}
           </Card>
-        </Section>
+        </div>
+      </Section>
 
         {/* Recovery correlation */}
         <Section delay={0.32}>
-          <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
+          <div className="space-y-4">
+            <CnsCircadianPlanner recoveryLogs={recoveryLogs} workouts={allWorkouts} />
+            <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
             <div className="flex items-center gap-2">
               <BrainCircuit className="text-amber-500" size={17} />
               <h3 className="text-sm font-bold text-foreground">CNS ↔ Volume Correlation</h3>
@@ -1143,7 +1150,8 @@ function AdvancedAnalytics() {
               <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed">{correlationInsight}</p>
             </div>
           </Card>
-        </Section>
+        </div>
+      </Section>
       </div>
 
       {/* ── 6. Body Composition ─── */}

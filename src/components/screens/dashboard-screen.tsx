@@ -77,6 +77,7 @@ import { DailyRecoveryModal } from "@/components/daily-recovery-modal";
 import { DailyBodyMetricModal } from "@/components/daily-body-metric-modal";
 import { getExerciseById as getStaticExerciseById } from "@/data/exercises";
 import { format, getISOWeek, getYear as getDateFnsYear, parseISO } from "date-fns";
+import { CnsCircadianPlanner } from "@/components/cns-circadian-planner";
 function parseLocalDate(dateStr: string): Date {
   if (dateStr.includes("T")) {
     return new Date(dateStr);
@@ -167,6 +168,8 @@ export function DashboardScreen() {
   const setTheme = useAtlasStore((state) => state.setTheme);
   const logBodyMetric = useAtlasStore((state) => state.logBodyMetric);
   const storeExercises = useAtlasStore((state) => state.exercises);
+  const activeDeloadCycle = useAtlasStore((state) => state.activeDeloadCycle);
+  const setDeloadCycle = useAtlasStore((state) => state.setDeloadCycle);
 
   const [selectedExercise, setSelectedExercise] = useState(topExercisesForAnalytics()[0]?.id ?? "bench-press");
   const [selectedHistoryView, setSelectedHistoryView] = useState<HistoryView>("day");
@@ -881,8 +884,26 @@ export function DashboardScreen() {
         exit={{ opacity: 0, y: -8 }}
         className="flex flex-col gap-4 pb-10"
       >
-
-
+        {activeDeloadCycle && (
+          <div className="p-4 bg-gradient-to-br from-amber-550/15 to-amber-600/10 border border-amber-500/25 rounded-3xl flex items-start justify-between gap-3 shadow-sm select-none">
+            <div className="flex gap-3">
+              <span className="text-xl mt-0.5" aria-hidden="true">🛡️</span>
+              <div className="text-left">
+                <h4 className="text-xs font-black uppercase text-amber-600 dark:text-amber-400">Deload Safeguard Active</h4>
+                <p className="text-[11px] text-zinc-555 dark:text-zinc-350 mt-1 leading-relaxed">
+                  CNS fatigue protection is active. Workout sets and recommended loads are automatically scaled down by 35% to facilitate neural and joint recovery.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDeloadCycle(false)}
+              className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 px-2.5 py-1 rounded-xl cursor-pointer shrink-0"
+            >
+              Exit Deload
+            </button>
+          </div>
+        )}
 
         {/* ── Body feeling card ── */}
         <Card className="p-4 space-y-3">
@@ -949,6 +970,8 @@ export function DashboardScreen() {
             )}
           </AnimatePresence>
         </Card>
+
+        <CnsCircadianPlanner recoveryLogs={recoveryLogs} workouts={allWorkouts} />
 
         {/* ── Stats at a glance ── */}
         <div>

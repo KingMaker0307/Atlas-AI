@@ -489,7 +489,20 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
   searchCountry,
 }) => {
   const guidedMode = useAtlasStore((s) => s.guidedMode);
-  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
+  const allExpanded = items.length > 0 && items.every((item) => expandedItems[item.id]);
+  const handleToggleAllExpand = () => {
+    if (allExpanded) {
+      setExpandedItems({});
+    } else {
+      const nextExpanded: Record<string, boolean> = {};
+      items.forEach((item) => {
+        nextExpanded[item.id] = true;
+      });
+      setExpandedItems(nextExpanded);
+    }
+  };
   const [matchingItemId, setMatchingItemId] = useState<string | null>(null);
   const [matcherSearchQuery, setMatcherSearchQuery] = useState("");
   const [matcherResults, setMatcherResults] = useState<CommonFoodItem[]>([]);
@@ -628,20 +641,31 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
           <Check size={14} className="text-emerald-500" />
           <span>Confirm AI Analysis</span>
         </h4>
-        <button
-          type="button"
-          onClick={handleAddBlankItem}
-          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
-        >
-          <Plus size={12} />
-          <span>Add Item</span>
-        </button>
+        <div className="flex items-center gap-3">
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleToggleAllExpand}
+              className="text-[10px] font-bold text-zinc-550 dark:text-zinc-400 hover:underline flex items-center gap-1 cursor-pointer select-none"
+            >
+              <span>{allExpanded ? "Collapse All" : "Expand All"}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleAddBlankItem}
+            className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 cursor-pointer select-none"
+          >
+            <Plus size={12} />
+            <span>Add Item</span>
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+      <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
         {items.map((item) => {
           const isSelected = !!selectedIds[item.id];
-          const isExpanded = expandedItemId === item.id;
+          const isExpanded = !!expandedItems[item.id];
           const isMatching = matchingItemId === item.id;
 
           return (
@@ -729,8 +753,8 @@ const FoodItemConfirmationPanel: FC<FoodItemConfirmationPanelProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                  className="h-5 w-5 rounded text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition shrink-0"
+                  onClick={() => setExpandedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+                  className="h-5 w-5 rounded text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition shrink-0 cursor-pointer"
                 >
                   {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 </button>
@@ -2587,7 +2611,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                           type="button"
                           disabled={isAutofilling}
                           onClick={handleAiAutofill}
-                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none"
+                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5 disabled:opacity-40 select-none cursor-pointer"
                         >
                           {isAutofilling ? (
                             <>
@@ -2647,7 +2671,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(img.id)}
-                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition rounded-lg"
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition rounded-lg cursor-pointer"
                               aria-label="Remove image"
                             >
                               <X size={10} />
@@ -2666,7 +2690,7 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
                     )}
 
                     {autofillError && (
-                      <p className={`mt-1 text-[10px] font-medium ${
+                      <p className={`mt-1 text-[10px] font-semibold leading-normal ${
                         autofillError.startsWith("ℹ️")
                           ? "text-blue-600 dark:text-blue-400"
                           : "text-rose-600 dark:text-rose-455"

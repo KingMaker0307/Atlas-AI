@@ -103,6 +103,7 @@ export function WorkoutScreen() {
   const activeWorkout = useAtlasStore((state) => state.activeWorkout);
   const restTimerEndsAt = useAtlasStore((state) => state.restTimerEndsAt);
   const restingSetId = useAtlasStore((state) => state.restingSetId);
+  const activeDeloadCycle = useAtlasStore((state) => state.activeDeloadCycle);
   const startWorkout = useAtlasStore((state) => state.startWorkout);
   const updateSet = useAtlasStore((state) => state.updateSet);
   const addSet = useAtlasStore((state) => state.addSet);
@@ -1035,6 +1036,15 @@ export function WorkoutScreen() {
           </div>
         </div>
       </Card>
+
+      {activeDeloadCycle && (
+        <div className="w-full max-w-5xl mx-auto px-0 sm:px-4 mb-2">
+          <div className="p-3 bg-amber-550/15 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-2.5 text-xs font-bold select-none shadow-sm">
+            <span className="text-base" aria-hidden="true">🛡️</span>
+            <span>Deload Week Protection: target sets and weights are automatically scaled down by 35% to prioritize recovery.</span>
+          </div>
+        </div>
+      )}
 
       {/* Active Workout Exercises mapping — smart accordion flow */}
       <div className="space-y-3 w-full max-w-5xl mx-auto px-0 sm:px-4">

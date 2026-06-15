@@ -3,6 +3,8 @@ import type { AtlasStoreState } from "../useAtlasStore";
 import type { Workout, WorkoutPlan, Exercise, Routine, WorkoutSet, WeightUnit } from "@/types/domain";
 import { createId, minutesBetween } from "@/lib/id";
 import { exercises as staticExercises, getExerciseById as getStaticExerciseById } from "@/data/exercises";
+import { calculateRecoveryScore } from "@/lib/progression/engine";
+import { readLocalSetting, writeLocalSetting } from "@/lib/storage/db";
 
 export interface WorkoutSlice {
   workouts: Workout[];
@@ -15,7 +17,10 @@ export interface WorkoutSlice {
   editingRoutineId: string | null;
   routineBuilderDefaultDay: string | null;
   exercises: Exercise[];
+  activeDeloadCycle: boolean;
 
+  setDeloadCycle: (active: boolean) => void;
+  checkDeloadTriggers: (customState?: AtlasStoreState) => boolean;
   setEditingWorkoutPlanId: (id: string | null) => void;
   setEditingRoutineId: (id: string | null) => void;
   setRoutineBuilderDefaultDay: (day: string | null) => void;
@@ -61,6 +66,8 @@ function buildWorkoutFromRoutine(
   parentPlanId?: string | null
 ): Workout {
   const state = get();
+  const isDeload = state.activeDeloadCycle;
+
   const newWorkout: Workout = {
     id: createId("workout"),
     name: routine.name,
@@ -75,31 +82,72 @@ function buildWorkoutFromRoutine(
       const lastWeight = recentWeightForExercise(state.workouts, exercise.exerciseId, bwFallback);
       const targetReps = Number(exercise.targetReps.match(/\d+/)?.[0] ?? 8);
 
-      const numSets = isCardio ? 1 : exercise.targetSets;
+      // ── Inter-workout Auto-Regulation starting load calculation ──
+      let recommendedWeight = lastWeight;
+
+      const pastExercises = state.workouts
+        .flatMap((w) => w.exercises)
+        .filter((ex) => ex.exerciseId === exercise.exerciseId && !ex.skipped);
+
+      const lastSessionEx = pastExercises[pastExercises.length - 1];
+      if (lastSessionEx) {
+        const completedSets = lastSessionEx.sets.filter((s) => s.completed);
+        if (completedSets.length > 0) {
+          const allTargetsHit = completedSets.every((s) => s.reps >= targetReps);
+          const avgRir = completedSets.reduce((sum, s) => sum + (s.rir ?? 2), 0) / completedSets.length;
+          const lastSessionWeight = completedSets[0].weight;
+
+          if (allTargetsHit && avgRir <= 1) {
+            // All targets hit near failure -> Progressive overload: +5% or +5 lbs
+            recommendedWeight = Math.round((lastSessionWeight * 1.05) / 5) * 5 || (lastSessionWeight + 5);
+          } else if (avgRir <= 1 && !allTargetsHit) {
+            // Missed target reps near failure -> Drop weight by 10% to facilitate neural recovery
+            recommendedWeight = Math.max(0, Math.round((lastSessionWeight * 0.90) / 5) * 5);
+          } else if (avgRir >= 3) {
+            // Session was too easy (RIR >= 3) -> increase starting load by 5%
+            recommendedWeight = Math.round((lastSessionWeight * 1.05) / 5) * 5 || (lastSessionWeight + 5);
+          }
+        }
+      }
+
+      // ── Deload scaling parameters (35% scale down) ──
+      let finalSets = isCardio ? 1 : exercise.targetSets;
+      let finalWeight = recommendedWeight;
+
+      if (isDeload && !isCardio) {
+        finalSets = Math.max(1, Math.round(exercise.targetSets * 0.65));
+        if (!isBodyweight) {
+          finalWeight = Math.max(0, Math.round((recommendedWeight * 0.65) / 5) * 5);
+        }
+      }
 
       return {
         id: createId("workout_exercise"),
         exerciseId: exercise.exerciseId,
-        targetSets: isCardio ? 1 : exercise.targetSets,
+        targetSets: finalSets,
         targetReps: exercise.targetReps,
         restSeconds: exercise.restSeconds,
-        sets: Array.from({ length: numSets }).map(() => isCardio ? ({
-          id: createId("set"),
-          reps: 0,
-          weight: 0,
-          completed: false,
-          durationSeconds: 1800,
-          distance: 0,
-          incline: 0,
-          resistance: 0,
-          calories: 0,
-        }) : ({
-          id: createId("set"),
-          reps: targetReps,
-          weight: lastWeight,
-          rir: 2,
-          completed: false,
-        })),
+        sets: Array.from({ length: finalSets }).map(() =>
+          isCardio
+            ? {
+                id: createId("set"),
+                reps: 0,
+                weight: 0,
+                completed: false,
+                durationSeconds: 1800,
+                distance: 0,
+                incline: 0,
+                resistance: 0,
+                calories: 0,
+              }
+            : {
+                id: createId("set"),
+                reps: targetReps,
+                weight: finalWeight,
+                rir: 2,
+                completed: false,
+              }
+        ),
       };
     }),
   };
@@ -122,6 +170,60 @@ export const createWorkoutSlice: StateCreator<
   editingRoutineId: null,
   routineBuilderDefaultDay: null,
   exercises: staticExercises,
+  activeDeloadCycle: readLocalSetting("activeDeloadCycle", false),
+
+  setDeloadCycle: (active) => {
+    set({ activeDeloadCycle: active });
+    writeLocalSetting("activeDeloadCycle", active);
+  },
+
+  checkDeloadTriggers: (customState) => {
+    const state = customState || get();
+    
+    // 1. Check last 3 consecutive recovery logs
+    const logs = state.recoveryLogs || [];
+    const last3Logs = logs.slice(-3);
+    const has3Logs = last3Logs.length >= 3;
+    const allCnsLow = has3Logs && last3Logs.every((log) => {
+      const score = calculateRecoveryScore(log);
+      return score < 40;
+    });
+
+    // 2. Check weekly workout volume drop (>35% crash vs baseline)
+    const workouts = state.workouts || [];
+    const now = Date.now();
+    const oneWeek = 7 * 86400000;
+    
+    const week1 = workouts.filter((w) => now - new Date(w.startedAt).getTime() < oneWeek);
+    const week2 = workouts.filter((w) => {
+      const diff = now - new Date(w.startedAt).getTime();
+      return diff >= oneWeek && diff < 2 * oneWeek;
+    });
+    const week3 = workouts.filter((w) => {
+      const diff = now - new Date(w.startedAt).getTime();
+      return diff >= 2 * oneWeek && diff < 3 * oneWeek;
+    });
+
+    const getVol = (ws: Workout[]) => ws.reduce((sum, w) => {
+      return sum + w.exercises.reduce((esum, ex) => {
+        return esum + ex.sets.reduce((ssum, s) => s.completed ? ssum + s.reps * s.weight : ssum, 0);
+      }, 0);
+    }, 0);
+
+    const vol1 = getVol(week1);
+    const vol2 = getVol(week2);
+    const vol3 = getVol(week3);
+
+    let volumeCrashed = false;
+    if (vol2 > 0 && vol3 > 0) {
+      const avgHist = (vol2 + vol3) / 2;
+      if (vol1 < avgHist * 0.65) {
+        volumeCrashed = true;
+      }
+    }
+
+    return allCnsLow || volumeCrashed;
+  },
 
   setEditingWorkoutPlanId: (id) => set({ editingWorkoutPlanId: id }),
   setEditingRoutineId: (id) => set({ editingRoutineId: id }),
@@ -379,6 +481,52 @@ export const createWorkoutSlice: StateCreator<
   updateSet: async (workoutExerciseId, setId, patch) => {
     const activeWorkout = get().activeWorkout;
     if (!activeWorkout) return;
+
+    // Find the target exercise and set
+    const targetEx = activeWorkout.exercises.find((ex) => ex.id === workoutExerciseId);
+    if (!targetEx) return;
+
+    const targetSet = targetEx.sets.find((s) => s.id === setId);
+    if (!targetSet) return;
+
+    // Build the updated set state
+    const updatedSet = { ...targetSet, ...patch };
+
+    // Auto-regulation: check if this set is completed and has RIR input
+    let nextSets = targetEx.sets.map((s) => (s.id === setId ? updatedSet : s));
+
+    if (updatedSet.completed && typeof updatedSet.rir === "number") {
+      const rir = updatedSet.rir;
+      const reps = updatedSet.reps;
+      const weight = updatedSet.weight;
+      const targetRepsNum = Number(targetEx.targetReps.match(/\d+/)?.[0] ?? 8);
+
+      if (rir <= 1) {
+        // Near failure
+        if (reps < targetRepsNum) {
+          // Missed target reps due to failure -> reduce load for subsequent sets by 5-10% (scaled to nearest 5 lbs/2.5kg)
+          const nextWeight = Math.max(0, Math.round((weight * 0.92) / 5) * 5);
+          const currentIdx = targetEx.sets.findIndex((x) => x.id === setId);
+          nextSets = nextSets.map((s, idx) => {
+            if (idx > currentIdx && !s.completed) {
+              return { ...s, weight: nextWeight };
+            }
+            return s;
+          });
+        } else if (reps > targetRepsNum + 2) {
+          // Exceeded target reps significantly at low RIR -> increase load for subsequent sets by 5%
+          const nextWeight = Math.round((weight * 1.05) / 5) * 5 || (weight + 5);
+          const currentIdx = targetEx.sets.findIndex((x) => x.id === setId);
+          nextSets = nextSets.map((s, idx) => {
+            if (idx > currentIdx && !s.completed) {
+              return { ...s, weight: nextWeight };
+            }
+            return s;
+          });
+        }
+      }
+    }
+
     set({
       activeWorkout: {
         ...activeWorkout,
@@ -386,9 +534,7 @@ export const createWorkoutSlice: StateCreator<
           if (exercise.id !== workoutExerciseId) return exercise;
           return {
             ...exercise,
-            sets: exercise.sets.map((workoutSet) =>
-              workoutSet.id === setId ? { ...workoutSet, ...patch } : workoutSet,
-            ),
+            sets: nextSets,
           };
         }),
       },
@@ -437,8 +583,10 @@ export const createWorkoutSlice: StateCreator<
       completedAt,
       durationMinutes: minutesBetween(activeWorkout.startedAt, completedAt),
     };
+    
+    const nextWorkouts = [...get().workouts, completedWorkout];
     set({
-      workouts: [...get().workouts, completedWorkout],
+      workouts: nextWorkouts,
       activeWorkout: null,
       restTimerEndsAt: undefined,
       restingSetId: null,
@@ -455,6 +603,13 @@ export const createWorkoutSlice: StateCreator<
       activeSubScreen: null,
       workoutTab: "plans",
     });
+
+    // Check deload triggers on the next state
+    const triggerDeload = get().checkDeloadTriggers({ ...get(), workouts: nextWorkouts });
+    if (triggerDeload && !get().activeDeloadCycle) {
+      get().setDeloadCycle(true);
+    }
+
     const registry = await import("@/lib/repositories/registry").then(m => m.registry);
     registry.save((r, uid) => r.workout.saveWorkout(uid, completedWorkout));
   },

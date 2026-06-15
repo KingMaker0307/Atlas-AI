@@ -97,7 +97,17 @@ export const createNutritionSlice: StateCreator<
 
   logRecovery: async (log) => {
     const filtered = get().recoveryLogs.filter((item) => item.date !== log.date);
-    set({ recoveryLogs: [...filtered, log].sort((a, b) => a.date.localeCompare(b.date)) });
+    const nextLogs = [...filtered, log].sort((a, b) => a.date.localeCompare(b.date));
+    set({ recoveryLogs: nextLogs });
+
+    // Check deload triggers on next state
+    if (get().checkDeloadTriggers) {
+      const triggerDeload = get().checkDeloadTriggers({ ...get(), recoveryLogs: nextLogs });
+      if (triggerDeload && !get().activeDeloadCycle) {
+        get().setDeloadCycle(true);
+      }
+    }
+
     const registry = await import("@/lib/repositories/registry").then(m => m.registry);
     registry.save((r, uid) => r.recovery.addLog(uid, log));
   },
