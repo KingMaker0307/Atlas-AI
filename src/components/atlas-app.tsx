@@ -1,18 +1,17 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon, Flame } from "lucide-react";
+import { Bot, ClipboardList, Home, Settings, ShieldAlert, Sun, Moon, Flame, Compass, Gauge } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
-import { HomeScreen } from "@/components/screens/home-screen";
 import { WorkoutScreen } from "@/components/screens/workout-screen";
 import { CoachScreen } from "@/components/screens/coach-screen";
 import { SettingsScreen } from "@/components/screens/settings-screen";
 import { WelcomeScreen } from "@/components/screens/welcome-screen";
+import { HomeScreen } from "@/components/screens/home-screen";
 import { RoutineBuilderScreen } from "@/components/screens/routine-builder-screen";
 import { WorkoutPlanBuilderScreen } from "@/components/screens/workout-plan-builder";
 import { WorkoutPlanDetailScreen } from "@/components/screens/workout-plan-detail";
 import { ExerciseDatabaseScreen } from "@/components/screens/exercise-database-screen";
-import { NutritionAnalyticsScreen } from "@/components/screens/nutrition-analytics-screen";
 import { AppLoader } from "@/components/ui/app-loader";
 import { HealthDisclaimer } from "@/components/ui/health-disclaimer";
 import { InstallPrompt } from "@/components/install-prompt";
@@ -49,14 +48,15 @@ export function AtlasApp() {
   const profile = useAtlasStore((state) => state.profile);
   const theme = useAtlasStore((state) => state.theme);
   const setTheme = useAtlasStore((state) => state.setTheme);
+  const guidedMode = useAtlasStore((state) => state.guidedMode);
+  const setGuidedMode = useAtlasStore((state) => state.setGuidedMode);
   const startupChoice = useAtlasStore((state) => state.startupChoice);
   const blocked = useAtlasStore((state) => state.blocked);
-  const guidedMode = useAtlasStore((state) => state.guidedMode);
   const checkAndAutoStopActiveWorkout = useAtlasStore((state) => state.checkAndAutoStopActiveWorkout);
   const pullCloudUpdate = useAtlasStore((state) => state.pullCloudUpdate);
   const setGlobalAddFoodOpen = useAtlasStore((state) => state.setGlobalAddFoodOpen);
-  // For backwards compatibility and routing: 'today' redirects to unified 'dashboard' Home screen
-  const resolvedTab = activeTab === "today" ? "dashboard" : activeTab;
+  // For backwards compatibility and routing: redirect Today to Home (dashboard) screen
+  const resolvedTab = (activeTab === "today") ? "dashboard" : activeTab;
 
   const activeSettingsTab = useAtlasStore((state) => state.activeSettingsTab);
 
@@ -207,8 +207,6 @@ export function AtlasApp() {
         return <ErrorBoundary screen="Active Workout"><WorkoutScreen /></ErrorBoundary>;
       case "exercise-database":
         return <ErrorBoundary screen="Exercise Database"><ExerciseDatabaseScreen /></ErrorBoundary>;
-      case "nutrition-analytics":
-        return <ErrorBoundary screen="Nutrition Analytics"><NutritionAnalyticsScreen /></ErrorBoundary>;
       default:
         return null;
     }
@@ -288,6 +286,35 @@ export function AtlasApp() {
               <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider font-sans">System Standby</span>
             </div>
             <div className="flex items-center gap-1.5">
+              {/* Experience Mode switcher */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(8);
+                  void setGuidedMode(!guidedMode);
+                }}
+                className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-surface-border bg-surface text-zinc-555 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden"
+                title={guidedMode ? "Switch to Advanced Experience Mode" : "Switch to Beginner Experience Mode"}
+                aria-label="Toggle experience mode"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={guidedMode ? "beginner" : "advanced"}
+                    initial={{ y: 12, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -12, opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeInOut" }}
+                    className="shrink-0"
+                  >
+                    {guidedMode ? (
+                      <Compass size={14} className="text-emerald-500" />
+                    ) : (
+                      <Gauge size={14} className="text-amber-500" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -353,6 +380,35 @@ export function AtlasApp() {
                   <span>Resume</span>
                 </button>
               )}
+              {/* Experience Mode switcher */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(8);
+                  void setGuidedMode(!guidedMode);
+                }}
+                className="relative flex items-center justify-center h-10 w-10 rounded-xl border border-surface-border bg-surface text-zinc-555 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-200 transition active:scale-95 cursor-pointer shrink-0 overflow-hidden mr-1"
+                title={guidedMode ? "Switch to Advanced Experience Mode" : "Switch to Beginner Experience Mode"}
+                aria-label="Toggle experience mode"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={guidedMode ? "beginner" : "advanced"}
+                    initial={{ y: 12, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -12, opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeInOut" }}
+                    className="shrink-0"
+                  >
+                    {guidedMode ? (
+                      <Compass size={16} className="text-emerald-500" />
+                    ) : (
+                      <Gauge size={16} className="text-amber-500" />
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {

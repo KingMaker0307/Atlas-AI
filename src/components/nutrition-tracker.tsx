@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   X,
   Check,
+  CheckCircle2,
   Info,
   TrendingUp,
   Zap,
@@ -33,6 +34,8 @@ import {
   Camera,
   Barcode,
   Minus,
+  Compass,
+  Award,
 } from "lucide-react";
 import { Card, Surface } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +45,8 @@ import { BeginnerTipCard } from "@/components/beginner-tip-card";
 import { calculateNutritionTargets, DEFAULT_TARGETS } from "@/lib/calculators";
 import { decryptString } from "@/lib/security/crypto";
 import { getProviderAdapter } from "@/providers";
+import { getSmartNutritionTips } from "@/lib/coach/smart-nutrition-tips";
+import { AiNutritionTip } from "@/components/ai-nutrition-tip";
 
 async function uploadImageToSupabase(dataUrl: string, userId: string): Promise<string> {
   try {
@@ -275,37 +280,135 @@ const RingProgress: FC<{ value: number; max: number; className?: string; size?: 
 };
 
 // ─── Macro Bar ───────────────────────────────────────────────────
-const MacroBar: FC<{ label: string; value: number; max: number; unit: string; color: string; icon: FC<any>; iconColor: string; tooltip?: string }> = ({
-  label, value, max, unit, color, icon: Icon, iconColor, tooltip,
+const MacroBar: FC<{
+  label: string;
+  value: number;
+  max: number;
+  unit: string;
+  color: string;
+  icon: FC<any>;
+  iconColor: string;
+  tooltip?: string;
+  guidedMode: boolean;
+  activeEntries: NutritionEntry[];
+  nutrientKey: "protein" | "carbs" | "fat" | "fiber";
+}> = ({
+  label, value, max, unit, color, icon: Icon, iconColor, tooltip, guidedMode, activeEntries, nutrientKey,
 }) => {
-  const guidedMode = useAtlasStore((s) => s.guidedMode);
+  const [isOpen, setIsOpen] = useState(false);
   const pct = Math.min((value / max) * 100, 100);
   const isOver = value > max;
 
+  // Filter and map sources
+  const sources = useMemo(() => {
+    return activeEntries
+      .filter((e) => e[nutrientKey] > 0)
+      .map((e) => ({
+        name: e.name,
+        amount: e[nutrientKey],
+        meal: e.meal,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [activeEntries, nutrientKey]);
+
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5">
-          <Icon size={13} className={iconColor} aria-hidden="true" />
-          <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
-          {guidedMode && tooltip && (
-            <span className="text-[10px] text-zinc-500 font-medium font-sans select-none" title={tooltip}>
-              ({tooltip})
+    <div className={cn("rounded-2xl border transition-all duration-200 overflow-hidden", 
+      !guidedMode 
+        ? "border-card-border hover:border-emerald-500/30 bg-zinc-50/20 dark:bg-zinc-900/40" 
+        : "border-transparent bg-transparent"
+    )}>
+      {/* Clickable trigger if in Advanced Mode */}
+      {!guidedMode ? (
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full text-left p-3 flex flex-col gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 cursor-pointer"
+        >
+          <div className="flex items-center justify-between text-xs w-full">
+            <div className="flex items-center gap-1.5">
+              <Icon size={13} className={iconColor} aria-hidden="true" />
+              <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
+                {value.toFixed(1)}<span className="font-normal text-zinc-500 dark:text-zinc-400">/{max}{unit}</span>
+              </span>
+              <motion.span
+                animate={{ rotate: isOpen ? 90 : 0 }}
+                transition={{ duration: 0.18 }}
+                className="text-zinc-400"
+              >
+                <ChevronRight size={12} />
+              </motion.span>
+            </div>
+          </div>
+          <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-800/80 overflow-hidden" aria-hidden="true">
+            <motion.div
+              className={cn("h-full rounded-full", isOver ? "bg-rose-500" : color)}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            />
+          </div>
+        </button>
+      ) : (
+        <div className="p-1 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <Icon size={13} className={iconColor} aria-hidden="true" />
+              <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
+              {tooltip && (
+                <span className="text-[10px] text-zinc-500 font-medium font-sans select-none" title={tooltip}>
+                  ({tooltip})
+                </span>
+              )}
+            </div>
+            <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
+              {value.toFixed(1)}<span className="font-normal text-zinc-655 dark:text-zinc-400">/{max}{unit}</span>
             </span>
-          )}
+          </div>
+          <div className="h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800/80 overflow-hidden" aria-hidden="true">
+            <motion.div
+              className={cn("h-full rounded-full", isOver ? "bg-rose-500" : color)}
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            />
+          </div>
         </div>
-        <span className={cn("font-sans tabular-nums font-semibold", isOver ? "text-rose-700 dark:text-rose-500" : "text-zinc-700 dark:text-zinc-300")}>
-          {value.toFixed(1)}<span className="font-normal text-zinc-600 dark:text-zinc-400">/{max}{unit}</span>
-        </span>
-      </div>
-      <div className="h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-800/80 overflow-hidden" aria-hidden="true">
-        <motion.div
-          className={cn("h-full rounded-full", isOver ? "bg-rose-500" : color)}
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-        />
-      </div>
+      )}
+
+      {/* Expandable sources list */}
+      <AnimatePresence>
+        {isOpen && !guidedMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden bg-zinc-50/50 dark:bg-zinc-900/60 border-t border-card-border"
+          >
+            <div className="p-3 space-y-2">
+              <p className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider">Food Sources ({sources.length})</p>
+              {sources.length === 0 ? (
+                <p className="text-[10px] text-zinc-500 italic">No logged sources for this nutrient today</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {sources.map((src, i) => (
+                    <div key={i} className="flex justify-between items-center text-xs text-foreground bg-white/40 dark:bg-black/15 p-2 rounded-xl border border-card-border/40">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold truncate">{src.name}</span>
+                        <span className="text-[9px] text-zinc-500 capitalize">{src.meal}</span>
+                      </div>
+                      <span className="font-bold text-zinc-700 dark:text-zinc-300 tabular-nums shrink-0 ml-2">{src.amount.toFixed(1)}{unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -330,6 +433,58 @@ const MicroBadge: FC<{ label: string; value: number; max: number; unit: string; 
         <p className="text-[10px] font-sans tabular-nums font-semibold text-zinc-750 dark:text-zinc-300 mt-0.5">{value.toFixed(0)}/{max}{unit}</p>
       </div>
     </Surface>
+  );
+};
+
+// ─── Smart Nutrition Tip Card ─────────────────────────────────────────
+const SmartNutritionTipCard: FC<{ targetDateString: string }> = ({ targetDateString }) => {
+  const profile = useAtlasStore((s) => s.profile);
+  const nutritionEntries = useAtlasStore((s) => s.nutritionEntries || []);
+  const waterLogs = useAtlasStore((s) => s.waterLogs || []);
+
+  const tips = useMemo(
+    () => getSmartNutritionTips(profile, nutritionEntries, waterLogs, targetDateString),
+    [profile, nutritionEntries, waterLogs, targetDateString]
+  );
+
+  if (tips.length === 0) return null;
+
+  return (
+    <Card className="p-4 space-y-3 shadow-sm border-card-border">
+      <div className="flex items-center gap-2 border-b border-card-border pb-2.5">
+        <Sparkles size={15} className="text-emerald-500" />
+        <h4 className="text-xs font-bold text-zinc-955">Nutrition Insights &amp; Tips</h4>
+      </div>
+      <div className="space-y-3">
+        {tips.map((tip, idx) => {
+          const Icon = {
+            info: Info,
+            warning: AlertTriangle,
+            success: CheckCircle2,
+            tip: Sparkles,
+          }[tip.type] || Sparkles;
+
+          const colors = {
+            info: "bg-blue-500/5 border-blue-500/15 text-blue-500",
+            warning: "bg-amber-500/5 border-amber-500/15 text-amber-600 dark:text-amber-400",
+            success: "bg-emerald-500/5 border-emerald-500/15 text-emerald-500",
+            tip: "bg-blue-500/5 border-blue-500/15 text-blue-500",
+          }[tip.type] || "bg-blue-500/5 border-blue-500/15 text-blue-500";
+
+          return (
+            <div key={idx} className={`p-4 rounded-2xl border flex items-start gap-3 ${colors}`}>
+              <Icon size={16} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-foreground">{tip.title}</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed font-semibold">
+                  {tip.desc}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 };
 
@@ -3057,6 +3212,11 @@ export function NutritionTracker() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAddMeal, setSelectedAddMeal] = useState<NutritionEntry["meal"]>("breakfast");
   const [expandedMeal, setExpandedMeal] = useState<NutritionEntry["meal"] | null>("breakfast");
+  const [nutritionPageTab, setNutritionPageTab] = useState<"log" | "nutrients" | "trends">("log");
+  const [isBmrOpen, setIsBmrOpen] = useState(false);
+  const [isHistoricalOpen, setIsHistoricalOpen] = useState(false);
+  const [isMicroSourcesOpen, setIsMicroSourcesOpen] = useState(false);
+  const [expandedMicro, setExpandedMicro] = useState<string | null>(null);
   // Custom Date state synced with Zustand global selectedDate state
   const selectedDateStr = useAtlasStore((state) => state.selectedDate);
   const setSelectedDateGlobal = useAtlasStore((state) => state.setSelectedDate);
@@ -3991,8 +4151,809 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
   // Hydration level helper
   const hydrationRatio = Math.min(totalWater / waterTarget, 1);
 
+  const trendsData = useMemo(() => {
+    const getStatsForDays = (daysCount: number) => {
+      const limitDate = new Date();
+      limitDate.setDate(limitDate.getDate() - daysCount);
+      const limitStr = getLocalDateString(limitDate);
+
+      const filteredFoods = nutritionEntries.filter((e) => getLocalDateString(e.timestamp) >= limitStr);
+      const filteredWater = waterLogs.filter((w) => getLocalDateString(w.timestamp) >= limitStr);
+
+      const uniqueDays = new Set([
+        ...filteredFoods.map((e) => getLocalDateString(e.timestamp)),
+        ...filteredWater.map((w) => getLocalDateString(w.timestamp)),
+      ]);
+      const daysLogged = Math.max(uniqueDays.size, 1);
+
+      const foodTotals = filteredFoods.reduce(
+        (acc, e) => ({
+          calories: acc.calories + e.calories,
+          protein: acc.protein + e.protein,
+          carbs: acc.carbs + e.carbs,
+          fat: acc.fat + e.fat,
+        }),
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      );
+
+      const waterTotal = filteredWater.reduce((sum, w) => sum + w.amount, 0);
+
+      return {
+        avgCalories: Math.round(foodTotals.calories / daysLogged),
+        avgProtein: Math.round(foodTotals.protein / daysLogged),
+        avgCarbs: Math.round(foodTotals.carbs / daysLogged),
+        avgFat: Math.round(foodTotals.fat / daysLogged),
+        avgWater: Math.round(waterTotal / daysLogged),
+        daysLogged: uniqueDays.size,
+      };
+    };
+
+    return {
+      last7Days: getStatsForDays(7),
+      last30Days: getStatsForDays(30),
+      last12Months: getStatsForDays(365),
+    };
+  }, [nutritionEntries, waterLogs]);
+
+  const getTopMicroSources = (micro: "sodium" | "potassium" | "vitaminC" | "calcium" | "iron") => {
+    return [...activeEntries]
+      .filter((e) => e[micro] > 0)
+      .sort((a, b) => b[micro] - a[micro])
+      .slice(0, 3);
+  };
+
+  const renderDatePicker = () => (
+    <div className="flex items-center justify-between p-1 bg-input border border-input-border rounded-2xl select-none">
+      <button
+        type="button"
+        onClick={() => navigateDayOffset(-1)}
+        disabled={!canNavigateBack}
+        aria-label="Previous day"
+        className={cn(
+          "h-9 w-9 flex items-center justify-center rounded-xl transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer",
+          !canNavigateBack
+            ? "text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50"
+            : "hover:bg-white dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-300 hover:text-zinc-955 dark:hover:text-white"
+        )}
+      >
+        <ChevronLeft size={16} />
+      </button>
+
+      {/* Clickable center to trigger Date Input Calendar picker */}
+      <div className="relative">
+        <input
+          type="date"
+          min={accountCreatedDateString}
+          max={getLocalDateString(new Date())}
+          value={getLocalDateString(selectedDate)}
+          onChange={(e) => {
+            if (e.target.value) {
+              const valStr = e.target.value;
+              if (valStr >= accountCreatedDateString && valStr <= getLocalDateString(new Date())) {
+                setSelectedDate(new Date(valStr + "T12:00:00"));
+              }
+            }
+          }}
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+          aria-label="Select custom date"
+        />
+        <button
+          type="button"
+          className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-455 shadow-sm border border-input-border text-xs font-bold uppercase tracking-wider focus-visible:outline-none"
+        >
+          <Calendar size={13} aria-hidden="true" />
+          <span>{dateLabel}</span>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => navigateDayOffset(1)}
+        disabled={isTodaySelected}
+        aria-label="Next day"
+        className={cn(
+          "h-9 w-9 flex items-center justify-center rounded-xl transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer",
+          isTodaySelected
+            ? "text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50"
+            : "hover:bg-white dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-300 hover:text-zinc-955 dark:hover:text-white"
+        )}
+      >
+        <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+
+  const renderLogTab = () => {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        {/* Date Selector */}
+        {renderDatePicker()}
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={getLocalDateString(selectedDate)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4"
+          >
+            {/* Daily Progress Summary & Hydration Tracker */}
+            <Card className="p-4 relative overflow-hidden">
+              <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
+
+              <div className="grid grid-cols-2 gap-4 items-center divide-x divide-card-border">
+                {/* Calorie Progress Section */}
+                <div className="flex flex-col items-center text-center space-y-2">
+                  <div className="relative shrink-0 select-none">
+                    <RingProgress
+                      value={totals.calories}
+                      max={targets.calories}
+                      className={totals.calories > targets.calories ? "stroke-rose-455" : "stroke-emerald-555"}
+                      size={76}
+                      strokeWidth={6}
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Flame size={16} className={totals.calories > targets.calories ? "text-rose-450 animate-bounce" : "text-emerald-500"} />
+                      <span className="text-[10px] font-bold text-zinc-955 mt-0.5 leading-none">
+                        {Math.round((totals.calories / targets.calories) * 100) || 0}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2 className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
+                      Calories
+                    </h2>
+                    <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                      <span className="text-xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
+                        {remainingCals.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 font-bold uppercase">left</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hydration Tracker Section */}
+                <div className="flex flex-col items-center text-center space-y-2 pl-4">
+                  <div className="relative shrink-0 select-none">
+                    <RingProgress
+                      value={totalWater}
+                      max={waterTarget}
+                      className="stroke-sky-500"
+                      size={76}
+                      strokeWidth={6}
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Droplets size={16} className="text-sky-500" />
+                      <span className="text-[10px] font-bold text-zinc-955 mt-0.5 leading-none">
+                        {Math.round((totalWater / waterTarget) * 100) || 0}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2 className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
+                      Water
+                    </h2>
+                    <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
+                      <span className="text-xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
+                        {totalWater.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 font-bold uppercase">/ {waterTarget} ml</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Calorie Breakdown details */}
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-card-border text-center mt-3">
+                <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Budget</span>
+                  <span className="text-xs font-semibold text-zinc-955 font-sans tabular-nums">{targets.calories.toLocaleString()}</span>
+                </div>
+                <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Food</span>
+                  <span className="text-xs font-semibold text-rose-500 font-sans tabular-nums">-{totals.calories.toLocaleString()}</span>
+                </div>
+                <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Active</span>
+                  <span className="text-xs font-semibold text-emerald-500 font-sans tabular-nums">+{burnedCalories.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Water Log Buttons Row */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-card-border mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastLog = activeWaterLogs[activeWaterLogs.length - 1];
+                    if (lastLog) {
+                      removeWaterLog(lastLog.id);
+                    }
+                  }}
+                  disabled={activeWaterLogs.length === 0}
+                  className="h-8 w-8 flex items-center justify-center rounded-xl bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-40 transition text-zinc-500 cursor-pointer"
+                  aria-label="Remove last water log"
+                >
+                  <Minus size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addWater(250)}
+                  className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition cursor-pointer"
+                >
+                  +250ml
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addWater(500)}
+                  className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition cursor-pointer"
+                >
+                  +500ml
+                </button>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="Custom ml"
+                    value={customWaterInput}
+                    onChange={(e) => setCustomWaterInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && customWaterInput) {
+                        addWater(parseInt(customWaterInput) || 0);
+                        setCustomWaterInput("");
+                      }
+                    }}
+                    className="h-8 w-20 px-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-card-border text-[11px] font-medium text-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-500 font-sans"
+                    aria-label="Custom water intake in ml"
+                  />
+                  {customWaterInput && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        addWater(parseInt(customWaterInput) || 0);
+                        setCustomWaterInput("");
+                      }}
+                      className="absolute right-1 top-1 h-6 px-1.5 rounded bg-sky-500 text-white text-[9px] font-bold flex items-center justify-center cursor-pointer"
+                    >
+                      Add
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Water Logs List (Collapsible / inline list if items logged) */}
+              {activeWaterLogs.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-card-border space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                  {activeWaterLogs.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between text-[11px] bg-zinc-50/50 dark:bg-zinc-900/30 p-2 rounded-lg border border-card-border/30">
+                      <div className="flex items-center gap-1.5">
+                        <Droplets size={11} className="text-sky-500" />
+                        <span className="text-xs font-semibold text-zinc-955 font-sans tabular-nums">{log.amount} ml</span>
+                        <span className="text-[9px] text-zinc-755">
+                          at {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeWaterLog(log.id)}
+                        aria-label="Remove water log"
+                        className="h-6 w-6 flex items-center justify-center rounded text-zinc-450 hover:text-rose-450 hover:bg-rose-450/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* BeginnerTipCard */}
+            {guidedMode && activeEntries.length === 0 && (
+              <BeginnerTipCard
+                emoji="🥗"
+                headline="Why track food?"
+                body="Tracking your meals helps you make sure you get enough protein to recover and enough calories to fuel your workouts. Start by adding your first meal below!"
+                variant="nutrition"
+                className="mb-4"
+              />
+            )}
+
+            {/* Collapsible Meal Logging Areas */}
+            <div className="space-y-2.5">
+              {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([meal, cfg]) => {
+                const MealIcon = cfg.icon;
+                const items = mealEntries(meal);
+                const mealCals = items.reduce((s, e) => s + e.calories, 0);
+                const mealProtein = items.reduce((s, e) => s + e.protein, 0);
+                const mealCarbs = items.reduce((s, e) => s + e.carbs, 0);
+                const mealFat = items.reduce((s, e) => s + e.fat, 0);
+                const isExpanded = expandedMeal === meal;
+
+                return (
+                  <Card key={meal} className="overflow-hidden">
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-controls={`meal-section-${meal}`}
+                      className="w-full flex items-center justify-between p-3.5 hover:bg-surface/50 transition active:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
+                      onClick={() => setExpandedMeal(isExpanded ? null : meal)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn("h-8 w-8 rounded-xl border flex items-center justify-center", cfg.bg)}>
+                          <MealIcon size={15} className={cfg.color} aria-hidden="true" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-bold text-zinc-955">{cfg.label}</p>
+                          <p className="text-[10px] text-zinc-755 font-mono">{items.length} logged</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2.5">
+                        {items.length > 0 && (
+                          <div className="flex items-center gap-1 text-[9px] font-sans font-bold select-none mr-0.5 sm:mr-1">
+                            <span className="text-blue-455 bg-blue-500/5 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">P:{Math.round(mealProtein)}g</span>
+                            <span className="text-amber-450 bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">C:{Math.round(mealCarbs)}g</span>
+                            <span className="text-rose-455 bg-rose-500/5 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">F:{Math.round(mealFat)}g</span>
+                          </div>
+                        )}
+                        <span className="text-xs sm:text-sm font-bold text-zinc-955 tabular-nums whitespace-nowrap">
+                          {mealCals} <span className="text-[9px] sm:text-[10px] font-normal text-zinc-755">kcal</span>
+                        </span>
+                        {isExpanded ? <ChevronUp size={15} className="text-zinc-755 shrink-0" /> : <ChevronDown size={15} className="text-zinc-755 shrink-0" />}
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          id={`meal-section-${meal}`}
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-3.5 pb-3.5 space-y-2 border-t border-card-border pt-2.5 bg-surface/20">
+                            {items.length === 0 ? (
+                              <p className="text-xs text-zinc-755 text-center py-4 italic">No items logged under {cfg.label.toLowerCase()}</p>
+                            ) : (
+                              items.map((entry) => (
+                                <div
+                                  key={entry.id}
+                                  className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-card-border shadow-sm"
+                                >
+                                  <div className="min-w-0 flex-1 mr-2">
+                                    <p className="text-xs font-bold text-zinc-955 truncate">{entry.name}</p>
+                                    <div className="flex gap-2.5 mt-0.5 text-[10px] font-sans tabular-nums">
+                                      <span className="text-blue-455 font-semibold">P:{entry.protein}g</span>
+                                      <span className="text-amber-450 font-semibold">C:{entry.carbs}g</span>
+                                      <span className="text-rose-455 font-semibold">F:{entry.fat}g</span>
+                                      {entry.fiber > 0 && <span className="text-emerald-450 font-semibold">Fb:{entry.fiber}g</span>}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-xs font-bold text-zinc-955 tabular-nums">{entry.calories} kcal</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeEntry(entry.id)}
+                                      aria-label={`Remove ${entry.name}`}
+                                      className="h-6 w-6 flex items-center justify-center rounded-lg text-zinc-455 hover:text-rose-455 hover:bg-rose-455/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedAddMeal(meal); setShowAddModal(true); }}
+                              className={cn(
+                                "w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer",
+                                cfg.color,
+                                `border-current/40 hover:bg-current/5`
+                              )}
+                            >
+                              <Plus size={13} /> Add food to {cfg.label}
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </Card>
+                );
+              })}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const renderNutrientsTab = () => {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        {/* Date Selector */}
+        {renderDatePicker()}
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={getLocalDateString(selectedDate)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4"
+          >
+            {/* Macros and optionally Micros RDA */}
+            <Card className="p-4 space-y-4">
+              <div className="border-b border-card-border pb-2.5">
+                <h4 className="text-xs font-bold text-zinc-955">Macronutrient Progress</h4>
+              </div>
+              <div className="space-y-4">
+                <MacroBar label="Protein" value={totals.protein} max={targets.protein} unit="g" color="bg-blue-455" icon={Beef} iconColor="text-blue-455" tooltip="helps build muscle 💪" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="protein" />
+                <MacroBar label="Carbohydrates" value={totals.carbs} max={targets.carbs} unit="g" color="bg-amber-450" icon={Wheat} iconColor="text-amber-450" tooltip="gives you energy ⚡" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="carbs" />
+                <MacroBar label="Fat" value={totals.fat} max={targets.fat} unit="g" color="bg-rose-455" icon={Droplets} iconColor="text-rose-455" tooltip="keeps you healthy 🫀" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="fat" />
+                {!guidedMode && (
+                  <MacroBar label="Fiber" value={totals.fiber} max={targets.fiber} unit="g" color="bg-emerald-455" icon={Leaf} iconColor="text-emerald-455" guidedMode={guidedMode} activeEntries={activeEntries} nutrientKey="fiber" />
+                )}
+              </div>
+
+              {/* Vitamins & Minerals RDA (Advanced mode only) */}
+              {!guidedMode && (
+                <div className="pt-4 border-t border-card-border space-y-4">
+                  <div>
+                    <h5 className="text-[11px] font-bold uppercase tracking-wider text-zinc-755">Vitamins &amp; Minerals Progress (RDA)</h5>
+                    <p className="text-[10px] text-zinc-755 mt-0.5">Track daily micronutrients and guideline thresholds</p>
+                  </div>
+
+                  <div className="divide-y divide-card-border">
+                    {[
+                      { label: "Sodium", value: totals.sodium, max: targets.sodium, unit: "mg", color: "stroke-amber-450", desc: "Keep below 2,300 mg (prevents fluid retention)", key: "sodium" as const },
+                      { label: "Potassium", value: totals.potassium, max: targets.potassium, unit: "mg", color: "stroke-violet-455", desc: "Aim for 4,700 mg (supports heart/muscle function)", key: "potassium" as const },
+                      { label: "Vitamin C", value: totals.vitaminC, max: targets.vitaminC, unit: "mg", color: "stroke-amber-450", desc: "Aim for 90 mg (promotes immune health)", key: "vitaminC" as const },
+                      { label: "Calcium", value: totals.calcium, max: targets.calcium, unit: "mg", color: "stroke-blue-455", desc: "Aim for 1,000 mg (essential for bone structure)", key: "calcium" as const },
+                      { label: "Iron", value: totals.iron, max: targets.iron, unit: "mg", color: "stroke-rose-455", desc: `Aim for ${targets.iron} mg (supports blood oxygenation)`, key: "iron" as const },
+                    ].map((micro) => {
+                      const pct = Math.min((micro.value / micro.max) * 100, 100);
+                      const isOver = micro.value > micro.max;
+                      const isMicroOpen = expandedMicro === micro.key;
+
+                      const microSources = activeEntries
+                        .filter((e) => e[micro.key] > 0)
+                        .map((e) => ({
+                          name: e.name,
+                          amount: e[micro.key],
+                          meal: e.meal,
+                        }))
+                        .sort((a, b) => b.amount - a.amount);
+
+                      return (
+                        <div key={micro.label} className="border-b border-card-border last:border-0">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedMicro(isMicroOpen ? null : micro.key)}
+                            className="w-full flex items-center gap-3.5 py-3 text-left hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 cursor-pointer"
+                          >
+                            <div className="relative shrink-0 select-none">
+                              <RingProgress
+                                value={micro.value}
+                                max={micro.max}
+                                className={isOver ? "stroke-rose-600 dark:stroke-rose-500" : micro.color}
+                                size={42}
+                                strokeWidth={4.5}
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-zinc-955 leading-none">
+                                {Math.round(pct)}%
+                              </span>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-zinc-955 leading-none">{micro.label}</p>
+                              <p className="text-[10px] text-zinc-755 mt-1 truncate">{micro.desc}</p>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="text-right">
+                                <span className={cn("text-xs font-bold font-sans tabular-nums block", isOver ? "text-rose-500" : "text-zinc-955")}>
+                                  {micro.value.toFixed(0)} <span className="text-[10px] font-normal text-zinc-755 font-mono">/ {micro.max} {micro.unit}</span>
+                                </span>
+                              </div>
+                              <motion.span
+                                animate={{ rotate: isMicroOpen ? 90 : 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="text-zinc-400 shrink-0"
+                              >
+                                <ChevronRight size={12} />
+                              </motion.span>
+                            </div>
+                          </button>
+
+                          {/* Expandable micro sources */}
+                          <AnimatePresence>
+                            {isMicroOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                className="overflow-hidden bg-zinc-50/30 dark:bg-zinc-900/40"
+                              >
+                                <div className="px-3.5 pb-3 pt-1 space-y-2">
+                                  <p className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider font-sans">Food Sources ({microSources.length})</p>
+                                  {microSources.length === 0 ? (
+                                    <p className="text-[10px] text-zinc-500 italic">No logged sources for this nutrient today</p>
+                                  ) : (
+                                    <div className="space-y-1.5">
+                                      {microSources.map((src, i) => (
+                                        <div key={i} className="flex justify-between items-center text-xs text-foreground bg-white/40 dark:bg-black/15 p-2 rounded-xl border border-card-border/40">
+                                          <div className="flex flex-col min-w-0">
+                                            <span className="font-bold truncate">{src.name}</span>
+                                            <span className="text-[9px] text-zinc-500 capitalize">{src.meal}</span>
+                                          </div>
+                                          <span className="font-bold text-zinc-700 dark:text-zinc-300 tabular-nums shrink-0 ml-2">{src.amount.toFixed(1)}{micro.unit}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const renderTrendsTab = () => {
+    const topPotassium = getTopMicroSources("potassium");
+    const topVitaminC = getTopMicroSources("vitaminC");
+
+    return (
+      <div className="space-y-4 animate-fade-in">
+        {/* BMR & TDEE Baselines — Fitbit card face */}
+        <Card className="p-4">
+          <button
+            type="button"
+            onClick={() => setIsBmrOpen(!isBmrOpen)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Compass size={17} className="text-emerald-500" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-zinc-955">Metabolic Baseline</h4>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  TDEE: {targets.tdee.toLocaleString()} kcal/day
+                </p>
+              </div>
+            </div>
+            <motion.span
+              animate={{ rotate: isBmrOpen ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isBmrOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-3"
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-surface/55 p-3 rounded-2xl border border-card-border/60">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-1">BMR</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-bold text-zinc-955 tabular-nums">{targets.bmr.toLocaleString()}</span>
+                      <span className="text-[10px] text-zinc-550 font-bold uppercase font-mono">kcal</span>
+                    </div>
+                  </div>
+                  <div className="bg-surface/55 p-3 rounded-2xl border border-card-border/60">
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-1">TDEE</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-bold text-zinc-955 tabular-nums">{targets.tdee.toLocaleString()}</span>
+                      <span className="text-[10px] text-zinc-555 font-bold uppercase font-mono">kcal</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+
+        {/* Smart & AI Nutrition Coaching Tips */}
+        <SmartNutritionTipCard targetDateString={targetDateString} />
+        <AiNutritionTip />
+
+        {/* Historical Trends & Averages — Fitbit card face */}
+        <Card className="p-4">
+          <button
+            type="button"
+            onClick={() => setIsHistoricalOpen(!isHistoricalOpen)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <BarChart3 size={17} className="text-blue-500" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-zinc-955">Historical Trends</h4>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  7-day avg: {trendsData.last7Days.avgCalories} kcal/day
+                </p>
+              </div>
+            </div>
+            <motion.span
+              animate={{ rotate: isHistoricalOpen ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isHistoricalOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-3 space-y-4"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4.5">
+                  <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-755 uppercase tracking-wider">Last 7 Days</p>
+                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last7Days.avgCalories} <span className="text-[10px] font-normal text-zinc-755 font-sans">kcal/d</span></p>
+                    </div>
+                    <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-755 space-y-1">
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last7Days.avgProtein}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last7Days.avgCarbs}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last7Days.avgFat}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-500">
+                        <span>Water:</span><span>{trendsData.last7Days.avgWater}ml</span>
+                      </div>
+                    </div>
+                  </Surface>
+
+                  <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-755 uppercase tracking-wider">Last 30 Days</p>
+                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last30Days.avgCalories} <span className="text-[10px] font-normal text-zinc-755 font-sans">kcal/d</span></p>
+                    </div>
+                    <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-755 space-y-1">
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last30Days.avgProtein}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last30Days.avgCarbs}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last30Days.avgFat}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-500">
+                        <span>Water:</span><span>{trendsData.last30Days.avgWater}ml</span>
+                      </div>
+                    </div>
+                  </Surface>
+
+                  <Surface className="p-3 bg-surface/50 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-755 uppercase tracking-wider">Last 12 Months</p>
+                      <p className="text-xl font-bold text-zinc-955 mt-1.5 font-sans tabular-nums">{trendsData.last12Months.avgCalories} <span className="text-[10px] font-normal text-zinc-755 font-sans">kcal/d</span></p>
+                    </div>
+                    <div className="mt-4 pt-2 border-t border-card-border/50 text-[10px] text-zinc-755 space-y-1">
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>P:</span><span>{trendsData.last12Months.avgProtein}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>C:</span><span>{trendsData.last12Months.avgCarbs}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold"><span>F:</span><span>{trendsData.last12Months.avgFat}g</span></div>
+                      <div className="flex justify-between font-sans tabular-nums font-semibold border-t border-card-border/30 pt-1 mt-1 text-sky-500">
+                        <span>Water:</span><span>{trendsData.last12Months.avgWater}ml</span>
+                      </div>
+                    </div>
+                  </Surface>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+
+        {/* Top Micronutrient Source Foods (Advanced mode only) — Fitbit card face */}
+        {!guidedMode && (
+          <Card className="p-4">
+            <button
+              type="button"
+              onClick={() => setIsMicroSourcesOpen(!isMicroSourcesOpen)}
+              className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                  <Shield size={17} className="text-violet-500" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-zinc-955">Top Micronutrient Sources</h4>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                    {activeEntries.length > 0
+                      ? `${topPotassium.length + topVitaminC.length} source foods found`
+                      : "Log foods to see sources"}
+                  </p>
+                </div>
+              </div>
+              <motion.span
+                animate={{ rotate: isMicroSourcesOpen ? 90 : 0 }}
+                transition={{ duration: 0.18 }}
+                className="text-zinc-400 shrink-0"
+              >
+                <ChevronRight size={14} />
+              </motion.span>
+            </button>
+
+            <AnimatePresence>
+              {isMicroSourcesOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  className="overflow-hidden mt-3"
+                >
+                  {activeEntries.length === 0 ? (
+                    <p className="text-xs text-zinc-755 text-center py-2 italic">No logged foods to display micro sources</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold text-violet-455 flex items-center gap-1"><Shield size={12} aria-hidden="true" /> Top Potassium Sources</p>
+                        <div className="space-y-1.5">
+                          {topPotassium.length === 0 ? (
+                            <p className="text-[10px] text-zinc-755 italic">None logged</p>
+                          ) : (
+                            topPotassium.map((food) => (
+                              <Surface key={food.id} className="text-xs p-2.5 flex justify-between items-center bg-surface/50">
+                                <span className="truncate pr-1 text-foreground font-semibold">{food.name}</span>
+                                <span className="font-mono font-bold text-violet-455 shrink-0">{food.potassium}mg</span>
+                              </Surface>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold text-amber-450 flex items-center gap-1"><Shield size={12} aria-hidden="true" /> Top Vitamin C Sources</p>
+                        <div className="space-y-1.5">
+                          {topVitaminC.length === 0 ? (
+                            <p className="text-[10px] text-zinc-755 italic">None logged</p>
+                          ) : (
+                            topVitaminC.map((food) => (
+                              <Surface key={food.id} className="text-xs p-2.5 flex justify-between items-center bg-surface/50">
+                                <span className="truncate pr-1 text-foreground font-semibold">{food.name}</span>
+                                <span className="font-mono font-bold text-amber-455 shrink-0">{food.vitaminC}mg</span>
+                              </Surface>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-4 pb-4">
+    <div className="space-y-4 pb-4 animate-fade-in">
       {/* ─── Header & Navigation ─── */}
       <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <div className="flex items-center gap-3">
@@ -4008,18 +4969,10 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
 
         <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto self-stretch sm:self-auto">
           <Button
-            size="sm"
-            className="hidden sm:flex font-bold items-center justify-center gap-1.5 rounded-xl px-4 py-2 w-full sm:w-auto sm:flex-initial bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-450 text-white border-transparent shadow-md"
-            onClick={() => setActiveSubScreen("nutrition-analytics")}
-          >
-            <BarChart3 size={15} />
-            <span>Nutrition Analytics</span>
-          </Button>
-
-          <Button
+            type="button"
             size="sm"
             variant="primary"
-            className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 shadow-md focus-visible:ring-emerald-500 w-full sm:w-auto sm:flex-initial"
+            className="bg-emerald-500 hover:bg-emerald-450 text-white font-bold flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 shadow-md focus-visible:ring-emerald-500 w-full sm:w-auto sm:flex-initial cursor-pointer"
             onClick={() => { setSelectedAddMeal("breakfast"); setShowAddModal(true); }}
           >
             <Plus size={16} />
@@ -4028,516 +4981,87 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
         </div>
       </section>
 
-      {/* ─── Standardized Date Picker Control (Infinite Date Navigation) ─── */}
-      <div className="flex items-center justify-between p-1 bg-input border border-input-border rounded-2xl select-none">
+      {/* ─── Page Level Tabs Selector ─── */}
+      <div className="flex items-center gap-0.5 p-0.5 bg-zinc-200/50 dark:bg-zinc-800/45 rounded-xl w-full border border-card-border/40 select-none shadow-sm h-9">
         <button
-          onClick={() => navigateDayOffset(-1)}
-          disabled={!canNavigateBack}
-          aria-label="Previous day"
+          type="button"
+          onClick={() => setNutritionPageTab("log")}
           className={cn(
-            "h-9 w-9 flex items-center justify-center rounded-xl transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-            !canNavigateBack
-              ? "text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50"
-              : "hover:bg-white dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-300 hover:text-zinc-955 dark:hover:text-white"
+            "relative flex-1 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-lg h-8",
+            nutritionPageTab === "log"
+              ? "text-zinc-955 dark:text-zinc-900 font-black"
+              : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
           )}
         >
-          <ChevronLeft size={16} />
-        </button>
-
-        {/* Clickable center to trigger Date Input Calendar picker */}
-        <div className="relative">
-          <input
-            type="date"
-            min={accountCreatedDateString}
-            max={getLocalDateString(new Date())}
-            value={getLocalDateString(selectedDate)}
-            onChange={(e) => {
-              if (e.target.value) {
-                const valStr = e.target.value;
-                if (valStr >= accountCreatedDateString && valStr <= getLocalDateString(new Date())) {
-                  // Parse with T12:00:00 to avoid timezone offset shifts
-                  setSelectedDate(new Date(valStr + "T12:00:00"));
-                }
-              }
-            }}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-            aria-label="Select custom date"
-          />
-          <button
-            type="button"
-            className="h-9 px-3 gap-1.5 flex items-center justify-center rounded-xl bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-455 shadow-sm border border-input-border text-xs font-bold uppercase tracking-wider focus-visible:outline-none"
-          >
-            <Calendar size={13} aria-hidden="true" />
-            <span>{dateLabel}</span>
-          </button>
-        </div>
-
-        <button
-          onClick={() => navigateDayOffset(1)}
-          disabled={isTodaySelected}
-          aria-label="Next day"
-          className={cn(
-            "h-9 w-9 flex items-center justify-center rounded-xl transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-            isTodaySelected
-              ? "text-zinc-300 dark:text-zinc-700 cursor-not-allowed opacity-50"
-              : "hover:bg-white dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-300 hover:text-zinc-955 dark:hover:text-white"
-          )}
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={getLocalDateString(selectedDate)}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-          className="space-y-4"
-        >
-          <div className="space-y-4">
-              {/* Daily Progress Summary & Hydration Tracker */}
-              <Card className="p-4 relative overflow-hidden">
-                <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "linear-gradient(to bottom right, rgba(16, 185, 129, 0.015), transparent, rgba(14, 165, 233, 0.015))" }} />
-
-                <div className="grid grid-cols-2 gap-4 items-center divide-x divide-card-border">
-                  {/* Calorie Progress Section */}
-                  <div className="flex flex-col items-center text-center space-y-2">
-                    {/* Radial Progress */}
-                    <div className="relative shrink-0 select-none">
-                      <RingProgress
-                        value={totals.calories}
-                        max={targets.calories}
-                        className={totals.calories > targets.calories ? "stroke-rose-450" : "stroke-emerald-450"}
-                        size={76}
-                        strokeWidth={6}
-                      />
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <Flame size={16} className={totals.calories > targets.calories ? "text-rose-450 animate-bounce" : "text-emerald-450"} />
-                        <span className="text-[10px] font-bold text-zinc-955 mt-0.5 leading-none">
-                          {Math.round((totals.calories / targets.calories) * 100) || 0}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="min-w-0">
-                      <h2 className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
-                        Calories
-                      </h2>
-                      <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                        <span className="text-xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
-                          {remainingCals.toLocaleString()}
-                        </span>
-                        <span className="text-[9px] text-zinc-500 font-bold uppercase">kcal left</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Hydration Tracker Section */}
-                  <div className="flex flex-col items-center text-center space-y-2 pl-4">
-                    {/* Radial Progress */}
-                    <div className="relative shrink-0 select-none">
-                      <RingProgress
-                        value={totalWater}
-                        max={waterTarget}
-                        className="stroke-sky-500"
-                        size={76}
-                        strokeWidth={6}
-                      />
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <Droplets size={16} className="text-sky-500" />
-                        <span className="text-[10px] font-bold text-zinc-955 mt-0.5 leading-none">
-                          {Math.round((totalWater / waterTarget) * 100) || 0}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="min-w-0">
-                      <h2 className="text-[9px] font-extrabold uppercase tracking-widest text-zinc-500">
-                        Water
-                      </h2>
-                      <div className="flex items-baseline justify-center gap-0.5 mt-0.5">
-                        <span className="text-xl font-bold text-zinc-955 tracking-tight tabular-nums leading-none">
-                          {totalWater.toLocaleString()}
-                        </span>
-                        <span className="text-[9px] text-zinc-500 font-bold uppercase">/ {waterTarget} ml</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Calorie Breakdown details */}
-                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-card-border text-center mt-3">
-                  <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Budget</span>
-                    <span className="text-xs font-semibold text-zinc-955 font-sans tabular-nums">{targets.calories.toLocaleString()}</span>
-                  </div>
-                  <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Food</span>
-                    <span className="text-xs font-semibold text-rose-500 font-sans tabular-nums">-{totals.calories.toLocaleString()}</span>
-                  </div>
-                  <div className="bg-surface/40 p-1.5 rounded-xl border border-surface-border">
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Active</span>
-                    <span className="text-xs font-semibold text-emerald-500 font-sans tabular-nums">+{burnedCalories.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                {/* Water Log Buttons Row */}
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-3 border-t border-card-border mt-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const lastLog = activeWaterLogs[activeWaterLogs.length - 1];
-                      if (lastLog) {
-                        removeWaterLog(lastLog.id);
-                      }
-                    }}
-                    disabled={activeWaterLogs.length === 0}
-                    className="h-8 w-8 flex items-center justify-center rounded-xl bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-40 transition text-zinc-500"
-                    aria-label="Remove last water log"
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addWater(250)}
-                    className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition"
-                  >
-                    +250ml
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addWater(500)}
-                    className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition"
-                  >
-                    +500ml
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addWater(750)}
-                    className="h-8 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-455 text-[11px] font-bold transition"
-                  >
-                    +750ml
-                  </button>
-                  
-                  {/* Compact custom input */}
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      placeholder="Custom"
-                      value={customWaterInput}
-                      onChange={(e) => setCustomWaterInput(e.target.value)}
-                      className="w-16 h-8 px-2 rounded-lg border border-input-border bg-input text-[11px] font-semibold text-center focus:outline-none focus:ring-1 focus:ring-sky-500"
-                      aria-label="Custom water ml"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = parseInt(customWaterInput);
-                        if (val > 0) {
-                          addWater(val);
-                          setCustomWaterInput("");
-                        }
-                      }}
-                      disabled={!customWaterInput || parseInt(customWaterInput) <= 0}
-                      className="h-8 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-600 disabled:opacity-40 text-white text-[10px] font-bold uppercase transition"
-                    >
-                      Log
-                    </button>
-                  </div>
-                </div>
-
-                {/* Macro calorie ratio bar */}
-                {totals.calories > 0 && (
-                  <div className="mt-3 border-t border-card-border pt-3">
-                    <div className="flex h-1.5 rounded-full overflow-hidden gap-0.5 bg-surface">
-                      {[
-                        { w: (macroCalories.protein / totalMacroKcal) * 100, c: "bg-blue-455" },
-                        { w: (macroCalories.carbs / totalMacroKcal) * 100, c: "bg-amber-450" },
-                        { w: (macroCalories.fat / totalMacroKcal) * 100, c: "bg-rose-450" },
-                      ].map((seg, i) => (
-                        <div key={i} className={cn("h-full", seg.c)} style={{ width: `${seg.w}%` }} />
-                      ))}
-                    </div>
-                    <div className="flex justify-between mt-2">
-                      {[
-                        { label: "Protein", pct: Math.round((macroCalories.protein / totalMacroKcal) * 100), c: "text-blue-455" },
-                        { label: "Carbs", pct: Math.round((macroCalories.carbs / totalMacroKcal) * 100), c: "text-amber-450" },
-                        { label: "Fat", pct: Math.round((macroCalories.fat / totalMacroKcal) * 100), c: "text-rose-450" },
-                      ].map((m) => (
-                        <span key={m.label} className={cn("text-[9px] font-extrabold flex items-center gap-1", m.c)}>
-                          <span className={cn("h-1.5 w-1.5 rounded-full", m.c.replaceAll("text-", "bg-"))} />
-                          {m.label} {m.pct}%
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              {/* Physique Metrics Summary Strip */}
-              {(profile?.weight || calculatedBmi || calculatedProtein) && (
-                <Card className="p-3 bg-zinc-50/50 dark:bg-zinc-950/20 border-card-border shadow-sm">
-                  <div className="grid grid-cols-3 divide-x divide-card-border text-center">
-                    {profile?.weight ? (
-                      <div>
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Weight</span>
-                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
-                          {profile.weight} <span className="text-[10px] font-normal text-zinc-500">{profile.weightUnit ?? weightUnit}</span>
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-zinc-300 dark:text-zinc-700 font-medium text-xs py-1">No weight</div>
-                    )}
-                    {calculatedBmi ? (
-                      <div>
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">BMI</span>
-                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
-                          {calculatedBmi.value}
-                          <span className="text-[9px] block font-medium text-zinc-550 truncate px-1" title={calculatedBmi.classification}>
-                            {calculatedBmi.classification}
-                          </span>
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-zinc-300 dark:text-zinc-700 font-medium text-xs py-1">No BMI</div>
-                    )}
-                    {calculatedProtein ? (
-                      <div>
-                        <span className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 block mb-0.5">Protein Goal</span>
-                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
-                          {calculatedProtein.value} <span className="text-[10px] font-normal text-zinc-500">g/day</span>
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-zinc-300 dark:text-zinc-700 font-medium text-xs py-1">No target</div>
-                    )}
-                  </div>
-                </Card>
-              )}
-
-              {/* Diagnostics insights */}
-              {activeEntries.length > 0 && (
-                <Card className="p-4 bg-gradient-to-br from-emerald-450/5 to-emerald-450/[0.02] border border-emerald-450/15">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <TrendingUp size={15} className="text-emerald-450" />
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-450">Nutritional Diagnostics</p>
-                  </div>
-                  <div className="space-y-2 text-xs text-zinc-755 leading-snug">
-                    {/* Goal-specific general checks */}
-                    {targets.goalType === "lose" && totals.calories > targets.calories && (
-                      <p className="flex items-start gap-2 text-rose-500 font-semibold">
-                        <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                        <span>Daily calorie target exceeded ({totals.calories} vs limit of {targets.calories} kcal). Lower portion sizes to maintain your weight loss deficit.</span>
-                      </p>
-                    )}
-
-                    {targets.goalType === "gain" && totals.calories < targets.calories * 0.9 && (
-                      <p className="flex items-start gap-2 text-blue-500">
-                        <Info size={12} className="mt-0.5 shrink-0" />
-                        <span>Calorie surplus is low ({totals.calories} vs target {targets.calories} kcal). Boost healthy fats/carbs to support muscle growth.</span>
-                      </p>
-                    )}
-
-                    {/* Standard Macro and Fiber goals */}
-                    {totals.protein >= targets.protein * 0.9 ? (
-                      <p className="flex items-start gap-2"><Check size={12} className="text-emerald-450 mt-0.5 shrink-0" /> <span>Protein goal is met ({totals.protein}g). Muscle repair is properly supported. 💪</span></p>
-                    ) : (
-                      <p className="flex items-start gap-2"><Info size={12} className="text-blue-455 mt-0.5 shrink-0" /> <span>You are currently {Math.round(targets.protein - totals.protein)}g short of your protein goal. Add high-protein sources.</span></p>
-                    )}
-                    {totals.fiber < targets.fiber * 0.5 && (
-                      <p className="flex items-start gap-2"><Info size={12} className="text-amber-450 mt-0.5 shrink-0" /> <span>Dietary fiber intake is low ({totals.fiber}g). Add legumes, vegetables, or oats.</span></p>
-                    )}
-                    {totals.calories < targets.calories * 0.8 && targets.goalType !== "lose" && (
-                      <p className="flex items-start gap-2"><Zap size={12} className="text-sky-400 mt-0.5 shrink-0" /> <span>Daily energy deficit is deep. You can eat another {remainingCals} kcal to power your metabolic rates.</span></p>
-                    )}
-
-                    {/* Specific food-choice checks based on the daily goal */}
-                    {activeEntries.map((entry) => {
-                      const lowerName = entry.name.toLowerCase();
-                      const isHighSugar = entry.sugar > 12 || lowerName.includes("soda") || lowerName.includes("coke") || lowerName.includes("candy") || lowerName.includes("cookie") || lowerName.includes("juice") || lowerName.includes("sweet");
-                      const isHighFat = entry.fat > 18 && !lowerName.includes("salmon") && !lowerName.includes("avocado") && !lowerName.includes("nuts") && !lowerName.includes("seed") && !lowerName.includes("olive oil") && !lowerName.includes("peanut butter");
-                      const isProcessed = lowerName.includes("chips") || lowerName.includes("fries") || lowerName.includes("pizza") || lowerName.includes("burger") || lowerName.includes("donut") || lowerName.includes("cake") || lowerName.includes("pastry") || lowerName.includes("fast food");
-
-                      if (targets.goalType === "lose" && (isHighSugar || isHighFat || isProcessed)) {
-                        return (
-                          <p key={`avoid-${entry.id}`} className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
-                            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                            <span>
-                              <strong>Avoid / Limit:</strong> "{entry.name}" is high in calories, sugar/fat density, or processed. Prioritize whole foods to stay on track.
-                            </span>
-                          </p>
-                        );
-                      }
-                      
-                      if (targets.goalType === "gain" && (isHighSugar || isProcessed)) {
-                        return (
-                          <p key={`avoid-${entry.id}`} className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
-                            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                            <span>
-                              <strong>Clean Bulk:</strong> "{entry.name}" contains empty sugar or high-glycemic calories. Choose complex carbs and clean proteins instead.
-                            </span>
-                          </p>
-                        );
-                      }
-
-                      return null;
-                    })}
-                  </div>
-                </Card>
-              )}
-
-              {/* Water Log List history in Overview */}
-              {activeWaterLogs.length > 0 && (
-                <Card className="p-4 space-y-2.5">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-755">Water Intake History</h4>
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                    {[...activeWaterLogs].reverse().map((log) => (
-                      <div key={log.id} className="flex justify-between items-center p-2 rounded-xl bg-surface/50 border border-card-border">
-                        <div className="flex items-center gap-2">
-                          <Droplets size={12} className="text-sky-400" />
-                          <span className="text-xs font-semibold text-zinc-955 font-sans tabular-nums">{log.amount} ml</span>
-                          <span className="text-[9px] text-zinc-750">
-                            at {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => removeWaterLog(log.id)}
-                          aria-label="Remove water log"
-                          className="h-6 w-6 flex items-center justify-center rounded text-zinc-450 hover:text-rose-450 hover:bg-rose-450/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-
-
-              {/* Smart Quick Log & Meal Sections */}
-              <div className="space-y-4">
-
-
-          {/* BeginnerTipCard */}
-          {guidedMode && activeEntries.length === 0 && (
-            <BeginnerTipCard
-              emoji="🥗"
-              headline="Why track food?"
-              body="Tracking your meals helps you make sure you get enough protein to recover and enough calories to fuel your workouts. Start by adding your first meal below!"
-              variant="nutrition"
-              className="mb-4"
+          {nutritionPageTab === "log" && (
+            <motion.span
+              layoutId="active-nutrition-page-tab-pill"
+              className="absolute inset-0 rounded-lg bg-emerald-300"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
             />
           )}
+          <span className="relative z-10 font-sans">Today's Log</span>
+        </button>
 
-          {/* Collapsible Meal Logging Areas */}
-          <div className="space-y-2.5">
-            {(Object.entries(MEAL_LABELS) as [NutritionEntry["meal"], typeof MEAL_LABELS[keyof typeof MEAL_LABELS]][]).map(([meal, cfg]) => {
-              const MealIcon = cfg.icon;
-              const items = mealEntries(meal);
-              const mealCals = items.reduce((s, e) => s + e.calories, 0);
-              const mealProtein = items.reduce((s, e) => s + e.protein, 0);
-              const mealCarbs = items.reduce((s, e) => s + e.carbs, 0);
-              const mealFat = items.reduce((s, e) => s + e.fat, 0);
-              const isExpanded = expandedMeal === meal;
+        <button
+          type="button"
+          onClick={() => setNutritionPageTab("nutrients")}
+          className={cn(
+            "relative flex-1 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-lg h-8",
+            nutritionPageTab === "nutrients"
+              ? "text-zinc-955 dark:text-zinc-900 font-black"
+              : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+          )}
+        >
+          {nutritionPageTab === "nutrients" && (
+            <motion.span
+              layoutId="active-nutrition-page-tab-pill"
+              className="absolute inset-0 rounded-lg bg-emerald-300"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span className="relative z-10 font-sans">Macros &amp; Micros</span>
+        </button>
 
-              return (
-                <Card key={meal} className="overflow-hidden">
-                  <button
-                    aria-expanded={isExpanded}
-                    aria-controls={`meal-section-${meal}`}
-                    className="w-full flex items-center justify-between p-3.5 hover:bg-surface/50 transition active:bg-surface/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                    onClick={() => setExpandedMeal(isExpanded ? null : meal)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={cn("h-8 w-8 rounded-xl border flex items-center justify-center", cfg.bg)}>
-                        <MealIcon size={15} className={cfg.color} aria-hidden="true" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-sm font-bold text-zinc-955">{cfg.label}</p>
-                        <p className="text-[10px] text-zinc-750 font-mono">{items.length} logged</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2.5">
-                      {items.length > 0 && (
-                        <div className="flex items-center gap-1 text-[9px] font-sans font-bold select-none mr-0.5 sm:mr-1">
-                          <span className="text-blue-455 bg-blue-500/5 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">P:{Math.round(mealProtein)}g</span>
-                          <span className="text-amber-450 bg-amber-500/5 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">C:{Math.round(mealCarbs)}g</span>
-                          <span className="text-rose-450 bg-rose-500/5 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">F:{Math.round(mealFat)}g</span>
-                        </div>
-                      )}
-                      <span className="text-xs sm:text-sm font-bold text-zinc-955 tabular-nums whitespace-nowrap">
-                        {mealCals} <span className="text-[9px] sm:text-[10px] font-normal text-zinc-755">kcal</span>
-                      </span>
-                      {isExpanded ? <ChevronUp size={15} className="text-zinc-750 shrink-0" /> : <ChevronDown size={15} className="text-zinc-750 shrink-0" />}
-                    </div>
-                  </button>
-
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        id={`meal-section-${meal}`}
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="px-3.5 pb-3.5 space-y-2 border-t border-card-border pt-2.5 bg-surface/20">
-                          {items.length === 0 ? (
-                            <p className="text-xs text-zinc-750 text-center py-4 italic">No items logged under {cfg.label.toLowerCase()}</p>
-                          ) : (
-                            items.map((entry) => (
-                              <div
-                                key={entry.id}
-                                className="flex items-center justify-between p-2.5 rounded-xl bg-card border border-card-border shadow-sm"
-                              >
-                                <div className="min-w-0 flex-1 mr-2">
-                                  <p className="text-xs font-bold text-zinc-955 truncate">{entry.name}</p>
-                                  <div className="flex gap-2.5 mt-0.5 text-[10px] font-sans tabular-nums">
-                                    <span className="text-blue-455 font-semibold">P:{entry.protein}g</span>
-                                    <span className="text-amber-450 font-semibold">C:{entry.carbs}g</span>
-                                    <span className="text-rose-450 font-semibold">F:{entry.fat}g</span>
-                                    {entry.fiber > 0 && <span className="text-emerald-450 font-semibold">Fb:{entry.fiber}g</span>}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-xs font-bold text-zinc-955 tabular-nums">{entry.calories} kcal</span>
-                                  <button
-                                    onClick={() => removeEntry(entry.id)}
-                                    aria-label={`Remove ${entry.name}`}
-                                    className="h-6 w-6 flex items-center justify-center rounded-lg text-zinc-450 hover:text-rose-450 hover:bg-rose-450/10 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                          <button
-                            onClick={() => { setSelectedAddMeal(meal); setShowAddModal(true); }}
-                            className={cn(
-                              "w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed text-xs font-bold transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-                              cfg.color,
-                              `border-current/40 hover:bg-current/5`
-                            )}
-                          >
-                            <Plus size={13} /> Add food to {cfg.label}
-                          </button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setNutritionPageTab("trends")}
+          className={cn(
+            "relative flex-1 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-lg h-8",
+            nutritionPageTab === "trends"
+              ? "text-zinc-955 dark:text-zinc-900 font-black"
+              : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+          )}
+        >
+          {nutritionPageTab === "trends" && (
+            <motion.span
+              layoutId="active-nutrition-page-tab-pill"
+              className="absolute inset-0 rounded-lg bg-emerald-300"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span className="relative z-10 font-sans">Trends &amp; Insights</span>
+        </button>
       </div>
-    </motion.div>
-  </AnimatePresence>
+
+      {/* ─── Render Active Tab Panel ─── */}
+      <div className="relative w-full">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={nutritionPageTab}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: "easeInOut" }}
+            className="w-full"
+          >
+            {nutritionPageTab === "log" && renderLogTab()}
+            {nutritionPageTab === "nutrients" && renderNutrientsTab()}
+            {nutritionPageTab === "trends" && renderTrendsTab()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
       {/* Add food modal overlay */}
       <AnimatePresence>
         {showAddModal && (
@@ -4548,19 +5072,6 @@ Field units: calories=kcal, protein/carbs/fat/fiber/sugar=grams, sodium/potassiu
           />
         )}
       </AnimatePresence>
-
-      {/* Floating Action Button (FAB) for Nutrition Analytics on mobile */}
-      <button
-        type="button"
-        onClick={() => {
-          if (navigator.vibrate) navigator.vibrate(8);
-          setActiveSubScreen("nutrition-analytics");
-        }}
-        className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg active:scale-90 transition focus:outline-none md:hidden border border-indigo-400/20 cursor-pointer"
-        aria-label="Open nutrition analytics"
-      >
-        <BarChart3 size={22} className="stroke-[2.5px]" />
-      </button>
     </div>
   );
 }

@@ -297,10 +297,18 @@ export function WorkoutPlanDetailScreen() {
                               <p className="font-bold text-zinc-900 dark:text-white truncate leading-snug">
                                 {exDetails?.name}
                               </p>
-                              <div className="flex items-center gap-1">
+                              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
                                 <span className="text-xs text-zinc-750 font-bold uppercase">
                                   {equipmentName}
                                 </span>
+                                {exDetails?.muscles && exDetails.muscles.length > 0 && (
+                                  <>
+                                    <span className="text-zinc-300 dark:text-zinc-750 select-none text-[10px]">•</span>
+                                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold lowercase">
+                                      targets: {exDetails.muscles.join(", ")}
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             </div>
                             

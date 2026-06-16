@@ -324,14 +324,6 @@ function BeginnerAnalytics() {
                 {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setGuidedMode(false)}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm select-none w-full sm:w-auto shrink-0 border border-transparent bg-amber-600 hover:bg-amber-500 dark:bg-amber-500 dark:hover:bg-amber-450"
-            >
-              <Activity size={13} className="text-amber-200" />
-              <span>Advanced Mode</span>
-            </button>
           </div>
 
           {/* Progress content */}
@@ -377,7 +369,6 @@ function BeginnerAnalytics() {
           <StatCard
             label="Total Workouts"
             value={totalWorkouts}
-            sub="Sessions with ≥1 completed set"
             icon={Dumbbell}
             color="emerald"
             delay={0.05}
@@ -385,7 +376,6 @@ function BeginnerAnalytics() {
           <StatCard
             label="Consistency"
             value={`${consistency}%`}
-            sub={`Training days ÷ ${profile?.daysPerWeek ?? 3}×/wk (30 days)`}
             icon={Target}
             color={consistency >= 70 ? "emerald" : consistency >= 40 ? "amber" : "rose"}
             delay={0.08}
@@ -393,7 +383,6 @@ function BeginnerAnalytics() {
           <StatCard
             label="Time Trained"
             value={totalMinutes >= 60 ? `${Math.round(totalMinutes / 60)}h` : `${totalMinutes}m`}
-            sub="Sum of workout durations"
             icon={Clock}
             color="blue"
             delay={0.11}
@@ -401,15 +390,12 @@ function BeginnerAnalytics() {
           <StatCard
             label="Recovery"
             value={`${recoveryScore}%`}
-            sub={`${fatigue.label} · from daily check-in`}
+            sub={fatigue.label}
             icon={HeartPulse}
             color={fatigue.tone === "good" ? "emerald" : fatigue.tone === "warn" ? "amber" : "rose"}
             delay={0.14}
           />
         </div>
-        <p className="text-[9px] text-zinc-400 mt-2 leading-relaxed px-0.5">
-          Workouts count sessions with at least one completed set. Consistency = unique training days in last 30 days ÷ your weekly goal. Recovery is calculated from your latest daily check-in.
-        </p>
       </Section>
 
       {/* ── Weekly Volume Bar ─── */}
@@ -709,6 +695,12 @@ function AdvancedAnalytics() {
   const maxSets = Math.max(...weeklySetsPerMuscle.map((m) => m.count), 1);
   const [expandedMuscle, setExpandedMuscle] = useState<string | null>(null);
 
+  // ── Fitbit-style collapse states ──────────────────────────────────────
+  const [isOverloadOpen, setIsOverloadOpen] = useState(false);
+  const [isChartsOpen, setIsChartsOpen] = useState(false);
+  const [isMuscleOpen, setIsMuscleOpen] = useState(false);
+  const [isBodyCompOpen, setIsBodyCompOpen] = useState(false);
+
   // ── Progressive overload ─────────────────────────────────────────────
   const progressionRecs = useMemo(() => getProgressionRecommendations(workouts, recoveryScore), [workouts, recoveryScore]);
 
@@ -780,14 +772,6 @@ function AdvancedAnalytics() {
                 {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setGuidedMode(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm select-none w-full sm:w-auto shrink-0 border border-transparent bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-450"
-            >
-              <Activity size={13} className="text-emerald-250" />
-              <span>Beginner Mode</span>
-            </button>
           </div>
         </Card>
       </Section>
@@ -839,9 +823,7 @@ function AdvancedAnalytics() {
                     : "Reduce volume or rest. Prioritise sleep tonight."}
                 </p>
               </div>
-              <p className="text-[9px] text-zinc-400 pt-1.5 border-t border-card-border leading-relaxed">
-                <strong>How this score is calculated:</strong> Sleep quality (30%) + Soreness (18%) + Stress (16%) + Readiness (20%) + Energy (16%) from your last recovery check-in.
-              </p>
+
             </div>
           </div>
         </Card>
@@ -850,346 +832,452 @@ function AdvancedAnalytics() {
       {/* ── 2. Performance Snapshot Grid ─── */}
       <Section delay={0.12}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="Workout Streak" value={`${streak} sessions`} sub="Consecutive days trained (≤3 day gap allowed)" icon={Flame} color="amber" delay={0.07} />
-          <StatCard label="Weekly Volume" value={`${weeklyVolume.toLocaleString()} ${profile?.weightUnit ?? "kg"}`} sub="Sum of sets × reps × weight (last 7 days)" icon={Layers} color="emerald" delay={0.09} />
-          <StatCard label="Top Est. 1RM" value={top1Rm.val > 0 ? `${top1Rm.val} ${profile?.weightUnit ?? "kg"}` : "—"} sub={top1Rm.val > 0 ? `${top1Rm.exercise} · Epley formula` : "No lifts yet"} icon={Trophy} color="violet" delay={0.11} />
-          <StatCard label="Consistency" value={`${consistency}%`} sub={`Unique training days ÷ ${profile?.daysPerWeek ?? 3}×/wk goal (30 days)`} icon={Target} color={consistency >= 70 ? "emerald" : consistency >= 40 ? "amber" : "rose"} delay={0.13} />
+          <StatCard label="Workout Streak" value={`${streak}`} sub="sessions" icon={Flame} color="amber" delay={0.07} />
+          <StatCard label="Weekly Volume" value={`${weeklyVolume.toLocaleString()}`} sub={profile?.weightUnit ?? "kg"} icon={Layers} color="emerald" delay={0.09} />
+          <StatCard label="Top Est. 1RM" value={top1Rm.val > 0 ? `${top1Rm.val}` : "—"} sub={top1Rm.val > 0 ? top1Rm.exercise : "No lifts yet"} icon={Trophy} color="violet" delay={0.11} />
+          <StatCard label="Consistency" value={`${consistency}%`} sub={`of ${profile?.daysPerWeek ?? 3}×/wk goal`} icon={Target} color={consistency >= 70 ? "emerald" : consistency >= 40 ? "amber" : "rose"} delay={0.13} />
         </div>
-        <p className="text-[9px] text-zinc-400 mt-2 leading-relaxed px-0.5">
-          <strong>Sources:</strong> Streak counts unique calendar dates with completed sets. Volume = Σ(weight × reps) for each completed set. 1RM uses the Epley formula: w × 36/(37−r). Consistency = unique training days in last 30d ÷ your weekly target.
-        </p>
       </Section>
 
       {/* ── 3. Progressive Overload ─── */}
       <Section delay={0.19}>
-        <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="text-emerald-500" size={17} />
-            <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Progressive Overload Status</h3>
-          </div>
-          <div className="space-y-2.5">
-            {progressionRecs.length > 0 ? (
-              progressionRecs.map((rec) => {
-                const isUp = rec.action === "increase_weight";
-                const isDown = rec.action === "deload" || rec.action === "reduce_volume";
-                const badgeStyle = isUp
-                  ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
-                  : isDown
-                  ? "text-rose-500 bg-rose-500/10 border-rose-500/20"
-                  : "text-zinc-500 bg-zinc-500/10 border-zinc-500/20";
-                const ActionIcon = isUp ? ArrowUp : isDown ? ArrowDown : Minus;
-                const label = isUp
-                  ? `+${rec.suggestedWeightDelta ?? 2.5} ${profile?.weightUnit ?? "kg"}`
-                  : isDown
-                  ? rec.action === "deload" ? "Deload" : "−Volume"
-                  : "Hold";
-                return (
-                  <div
-                    key={rec.exerciseId}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-card-border hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="text-sm font-extrabold text-foreground truncate">{rec.exerciseName}</p>
-                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{rec.reason}</p>
-                    </div>
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border shrink-0 ${badgeStyle}`}>
-                      <ActionIcon size={12} />
-                      {label}
-                    </span>
-                  </div>
-                );
-              })
-            ) : (
-              <EmptyChart message="Complete a few workouts with logged sets to generate progressive overload targets." />
+        <Card className="p-5 border border-card-border bg-card rounded-3xl">
+          <button
+            type="button"
+            onClick={() => setIsOverloadOpen(!isOverloadOpen)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <TrendingUp size={17} className="text-emerald-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Progressive Overload</h3>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  {progressionRecs.length > 0
+                    ? `${progressionRecs.filter(r => r.action === "increase_weight").length} exercises ready to increase`
+                    : "Log more workouts to unlock"}
+                </p>
+              </div>
+            </div>
+            <motion.span
+              animate={{ rotate: isOverloadOpen ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isOverloadOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-4 space-y-2.5"
+              >
+                {progressionRecs.length > 0 ? (
+                  progressionRecs.map((rec) => {
+                    const isUp = rec.action === "increase_weight";
+                    const isDown = rec.action === "deload" || rec.action === "reduce_volume";
+                    const badgeStyle = isUp
+                      ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+                      : isDown
+                      ? "text-rose-500 bg-rose-500/10 border-rose-500/20"
+                      : "text-zinc-500 bg-zinc-500/10 border-zinc-500/20";
+                    const ActionIcon = isUp ? ArrowUp : isDown ? ArrowDown : Minus;
+                    const label = isUp
+                      ? `+${rec.suggestedWeightDelta ?? 2.5} ${profile?.weightUnit ?? "kg"}`
+                      : isDown
+                      ? rec.action === "deload" ? "Deload" : "−Volume"
+                      : "Hold";
+                    return (
+                      <div
+                        key={rec.exerciseId}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-card-border hover:bg-zinc-100/40 dark:hover:bg-zinc-800/40 transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="text-sm font-extrabold text-foreground truncate">{rec.exerciseName}</p>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{rec.reason}</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border shrink-0 ${badgeStyle}`}>
+                          <ActionIcon size={12} />
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <EmptyChart message="Complete a few workouts with logged sets to generate progressive overload targets." />
+                )}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </Card>
       </Section>
 
-      {/* ── 4. Charts grid ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* 1RM Strength Trend */}
-        <Section delay={0.23}>
-          <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4 h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <LineChartIcon className="text-emerald-500" size={17} />
-                <h3 className="text-sm font-bold text-foreground">Estimated 1RM Trend</h3>
+      {/* ── 4. Strength & Volume Charts ─── */}
+      <Section delay={0.23}>
+        <Card className="p-5 border border-card-border bg-card rounded-3xl">
+          <button
+            type="button"
+            onClick={() => setIsChartsOpen(!isChartsOpen)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <LineChartIcon size={17} className="text-blue-500" />
               </div>
-              <select
-                value={selectedExercise}
-                onChange={(e) => setSelectedExercise(e.target.value)}
-                className="px-3 py-1.5 text-[11px] font-bold rounded-xl border border-card-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 max-w-[190px]"
-              >
-                {exercisesWithHistory.map((ex) => (
-                  <option key={ex.id} value={ex.id}>{ex.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              {strengthSeries.length >= 2 ? (
-                <div className="h-44">
-                  <SafeResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={strengthSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="strengthGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
-                      <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Est. 1RM"]} />
-                      <Area type="monotone" dataKey="estimated1rm" stroke="#10b981" strokeWidth={2.5} fill="url(#strengthGrad)" dot={{ r: 3.5, stroke: "#10b981", strokeWidth: 1.5, fill: "#fff" }} />
-                    </AreaChart>
-                  </SafeResponsiveContainer>
-                </div>
-              ) : (
-                <EmptyChart message="Need 2+ sessions with this exercise to draw the strength trend." />
-              )}
-            </div>
-            <p className="text-[10px] text-zinc-400">1RM estimated via Epley formula: w × (36 / (37 − r))</p>
-          </Card>
-        </Section>
-
-        {/* Volume Trend */}
-        <Section delay={0.26}>
-          <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4 h-full flex flex-col">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Layers className="text-emerald-500" size={17} />
-                <h3 className="text-sm font-bold text-foreground">Weekly Volume Trend</h3>
-              </div>
-              {targetVolume > 0 && (
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-surface border border-surface-border text-zinc-500">
-                  Target: {targetVolume.toLocaleString()}
-                </span>
-              )}
-            </div>
-            <div className="flex-1">
-              {volumeSeries.length >= 2 ? (
-                <div className="h-44">
-                  <SafeResponsiveContainer width="100%" height="100%">
-                    <BarChart data={volumeSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
-                      <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Volume"]} />
-                      <Bar dataKey="volume" fill="#34d399" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                      {targetVolume > 0 && (
-                        <ReferenceLine y={targetVolume} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={1.5} label={{ value: "Overload Line", position: "insideTopRight", fill: "#ef4444", fontSize: 9, fontWeight: "bold" }} />
-                      )}
-                    </BarChart>
-                  </SafeResponsiveContainer>
-                </div>
-              ) : (
-                <EmptyChart message="Complete workouts over 2+ weeks to unlock your volume trend." />
-              )}
-            </div>
-            <p className="text-[10px] text-zinc-400">Overload target set at 105% of weekly average volume.</p>
-          </Card>
-        </Section>
-      </div>
-
-      {/* ── 5. Muscle Balance + Recovery Correlation ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Muscle volume distribution */}
-        <Section delay={0.29}>
-          <div className="space-y-4">
-            <MuscleHeatmap workouts={allWorkouts} getExerciseById={getExerciseById} />
-            <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Activity className="text-violet-500" size={17} />
-                  <h3 className="text-sm font-bold text-foreground">Muscle Volume Breakdown</h3>
-                </div>
-                <span className="text-[10px] text-zinc-400 font-medium">Tap row to see sources</span>
-              </div>
-
-            {weeklySetsPerMuscle.length > 0 ? (
-              <div className="space-y-1">
-                {weeklySetsPerMuscle.map(({ muscle, count, sources }) => {
-                  const isOpen = expandedMuscle === muscle;
-                  const directSets = sources.filter(s => s.isDirect).reduce((a, s) => a + s.sets, 0);
-                  const indirectSets = count - directSets;
-                  return (
-                    <div key={muscle} className="rounded-xl overflow-hidden border border-card-border">
-                      {/* Row header — tappable */}
-                      <button
-                        type="button"
-                        onClick={() => setExpandedMuscle(isOpen ? null : muscle)}
-                        className="w-full flex items-center gap-3 px-3.5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors text-left"
-                      >
-                        {/* Progress bar fills */}
-                        <div className="flex-1 space-y-1 min-w-0">
-                          <div className="flex justify-between items-baseline">
-                            <span className="text-xs font-semibold text-foreground">{muscle}</span>
-                            <span className="text-[10px] font-bold text-emerald-500 shrink-0 ml-2">{count} sets</span>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
-                            <motion.div
-                              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Math.round((count / maxSets) * 100)}%` }}
-                              transition={{ duration: 0.55, ease: "easeOut" }}
-                            />
-                          </div>
-                        </div>
-                        <motion.span
-                          animate={{ rotate: isOpen ? 90 : 0 }}
-                          transition={{ duration: 0.18 }}
-                          className="text-zinc-400 shrink-0"
-                        >
-                          <ChevronRight size={14} />
-                        </motion.span>
-                      </button>
-
-                      {/* Expandable breakdown table */}
-                      <AnimatePresence>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.22, ease: "easeInOut" }}
-                            className="overflow-hidden"
-                          >
-                            <div className="px-3.5 pb-3 space-y-2 border-t border-card-border bg-zinc-50/60 dark:bg-zinc-900/40">
-                              {/* Legend */}
-                              <div className="flex items-center gap-3 pt-2.5 pb-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-violet-500 inline-block"/>
-                                  <span className="text-[9px] text-zinc-500 font-semibold">Direct (primary target)</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-zinc-400 inline-block"/>
-                                  <span className="text-[9px] text-zinc-500 font-semibold">Indirect (secondary)</span>
-                                </div>
-                              </div>
-
-                              {/* Exercise rows */}
-                              <div className="space-y-1">
-                                {sources.sort((a, b) => b.sets - a.sets).map((src, i) => (
-                                  <div
-                                    key={i}
-                                    className="flex items-center justify-between gap-2 py-1.5 border-b border-card-border/60 last:border-0"
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <span className={`w-2 h-2 rounded-full shrink-0 ${src.isDirect ? "bg-violet-500" : "bg-zinc-400"}`} />
-                                      <span className="text-[11px] font-semibold text-foreground truncate">{src.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <span className="text-[9px] text-zinc-400">{src.date}</span>
-                                      <span className="text-[11px] font-bold text-emerald-500">{src.sets}×</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Summary */}
-                              <div className="flex items-center justify-between text-[10px] pt-1 border-t border-card-border text-zinc-500">
-                                <span>Direct: <strong className="text-violet-500">{directSets}</strong> · Indirect: <strong className="text-zinc-400">{indirectSets}</strong></span>
-                                <span className={count >= 10 ? "text-emerald-500 font-bold" : count >= 6 ? "text-amber-500 font-bold" : "text-rose-500 font-bold"}>
-                                  {count >= 10 ? "✓ In range" : count >= 6 ? "↑ Build more" : "↑ Below target"}
-                                </span>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-
-                <p className="text-[9px] text-zinc-400 pt-1">
-                  Target: 10–20 sets/muscle/week · Indirect sets (e.g. biceps from rows) are counted because they cause real stimulus.
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Strength & Volume Charts</h3>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  {top1Rm.val > 0 ? `Best 1RM: ${top1Rm.val} ${profile?.weightUnit ?? "kg"} · ${top1Rm.exercise}` : "Track your lifting trends"}
                 </p>
               </div>
-            ) : (
-              <EmptyChart message="Train this week to see your muscle volume distribution." />
+            </div>
+            <motion.span
+              animate={{ rotate: isChartsOpen ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isChartsOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-4 space-y-5"
+              >
+                {/* 1RM Strength Trend */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <LineChartIcon className="text-emerald-500" size={15} />
+                      <h4 className="text-xs font-bold text-foreground">Estimated 1RM Trend</h4>
+                    </div>
+                    <select
+                      value={selectedExercise}
+                      onChange={(e) => setSelectedExercise(e.target.value)}
+                      className="px-3 py-1.5 text-[11px] font-bold rounded-xl border border-card-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 max-w-[190px]"
+                    >
+                      {exercisesWithHistory.map((ex) => (
+                        <option key={ex.id} value={ex.id}>{ex.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {strengthSeries.length >= 2 ? (
+                    <div className="h-44">
+                      <SafeResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={strengthSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="strengthGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
+                          <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                          <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Est. 1RM"]} />
+                          <Area type="monotone" dataKey="estimated1rm" stroke="#10b981" strokeWidth={2.5} fill="url(#strengthGrad)" dot={{ r: 3.5, stroke: "#10b981", strokeWidth: 1.5, fill: "#fff" }} />
+                        </AreaChart>
+                      </SafeResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyChart message="Need 2+ sessions with this exercise to draw the strength trend." />
+                  )}
+                </div>
+
+                {/* Volume Trend */}
+                <div className="space-y-3 pt-4 border-t border-card-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Layers className="text-emerald-500" size={15} />
+                      <h4 className="text-xs font-bold text-foreground">Weekly Volume Trend</h4>
+                    </div>
+                    {targetVolume > 0 && (
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-surface border border-surface-border text-zinc-500">
+                        Target: {targetVolume.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  {volumeSeries.length >= 2 ? (
+                    <div className="h-44">
+                      <SafeResponsiveContainer width="100%" height="100%">
+                        <BarChart data={volumeSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
+                          <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                          <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Volume"]} />
+                          <Bar dataKey="volume" fill="#34d399" radius={[6, 6, 0, 0]} maxBarSize={32} />
+                          {targetVolume > 0 && (
+                            <ReferenceLine y={targetVolume} stroke="#ef4444" strokeDasharray="4 4" strokeWidth={1.5} label={{ value: "Overload Line", position: "insideTopRight", fill: "#ef4444", fontSize: 9, fontWeight: "bold" }} />
+                          )}
+                        </BarChart>
+                      </SafeResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyChart message="Complete workouts over 2+ weeks to unlock your volume trend." />
+                  )}
+                </div>
+              </motion.div>
             )}
-          </Card>
-        </div>
+          </AnimatePresence>
+        </Card>
       </Section>
 
-        {/* Recovery correlation */}
-        <Section delay={0.32}>
-          <div className="space-y-4">
-            <CnsCircadianPlanner recoveryLogs={recoveryLogs} workouts={allWorkouts} />
-            <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-            <div className="flex items-center gap-2">
-              <BrainCircuit className="text-amber-500" size={17} />
-              <h3 className="text-sm font-bold text-foreground">CNS ↔ Volume Correlation</h3>
-            </div>
-            {recoveryVolumeSeries.length >= 2 ? (
-              <div className="h-44">
-                <SafeResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={recoveryVolumeSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="recVolGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                    <YAxis yAxisId="l" orientation="left" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                    <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tick={{ fontSize: 9, fill: "#f59e0b" }} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Area yAxisId="l" type="monotone" dataKey="volume" name="Volume" stroke="#10b981" strokeWidth={2} fill="transparent" />
-                    <Area yAxisId="r" type="monotone" dataKey="recovery" name="Recovery" stroke="#f59e0b" strokeWidth={2} fill="url(#recVolGrad)" />
-                  </AreaChart>
-                </SafeResponsiveContainer>
+      {/* ── 5. Muscle Balance & Recovery ─── */}
+      <Section delay={0.29}>
+        <Card className="p-5 border border-card-border bg-card rounded-3xl">
+          <button
+            type="button"
+            onClick={() => setIsMuscleOpen(!isMuscleOpen)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center shrink-0">
+                <Activity size={17} className="text-violet-500" />
               </div>
-            ) : (
-              <EmptyChart message="Log recovery scores and complete workouts to unlock correlation." />
-            )}
-            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-2">
-              <Sparkles size={13} className="text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed">{correlationInsight}</p>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Muscle Balance & Recovery</h3>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  {weeklySetsPerMuscle.length > 0
+                    ? `Top: ${weeklySetsPerMuscle[0].muscle} · ${weeklySetsPerMuscle[0].count} sets this week`
+                    : "Train to see muscle distribution"}
+                </p>
+              </div>
             </div>
-          </Card>
-        </div>
+            <motion.span
+              animate={{ rotate: isMuscleOpen ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isMuscleOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-4 space-y-5"
+              >
+                {/* Muscle Heatmap */}
+                <MuscleHeatmap workouts={allWorkouts} getExerciseById={getExerciseById} />
+
+                {/* Muscle Volume Breakdown */}
+                <div className="space-y-3 pt-3 border-t border-card-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-foreground">Muscle Volume Breakdown</h4>
+                    <span className="text-[10px] text-zinc-400 font-medium">Tap row to see sources</span>
+                  </div>
+
+                  {weeklySetsPerMuscle.length > 0 ? (
+                    <div className="space-y-1">
+                      {weeklySetsPerMuscle.map(({ muscle, count, sources }) => {
+                        const isOpen = expandedMuscle === muscle;
+                        const directSets = sources.filter(s => s.isDirect).reduce((a, s) => a + s.sets, 0);
+                        const indirectSets = count - directSets;
+                        return (
+                          <div key={muscle} className="rounded-xl overflow-hidden border border-card-border">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedMuscle(isOpen ? null : muscle)}
+                              className="w-full flex items-center gap-3 px-3.5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors text-left"
+                            >
+                              <div className="flex-1 space-y-1 min-w-0">
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-xs font-semibold text-foreground">{muscle}</span>
+                                  <span className="text-[10px] font-bold text-emerald-500 shrink-0 ml-2">{count} sets</span>
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                                  <motion.div
+                                    className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-400"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.round((count / maxSets) * 100)}%` }}
+                                    transition={{ duration: 0.55, ease: "easeOut" }}
+                                  />
+                                </div>
+                              </div>
+                              <motion.span
+                                animate={{ rotate: isOpen ? 90 : 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="text-zinc-400 shrink-0"
+                              >
+                                <ChevronRight size={14} />
+                              </motion.span>
+                            </button>
+                            <AnimatePresence>
+                              {isOpen && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: "auto", opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-3.5 pb-3 space-y-2 border-t border-card-border bg-zinc-50/60 dark:bg-zinc-900/40">
+                                    <div className="flex items-center gap-3 pt-2.5 pb-1">
+                                      <div className="flex items-center gap-1">
+                                        <span className="w-2 h-2 rounded-full bg-violet-500 inline-block"/>
+                                        <span className="text-[9px] text-zinc-500 font-semibold">Direct</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="w-2 h-2 rounded-full bg-zinc-400 inline-block"/>
+                                        <span className="text-[9px] text-zinc-500 font-semibold">Indirect</span>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {sources.sort((a, b) => b.sets - a.sets).map((src, i) => (
+                                        <div key={i} className="flex items-center justify-between gap-2 py-1.5 border-b border-card-border/60 last:border-0">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className={`w-2 h-2 rounded-full shrink-0 ${src.isDirect ? "bg-violet-500" : "bg-zinc-400"}`} />
+                                            <span className="text-[11px] font-semibold text-foreground truncate">{src.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <span className="text-[9px] text-zinc-400">{src.date}</span>
+                                            <span className="text-[11px] font-bold text-emerald-500">{src.sets}×</span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] pt-1 border-t border-card-border text-zinc-500">
+                                      <span>Direct: <strong className="text-violet-500">{directSets}</strong> · Indirect: <strong className="text-zinc-400">{indirectSets}</strong></span>
+                                      <span className={count >= 10 ? "text-emerald-500 font-bold" : count >= 6 ? "text-amber-500 font-bold" : "text-rose-500 font-bold"}>
+                                        {count >= 10 ? "✓ In range" : count >= 6 ? "↑ Build more" : "↑ Below target"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <EmptyChart message="Train this week to see your muscle volume distribution." />
+                  )}
+                </div>
+
+                {/* CNS Circadian Planner */}
+                <div className="pt-3 border-t border-card-border space-y-4">
+                  <CnsCircadianPlanner recoveryLogs={recoveryLogs} workouts={allWorkouts} />
+                </div>
+
+                {/* CNS ↔ Volume Correlation */}
+                <div className="pt-3 border-t border-card-border space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BrainCircuit className="text-amber-500" size={15} />
+                    <h4 className="text-xs font-bold text-foreground">CNS ↔ Volume Correlation</h4>
+                  </div>
+                  {recoveryVolumeSeries.length >= 2 ? (
+                    <div className="h-44">
+                      <SafeResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={recoveryVolumeSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="recVolGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
+                          <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                          <YAxis yAxisId="l" orientation="left" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                          <YAxis yAxisId="r" orientation="right" domain={[0, 100]} tick={{ fontSize: 9, fill: "#f59e0b" }} tickLine={false} axisLine={false} />
+                          <Tooltip contentStyle={tooltipStyle} />
+                          <Area yAxisId="l" type="monotone" dataKey="volume" name="Volume" stroke="#10b981" strokeWidth={2} fill="transparent" />
+                          <Area yAxisId="r" type="monotone" dataKey="recovery" name="Recovery" stroke="#f59e0b" strokeWidth={2} fill="url(#recVolGrad)" />
+                        </AreaChart>
+                      </SafeResponsiveContainer>
+                    </div>
+                  ) : (
+                    <EmptyChart message="Log recovery scores and complete workouts to unlock correlation." />
+                  )}
+                  <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-2">
+                    <Sparkles size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-zinc-500 font-semibold leading-relaxed">{correlationInsight}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
       </Section>
-      </div>
 
       {/* ── 6. Body Composition ─── */}
-      <Section delay={0.35}>
-        <Card className="p-5 border border-card-border bg-card rounded-3xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Weight className="text-blue-500" size={17} />
-              <h3 className="text-sm font-bold text-foreground">Body Composition Trend</h3>
+      <Section delay={0.32}>
+        <Card className="p-5 border border-card-border bg-card rounded-3xl">
+          <button
+            type="button"
+            onClick={() => setIsBodyCompOpen(!isBodyCompOpen)}
+            className="w-full flex items-center justify-between text-left focus:outline-none select-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Weight size={17} className="text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Body Composition</h3>
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  {bodyweightSeries.length >= 2
+                    ? `${bodyweightSeries.at(-1)?.weight ?? "—"} ${profile?.weightUnit ?? "kg"} · ${weightDelta > 0 ? "+" : ""}${weightDelta} ${profile?.weightUnit ?? "kg"} change`
+                    : "Log weight to track changes"}
+                </p>
+              </div>
             </div>
-            {bodyweightSeries.length >= 2 && (
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${weightDelta > 0 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : weightDelta < 0 ? "bg-rose-500/10 text-rose-500 border-rose-500/20" : "bg-surface text-zinc-500 border-surface-border"}`}>
-                {weightDelta > 0 ? "+" : ""}{weightDelta} {profile?.weightUnit ?? "kg"}
-              </span>
+            <motion.span
+              animate={{ rotate: isBodyCompOpen ? 90 : 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-zinc-400 shrink-0"
+            >
+              <ChevronRight size={14} />
+            </motion.span>
+          </button>
+
+          <AnimatePresence>
+            {isBodyCompOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeInOut" }}
+                className="overflow-hidden mt-4"
+              >
+                {bodyweightSeries.length >= 2 ? (
+                  <div className="h-44">
+                    <SafeResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={bodyweightSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
+                        <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                        <YAxis domain={["dataMin - 2", "dataMax + 2"]} tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                        <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Weight"]} />
+                        <Area type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2.5} fill="url(#bwGrad)" dot={{ r: 3.5, stroke: "#3b82f6", strokeWidth: 1.5, fill: "#fff" }} />
+                      </AreaChart>
+                    </SafeResponsiveContainer>
+                  </div>
+                ) : (
+                  <EmptyChart message="Log your body weight in Today's check-in or Settings to track composition changes over time." />
+                )}
+              </motion.div>
             )}
-          </div>
-          {bodyweightSeries.length >= 2 ? (
-            <div className="h-44">
-              <SafeResponsiveContainer width="100%" height="100%">
-                <AreaChart data={bodyweightSeries} margin={{ top: 8, right: 4, left: -28, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                  <YAxis domain={["dataMin - 2", "dataMax + 2"]} tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Weight"]} />
-                  <Area type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2.5} fill="url(#bwGrad)" dot={{ r: 3.5, stroke: "#3b82f6", strokeWidth: 1.5, fill: "#fff" }} />
-                </AreaChart>
-              </SafeResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyChart message="Log your body weight in Today's check-in or Settings to track composition changes over time." />
-          )}
-          <p className="text-[10px] text-zinc-400">Weigh yourself in the morning before meals for most accurate tracking.</p>
+          </AnimatePresence>
         </Card>
       </Section>
 

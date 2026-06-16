@@ -11,6 +11,7 @@ import { createId, todayKey } from "@/lib/id";
 import { decryptString, encryptString } from "@/lib/security/crypto";
 import { findFirstSupportedModel, getProviderAdapter } from "@/providers";
 import { registry } from "@/lib/repositories/registry";
+import { readLocalSetting, writeLocalSetting } from "@/lib/storage/db";
 import { parseAiWorkoutPlan, cleanJsonString } from "@/lib/ai/parser";
 import { buildCoachContext } from "@/lib/coach/context";
 import { exercises as staticExercises } from "@/data/exercises";
@@ -32,6 +33,11 @@ export interface AiSlice {
   tokenCount: number;
   aiWorkoutTipsCache: Record<string, string>;
   aiNutritionTipsCache: Record<string, string>;
+  aiCopilotInsight: string | null;
+  aiCopilotInsightLoading: boolean;
+  aiCopilotInsightError: string | null;
+  lastInsightDate: string | null;
+  dailyMessageCount: Record<string, number>;
 
   saveProvider: (provider: AiProviderSettings, apiKeyPlain?: string) => Promise<void>;
   setActiveProvider: (providerId: string) => Promise<void>;
@@ -42,6 +48,7 @@ export interface AiSlice {
   setAiWorkoutTipCache: (range: string, tip: string) => void;
   setAiNutritionTipCache: (range: string, tip: string) => void;
   loadMessagesForDate: (date: string) => Promise<void>;
+  generateAiCopilotInsight: (data: { cnsScore: number; sleepHours: number; recoveryScore: number; soreMuscles: string[]; activeWorkoutsCount: number }) => Promise<void>;
 }
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -116,6 +123,11 @@ export const createAiSlice: StateCreator<
   tokenCount: 0,
   aiWorkoutTipsCache: {},
   aiNutritionTipsCache: {},
+  aiCopilotInsight: null,
+  aiCopilotInsightLoading: false,
+  aiCopilotInsightError: null,
+  lastInsightDate: typeof window !== "undefined" ? readLocalSetting<string | null>("lastInsightDate", null) : null,
+  dailyMessageCount: typeof window !== "undefined" ? readLocalSetting<Record<string, number>>("dailyMessageCount", {}) : {},
 
   saveProvider: async (provider, apiKeyPlain) => {
     let finalApiKey = provider.apiKey;
@@ -296,6 +308,41 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
   },
 
   sendCoachMessage: async (content, options) => {
+    const todayStr = todayKey();
+    const currentCounts = get().dailyMessageCount || {};
+    const todayCount = currentCounts[todayStr] || 0;
+
+    if (todayCount >= 3) {
+      const assistantId = createId("assistant");
+      const userMessage: AiMessage = {
+        id: createId("user"),
+        role: "user",
+        content: options?.displayedContent ?? content,
+        createdAt: new Date().toISOString(),
+      };
+      const assistantMessage: AiMessage = {
+        id: assistantId,
+        role: "assistant",
+        content: `🚫 **Daily AI Coach limit reached (3/3 messages).** \n\nTo prevent overanalysis and keep you focused on executing your plan, further coaching advice is locked until tomorrow. Let's focus on hitting the weights and executing your scheduled routine!`,
+        createdAt: new Date().toISOString(),
+      };
+      set({
+        aiMessages: [...get().aiMessages, userMessage, assistantMessage],
+        coachBusy: false,
+      });
+      const user = get().user;
+      const date = get().selectedDate;
+      if (user) {
+        registry.save((r, uid) => r.chat.saveMessage(uid, date, userMessage));
+        registry.save((r, uid) => r.chat.saveMessage(uid, date, assistantMessage));
+      }
+      return;
+    }
+
+    const nextCounts = { ...currentCounts, [todayStr]: todayCount + 1 };
+    writeLocalSetting("dailyMessageCount", nextCounts);
+    set({ dailyMessageCount: nextCounts });
+
     const user = get().user;
     const date = get().selectedDate;
     const userMessage: AiMessage = {
@@ -629,5 +676,64 @@ Do NOT wrap the response in any markdown code block or include any explanatory t
         [range]: tip,
       },
     });
+  },
+
+  generateAiCopilotInsight: async (data) => {
+    const todayStr = todayKey();
+    if (get().lastInsightDate === todayStr && get().aiCopilotInsight) {
+      return;
+    }
+
+    const activeProvider = get().aiProviders.find((p) => p.id === get().activeProviderId);
+    if (!activeProvider) return;
+    const isLocal = activeProvider.type === "ollama" || activeProvider.type === "lmstudio";
+    if (!isLocal && !activeProvider.apiKey) return;
+
+    set({ aiCopilotInsightLoading: true, aiCopilotInsightError: null });
+    try {
+      const apiKey = isLocal ? "" : await decryptString(activeProvider.apiKey!);
+      const adapter = getProviderAdapter(activeProvider.type);
+
+      const systemContext = `You are Atlas Biomechanics Coach, a clinical-grade sports physiotherapist and strength coach.
+Provide a supportive, concise 1-2 sentence recommendation for the athlete's training day based on today's biometrics.
+Explain if they should do heavy lifting, active recovery, or complete rest, and highlight what peak energy window they should target.
+Be direct, encouraging, and clear. Avoid verbose pleasantries. Do NOT include markdown code blocks, just return the direct message text.`;
+
+      const userPrompt = `Biometrics for today:
+- CNS Readiness Score: ${data.cnsScore}%
+- Sleep Last Night: ${data.sleepHours} hours
+- Overall Recovery Score: ${data.recoveryScore}%
+- Sore/Trained Muscle Groups: ${data.soreMuscles.length > 0 ? data.soreMuscles.join(", ") : "None"}
+- Workouts completed this week: ${data.activeWorkoutsCount}
+
+Give me today's quick insight.`;
+
+      const { content } = await adapter.chat({
+        provider: activeProvider,
+        apiKey,
+        messages: [
+          { id: createId("user"), role: "user", content: userPrompt, createdAt: new Date().toISOString() }
+        ],
+        systemContext,
+      });
+
+      writeLocalSetting("lastInsightDate", todayStr);
+      set({ 
+        aiCopilotInsight: content.trim(), 
+        aiCopilotInsightLoading: false, 
+        aiCopilotInsightError: null,
+        lastInsightDate: todayStr 
+      });
+    } catch (err: any) {
+      console.error("Failed to generate AI Copilot Insight:", err);
+      const isRateLimit = err?.message?.toLowerCase().includes("demand") || err?.message?.toLowerCase().includes("limit") || err?.message?.toLowerCase().includes("resource");
+      const userMessage = isRateLimit 
+        ? "AI Coach is currently experiencing high demand. Click refresh to try again." 
+        : (err?.message || "Failed to load insight. Please verify your connection.");
+      set({ 
+        aiCopilotInsightError: userMessage, 
+        aiCopilotInsightLoading: false 
+      });
+    }
   },
 });

@@ -149,6 +149,7 @@ export function WorkoutScreen() {
   const setActiveSubScreen = useAtlasStore((state) => state.setActiveSubScreen);
   const setEditingWorkoutPlanId = useAtlasStore((state) => state.setEditingWorkoutPlanId);
   const deleteWorkoutPlan = useAtlasStore((state) => state.deleteWorkoutPlan);
+  const deleteWorkout = useAtlasStore((state) => state.deleteWorkout);
   const activeWorkoutPlanId = useAtlasStore((state) => state.activeWorkoutPlanId);
   const setActiveWorkoutPlanId = useAtlasStore((state) => state.setActiveWorkoutPlanId);
   const swapWorkoutExercise = useAtlasStore((state) => state.swapWorkoutExercise);
@@ -303,6 +304,8 @@ export function WorkoutScreen() {
   const [elapsedWorkoutTime, setElapsedWorkoutTime] = useState(0);
   const [activeSwapExercise, setActiveSwapExercise] = useState<any | null>(null);
   const [swapSearch, setSwapSearch] = useState("");
+  const [workoutPageTab, setWorkoutPageTab] = useState<"plans" | "history" | "analytics">("plans");
+  const [expandedWorkoutSessionId, setExpandedWorkoutSessionId] = useState<string | null>(null);
 
   const planTab = useAtlasStore((state) => state.workoutTab);
   const setPlanTab = useAtlasStore((state) => state.setWorkoutTab);
@@ -590,50 +593,9 @@ export function WorkoutScreen() {
     setShowPostWorkoutModal(false);
   };
 
-  if (!activeWorkout || activeSubScreen !== "active-workout") {
+  const renderPlansTab = () => {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        className="space-y-4 pb-28"
-      >
-        {/* ─── Header ─── */}
-        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-zinc-555">
-              Manage and track your workout plans
-            </p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">Plans</h1>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
-            <Button
-              size="sm"
-              className="hidden sm:inline-flex w-full sm:w-auto sm:flex-initial bg-violet-600 hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-450 text-white border-transparent font-bold shadow-md"
-              icon={<Layers3 size={15} />}
-              onClick={() => setActiveSubScreen("exercise-database")}
-            >
-              Exercise Database
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              className="w-full sm:w-auto sm:flex-initial"
-              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
-              disabled={coachBusy}
-              onClick={() => {
-                setEditingWorkoutPlanId(null);
-                setActiveSubScreen("workout-plan-builder");
-              }}
-            >
-              {coachBusy ? "Generating..." : "Create Plan"}
-            </Button>
-          </div>
-        </section>
-
-        {/* ─── Plans Content ─── */}
-        <>
-
+      <div className="space-y-4">
         {coachBusy && (
           <Card className="p-4 border border-violet-500/20 bg-violet-500/[0.02] shadow-lg flex flex-col gap-3">
             <div className="flex items-center gap-3">
@@ -681,14 +643,13 @@ export function WorkoutScreen() {
           return null;
         })()}
 
-
         {isLimitReached && !activeWorkout && (
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-200 text-sm space-y-2">
             <div className="flex items-center gap-2 font-semibold">
-              <AlertTriangle size={18} className="text-amber-450 shrink-0" />
+              <AlertTriangle size={18} className="text-amber-455 shrink-0" />
               <span>Daily Workout Limit Reached (3/3)</span>
             </div>
-            <p className="text-zinc-750 leading-relaxed">
+            <p className="text-zinc-755 leading-relaxed text-xs">
               You've completed 3 workouts today. Logging more than 3 sessions in a single day increases the risk of overtraining syndrome. This causes excessive muscle damage (rhabdomyolysis), central nervous fatigue, joint strain, and elevated cortisol. Give your body the rest it needs to recover and grow.
             </p>
           </div>
@@ -714,7 +675,7 @@ export function WorkoutScreen() {
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">1</span>
                   <div>
                     <h4 className="font-bold text-zinc-900 dark:text-white">Choose Your Creation Method</h4>
-                    <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                    <p className="text-zinc-555 mt-0.5 leading-normal">
                       Click the <strong>Create Custom Plan</strong> button below to build one manually, or navigate to the <strong>Coach</strong> tab to let the AI build one for you.
                     </p>
                   </div>
@@ -724,7 +685,7 @@ export function WorkoutScreen() {
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">2</span>
                   <div>
                     <h4 className="font-bold text-zinc-900 dark:text-white">Configure Plan & Routines</h4>
-                    <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                    <p className="text-zinc-555 mt-0.5 leading-normal">
                       Specify your goal, training experience level, and add targeted routines for each training day of the week.
                     </p>
                   </div>
@@ -734,7 +695,7 @@ export function WorkoutScreen() {
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">3</span>
                   <div>
                     <h4 className="font-bold text-zinc-900 dark:text-white">Set as Active & Log</h4>
-                    <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 leading-normal">
+                    <p className="text-zinc-555 mt-0.5 leading-normal">
                       Once created, click <strong>Set Active Plan</strong>. You can then start logging workouts and tracking your volume and overload analytics!
                     </p>
                   </div>
@@ -743,7 +704,7 @@ export function WorkoutScreen() {
             </div>
 
             <Button
-              className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center gap-1.5"
+              className="mt-6 font-bold bg-emerald-500 hover:bg-emerald-450 text-white flex items-center gap-1.5"
               variant="primary"
               disabled={coachBusy}
               onClick={() => {
@@ -802,7 +763,7 @@ export function WorkoutScreen() {
                           variant="ghost"
                           size="icon"
                           aria-label="Edit plan"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 disabled:opacity-40"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-white/5 disabled:opacity-40"
                           disabled={coachBusy}
                           onClick={() => {
                             setEditingWorkoutPlanId(plan.id);
@@ -815,7 +776,7 @@ export function WorkoutScreen() {
                           variant="ghost"
                           size="icon"
                           aria-label="Delete plan"
-                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-400 hover:text-rose-500 disabled:opacity-40"
+                          className="h-10 w-10 sm:h-8 sm:w-8 text-zinc-450 hover:text-rose-500 disabled:opacity-40"
                           disabled={coachBusy}
                           onClick={() => {
                             setPlanToDelete({ id: plan.id, name: plan.name });
@@ -827,11 +788,11 @@ export function WorkoutScreen() {
                       </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
-                      <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-750">
+                      <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-755">
                         {plan.routines.length} {plan.routines.length === 1 ? "Routine" : "Routines"}
                       </span>
                       {plan.targetDate && (
-                        <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-750">
+                        <span className="rounded-lg bg-surface border border-surface-border px-2.5 py-0.5 font-bold text-zinc-755">
                           Target: {plan.targetDate}
                         </span>
                       )}
@@ -839,9 +800,9 @@ export function WorkoutScreen() {
 
                     {/* Progress Bar */}
                     <div className="mt-4 space-y-1.5 border-t border-card-border pt-3">
-                      <div className="flex items-center justify-between text-xs text-zinc-750 font-bold uppercase tracking-wider">
+                      <div className="flex items-center justify-between text-xs text-zinc-755 font-bold uppercase tracking-wider">
                         <span>Weekly Routines Progress</span>
-                        <span className="font-bold text-emerald-500 dark:text-emerald-400">{completedCount}/{routinesCount}</span>
+                        <span className="font-bold text-emerald-500 dark:text-emerald-450">{completedCount}/{routinesCount}</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-surface border border-surface-border overflow-hidden">
                         <div
@@ -880,17 +841,300 @@ export function WorkoutScreen() {
         )}
 
         {selectedExercise ? <ExerciseDetail exercise={selectedExercise} onClose={() => setSelectedExercise(null)} /> : null}
+      </div>
+    );
+  };
 
-        {/* ─── WORKOUT ANALYTICS SECTION ─── */}
-        {workoutPlans.length > 0 && (
-          <div className="border-t border-card-border/80 my-8 pt-8 space-y-5">
-            {/* Analytics content — header card and view switching are managed internally */}
-            <AdvancedAnalyticsScreen />
+  const renderHistoryTab = () => {
+    const sortedCompletedWorkouts = [...workouts]
+      .filter((w) => w.completedAt)
+      .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+
+    return (
+      <div className="space-y-4">
+        {sortedCompletedWorkouts.length === 0 ? (
+          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border shadow-md">
+            <Clock3 className="h-12 w-12 text-zinc-400 mb-4" />
+            <h2 className="text-xl font-bold text-foreground">No completed workouts</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
+              Your training history is empty. Once you complete a session, your logged routines, weights, and repetitions will appear here.
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {sortedCompletedWorkouts.map((w) => {
+              const isExpanded = expandedWorkoutSessionId === w.id;
+              const dateObj = new Date(w.completedAt || w.startedAt);
+              const dateString = dateObj.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+              const timeString = dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+              const totalSetsCount = w.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => s.completed).length, 0);
+              const totalVolume = w.exercises.reduce((sum, ex) => {
+                const exDetail = getExerciseById(ex.exerciseId);
+                const isCardio = exDetail?.category === "cardio";
+                if (isCardio) return sum;
+                return sum + ex.sets.filter(s => s.completed).reduce((sSum, s) => sSum + (s.weight * s.reps), 0);
+              }, 0);
+
+              return (
+                <Card key={w.id} className="overflow-hidden border border-card-border bg-card shadow hover:border-card-border/85 transition-colors duration-300">
+                  <div
+                    className="p-4 flex items-center justify-between cursor-pointer select-none"
+                    onClick={() => setExpandedWorkoutSessionId(isExpanded ? null : w.id)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-bold text-zinc-900 dark:text-white capitalize truncate leading-tight">{w.name}</h3>
+                        {w.notes?.includes("Force stopped") && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                            Auto Stopped
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                        <span>{dateString} at {timeString}</span>
+                        <span className="text-zinc-300 dark:text-zinc-705">•</span>
+                        <span>{w.durationMinutes ? `${w.durationMinutes} min` : "Short Session"}</span>
+                        <span className="text-zinc-300 dark:text-zinc-705">•</span>
+                        <span>{totalSetsCount} sets</span>
+                        {totalVolume > 0 && (
+                          <>
+                            <span className="text-zinc-300 dark:text-zinc-705">•</span>
+                            <span>{totalVolume} {weightUnit} vol</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Delete workout log"
+                        className="h-9 w-9 text-zinc-400 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Are you sure you want to delete this workout log from your history? This will permanently update your weekly volume and streaks.`)) {
+                            void deleteWorkout(w.id);
+                          }
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                      {isExpanded ? <ChevronUp size={16} className="text-zinc-500" /> : <ChevronDown size={16} className="text-zinc-500" />}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.22 }}
+                        className="border-t border-card-border/60 bg-surface/20"
+                      >
+                        <div className="p-4 space-y-4">
+                          {w.notes && (
+                            <div className="text-xs text-zinc-650 dark:text-zinc-400 italic bg-surface/80 p-3 rounded-xl border border-surface-border">
+                              <span className="font-bold font-sans not-italic text-[10px] text-zinc-500 dark:text-zinc-500 block uppercase tracking-wider mb-1">Notes / Fatigue</span>
+                              "{w.notes}" {w.fatigueRating && `· Fatigue: ${w.fatigueRating}/10`}
+                            </div>
+                          )}
+
+                          <div className="space-y-3">
+                            {w.exercises.map((ex, exIdx) => {
+                              const exDetail = getExerciseById(ex.exerciseId);
+                              const isCardio = exDetail?.category === "cardio";
+                              const completedSets = ex.sets.filter(s => s.completed);
+                              if (completedSets.length === 0 && ex.skipped) {
+                                return (
+                                  <div key={ex.exerciseId + exIdx} className="text-xs text-zinc-500 dark:text-zinc-500 flex justify-between items-center py-1">
+                                    <span className="font-semibold">{exDetail?.name ?? ex.exerciseId}</span>
+                                    <span className="italic">Skipped</span>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div key={ex.exerciseId + exIdx} className="space-y-1.5">
+                                  <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{exDetail?.name ?? ex.exerciseId}</h4>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs text-zinc-650 dark:text-zinc-400">
+                                    {completedSets.map((s, sIdx) => (
+                                      <div key={s.id || sIdx} className="p-2 rounded-lg bg-card border border-card-border/60 flex items-center justify-between font-mono">
+                                        <span className="font-bold text-zinc-400">Set {sIdx + 1}</span>
+                                        <span className="font-semibold text-zinc-850 dark:text-zinc-300">
+                                          {isCardio ? (
+                                            <>
+                                              {s.durationSeconds ? `${Math.floor(s.durationSeconds / 60)}m` : ""}
+                                              {s.distance ? ` · ${s.distance} mi` : ""}
+                                            </>
+                                          ) : (
+                                            `${s.weight}${weightUnit} × ${s.reps}`
+                                          )}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Card>
+              );
+            })}
           </div>
         )}
+      </div>
+    );
+  };
 
-        {/* End of Plans tab content */}
-        </>
+  const renderAnalyticsTab = () => {
+    return (
+      <div className="space-y-4">
+        {workoutPlans.length > 0 ? (
+          <AdvancedAnalyticsScreen />
+        ) : (
+          <Card className="p-8 text-center flex flex-col items-center justify-center border border-dashed border-card-border shadow-md">
+            <Activity className="h-12 w-12 text-zinc-400 mb-4" />
+            <h2 className="text-xl font-bold text-foreground">No active workout programs</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">
+              Create and set a workout plan as active to display weekly effort metrics, CNS circadian diagnostics, and muscle volume distribution.
+            </p>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
+  if (!activeWorkout || activeSubScreen !== "active-workout") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        className="space-y-4 pb-28"
+      >
+        {/* ─── Dynamic Header ─── */}
+        <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 select-none">
+          <div>
+            <p className="text-sm text-zinc-555">
+              {workoutPageTab === "plans" && "Manage and track your workout plans"}
+              {workoutPageTab === "history" && "View and manage your completed training sessions"}
+              {workoutPageTab === "analytics" && "View weekly effort, CNS energy, and muscle diagnostics"}
+            </p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              {workoutPageTab === "plans" && "Workout Plans"}
+              {workoutPageTab === "history" && "Workout History"}
+              {workoutPageTab === "analytics" && "Progress & Analytics"}
+            </h1>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+            <Button
+              size="sm"
+              className="hidden sm:inline-flex w-full sm:w-auto sm:flex-initial bg-violet-600 hover:bg-violet-500 dark:bg-violet-500 dark:hover:bg-violet-450 text-white border-transparent font-bold shadow-md"
+              icon={<Layers3 size={15} />}
+              onClick={() => setActiveSubScreen("exercise-database")}
+            >
+              Exercise Database
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full sm:w-auto sm:flex-initial"
+              icon={coachBusy ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" /> : <Plus size={16} />}
+              disabled={coachBusy}
+              onClick={() => {
+                setEditingWorkoutPlanId(null);
+                setActiveSubScreen("workout-plan-builder");
+              }}
+            >
+              {coachBusy ? "Generating..." : "Create Plan"}
+            </Button>
+          </div>
+        </section>
+
+        {/* ─── Page Level Tabs Selector ─── */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-zinc-200/50 dark:bg-zinc-800/45 rounded-xl w-full border border-card-border/40 select-none shadow-sm h-9">
+          <button
+            type="button"
+            onClick={() => setWorkoutPageTab("plans")}
+            className={cn(
+              "relative flex-1 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-lg h-8",
+              workoutPageTab === "plans"
+                ? "text-zinc-955 dark:text-zinc-900 font-black"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            )}
+          >
+            {workoutPageTab === "plans" && (
+              <motion.span
+                layoutId="active-workout-page-tab-pill"
+                className="absolute inset-0 rounded-lg bg-emerald-300"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">Plans</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setWorkoutPageTab("history")}
+            className={cn(
+              "relative flex-1 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-lg h-8",
+              workoutPageTab === "history"
+                ? "text-zinc-955 dark:text-zinc-900 font-black"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            )}
+          >
+            {workoutPageTab === "history" && (
+              <motion.span
+                layoutId="active-workout-page-tab-pill"
+                className="absolute inset-0 rounded-lg bg-emerald-300"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">History</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setWorkoutPageTab("analytics")}
+            className={cn(
+              "relative flex-1 py-1 text-xs font-bold transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-lg h-8",
+              workoutPageTab === "analytics"
+                ? "text-zinc-955 dark:text-zinc-900 font-black"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            )}
+          >
+            {workoutPageTab === "analytics" && (
+              <motion.span
+                layoutId="active-workout-page-tab-pill"
+                className="absolute inset-0 rounded-lg bg-emerald-300"
+                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">Analytics</span>
+          </button>
+        </div>
+
+        {/* ─── Tab Panel Content ─── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={workoutPageTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4"
+          >
+            {workoutPageTab === "plans" && renderPlansTab()}
+            {workoutPageTab === "history" && renderHistoryTab()}
+            {workoutPageTab === "analytics" && renderAnalyticsTab()}
+          </motion.div>
+        </AnimatePresence>
 
         <PreWorkoutCheckinModal
           isOpen={showPreWorkoutModal}
@@ -908,7 +1152,7 @@ export function WorkoutScreen() {
                 <X size={20} />
               </Button>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Switch Active Plan</h2>
-              <p className="text-zinc-750 text-sm leading-relaxed">
+              <p className="text-zinc-755 text-sm leading-relaxed">
                 {activeWorkout
                   ? "Switching Active Plan: You have a workout session in progress. Switching plans will discard your current active workout and reset active tracking. Do you want to continue?"
                   : "Switching Active Plan: This will recalculate your streaks, consistency, and progress metrics for the new plan. Old progress will be saved separately. Do you want to continue?"}
@@ -944,7 +1188,7 @@ export function WorkoutScreen() {
                 <X size={20} />
               </Button>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Delete Workout Plan</h2>
-              <p className="text-zinc-750 text-sm leading-relaxed">
+              <p className="text-zinc-755 text-sm leading-relaxed">
                 {activeWorkout && activeWorkout.planId === planToDelete.id
                   ? `Are you sure you want to delete the plan "${planToDelete.name}"? You have a workout session in progress for this plan. Deleting it will permanently remove the plan and discard your current active workout.`
                   : `Are you sure you want to delete the plan "${planToDelete.name}"? This action cannot be undone and all routines inside this plan will be lost.`}

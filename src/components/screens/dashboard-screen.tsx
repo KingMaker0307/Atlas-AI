@@ -13,6 +13,7 @@ import {
   Pencil,
   Sparkles,
   Plus,
+  Minus,
   Bot,
   Trash2,
   X,
@@ -51,6 +52,11 @@ import { RecoveryCheckinSimple } from "@/components/recovery-checkin-simple";
 import { Card, Surface } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/input";
 import { MetricCard } from "@/components/ui/metric-card";
+import { FitbitMetricCard } from "@/components/ui/fitbit-metric-card";
+import { AiCopilotInsightBanner } from "@/components/ai-copilot-insight-banner";
+import { TrophiesCard } from "@/components/ui/trophies-card";
+import { MuscleHeatmap } from "@/components/muscle-heatmap";
+import { todayKey } from "@/lib/id";
 import {
   calculateRecoveryScore,
   getBodyweightSeries,
@@ -69,6 +75,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { UserProfile, RecoveryLog, BodyMetric, Workout } from "@/types/domain";
 import { createId } from "@/lib/id";
+import { cn } from "@/lib/cn";
 import { validateEmail } from "@/lib/email-validator";
 import { restoreProfileByEmail } from "@/lib/sync";
 import { PreWorkoutCheckinModal } from "@/components/pre-workout-checkin-modal";
@@ -84,6 +91,13 @@ function parseLocalDate(dateStr: string): Date {
   }
   const [year, month, day] = dateStr.split("-").map(Number);
   return new Date(year, month - 1, day);
+}
+
+function getLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 type HistoryView = "day" | "week" | "month" | "year";
@@ -170,6 +184,16 @@ export function DashboardScreen() {
   const storeExercises = useAtlasStore((state) => state.exercises);
   const activeDeloadCycle = useAtlasStore((state) => state.activeDeloadCycle);
   const setDeloadCycle = useAtlasStore((state) => state.setDeloadCycle);
+  
+  const waterLogs = useAtlasStore((state) => state.waterLogs || []);
+  const addWaterLog = useAtlasStore((state) => state.addWaterLog);
+  const deleteWaterLog = useAtlasStore((state) => state.deleteWaterLog);
+  const workoutExperienceMode = useAtlasStore((state) => state.workoutExperienceMode || "beginner");
+  const setWorkoutExperienceMode = useAtlasStore((state) => state.setWorkoutExperienceMode);
+
+  const [activeReadinessTab, setActiveReadinessTab] = useState<"recovery" | "cns" | "habits" | "tips">("recovery");
+  const [activePerformanceTab, setActivePerformanceTab] = useState<"consistency" | "weight" | "volume" | "heatmap" | "prs" | "overview">("consistency");
+  const [showCnsDetail, setShowCnsDetail] = useState(false);
 
   const [selectedExercise, setSelectedExercise] = useState(topExercisesForAnalytics()[0]?.id ?? "bench-press");
   const [selectedHistoryView, setSelectedHistoryView] = useState<HistoryView>("day");
@@ -185,6 +209,12 @@ export function DashboardScreen() {
   useEffect(() => {
     setShowCharts(!guidedMode);
   }, [guidedMode]);
+
+  useEffect(() => {
+    if (workoutExperienceMode === "beginner" && activeReadinessTab === "cns") {
+      setActiveReadinessTab("recovery");
+    }
+  }, [workoutExperienceMode, activeReadinessTab]);
 
   const getExerciseById = (id: string) => {
     const normId = id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -406,6 +436,60 @@ export function DashboardScreen() {
   const volumeSeries = getVolumeSeries(workouts);
   const recentPrs = getRecentPrs(workouts);
 
+  // CNS Readiness score & Trend Calculations
+  const { todayCnsScore } = useMemo(() => {
+    const latestLog = recoveryLogs.at(-1);
+    const completedWorkouts = workouts.filter((w) =>
+      w.exercises.some((ex) => ex.sets.some((s) => s.completed))
+    );
+    const last3Workouts = completedWorkouts.slice(-3);
+    const avgFatigue = last3Workouts.length
+      ? last3Workouts.reduce((sum, w) => sum + (w.fatigueRating ?? 5), 0) / last3Workouts.length
+      : 5;
+
+    const sleepHours = latestLog?.sleepHours ?? 7.5;
+    const sleepFactor = Math.min((sleepHours / 8) * 100, 100);
+
+    const soreness = latestLog?.soreness ?? 4;
+    const stress = latestLog?.stress ?? 3;
+    const energy = latestLog?.energy ?? 7;
+
+    const recoveryFactor = ((10 - soreness) + (10 - stress) + energy) / 3 * 10;
+    const fatigueFactor = 100 - (avgFatigue * 10);
+    const rollingCnsScore = Math.round(sleepFactor * 0.35 + recoveryFactor * 0.35 + fatigueFactor * 0.3);
+    const finalScore = Math.min(Math.max(rollingCnsScore, 10), 100);
+    
+    return {
+      todayCnsScore: finalScore,
+    };
+  }, [recoveryLogs, workouts]);
+
+  const cnsTrendData = useMemo(() => {
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = getLocalDateString(d);
+      const log = recoveryLogs.find(l => l.date === dateStr);
+      const sh = log?.sleepHours ?? 7.5;
+      const sf = Math.min((sh / 8) * 100, 100);
+      const sor = log?.soreness ?? 4;
+      const str = log?.stress ?? 3;
+      const en = log?.energy ?? 7;
+      const rf = ((10 - sor) + (10 - str) + en) / 3 * 10;
+      
+      const currentCompleted = workouts.filter(w => w.completedAt && getLocalDateString(new Date(w.completedAt)) <= dateStr);
+      const last3 = currentCompleted.slice(-3);
+      const avgFat = last3.length
+        ? last3.reduce((sum, w) => sum + (w.fatigueRating ?? 5), 0) / last3.length
+        : 5;
+      const ff = 100 - (avgFat * 10);
+      const score = Math.round(sf * 0.35 + rf * 0.35 + ff * 0.3);
+      data.push(Math.min(Math.max(score, 10), 100));
+    }
+    return data;
+  }, [recoveryLogs, workouts]);
+
   const availableYears = useMemo(() => {
     const years = new Set<number>();
     workouts.forEach(w => years.add(new Date(w.startedAt).getFullYear()));
@@ -600,7 +684,7 @@ export function DashboardScreen() {
 
   const latestBodyweight = useMemo(() => {
     const sortedBodyMetrics = [...bodyMetrics].sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
-    return sortedBodyMetrics.length > 0 ? sortedBodyMetrics[0].bodyweight : 0;
+    return sortedBodyMetrics.length > 0 ? (sortedBodyMetrics[0].bodyweight ?? 0) : 0;
   }, [bodyMetrics]);
   
   const lastMessage = aiMessages.at(-1);
@@ -627,12 +711,7 @@ export function DashboardScreen() {
     return calculateNutritionTargets(profile);
   }, [profile]);
 
-  const getLocalDateString = (d: Date) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+
 
   const consistencyDays = useMemo(() => {
     const today = new Date();
@@ -857,24 +936,536 @@ export function DashboardScreen() {
     setActiveTab("workout");
   };
 
-  const toggleMetricInsight = (metric: string) => {
-    setExpandedMetric(expandedMetric === metric ? null : metric);
+  // Daily Readiness Deck tab views
+  const renderRecoveryTab = () => {
+    const insight = getCoachingInsight(recoveryScore);
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-surface border border-surface-border">
+          <div className="relative h-24 w-24 shrink-0 flex items-center justify-center bg-sky-500/5 rounded-full border border-sky-500/10">
+            <svg className="absolute inset-0 -rotate-90" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" strokeWidth="4.5" className="text-zinc-150 dark:text-zinc-850" />
+              <motion.circle
+                cx="32" cy="32" r="27" fill="none"
+                stroke="#0ea5e9"
+                strokeWidth="4.5"
+                strokeDasharray="170"
+                initial={{ strokeDashoffset: 170 }}
+                animate={{ strokeDashoffset: 170 - (170 * recoveryScore) / 100 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="flex flex-col items-center leading-none">
+              <span className="text-2xl font-black text-foreground">{recoveryScore}%</span>
+              <span className="text-[9px] font-bold text-zinc-500 uppercase mt-0.5">Recovery</span>
+            </div>
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-sm font-bold text-foreground">{insight.label}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">{insight.text}</p>
+            <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
+              <button
+                type="button"
+                onClick={() => setShowQuickLog(!showQuickLog)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-sky-500 hover:bg-sky-600 text-white transition active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <TimerReset size={12} />
+                <span>Update Logger</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRecoveryModal(true)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-650 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 transition cursor-pointer"
+              >
+                History Calendar
+              </button>
+            </div>
+          </div>
+        </div>
+        <AnimatePresence>
+          {showQuickLog && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-2">
+                <RecoveryCheckinSimple onSaved={() => setShowQuickLog(false)} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   };
 
-  // Custom tooltips for graphs
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="rounded-xl border border-card-border bg-card p-3 shadow-xl backdrop-blur-md">
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{label}</p>
-          <p className="mt-1 text-sm font-semibold text-foreground">
-            {payload[0].name === "weight" ? `${payload[0].value} lbs` : `${payload[0].value.toLocaleString()} lbs volume`}
+  const renderCnsTab = () => {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-surface border border-surface-border">
+          <div className="relative h-24 w-24 shrink-0 flex items-center justify-center bg-violet-500/5 rounded-full border border-violet-500/10">
+            <svg className="absolute inset-0 -rotate-90" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" strokeWidth="4.5" className="text-zinc-150 dark:text-zinc-850" />
+              <motion.circle
+                cx="32" cy="32" r="27" fill="none"
+                stroke="#8b5cf6"
+                strokeWidth="4.5"
+                strokeDasharray="170"
+                initial={{ strokeDashoffset: 170 }}
+                animate={{ strokeDashoffset: 170 - (170 * todayCnsScore) / 100 }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="flex flex-col items-center leading-none">
+              <span className="text-2xl font-black text-foreground">{todayCnsScore}%</span>
+              <span className="text-[9px] font-bold text-zinc-500 uppercase mt-0.5">CNS Ready</span>
+            </div>
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <h4 className="text-sm font-bold text-foreground">Central Nervous System Readiness</h4>
+            <p className="text-xs text-zinc-555 mt-1 leading-relaxed">
+              Neuromuscular recovery index. Dictates compounding potential and central fatigue thresholds.
+            </p>
+            {cnsTrendData.length >= 2 && (
+              <div className="mt-3.5 flex items-center justify-center sm:justify-start gap-3">
+                <span className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">7-Day Trend:</span>
+                <div className="flex items-center text-violet-500">
+                  <svg width="60" height="20" className="opacity-70 dark:opacity-85" aria-hidden="true">
+                    <polyline
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={cnsTrendData
+                        .map((val, idx) => {
+                          const x = (idx / (cnsTrendData.length - 1)) * 60;
+                          const maxVal = Math.max(...cnsTrendData);
+                          const minVal = Math.min(...cnsTrendData);
+                          const rangeVal = maxVal - minVal || 1;
+                          const y = 20 - ((val - minVal) / rangeVal) * 16 - 2;
+                          return `${x.toFixed(1)},${y.toFixed(1)}`;
+                        })
+                        .join(" ")}
+                    />
+                  </svg>
+                </div>
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
+              <button
+                type="button"
+                onClick={() => setShowCnsDetail(!showCnsDetail)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-violet-650 hover:bg-violet-550 text-white transition active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <Zap size={12} />
+                <span>{showCnsDetail ? "Hide Energy Peak Clock" : "View Energy Peak Clock"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <AnimatePresence>
+          {showCnsDetail && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="relative pt-2">
+                <button
+                  onClick={() => setShowCnsDetail(false)}
+                  className="absolute top-4 right-4 h-8 w-8 rounded-full flex items-center justify-center border border-zinc-200 dark:border-zinc-800 text-zinc-500 z-10 bg-card/85 backdrop-blur-sm cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/5 transition-all"
+                >
+                  <X size={14} />
+                </button>
+                <CnsCircadianPlanner recoveryLogs={recoveryLogs} workouts={allWorkouts} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const renderHabitsTab = () => {
+    const todayStr = getLocalDateString(new Date());
+    const todayLogs = waterLogs.filter((w) => w.timestamp?.startsWith(todayStr));
+    const totalMl = todayLogs.reduce((acc, w) => acc + w.amount, 0);
+    const cups = Math.round(totalMl / CUP_ML);
+    const targetCups = Math.round(WATER_GOAL_ML / CUP_ML);
+    const pct = Math.min((totalMl / WATER_GOAL_ML) * 100, 100);
+    const done = totalMl >= WATER_GOAL_ML;
+
+    const handleAddWater = async () => {
+      if (navigator.vibrate) navigator.vibrate(8);
+      await addWaterLog({ id: createId("water"), amount: CUP_ML, timestamp: new Date().toISOString() });
+    };
+    const handleRemoveWater = async () => {
+      if (todayLogs.length === 0) return;
+      await deleteWaterLog(todayLogs.at(-1)!.id);
+    };
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 rounded-2xl bg-surface border border-surface-border space-y-3">
+          <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+            <span className="flex items-center gap-1.5">💧 Hydration Log</span>
+            <span className={cn(done ? "text-sky-500 font-extrabold" : "text-zinc-500")}>
+              {cups} / {targetCups} glasses {done ? "✅" : ""}
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-zinc-205 dark:bg-zinc-800 overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-sky-400"
+              initial={{ width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+          <div className="flex gap-1 flex-wrap justify-center py-1">
+            {Array.from({ length: targetCups }).map((_, i) => (
+              <span
+                key={i}
+                className={cn("text-lg transition-all duration-200 select-none", i < cups ? "opacity-100" : "opacity-20 grayscale")}
+              >
+                💧
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleRemoveWater}
+              disabled={todayLogs.length === 0}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-250 disabled:opacity-30 transition cursor-pointer font-bold"
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={handleAddWater}
+              className="flex-1 h-10 rounded-xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white text-xs font-black uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Plus size={14} />
+              <span>Add 250ml Glass</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-surface border border-surface-border flex flex-col justify-between gap-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-zinc-500 text-xs font-bold">
+              <Moon size={14} />
+              <span>Last Night's Sleep</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-black text-foreground">
+                {latestRecoveryLog?.sleepHours ?? "—"}
+              </span>
+              <span className="text-xs text-zinc-500">hours</span>
+            </div>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              {latestRecoveryLog?.sleepHours 
+                ? (latestRecoveryLog.sleepHours >= 7 ? "Optimal sleep duration met. Great job!" : "Slightly below target. Try to sleep 30m earlier tonight.")
+                : "No sleep logged for today yet. Update in Recovery tab."}
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-card-border/60 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Weight</p>
+              <p className="text-sm font-black text-foreground">
+                {latestBodyweight > 0 ? `${latestBodyweight} ${profile?.weightUnit ?? "kg"}` : "Not logged"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowBodyMetricModal(true)}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border border-zinc-200 dark:border-zinc-800 text-zinc-655 hover:text-foreground hover:bg-zinc-100 dark:hover:bg-white/5 transition cursor-pointer"
+            >
+              Log Weight
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTipsTab = () => {
+    const hrs = new Date().getHours();
+    const greeting = hrs < 12 ? "Good Morning, Athlete ☀️" : hrs < 18 ? "Good Afternoon, Athlete 🌤️" : "Good Evening, Athlete 🌙";
+
+    return (
+      <div className="space-y-4">
+        <div className="p-3.5 rounded-2xl bg-surface border border-surface-border text-center sm:text-left">
+          <h4 className="text-sm font-black text-foreground">{greeting}</h4>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+            Here is your daily athletic insight to optimize recovery, balance strain, and compound your efforts.
           </p>
         </div>
-      );
-    }
-    return null;
+
+        <BeginnerTipCard
+          emoji={recoveryScore >= 80 ? "🔥" : recoveryScore >= 50 ? "⚡" : "💤"}
+          headline={
+            recoveryScore >= 80 
+              ? "Peak physiological training state" 
+              : recoveryScore >= 50 
+                ? "Functional workload primed" 
+                : "System recovery prioritized"
+          }
+          body={
+            recoveryScore >= 80
+              ? "Your recovery index is highly favorable. This represents the physiological window to push load volumes or attempt progressive overload thresholds safely."
+              : recoveryScore >= 50
+                ? "Neuromuscular feedback is positive but suggests compound load moderation. Pace compound movements and monitor rest duration."
+                : "Central nervous strain reports elevated fatigue. Rest compounds, utilize dynamic stretching and target 8+ sleep hours tonight."
+          }
+          variant={recoveryScore >= 80 ? "workout" : recoveryScore >= 50 ? "default" : "progress"}
+        />
+      </div>
+    );
   };
+
+  // Performance Deck tab views
+  const renderConsistencyTab = () => {
+    return (
+      <div className="space-y-4">
+        <div className="p-4 rounded-2xl bg-surface border border-surface-border space-y-3">
+          <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+            <span className="flex items-center gap-1">📅 Consistency Matrix</span>
+            <span>Last 4 Weeks</span>
+          </div>
+          
+          <div className="grid grid-cols-7 gap-1">
+            {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+              <div key={d} className="text-center text-[9px] font-bold text-zinc-400 uppercase">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {consistencyDays.map((day) => {
+              let bg = "bg-zinc-100 dark:bg-zinc-800";
+              if (day.isFuture) bg = "bg-zinc-100/40 dark:bg-zinc-800/40 opacity-30";
+              else if (day.hasWorkout && day.hasNutrition) bg = "bg-emerald-400 dark:bg-emerald-500";
+              else if (day.hasWorkout) bg = "bg-emerald-300 dark:bg-emerald-650/70";
+              else if (day.hasNutrition) bg = "bg-amber-300 dark:bg-amber-500/60";
+              return (
+                <div
+                  key={day.dateStr}
+                  className={`aspect-square rounded-lg transition-all ${bg} ${day.isToday ? "ring-2 ring-emerald-500 ring-offset-1 ring-offset-background" : ""}`}
+                  title={`${day.dateStr}${day.hasWorkout ? " · Workout ✓" : ""}${day.hasNutrition ? " · Meal ✓" : ""}`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-2.5 pt-1.5 border-t border-card-border/60">
+            {[
+              { color: "bg-emerald-400 dark:bg-emerald-500", label: "Workout + Meal" },
+              { color: "bg-emerald-300 dark:bg-emerald-650/70", label: "Workout only" },
+              { color: "bg-amber-300 dark:bg-amber-500/60", label: "Meal only" },
+              { color: "bg-zinc-100 dark:bg-zinc-800", label: "Rest day" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <div className={`h-2.5 w-2.5 rounded ${item.color}`} />
+                <span className="text-[10px] text-zinc-555 font-medium">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderWeightTab = () => {
+    return (
+      <div className="space-y-4">
+        {bodyweightSeries.length >= 2 ? (
+          <div className="p-4 rounded-2xl bg-surface border border-surface-border space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+              <span>⚖️ Weight History</span>
+              <span>This Year</span>
+            </div>
+            <SafeResponsiveContainer width="100%" height={140}>
+              <AreaChart data={bodyweightSeries} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="bwGradDashboard" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="10%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-card-border)", borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Weight"]}
+                />
+                <Area type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} fill="url(#bwGradDashboard)" dot={false} />
+              </AreaChart>
+            </SafeResponsiveContainer>
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-surface border border-surface-border rounded-2xl text-zinc-500 text-xs">
+            Log weight on at least 2 separate days to view the trend chart.
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderVolumeTab = () => {
+    return (
+      <div className="space-y-4">
+        {yearVolumeSeries.length >= 2 ? (
+          <div className="p-4 rounded-2xl bg-surface border border-surface-border space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+              <span>📈 Weekly Load Volume</span>
+              <span>This Year</span>
+            </div>
+            <SafeResponsiveContainer width="100%" height={130}>
+              <BarChart data={yearVolumeSeries} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-card-border)", borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: any) => [`${Number(v).toLocaleString()} ${profile?.weightUnit ?? "kg"}`, "Volume"]}
+                />
+                <Bar dataKey="volume" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </SafeResponsiveContainer>
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-surface border border-surface-border rounded-2xl text-zinc-500 text-xs">
+            Complete at least 2 workouts with weight tracking to view your volume effort.
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPrsTab = () => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+          <span>🏆 Personal Records</span>
+          <span>Top achievements</span>
+        </div>
+        {recentPrs.length > 0 ? (
+          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+            {recentPrs.slice(0, 5).map((pr) => (
+              <div key={pr.exerciseName + pr.date} className="flex items-center justify-between p-3 rounded-xl bg-surface border border-surface-border">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">{pr.exerciseName}</p>
+                  <p className="text-xs text-zinc-500">{pr.date}</p>
+                </div>
+                <div className="text-right shrink-0 pl-3">
+                  <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
+                    {pr.value}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-surface border border-surface-border rounded-2xl text-zinc-500 text-xs">
+            Complete sets with weights to record personal best achievements!
+          </div>
+        )}
+      </div>
+    );
+  };
+
+
+
+  const renderHeatmapTab = () => {
+    return (
+      <div className="space-y-4 pt-1">
+        <div className="flex items-center justify-between pb-2 border-b border-card-border/60">
+          <div>
+            <h4 className="text-sm font-bold text-foreground">Muscle Load & Recovery Heatmap</h4>
+            <p className="text-[10px] text-zinc-555">Weekly sets volume distribution map</p>
+          </div>
+        </div>
+        <div className="flex justify-center p-2 rounded-2xl bg-zinc-50/50 dark:bg-zinc-950/20 border border-card-border/40">
+          <MuscleHeatmap workouts={workouts} getExerciseById={getExerciseById} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderOverviewTab = () => {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+          <span>📊 Cumulative Metrics</span>
+          <span>{selectedYear} Summary</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5">
+          {[
+            {
+              emoji: "🏋️",
+              label: "Workouts done",
+              value: String(totalWorkoutsInYear),
+              sub: "sessions completed",
+              color: "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+            },
+            {
+              emoji: "⏱️",
+              label: "Time exercising",
+              value:
+                totalWorkoutDurationInYear >= 60
+                  ? `${Math.floor(totalWorkoutDurationInYear / 60)}h ${totalWorkoutDurationInYear % 60}m`
+                  : `${totalWorkoutDurationInYear}m`,
+              sub: "total active time",
+              color: "border-violet-500/20 bg-violet-500/5 text-violet-600 dark:text-violet-400",
+            },
+            {
+              emoji: "😴",
+              label: "Average sleep",
+              value: `${averageSleepHours}h`,
+              sub: "per night logged",
+              color: "border-indigo-500/20 bg-indigo-500/5 text-indigo-600 dark:text-indigo-400",
+            },
+            {
+              emoji: "⚖️",
+              label: "Current weight",
+              value:
+                (latestBodyweight ?? 0) > 0
+                  ? `${latestBodyweight} ${profile?.weightUnit ?? "kg"}`
+                  : "—",
+              sub: (latestBodyweight ?? 0) > 0 ? "latest measurement" : "not yet logged",
+              color: "border-amber-500/20 bg-amber-500/5 text-amber-600 dark:text-amber-400",
+            },
+          ].map((item) => (
+            <div key={item.label} className={`rounded-2xl border p-4 space-y-1 ${item.color}`}>
+              <span className="text-2xl" aria-hidden="true">{item.emoji}</span>
+              <p className="text-xl font-extrabold text-foreground leading-none">{item.value}</p>
+              <p className="text-xs font-semibold text-foreground">{item.label}</p>
+              <p className="text-[10px] text-zinc-555 leading-tight">{item.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const readinessTabs = useMemo(() => {
+    return [
+      { id: "recovery", label: "Recovery", icon: Heart },
+      ...(workoutExperienceMode === "advanced" ? [{ id: "cns", label: "CNS", icon: BrainCircuit }] : []),
+      { id: "habits", label: "Habits", icon: Flame },
+      { id: "tips", label: "Tips", icon: Sparkles }
+    ];
+  }, [workoutExperienceMode]);
+
+
+
+  const CUP_ML = 250;
+  const WATER_GOAL_ML = 2000;
 
   return (
     <>
@@ -882,10 +1473,10 @@ export function DashboardScreen() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
-        className="flex flex-col gap-4 pb-10"
+        className="flex flex-col gap-5 pb-28 text-left"
       >
         {activeDeloadCycle && (
-          <div className="p-4 bg-gradient-to-br from-amber-550/15 to-amber-600/10 border border-amber-500/25 rounded-3xl flex items-start justify-between gap-3 shadow-sm select-none">
+          <div className="p-4 bg-gradient-to-br from-amber-550/15 to-amber-600/10 border border-amber-500/25 rounded-3xl flex items-start justify-between gap-3 shadow-sm select-none animate-fade-in">
             <div className="flex gap-3">
               <span className="text-xl mt-0.5" aria-hidden="true">🛡️</span>
               <div className="text-left">
@@ -905,270 +1496,185 @@ export function DashboardScreen() {
           </div>
         )}
 
-        {/* ── Body feeling card ── */}
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-xl" aria-hidden="true">🌡️</span>
-              <div>
-                <p className="text-sm font-bold text-foreground">How your body is doing</p>
-                <p className="text-xs text-zinc-500">Based on your last check-in</p>
-              </div>
-            </div>
+        {/* Experience Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface p-1.5 rounded-2xl border border-surface-border select-none shadow-sm">
+          <div className="flex gap-1 rounded-xl bg-input p-0.5 w-full sm:max-w-[320px]">
             <button
               type="button"
-              onClick={() => setShowQuickLog(!showQuickLog)}
-              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+              onClick={() => setWorkoutExperienceMode("beginner")}
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors duration-200 min-h-[36px] cursor-pointer ${
+                workoutExperienceMode === "beginner"
+                  ? "text-zinc-950 dark:text-zinc-900 font-black"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-150"
+              }`}
             >
-              <TimerReset size={13} aria-hidden="true" />
-              Update
-            </button>
-          </div>
-
-          {/* Recovery ring + insight */}
-          <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-surface border border-surface-border">
-            {/* Ring */}
-            <div className="relative h-16 w-16 shrink-0 flex items-center justify-center">
-              <svg className="absolute inset-0 -rotate-90" viewBox="0 0 64 64">
-                <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" strokeWidth="5" className="text-zinc-200 dark:text-zinc-800" />
-                <motion.circle
-                  cx="32" cy="32" r="27" fill="none"
-                  stroke={insight.ringColor}
-                  strokeWidth="5"
-                  strokeDasharray="170"
-                  initial={{ strokeDashoffset: 170 }}
-                  animate={{ strokeDashoffset: 170 - (170 * recoveryScore) / 100 }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                  strokeLinecap="round"
+              {workoutExperienceMode === "beginner" && (
+                <motion.span
+                  layoutId="active-dashboard-mode-tab"
+                  className="absolute inset-0 rounded-lg bg-emerald-300"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
-              </svg>
-              <span className="text-base font-black text-foreground leading-none">
-                {recoveryScore}<span className="text-xs font-bold text-zinc-500">%</span>
-              </span>
-            </div>
-            {/* Insight text */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground leading-snug">{insight.label}</p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">{insight.text}</p>
-            </div>
-          </div>
+              )}
+              <span className="relative z-20">Beginner Mode</span>
+            </button>
 
-          {/* Quick-log form */}
-          <AnimatePresence>
-            {showQuickLog && (
-              <motion.div
-                key="quicklog"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="pt-1">
-                  <RecoveryCheckinSimple onSaved={() => setShowQuickLog(false)} />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </Card>
-
-        <CnsCircadianPlanner recoveryLogs={recoveryLogs} workouts={allWorkouts} />
-
-        {/* ── Stats at a glance ── */}
-        <div>
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1 mb-2">This year ({selectedYear})</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            {[
-              {
-                emoji: "🏋️",
-                label: "Workouts done",
-                value: String(totalWorkoutsInYear),
-                sub: "sessions completed",
-                color: "border-emerald-500/20 bg-emerald-500/5",
-              },
-              {
-                emoji: "⏱️",
-                label: "Time exercising",
-                value:
-                  totalWorkoutDurationInYear >= 60
-                    ? `${Math.floor(totalWorkoutDurationInYear / 60)}h ${totalWorkoutDurationInYear % 60}m`
-                    : `${totalWorkoutDurationInYear}m`,
-                sub: "total active time",
-                color: "border-violet-500/20 bg-violet-500/5",
-              },
-              {
-                emoji: "😴",
-                label: "Average sleep",
-                value: `${averageSleepHours}h`,
-                sub: "per night logged",
-                color: "border-indigo-500/20 bg-indigo-500/5",
-              },
-              {
-                emoji: "⚖️",
-                label: "Current weight",
-                value:
-                  (latestBodyweight ?? 0) > 0
-                    ? `${latestBodyweight} ${profile?.weightUnit ?? "kg"}`
-                    : "—",
-                sub: (latestBodyweight ?? 0) > 0 ? "latest measurement" : "not yet logged",
-                color: "border-amber-500/20 bg-amber-500/5",
-              },
-            ].map((item) => (
-              <div key={item.label} className={`rounded-2xl border p-4 space-y-1 ${item.color}`}>
-                <span className="text-2xl" aria-hidden="true">{item.emoji}</span>
-                <p className="text-xl font-extrabold text-foreground leading-none">{item.value}</p>
-                <p className="text-xs font-semibold text-foreground">{item.label}</p>
-                <p className="text-[10px] text-zinc-500">{item.sub}</p>
-              </div>
-            ))}
+            <button
+              type="button"
+              onClick={() => setWorkoutExperienceMode("advanced")}
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors duration-200 min-h-[36px] cursor-pointer ${
+                workoutExperienceMode === "advanced"
+                  ? "text-zinc-950 dark:text-zinc-900 font-black"
+                  : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-150"
+              }`}
+            >
+              {workoutExperienceMode === "advanced" && (
+                <motion.span
+                  layoutId="active-dashboard-mode-tab"
+                  className="absolute inset-0 rounded-lg bg-emerald-300"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="relative z-20">Advanced Mode</span>
+            </button>
           </div>
         </div>
 
-        {/* ── 4-week consistency calendar ── */}
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xl" aria-hidden="true">📅</span>
-            <div>
-              <p className="text-sm font-bold text-foreground">Consistency — last 4 weeks</p>
-              <p className="text-xs text-zinc-500">🟢 workout · 🟡 meal logged · ⬜ rest day</p>
+        {/* AI Copilot Insight Banner */}
+        <AiCopilotInsightBanner />
+
+        {/* Daily Readiness Deck Card */}
+        <Card className="p-4 relative overflow-hidden supports-[backdrop-filter]:backdrop-blur-2xl bg-card/65 border-card-border/60 shadow-xl space-y-4">
+          <div className="flex flex-col gap-3 pb-2 border-b border-card-border/60">
+            <div className="flex items-center gap-2">
+              <BatteryCharging className="h-5 w-5 text-emerald-500 animate-pulse" />
+              <h3 className="text-base font-black text-foreground">Daily Readiness</h3>
+            </div>
+            
+            {/* Horizontal Tab Selector */}
+            <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar select-none">
+              {readinessTabs.map((tab) => {
+                const isActive = activeReadinessTab === tab.id;
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveReadinessTab(tab.id as any)}
+                    className={cn(
+                      "relative z-10 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer min-h-[32px] border border-transparent",
+                      isActive 
+                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+                        : "text-zinc-500 hover:text-zinc-855 dark:hover:text-zinc-200"
+                    )}
+                  >
+                    <TabIcon size={13} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className="grid grid-cols-7 gap-1">
-            {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
-              <div key={d} className="text-center text-[9px] font-bold text-zinc-400 uppercase">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {consistencyDays.map((day) => {
-              let bg = "bg-zinc-100 dark:bg-zinc-800";
-              if (day.isFuture) bg = "bg-zinc-100/40 dark:bg-zinc-800/40 opacity-30";
-              else if (day.hasWorkout && day.hasNutrition) bg = "bg-emerald-400 dark:bg-emerald-500";
-              else if (day.hasWorkout) bg = "bg-emerald-300 dark:bg-emerald-600/70";
-              else if (day.hasNutrition) bg = "bg-amber-300 dark:bg-amber-500/60";
-              return (
-                <div
-                  key={day.dateStr}
-                  className={`aspect-square rounded-lg transition-all ${bg} ${day.isToday ? "ring-2 ring-emerald-500 ring-offset-1 ring-offset-background" : ""}`}
-                  title={`${day.dateStr}${day.hasWorkout ? " · Workout ✓" : ""}${day.hasNutrition ? " · Meal ✓" : ""}`}
-                />
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap gap-3 pt-1">
-            {[
-              { color: "bg-emerald-400", label: "Workout + meal" },
-              { color: "bg-emerald-300 dark:bg-emerald-600/70", label: "Workout only" },
-              { color: "bg-amber-300 dark:bg-amber-500/60", label: "Meal only" },
-              { color: "bg-zinc-100 dark:bg-zinc-800", label: "Rest day" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <div className={`h-3 w-3 rounded ${item.color}`} />
-                <span className="text-[10px] text-zinc-500 font-medium">{item.label}</span>
-              </div>
-            ))}
+
+          {/* Tab Panel Content */}
+          <div className="min-h-[190px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeReadinessTab}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18 }}
+              >
+                {activeReadinessTab === "recovery" && renderRecoveryTab()}
+                {activeReadinessTab === "cns" && workoutExperienceMode === "advanced" && renderCnsTab()}
+                {activeReadinessTab === "habits" && renderHabitsTab()}
+                {activeReadinessTab === "tips" && renderTipsTab()}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </Card>
 
-        {/* ── Bodyweight trend ── */}
-        {bodyweightSeries.length >= 2 && (
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl" aria-hidden="true">⚖️</span>
-              <div>
-                <p className="text-sm font-bold text-foreground">Weight over time</p>
-                <p className="text-xs text-zinc-500">Your bodyweight history this year</p>
+        {/* Performance & Analytics Deck Card (Advanced Mode Only) */}
+        {workoutExperienceMode === "advanced" && (
+          <Card className="p-4 relative overflow-hidden supports-[backdrop-filter]:backdrop-blur-2xl bg-card/65 border-card-border/60 shadow-xl space-y-4">
+            <div className="flex flex-col gap-3 pb-2 border-b border-card-border/60">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-indigo-500" />
+                <h3 className="text-base font-black text-foreground">Performance & Analytics</h3>
+              </div>
+              
+              {/* Horizontal Tab Selector */}
+              <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar select-none">
+                {[
+                  { id: "consistency", label: "Consistency", icon: Calendar },
+                  { id: "weight", label: "Weight", icon: Weight },
+                  { id: "volume", label: "Weekly Effort", icon: TrendingUp },
+                  { id: "heatmap", label: "Muscle Map", icon: Activity },
+                  { id: "prs", label: "PRs", icon: Medal },
+                  { id: "overview", label: "Overview", icon: ClipboardList }
+                ].map((tab) => {
+                  const isActive = activePerformanceTab === tab.id;
+                  const TabIcon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActivePerformanceTab(tab.id as any)}
+                      className={cn(
+                        "relative z-10 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0 cursor-pointer min-h-[32px] border border-transparent",
+                        isActive 
+                          ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400" 
+                          : "text-zinc-500 hover:text-zinc-855 dark:hover:text-zinc-200"
+                      )}
+                    >
+                      <TabIcon size={13} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <SafeResponsiveContainer width="100%" height={140} minWidth={0} minHeight={0}>
-              <AreaChart data={bodyweightSeries} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="bwGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="10%" stopColor="#10b981" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="date" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-card-border)", borderRadius: 12, fontSize: 12 }}
-                  formatter={(v: any) => [`${v} ${profile?.weightUnit ?? "kg"}`, "Weight"]}
-                />
-                <Area type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} fill="url(#bwGrad)" dot={false} />
-              </AreaChart>
-            </SafeResponsiveContainer>
-          </Card>
-        )}
 
-        {/* ── Weekly workout effort ── */}
-        {yearVolumeSeries.length >= 2 && (
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl" aria-hidden="true">📈</span>
-              <div>
-                <p className="text-sm font-bold text-foreground">Weekly workout effort</p>
-                <p className="text-xs text-zinc-500">Total weight lifted each week — bigger is better!</p>
-              </div>
-            </div>
-            <SafeResponsiveContainer width="100%" height={130} minWidth={0} minHeight={0}>
-              <BarChart data={yearVolumeSeries} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="week" tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: "#71717a" }} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-card-border)", borderRadius: 12, fontSize: 12 }}
-                  formatter={(v: any) => [`${Number(v).toLocaleString()} ${profile?.weightUnit ?? "kg"}`, "Volume"]}
-                />
-                <Bar dataKey="volume" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </SafeResponsiveContainer>
-          </Card>
-        )}
-
-        {/* ── Recent personal bests ── */}
-        {recentPrs.length > 0 && (
-          <Card className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xl" aria-hidden="true">🏆</span>
-              <div>
-                <p className="text-sm font-bold text-foreground">Recent personal bests</p>
-                <p className="text-xs text-zinc-500">New records you've set — great job!</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {recentPrs.slice(0, 5).map((pr) => (
-                <div key={pr.exerciseName + pr.date} className="flex items-center justify-between p-3 rounded-xl bg-surface border border-surface-border">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{pr.exerciseName}</p>
-                    <p className="text-xs text-zinc-500">{pr.date}</p>
-                  </div>
-                  <div className="text-right shrink-0 pl-3">
-                    <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
-                      {pr.value}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            {/* Tab Panel Content */}
+            <div className="min-h-[190px]">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activePerformanceTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {activePerformanceTab === "consistency" && renderConsistencyTab()}
+                  {activePerformanceTab === "weight" && renderWeightTab()}
+                  {activePerformanceTab === "volume" && renderVolumeTab()}
+                  {activePerformanceTab === "heatmap" && renderHeatmapTab()}
+                  {activePerformanceTab === "prs" && renderPrsTab()}
+                  {activePerformanceTab === "overview" && renderOverviewTab()}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </Card>
         )}
 
-        {/* ── Cloud backup prompt ── */}
+        {/* Trophies Card */}
+        <TrophiesCard />
+
+        {/* Cloud backup prompt */}
         {profile && !profile.email && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4 flex items-start gap-3"
+            className="rounded-2xl border border-emerald-500/25 bg-emerald-500/5 p-4 flex items-start gap-3 select-none"
           >
             <span className="text-2xl shrink-0" aria-hidden="true">💾</span>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground">Back up your progress</p>
-              <p className="text-xs text-zinc-500 mt-0.5 leading-relaxed">
+              <p className="text-xs text-zinc-555 mt-0.5 leading-relaxed">
                 Link a free email to keep your workouts safe across devices. Takes 30 seconds.
               </p>
               <button
                 type="button"
                 onClick={() => setShowMigrationModal(true)}
-                className="mt-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                className="mt-2.5 text-xs font-bold text-emerald-650 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 Set up backup →
               </button>
@@ -1176,7 +1682,7 @@ export function DashboardScreen() {
           </motion.div>
         )}
 
-        {/* ── Empty state ── */}
+        {/* Empty state */}
         {isNewUser && (
           <Card className="p-5 text-center space-y-3 border-dashed border-zinc-300 dark:border-zinc-700">
             <span className="text-4xl" aria-hidden="true">🌱</span>
@@ -1191,9 +1697,9 @@ export function DashboardScreen() {
           </Card>
         )}
 
-        {/* ── Year selector ── */}
-        {availableYears.length > 1 && (
-          <div className="flex items-center justify-end gap-2 pt-1">
+        {/* Year selector */}
+        {availableYears.length > 1 && workoutExperienceMode === "advanced" && (
+          <div className="flex items-center justify-end gap-2 pt-1 select-none">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Showing year:</span>
             <Select
               value={selectedYear}

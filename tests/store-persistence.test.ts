@@ -10,20 +10,20 @@ describe("Store Persistence Integration", () => {
   const mockNutritionRepo = {
     getEntries: vi.fn(),
     addEntry: vi.fn(async () => {}),
-    deleteEntry: vi.fn(),
-    deleteEntriesForDate: vi.fn(),
+    deleteEntry: vi.fn(async () => {}),
+    deleteEntriesForDate: vi.fn(async () => {}),
   };
 
   const mockPlanRepo = {
     getPlans: vi.fn(),
     savePlan: vi.fn(async () => {}),
-    deletePlan: vi.fn(),
+    deletePlan: vi.fn(async () => {}),
   };
 
   const mockWorkoutRepo = {
     getWorkouts: vi.fn(),
     saveWorkout: vi.fn(async () => {}),
-    deleteWorkout: vi.fn(),
+    deleteWorkout: vi.fn(async () => {}),
   };
 
   beforeEach(() => {
@@ -260,6 +260,29 @@ describe("Store Persistence Integration", () => {
           exercises: expect.arrayContaining([expect.objectContaining({ exerciseId: "db-press" })])
         })]),
       }));
+    });
+  });
+
+  describe("deleteWorkout", () => {
+    it("should remove workout from memory store and call workout repository deleteWorkout", async () => {
+      const dummyWorkout: Workout = {
+        id: "workout-to-delete",
+        name: "Test Workout Log",
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        exercises: [],
+      };
+
+      useAtlasStore.setState({ workouts: [dummyWorkout] });
+
+      await useAtlasStore.getState().deleteWorkout("workout-to-delete");
+
+      // Verify it is removed from memory
+      expect(useAtlasStore.getState().workouts).toHaveLength(0);
+
+      // Verify repository delete call
+      expect(mockWorkoutRepo.deleteWorkout).toHaveBeenCalledTimes(1);
+      expect(mockWorkoutRepo.deleteWorkout).toHaveBeenCalledWith(userId, "workout-to-delete");
     });
   });
 });

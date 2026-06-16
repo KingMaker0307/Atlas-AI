@@ -37,6 +37,7 @@ export interface WorkoutSlice {
   updateExerciseUnit: (workoutExerciseId: string, unit: WeightUnit) => Promise<void>;
   finishWorkout: (fatigueRating?: number, notes?: string) => Promise<void>;
   discardWorkout: () => Promise<void>;
+  deleteWorkout: (workoutId: string) => Promise<void>;
   swapWorkoutExercise: (workoutExerciseId: string, newExerciseId: string) => Promise<void>;
   skipWorkoutExercise: (workoutExerciseId: string) => Promise<void>;
   startRestTimer: (seconds: number, setId?: string | null) => Promise<void>;
@@ -602,6 +603,7 @@ export const createWorkoutSlice: StateCreator<
       activeTab: "dashboard",
       activeSubScreen: null,
       workoutTab: "plans",
+      lastCompletedWorkoutId: completedWorkout.id,
     });
 
     // Check deload triggers on the next state
@@ -622,6 +624,13 @@ export const createWorkoutSlice: StateCreator<
       activeSubScreen: null,
       workoutTab: "plans",
     });
+  },
+
+  deleteWorkout: async (workoutId: string) => {
+    const nextWorkouts = get().workouts.filter((w) => w.id !== workoutId);
+    set({ workouts: nextWorkouts });
+    const registry = await import("@/lib/repositories/registry").then((m) => m.registry);
+    registry.save((r, uid) => r.workout.deleteWorkout(uid, workoutId));
   },
 
   swapWorkoutExercise: async (workoutExerciseId, newExerciseId) => {
